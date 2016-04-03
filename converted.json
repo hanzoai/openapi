@@ -1,0 +1,3990 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "",
+    "title": "Hanzo",
+    "description": "The Hanzo API is designed to handle all of the most common tasks with\nassociated with running a crowdfunding campaign.\nThe API is currently in beta. Please contact support@hanzo.io if you\nintend to use our API in any production code.",
+    "license": {
+      "name": "MIT",
+      "url": "http://github.com/gruntjs/grunt/blob/master/LICENSE-MIT"
+    }
+  },
+  "host": "www.example.com",
+  "basePath": "/",
+  "securityDefinitions": {},
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/checkout/charge": {
+      "post": {
+        "description": "The one-step payment process is mostly used for general commerce for immediate\nfulfillment/sale.  In general, you must send three things to successfully\ncomplete a charge call: order information, payment information, and user\ninformation. In essence, the one-step payment method takes this information,\nauthorizes the payment, and, if successful, immediately attempts to capture it.\nAny failure in this process will result in a failure of the call.",
+        "tags": [
+          "Checkout API"
+        ],
+        "operationId": "Create_Charge an Order_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "x-is-map": false,
+            "schema": {
+              "$ref": "#/definitions/ChargeanOrderrequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/ChargeanOrderresponse"
+            }
+          }
+        }
+      }
+    },
+    "/checkout/authorize": {
+      "post": {
+        "description": "The two-step payment process separates the two steps mentioned in the one-step\npayment process, and allows you to authorize a payment, and then capture it at a\nlater period.  This is useful for pre-orders or other such payments that you do\nnot wish to collect until shipment.  The basic data needs remain the same, as\nHanzo implicitly creates the Order and User for you, for later use in the\ncapture portion.",
+        "tags": [
+          "Checkout API"
+        ],
+        "operationId": "Create_Authorize_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "x-is-map": false,
+            "schema": {
+              "$ref": "#/definitions/Authorizerequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/Authorizeresponse"
+            }
+          }
+        }
+      }
+    },
+    "/order/{id}/capture": {
+      "post": {
+        "description": "The second step of the two-step payment process involves capturing a\npre-authorized payment.  The order ID is required for this step, but it is\nreturned in the Authorize step (see above).",
+        "tags": [
+          "Checkout API"
+        ],
+        "operationId": "Create_Capture payment_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/Capturepaymentresponse"
+            }
+          }
+        }
+      }
+    },
+    "/coupon/{id}": {
+      "get": {
+        "description": "Basic Coupon calls are keyed upon the unique ID of the Coupon.  As with all\ncalls, it also requires an access key included with the request.",
+        "tags": [
+          "Coupon"
+        ],
+        "operationId": "Get a Coupon_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/GetaCouponresponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "The PUT method will allow you to replace a given ID's data in its entirety.\nPassing in valid Coupon JSON (see the POST method), will overwrite any and all\ndata existing on that ID.",
+        "tags": [
+          "Coupon"
+        ],
+        "operationId": "Update_Updating a Coupon_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "description": "Basic Coupon calls are keyed upon the unique ID of the Coupon.  As with all\ncalls, it also requires an access key included with the request.",
+        "tags": [
+          "Coupon"
+        ],
+        "operationId": "Create a Coupon_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "x-is-map": false,
+            "schema": {
+              "$ref": "#/definitions/CreateaCouponrequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/CreateaCouponresponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Deleting a Coupon is as simple as passing its ID to the Coupon endpoint using\nthe HTTP Delete method. You will not receive a response past the normal HTTP\n204.",
+        "tags": [
+          "Coupon"
+        ],
+        "operationId": "Delete_Deleting a Coupon_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "description": "The PATCH method will allow you to replace a given ID's data in a piecemeal\nfashion.  Any fields passed in to a PATCH method will be updated with what you\nrequest, while any fields not specified in the JSON will be left alone.",
+        "tags": [
+          "Coupon"
+        ],
+        "operationId": "Patching a Coupon_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/collection/{id}": {
+      "get": {
+        "description": "Basic Collection calls are keyed to the unique ID of the collection.  As with\nall calls, it also requires an API key to be included with the request.",
+        "tags": [
+          "Collection"
+        ],
+        "operationId": "Get a Collection_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/GetaCollectionresponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "The PUT method will allow you to replace a given ID's data in its entirety.\nPassing in valid Collection JSON (see the POST method), will overwrite any and all\ndata existing on that ID.",
+        "tags": [
+          "Collection"
+        ],
+        "operationId": "Update_Updating a Collection_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "description": "Basic Collection calls are keyed to the unique ID of the collection.  As with\nall calls, it also requires an API key to be included with the request.",
+        "tags": [
+          "Collection"
+        ],
+        "operationId": "Create a Collection_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "x-is-map": false,
+            "schema": {
+              "$ref": "#/definitions/CreateaCollectionrequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/CreateaCollectionresponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Deleting a Collection is as simple as passing its ID to the Collection endpoint using\nthe HTTP Delete method. You will not receive a response past the normal HTTP\n204.",
+        "tags": [
+          "Collection"
+        ],
+        "operationId": "Delete_Deleting a Collection_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "description": "The PATCH method will allow you to replace a given ID's data in a piecemeal\nfashion.  Any fields passed in to a PATCH method will be updated with what you\nrequest, while any fields not specified in the JSON will be left alone.",
+        "tags": [
+          "Collection"
+        ],
+        "operationId": "Patching a Collection_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/form/{id}": {
+      "get": {
+        "description": "Basic Form calls are keyed to the unique ID of the form.  As with\nall calls, it also requires an API key to be included with the request.",
+        "tags": [
+          "Form"
+        ],
+        "operationId": "Get a Form_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/GetaFormresponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "The PUT method will allow you to replace a given ID's data in its entirety.\nPassing in valid Form JSON (see the POST method), will overwrite any and all\ndata existing on that ID.",
+        "tags": [
+          "Form"
+        ],
+        "operationId": "Update_Updating a Form_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "description": "Basic Form calls are keyed to the unique ID of the form.  As with\nall calls, it also requires an API key to be included with the request.",
+        "tags": [
+          "Form"
+        ],
+        "operationId": "Create a Form_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "x-is-map": false,
+            "schema": {
+              "$ref": "#/definitions/CreateaFormrequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Deleting a Form is as simple as passing its ID to the Form endpoint using\nthe HTTP Delete method. You will not receive a response past the normal HTTP\n204.",
+        "tags": [
+          "Form"
+        ],
+        "operationId": "Delete_Deleting a Form_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "description": "The PATCH method will allow you to replace a given ID's data in a piecemeal\nfashion. Any fields passed in to a PATCH method will be updated with what you\nrequest, while any fields not specified in the JSON will be left alone.",
+        "tags": [
+          "Form"
+        ],
+        "operationId": "Patching a Form_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/form/{id}/submit": {
+      "post": {
+        "description": "",
+        "tags": [
+          "Form"
+        ],
+        "operationId": "Create_Submitting a Form_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "x-is-map": false,
+            "schema": {
+              "type": "object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/order/{id}": {
+      "get": {
+        "description": "Basic Order calls are keyed upon the unique ID of the Order.  As with all calls,\nit also requires an access key included with the request.",
+        "tags": [
+          "Order"
+        ],
+        "operationId": "Get an Order_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/GetanOrderresponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "The PUT method will allow you to replace a given ID's data in its entirety.\nPassing in valid Order JSON (see the POST method), will overwrite any and all\ndata existing on that ID.",
+        "tags": [
+          "Order"
+        ],
+        "operationId": "Update_Updating a Order_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "description": "Basic Order calls are keyed upon the unique ID of the Order.  As with all calls,\nit also requires an access key included with the request.",
+        "tags": [
+          "Order"
+        ],
+        "operationId": "Create an Order_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "x-is-map": false,
+            "schema": {
+              "$ref": "#/definitions/CreateanOrderrequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/CreateanOrderresponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Deleting a Order is as simple as passing its ID to the Order endpoint using\nthe HTTP Delete method. You will not receive a response past the normal HTTP\n200.",
+        "tags": [
+          "Order"
+        ],
+        "operationId": "Delete_Deleting a Order_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "description": "The PATCH method will allow you to replace a given ID's data in a piecemeal\nfashion.  Any fields passed in to a PATCH method will be updated with what you\nrequest, while any fields not specified in the JSON will be left alone.",
+        "tags": [
+          "Order"
+        ],
+        "operationId": "Patching a Order_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/order/{id}/payments": {
+      "get": {
+        "description": "It is possible to get a listing of all the payments on a specific order with\nthis endpoint.",
+        "tags": [
+          "Order"
+        ],
+        "operationId": "Get Payments on an Order_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/GetPaymentsonanOrderresponse"
+            }
+          }
+        }
+      }
+    },
+    "/referral/{id}": {
+      "get": {
+        "description": "Basic Referral calls are keyed upon the unique ID of the Referral.  As with all\ncalls, it also requires an access key included with the request.",
+        "tags": [
+          "Referral"
+        ],
+        "operationId": "Get a Referral_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/GetaReferralresponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "The PUT method will allow you to replace a given ID's data in its entirety.\nPassing in valid Referral JSON (see the POST method), will overwrite any and all\ndata existing on that ID.",
+        "tags": [
+          "Referral"
+        ],
+        "operationId": "Update_Updating a Referral_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "description": "Basic Referral calls are keyed upon the unique ID of the Referral.  As with all\ncalls, it also requires an access key included with the request.",
+        "tags": [
+          "Referral"
+        ],
+        "operationId": "Create_Creating a Referral_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "x-is-map": false,
+            "schema": {
+              "$ref": "#/definitions/CreatingaReferralrequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/CreatingaReferralresponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Deleting a Referral is as simple as passing its ID to the Referral endpoint using\nthe HTTP Delete method. You will not receive a response past the normal HTTP\n200.",
+        "tags": [
+          "Referral"
+        ],
+        "operationId": "Delete_Deleting a Referral_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "description": "The PATCH method will allow you to replace a given ID's data in a piecemeal\nfashion.  Any fields passed in to a PATCH method will be updated with what you\nrequest, while any fields not specified in the JSON will be left alone.",
+        "tags": [
+          "Referral"
+        ],
+        "operationId": "Patching a Referral_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/referrer/{id}": {
+      "get": {
+        "description": "Basic Referrer calls are keyed upon the unique ID of the Referrer.  As with all\ncalls, it also requires an access key included with the request.",
+        "tags": [
+          "Referrer"
+        ],
+        "operationId": "Get a Referrer_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/GetaReferrerresponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "The PUT method will allow you to replace a given ID's data in its entirety.\nPassing in valid Referrer JSON (see the POST method), will overwrite any and all\ndata existing on that ID.",
+        "tags": [
+          "Referrer"
+        ],
+        "operationId": "Update_Updating a Referrer_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "description": "Basic Referrer calls are keyed upon the unique ID of the Referrer.  As with all\ncalls, it also requires an access key included with the request.",
+        "tags": [
+          "Referrer"
+        ],
+        "operationId": "Create_Creating a Referrer_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "x-is-map": false,
+            "schema": {
+              "$ref": "#/definitions/CreatingaReferrerrequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/CreatingaReferrerresponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Deleting a Referrer is as simple as passing its ID to the Referrer endpoint using\nthe HTTP Delete method. You will not receive a response past the normal HTTP\n200.",
+        "tags": [
+          "Referrer"
+        ],
+        "operationId": "Delete_Deleting a Referrer_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "description": "The PATCH method will allow you to replace a given ID's data in a piecemeal\nfashion.  Any fields passed in to a PATCH method will be updated with what you\nrequest, while any fields not specified in the JSON will be left alone.",
+        "tags": [
+          "Referrer"
+        ],
+        "operationId": "Patching a Referrer_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/transaction/{id}": {
+      "get": {
+        "description": "This is the only call that is available for Transactions, as they are too\ndirectly sensitive to allow to be modified.",
+        "tags": [
+          "Transaction"
+        ],
+        "operationId": "Get a Transaction_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/GetaTransactionresponse"
+            }
+          }
+        }
+      }
+    },
+    "/product/{id}": {
+      "get": {
+        "description": "Basic Product calls are keyed upon the unique ID of the Product.  As with all\ncalls, it also requires an access key included with the request.",
+        "tags": [
+          "Product"
+        ],
+        "operationId": "Get a Product_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/GetaProductresponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "The PUT method will allow you to replace a given ID's data in its entirety.\nPassing in valid Product JSON (see the POST method), will overwrite any and all\ndata existing on that ID.",
+        "tags": [
+          "Product"
+        ],
+        "operationId": "Update_Updating a Product_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "description": "Basic Product calls are keyed upon the unique ID of the Product.  As with all\ncalls, it also requires an access key included with the request.",
+        "tags": [
+          "Product"
+        ],
+        "operationId": "Create_Creating a Product_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "x-is-map": false,
+            "schema": {
+              "$ref": "#/definitions/CreatingaProductrequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/CreatingaProductresponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Deleting a Product is as simple as passing its ID to the Product endpoint using\nthe HTTP Delete method. You will not receive a response past the normal HTTP\n200.",
+        "tags": [
+          "Product"
+        ],
+        "operationId": "Delete_Deleting a Product_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "description": "The PATCH method will allow you to replace a given ID's data in a piecemeal\nfashion.  Any fields passed in to a PATCH method will be updated with what you\nrequest, while any fields not specified in the JSON will be left alone.",
+        "tags": [
+          "Product"
+        ],
+        "operationId": "Patching a Product_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/variant/{id}": {
+      "get": {
+        "description": "Basic Variant calls are keyed upon the unique ID of the Variant.  As with all\ncalls, it also requires an access key included with the request.",
+        "tags": [
+          "Variant"
+        ],
+        "operationId": "Get a Variant_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/GetaVariantresponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "The PUT method will allow you to replace a given ID's data in its entirety.\nPassing in valid Variant JSON (see the POST method), will overwrite any and all\ndata existing on that ID.",
+        "tags": [
+          "Variant"
+        ],
+        "operationId": "Update_Updating a Variant_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "description": "Basic Variant calls are keyed upon the unique ID of the Variant.  As with all\ncalls, it also requires an access key included with the request.",
+        "tags": [
+          "Variant"
+        ],
+        "operationId": "Create a Variant_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "x-is-map": false,
+            "schema": {
+              "$ref": "#/definitions/CreateaVariantrequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/CreateaVariantresponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Deleting a Variant is as simple as passing its ID to the Variant endpoint using\nthe HTTP Delete method. You will not receive a response past the normal HTTP\n200.",
+        "tags": [
+          "Variant"
+        ],
+        "operationId": "Delete_Deleting a Variant_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "description": "The PATCH method will allow you to replace a given ID's data in a piecemeal\nfashion.  Any fields passed in to a PATCH method will be updated with what you\nrequest, while any fields not specified in the JSON will be left alone.",
+        "tags": [
+          "Variant"
+        ],
+        "operationId": "Patching a Variant_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/user/{id}": {
+      "get": {
+        "description": "Basic User calls are keyed upon the unique ID of the User.  As with all calls,\nit also requires an access key included with the request.",
+        "tags": [
+          "User"
+        ],
+        "operationId": "Get a User_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/GetaUserresponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "The PUT method will allow you to replace a given ID's data in its entirety.\nPassing in valid User JSON (see the POST method), will overwrite any and all\ndata existing on that ID.",
+        "tags": [
+          "User"
+        ],
+        "operationId": "Update_Updating a User_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "description": "Basic User calls are keyed upon the unique ID of the User.  As with all calls,\nit also requires an access key included with the request.",
+        "tags": [
+          "User"
+        ],
+        "operationId": "Create a User_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "x-is-map": false,
+            "schema": {
+              "$ref": "#/definitions/CreateaUserrequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/CreateaUserresponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Deleting a User is as simple as passing its ID to the User endpoint using\nthe HTTP Delete method. You will not receive a response past the normal HTTP\n200.",
+        "tags": [
+          "User"
+        ],
+        "operationId": "Delete_Deleting a User_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "description": "The PATCH method will allow you to replace a given ID's data in a piecemeal\nfashion.  Any fields passed in to a PATCH method will be updated with what you\nrequest, while any fields not specified in the JSON will be left alone.",
+        "tags": [
+          "User"
+        ],
+        "operationId": "Patching a User_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/site": {
+      "get": {
+        "description": "Returns all sites that you are authorized to see.",
+        "tags": [
+          "Site"
+        ],
+        "operationId": "Get all Sites_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/GetallSitesresponse"
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "This will deploy a new site.",
+        "tags": [
+          "Site"
+        ],
+        "operationId": "Create a Site_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "x-is-map": false,
+            "schema": {
+              "$ref": "#/definitions/CreateaSiterequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/site/{id}": {
+      "get": {
+        "description": "These site calls are keyed on the SiteId in the Site object. As with all calls,\nit also requires an access key to be sent along with the request.",
+        "tags": [
+          "Site"
+        ],
+        "operationId": "Get a single site_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/Getasinglesiteresponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "This functionally is a POST/Create command with a contextual site ID.",
+        "tags": [
+          "Site"
+        ],
+        "operationId": "Update a site_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "x-is-map": false,
+            "schema": {
+              "$ref": "#/definitions/Updateasiterequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "description": "The only input this requires is the contextual site ID, and it will respond with\n200 OK.",
+        "tags": [
+          "Site"
+        ],
+        "operationId": "Delete a site_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/store/{id}": {
+      "get": {
+        "description": "Basic Store calls are keyed upon the unique ID of the Store.  As with all calls,\nit also requires an access key included with the request.",
+        "tags": [
+          "Store"
+        ],
+        "operationId": "Get a store_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/Getastoreresponse"
+            }
+          }
+        }
+      }
+    },
+    "/store/{id}/product/{key}": {
+      "get": {
+        "description": "It is possible to access the products belonging to a store by passing in the\nstore's unique identifier, followed by the product's unique key.  As with all\ncalls, this also requires an access key to be included with the request.",
+        "tags": [
+          "Store"
+        ],
+        "operationId": "Get a Store's Product_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/GetaStore'sProductresponse"
+            }
+          }
+        }
+      }
+    },
+    "/store/{id}/variant/{key}": {
+      "get": {
+        "description": "It is possible to access the product variants organized under a store by\nproviding the store's unique identifier and the variant's unique key. As with\nall calls, this requires an API key included along with the request.",
+        "tags": [
+          "Store"
+        ],
+        "operationId": "Get a store's variant_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/Getastore'svariantresponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "The PUT method will allow you to replace a given ID's data in its entirety.\nPassing in valid Variant JSON (see the POST method), will overwrite any and all\ndata existing on that ID.",
+        "tags": [
+          "Store"
+        ],
+        "operationId": "Update_Updating a Variant_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "description": "Deleting a Variant is as simple as passing its ID to the Variant endpoint using\nthe HTTP Delete method. You will not receive a response past the normal HTTP\n200.",
+        "tags": [
+          "Store"
+        ],
+        "operationId": "Delete_Deleting a Variant_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "description": "The PATCH method will allow you to replace a given ID's data in a piecemeal\nfashion.  Any fields passed in to a PATCH method will be updated with what you\nrequest, while any fields not specified in the JSON will be left alone.",
+        "tags": [
+          "Store"
+        ],
+        "operationId": "Patching a Variant_",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": false,
+            "x-is-map": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "ChargeanOrderrequest": {
+      "title": "Charge an Order request",
+      "type": "object",
+      "properties": {
+        "buyer": {
+          "type": "object"
+        },
+        "order": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "buyer",
+        "order"
+      ]
+    },
+    "ChargeanOrderresponse": {
+      "title": "Charge an Order response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "campaignId": {
+          "type": "string"
+        },
+        "orderStatus": {
+          "type": "string"
+        },
+        "paymentStatus": {
+          "type": "string"
+        },
+        "fulfillmentStatus": {
+          "type": "string"
+        },
+        "preorder": {
+          "type": "boolean"
+        },
+        "unconfirmed": {
+          "type": "boolean"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "shippingMethod": {
+          "type": "string"
+        },
+        "lineTotal": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "discount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "subtotal": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "shipping": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tax": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "balance": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "paid": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "refunded": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "fee": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "billingAddress": {
+          "type": "object"
+        },
+        "shippingAddress": {
+          "type": "object"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "discounts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "payments": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "fulfillment": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "campaignId",
+        "orderStatus",
+        "paymentStatus",
+        "fulfillmentStatus",
+        "preorder",
+        "unconfirmed",
+        "currency",
+        "type",
+        "shippingMethod",
+        "lineTotal",
+        "discount",
+        "subtotal",
+        "shipping",
+        "tax",
+        "total",
+        "balance",
+        "paid",
+        "refunded",
+        "fee",
+        "billingAddress",
+        "shippingAddress",
+        "items",
+        "discounts",
+        "payments",
+        "fulfillment"
+      ]
+    },
+    "Authorizerequest": {
+      "title": "Authorize request",
+      "type": "object",
+      "properties": {
+        "buyer": {
+          "type": "object"
+        },
+        "order": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "buyer",
+        "order"
+      ]
+    },
+    "Authorizeresponse": {
+      "title": "Authorize response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "campaignId": {
+          "type": "string"
+        },
+        "orderStatus": {
+          "type": "string"
+        },
+        "paymentStatus": {
+          "type": "string"
+        },
+        "fulfillmentStatus": {
+          "type": "string"
+        },
+        "preorder": {
+          "type": "boolean"
+        },
+        "unconfirmed": {
+          "type": "boolean"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "shippingMethod": {
+          "type": "string"
+        },
+        "lineTotal": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "discount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "subtotal": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "shipping": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tax": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "balance": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "paid": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "refunded": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "fee": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "billingAddress": {
+          "type": "object"
+        },
+        "shippingAddress": {
+          "type": "object"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "discounts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "payments": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "fulfillment": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "campaignId",
+        "orderStatus",
+        "paymentStatus",
+        "fulfillmentStatus",
+        "preorder",
+        "unconfirmed",
+        "currency",
+        "type",
+        "shippingMethod",
+        "lineTotal",
+        "discount",
+        "subtotal",
+        "shipping",
+        "tax",
+        "total",
+        "balance",
+        "paid",
+        "refunded",
+        "fee",
+        "billingAddress",
+        "shippingAddress",
+        "items",
+        "discounts",
+        "payments",
+        "fulfillment"
+      ]
+    },
+    "Capturepaymentresponse": {
+      "title": "Capture payment response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "campaignId": {
+          "type": "string"
+        },
+        "orderStatus": {
+          "type": "string"
+        },
+        "paymentStatus": {
+          "type": "string"
+        },
+        "fulfillmentStatus": {
+          "type": "string"
+        },
+        "preorder": {
+          "type": "boolean"
+        },
+        "unconfirmed": {
+          "type": "boolean"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "shippingMethod": {
+          "type": "string"
+        },
+        "lineTotal": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "discount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "subtotal": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "shipping": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tax": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "balance": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "paid": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "refunded": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "fee": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "billingAddress": {
+          "type": "object"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "discounts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "payments": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "fulfillment": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "campaignId",
+        "orderStatus",
+        "paymentStatus",
+        "fulfillmentStatus",
+        "preorder",
+        "unconfirmed",
+        "currency",
+        "type",
+        "shippingMethod",
+        "lineTotal",
+        "discount",
+        "subtotal",
+        "shipping",
+        "tax",
+        "total",
+        "balance",
+        "paid",
+        "refunded",
+        "fee",
+        "billingAddress",
+        "items",
+        "discounts",
+        "payments",
+        "fulfillment"
+      ]
+    },
+    "GetaCouponresponse": {
+      "title": "Get a Coupon response",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "campaignId": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "string"
+        },
+        "endDate": {
+          "type": "string"
+        },
+        "filter": {
+          "type": "string"
+        },
+        "once": {
+          "type": "boolean"
+        },
+        "productId": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "amount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "used": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "code",
+        "campaignId",
+        "startDate",
+        "endDate",
+        "filter",
+        "once",
+        "productId",
+        "enabled",
+        "amount",
+        "used"
+      ]
+    },
+    "CreateaCouponrequest": {
+      "title": "Create a Coupon request",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "campaignId": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "string"
+        },
+        "endDate": {
+          "type": "string"
+        },
+        "filter": {
+          "type": "string"
+        },
+        "once": {
+          "type": "boolean"
+        },
+        "productId": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "amount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "used": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "code",
+        "campaignId",
+        "startDate",
+        "endDate",
+        "filter",
+        "once",
+        "productId",
+        "enabled",
+        "amount",
+        "used"
+      ]
+    },
+    "CreateaCouponresponse": {
+      "title": "Create a Coupon response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "campaignId": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "string"
+        },
+        "endDate": {
+          "type": "string"
+        },
+        "filter": {
+          "type": "string"
+        },
+        "once": {
+          "type": "boolean"
+        },
+        "productId": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "amount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "used": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "name",
+        "type",
+        "code",
+        "campaignId",
+        "startDate",
+        "endDate",
+        "filter",
+        "once",
+        "productId",
+        "enabled",
+        "amount",
+        "used"
+      ]
+    },
+    "GetaCollectionresponse": {
+      "title": "Get a Collection response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "media": {
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "availability": {
+          "type": "object"
+        },
+        "published": {
+          "type": "boolean"
+        },
+        "preorder": {
+          "type": "boolean"
+        },
+        "outOfStock": {
+          "type": "boolean"
+        },
+        "productIds": {
+          "type": "string"
+        },
+        "variantIds": {
+          "type": "string"
+        },
+        "history": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "slug",
+        "name",
+        "description",
+        "media",
+        "available",
+        "availability",
+        "published",
+        "preorder",
+        "outOfStock",
+        "productIds",
+        "variantIds",
+        "history"
+      ]
+    },
+    "CreateaCollectionrequest": {
+      "title": "Create a Collection request",
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "availability": {
+          "type": "object"
+        },
+        "published": {
+          "type": "boolean"
+        },
+        "preorder": {
+          "type": "boolean"
+        },
+        "outOfStock": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "slug",
+        "name",
+        "description",
+        "available",
+        "availability",
+        "published",
+        "preorder",
+        "outOfStock"
+      ]
+    },
+    "CreateaCollectionresponse": {
+      "title": "Create a Collection response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "media": {
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "availability": {
+          "type": "object"
+        },
+        "published": {
+          "type": "boolean"
+        },
+        "preorder": {
+          "type": "boolean"
+        },
+        "outOfStock": {
+          "type": "boolean"
+        },
+        "productIds": {
+          "type": "string"
+        },
+        "variantIds": {
+          "type": "string"
+        },
+        "history": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "slug",
+        "name",
+        "description",
+        "media",
+        "available",
+        "availability",
+        "published",
+        "preorder",
+        "outOfStock",
+        "productIds",
+        "variantIds",
+        "history"
+      ]
+    },
+    "GetaFormresponse": {
+      "title": "Get a Form response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "sendWelcome": {
+          "type": "boolean"
+        },
+        "mailchimp": {
+          "type": "object"
+        },
+        "forward": {
+          "type": "object"
+        },
+        "thankyou": {
+          "type": "object"
+        },
+        "facebook": {
+          "type": "object"
+        },
+        "google": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "name",
+        "type",
+        "sendWelcome",
+        "mailchimp",
+        "forward",
+        "thankyou",
+        "facebook",
+        "google"
+      ]
+    },
+    "CreateaFormrequest": {
+      "title": "Create a Form request",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "sendWelcome": {
+          "type": "boolean"
+        },
+        "mailchimp": {
+          "type": "object"
+        },
+        "thankyou": {
+          "type": "object"
+        },
+        "facebook": {
+          "type": "object"
+        },
+        "google": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "sendWelcome",
+        "mailchimp",
+        "thankyou",
+        "facebook",
+        "google"
+      ]
+    },
+    "GetanOrderresponse": {
+      "title": "Get an Order response",
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "shipping": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tax": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "subtotal": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "campaignId": {
+          "type": "string"
+        },
+        "preorder": {
+          "type": "boolean"
+        },
+        "cancelled": {
+          "type": "boolean"
+        },
+        "shipped": {
+          "type": "boolean"
+        },
+        "test": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "createdAt",
+        "updatedAt",
+        "id",
+        "userId",
+        "shipping",
+        "tax",
+        "subtotal",
+        "total",
+        "items",
+        "campaignId",
+        "preorder",
+        "cancelled",
+        "shipped",
+        "test"
+      ]
+    },
+    "CreateanOrderrequest": {
+      "title": "Create an Order request",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "shipping": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tax": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "subtotal": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "campaignId": {
+          "type": "string"
+        },
+        "preorder": {
+          "type": "boolean"
+        },
+        "cancelled": {
+          "type": "boolean"
+        },
+        "shipped": {
+          "type": "boolean"
+        },
+        "test": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "userId",
+        "shipping",
+        "tax",
+        "subtotal",
+        "total",
+        "items",
+        "campaignId",
+        "preorder",
+        "cancelled",
+        "shipped",
+        "test"
+      ]
+    },
+    "CreateanOrderresponse": {
+      "title": "Create an Order response",
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "shipping": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tax": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "subtotal": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "campaignId": {
+          "type": "string"
+        },
+        "preorder": {
+          "type": "boolean"
+        },
+        "cancelled": {
+          "type": "boolean"
+        },
+        "shipped": {
+          "type": "boolean"
+        },
+        "test": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "createdAt",
+        "updatedAt",
+        "id",
+        "userId",
+        "shipping",
+        "tax",
+        "subtotal",
+        "total",
+        "items",
+        "campaignId",
+        "preorder",
+        "cancelled",
+        "shipped",
+        "test"
+      ]
+    },
+    "GetPaymentsonanOrderresponse": {
+      "title": "Get Payments on an Order response",
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "object"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "campaignid": {
+          "type": "string"
+        },
+        "chargeid": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "amountrefunded": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "status": {
+          "type": "string"
+        },
+        "client": {
+          "type": "object"
+        },
+        "captured": {
+          "type": "boolean"
+        },
+        "live": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "account",
+        "currency",
+        "campaignid",
+        "chargeid",
+        "amount",
+        "amountrefunded",
+        "status",
+        "client",
+        "captured",
+        "live"
+      ]
+    },
+    "GetaReferralresponse": {
+      "title": "Get a Referral response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "orderId": {
+          "type": "string"
+        },
+        "referrerUserId": {
+          "type": "string"
+        },
+        "referrerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "userId",
+        "orderId",
+        "referrerUserId",
+        "referrerId"
+      ]
+    },
+    "CreatingaReferralrequest": {
+      "title": "Creating a Referral request",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "orderId": {
+          "type": "string"
+        },
+        "referrerUserId": {
+          "type": "string"
+        },
+        "referrerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "userId",
+        "orderId",
+        "referrerUserId",
+        "referrerId"
+      ]
+    },
+    "CreatingaReferralresponse": {
+      "title": "Creating a Referral response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "orderId": {
+          "type": "string"
+        },
+        "referrerUserId": {
+          "type": "string"
+        },
+        "referrerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "userId",
+        "orderId",
+        "referrerUserId",
+        "referrerId"
+      ]
+    },
+    "GetaReferrerresponse": {
+      "title": "Get a Referrer response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "program": {
+          "type": "object"
+        },
+        "orderId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "referralIds": {
+          "type": "string"
+        },
+        "transactionsIds": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "program",
+        "orderId",
+        "userId",
+        "referralIds",
+        "transactionsIds"
+      ]
+    },
+    "CreatingaReferrerrequest": {
+      "title": "Creating a Referrer request",
+      "type": "object",
+      "properties": {
+        "program": {
+          "type": "object"
+        },
+        "orderId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "referralIds": {
+          "type": "string"
+        },
+        "transactionsIds": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "program",
+        "orderId",
+        "userId",
+        "referralIds",
+        "transactionsIds"
+      ]
+    },
+    "CreatingaReferrerresponse": {
+      "title": "Creating a Referrer response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "program": {
+          "type": "object"
+        },
+        "orderId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "referralIds": {
+          "type": "string"
+        },
+        "transactionsIds": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "program",
+        "orderId",
+        "userId",
+        "referralIds",
+        "transactionsIds"
+      ]
+    },
+    "GetaTransactionresponse": {
+      "title": "Get a Transaction response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "test": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "string"
+        },
+        "sourceId": {
+          "type": "string"
+        },
+        "sourceKind": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "userId",
+        "type",
+        "currency",
+        "amount",
+        "test",
+        "notes",
+        "tags",
+        "sourceId",
+        "sourceKind"
+      ]
+    },
+    "GetaProductresponse": {
+      "title": "Get a Product response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "headline": {
+          "type": "string"
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "released": {
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "addLabel": {
+          "type": "string"
+        },
+        "headerImage": {
+          "type": "object"
+        },
+        "media": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "slug",
+        "title",
+        "headline",
+        "excerpt",
+        "description",
+        "released",
+        "available",
+        "addLabel",
+        "headerImage",
+        "media",
+        "variants"
+      ]
+    },
+    "CreatingaProductrequest": {
+      "title": "Creating a Product request",
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "headline": {
+          "type": "string"
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "released": {
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "addLabel": {
+          "type": "string"
+        },
+        "headerImage": {
+          "type": "object"
+        },
+        "media": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": [
+        "slug",
+        "title",
+        "headline",
+        "excerpt",
+        "description",
+        "released",
+        "available",
+        "addLabel",
+        "headerImage",
+        "media",
+        "variants"
+      ]
+    },
+    "CreatingaProductresponse": {
+      "title": "Creating a Product response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "headline": {
+          "type": "string"
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "released": {
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "addLabel": {
+          "type": "string"
+        },
+        "headerImage": {
+          "type": "object"
+        },
+        "media": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "slug",
+        "title",
+        "headline",
+        "excerpt",
+        "description",
+        "released",
+        "available",
+        "addLabel",
+        "headerImage",
+        "media",
+        "variants"
+      ]
+    },
+    "GetaVariantresponse": {
+      "title": "Get a Variant response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "sku": {
+          "type": "string"
+        },
+        "price": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "inventory": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "weight": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "dimensions": {
+          "type": "string"
+        },
+        "options": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "sku",
+        "price",
+        "inventory",
+        "weight",
+        "dimensions",
+        "options"
+      ]
+    },
+    "CreateaVariantrequest": {
+      "title": "Create a Variant request",
+      "type": "object",
+      "properties": {
+        "sku": {
+          "type": "string"
+        },
+        "price": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "inventory": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "weight": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "dimensions": {
+          "type": "string"
+        },
+        "options": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "sku",
+        "price",
+        "inventory",
+        "weight",
+        "dimensions",
+        "options"
+      ]
+    },
+    "CreateaVariantresponse": {
+      "title": "Create a Variant response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "sku": {
+          "type": "string"
+        },
+        "price": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "inventory": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "weight": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "dimensions": {
+          "type": "string"
+        },
+        "options": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "sku",
+        "price",
+        "inventory",
+        "weight",
+        "dimensions",
+        "options"
+      ]
+    },
+    "GetaUserresponse": {
+      "title": "Get a User response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "billingAddress": {
+          "type": "object"
+        },
+        "shippingAddress": {
+          "type": "object"
+        },
+        "email": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "username",
+        "firstName",
+        "lastName",
+        "phone",
+        "billingAddress",
+        "shippingAddress",
+        "email"
+      ]
+    },
+    "CreateaUserrequest": {
+      "title": "Create a User request",
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "billingAddress": {
+          "type": "object"
+        },
+        "shippingAddress": {
+          "type": "object"
+        },
+        "email": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "username",
+        "firstName",
+        "lastName",
+        "phone",
+        "billingAddress",
+        "shippingAddress",
+        "email"
+      ]
+    },
+    "CreateaUserresponse": {
+      "title": "Create a User response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "billingAddress": {
+          "type": "object"
+        },
+        "shippingAddress": {
+          "type": "object"
+        },
+        "email": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "username",
+        "firstName",
+        "lastName",
+        "phone",
+        "billingAddress",
+        "shippingAddress",
+        "email"
+      ]
+    },
+    "GetallSitesresponse": {
+      "title": "Get all Sites response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "custom_domain": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "admin_url": {
+          "type": "string"
+        },
+        "screenshot_url": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "custom_domain",
+        "url",
+        "admin_url",
+        "screenshot_url",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "CreateaSiterequest": {
+      "title": "Create a Site request",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "custom_domain": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "custom_domain",
+        "password",
+        "repo"
+      ]
+    },
+    "Getasinglesiteresponse": {
+      "title": "Get a single site response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "custom_domain": {
+          "type": "string"
+        },
+        "notification_email": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "admin_url": {
+          "type": "string"
+        },
+        "screenshot_url": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "custom_domain",
+        "notification_email",
+        "url",
+        "admin_url",
+        "screenshot_url",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "Updateasiterequest": {
+      "title": "Update a site request",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "custom_domain": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "custom_domain",
+        "password",
+        "repo"
+      ]
+    },
+    "Getastoreresponse": {
+      "title": "Get a store response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "taxNexus": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "listings": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "name",
+        "slug",
+        "hostname",
+        "prefix",
+        "currency",
+        "taxNexus",
+        "listings"
+      ]
+    },
+    "GetaStore'sProductresponse": {
+      "title": "Get a Store's Product response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "sku": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "price": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "shipping": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "inventory": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "sold": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "weight": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "weightUnit": {
+          "type": "string"
+        },
+        "dimensions": {
+          "type": "string"
+        },
+        "taxable": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "headline": {
+          "type": "string"
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "headerImage": {
+          "type": "object"
+        },
+        "media": {
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "availability": {
+          "type": "object"
+        },
+        "preorder": {
+          "type": "boolean"
+        },
+        "addLabel": {
+          "type": "string"
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "slug",
+        "sku",
+        "currency",
+        "price",
+        "shipping",
+        "inventory",
+        "sold",
+        "weight",
+        "weightUnit",
+        "dimensions",
+        "taxable",
+        "name",
+        "headline",
+        "excerpt",
+        "description",
+        "headerImage",
+        "media",
+        "available",
+        "hidden",
+        "availability",
+        "preorder",
+        "addLabel",
+        "variants",
+        "options"
+      ]
+    },
+    "Getastore'svariantresponse": {
+      "title": "Get a store's variant response",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "sku": {
+          "type": "string"
+        },
+        "price": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "inventory": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "weight": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "dimensions": {
+          "type": "string"
+        },
+        "options": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "updatedAt",
+        "sku",
+        "price",
+        "inventory",
+        "weight",
+        "dimensions",
+        "options"
+      ]
+    }
+  }
+}
