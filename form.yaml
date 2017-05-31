@@ -1,0 +1,174 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Form API
+  description: >-
+    A Form is a specific set of inputs that are submitted back for your records.
+host: api.hanzo.io
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.io/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+paths:
+  '/form/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: DELETE_form-id
+      tags:
+        - Form
+      description: >-
+        Deletes the requested form. Cannot be undone.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+          description: The unique identifier for the Store.
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: ''
+          schema:
+            type: object
+            properties: {}
+    put:
+      operationId: PUT_form-id
+      tags:
+        - Form
+      description: >-
+        Replaces the specified form wholly. Any fields not passed are blanked.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Form'
+      responses:
+        '200':
+          description: 'Everything is OK'
+          schema:
+            $ref: '#/definitions/Form'
+    patch:
+      operationId: PATCH_form-id
+      tags:
+        - Form
+      description: >-
+        Replaces a form object piecemeal. Any fields not passed are not changed.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Form'
+      responses:
+        '200':
+          description: 'Everything is OK'
+          schema:
+            $ref: '#/definitions/Form'
+    get:
+      operationId: GET_form-id
+      tags:
+        - Form
+      description: >-
+        Returns the specified Form.
+      responses:
+        '200':
+          description: 'Everything is OK'
+          schema:
+            $ref: '#/definitions/Form'
+  '/form':
+    post:
+      operationId: POST_form
+      description: >-
+        Creates a new Form.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Form'
+      responses:
+        '201':
+          description: 'Everything is OK. New form created.'
+          schema:
+            $ref: '#/definitions/Form'
+    get:
+      description: >-
+        Returns a list of all available Forms.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/FormArray'
+  '/form/{id}/submit':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    post:
+      operationId: POST_form-id-submit
+      description: >-
+        Submits the specified form.
+      tags:
+        - Form
+      responses:
+        '200':
+          description: 'Everything is OK.'
+
+definitions:
+  Form:
+    title: Form
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      createdAt:
+        type: string
+        description: The time this Variant was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this Variant was last updated. Conforms to RFC3339.
+      name:
+        type: string
+        description: The human-friendly identifier for the form.
+      type:
+        type: string
+        description: The general class of the form.
+      sendWelcome:
+        type: boolean
+        description: Whether or not the form should send a welcome email upon submission.
+  FormArray:
+    title: FormArray
+    description: An array of Forms
+    type: array
+    items:
+      $ref: '#/definitions/Form'
