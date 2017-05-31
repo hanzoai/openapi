@@ -1,0 +1,152 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Site API
+  description: >-
+    A Site represents a storefront on the internet. This API is in beta, and as such
+    is minimally documented. Please contact us if you would like to use it.
+host: api.hanzo.io
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.io/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+paths:
+  '/site/{siteid}/deploy/{deployid}/files/index.html':
+    parameters:
+      - name: siteid
+        in: path
+        required: true
+        type: string
+      - name: deployid
+        in: path
+        required: true
+        type: string
+    put:
+      operationId: PUT_site-siteid-deploy-deployid-files-index-html
+      produces:
+        - text/html
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Content-Type
+          in: header
+          type: string
+      responses:
+        '307':
+          description: ''
+          schema:
+            type: object
+            properties: {}
+  '/site/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: GET_site-id
+      tags:
+        - Site
+      description: >-
+      responses:
+        '200':
+          description: ''
+    put:
+      operationId: PUT_site-id
+      tags:
+        - Site
+      description:
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/UpdateASiteRequest'
+      responses:
+        '200':
+          description: ''
+    delete:
+      operationId: DELETE_site-id
+      tags:
+        - Site
+      description:
+      produces:
+        - text/html
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: ''
+          schema:
+            type: object
+            properties: {}
+          examples:
+            application/json: null
+  /site:
+    post:
+      operationId: POST_site
+      tags:
+        - Site
+      description:
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+        - name: Content-Type
+          in: header
+          required: false
+          type: string
+      responses:
+        '201':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+              domain:
+                type: string
+              name:
+                type: string
+              url:
+                type: string
+    get:
+      operationId: GET_site
+      tags:
+        - Site
+      description:
+      responses:
+        '200':
+          description: ''

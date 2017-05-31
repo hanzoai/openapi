@@ -1,0 +1,148 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: User API
+  description: >-
+    A User represents a customer or prospect's presence on your site.
+host: api.hanzo.io
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.io/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+paths:
+  '/user/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: GET_user-id
+      tags:
+        - User
+      description: >-
+        Returns the requested User.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/GetAUserResponse'
+    patch:
+      operationId: PATCH_user-id
+      tags:
+        - User
+      description: >-
+        Updates the User piecemeal. Any fields not included are ignored.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/User'
+    delete:
+      operationId: DELETE_user-id
+      tags:
+        - User
+      description: >-
+        Deletes the requested user.  Cannot be undone.
+      responses:
+        '204':
+          description: ''
+    put:
+      operationId: PUT_user-id
+      tags:
+        - User
+      description: >-
+        Updates the User wholesale. Any fields not included will be blanked.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/User'
+  /user:
+    post:
+      description: >-
+        Creates a new user.
+      operationId: post_User
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/User'
+      responses:
+        '201':
+          description: 'Everything is ok!'
+          schema:
+            $ref: '#/definitions/User'
+    get:
+      description: >-
+        Returns a list of all available users.
+      operationId: get_User
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/UserArray'
+definitions:
+  User:
+    title: User
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      createdAt:
+        type: string
+        description: The time this user was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this user was last updated. Conforms to RFC3339.
+      username:
+        type: string
+        description: The user's primary name on your site.
+      firstName:
+        type: string
+        description: The user's given name.
+      lastName:
+        type: string
+        description: The user's surname.
+      phone:
+        type: string
+        description: The user's phone number.
+      billingAddress:
+        type: object
+        description: The location charges should be billed to.
+      shippingAddress:
+        type: object
+        description: The location orders should be sent to.
+      email:
+        type: string
+        description: The address the user can be reached at via email.
+  UserArray:
+    title: UserArray
+    description: An array of Users
+    type: array
+    items:
+      $ref: '#/definitions/User'
