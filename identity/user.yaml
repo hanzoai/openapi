@@ -2,7 +2,7 @@ swagger: '2.0'
 info:
   version: v1.0
   title: User API
-  description: >-
+  description: >
     A User represents a customer or prospect's presence on your site. It is,
     in general, a natural person linked to an Account.
 host: api.hanzo.io
@@ -26,6 +26,7 @@ securityDefinitions:
     name: token
     type: apiKey
     in: query
+
 paths:
   '/user/{id}':
     parameters:
@@ -33,45 +34,50 @@ paths:
         in: path
         required: true
         type: string
+
     get:
-      operationId: GET_user-id
-      description: >-
+      operationId: returnUser
+      description: >
         Returns the requested User.
       responses:
         '200':
           description: ''
           schema:
             $ref: '#/definitions/User'
+
     patch:
-      operationId: PATCH_user-id
-      description: >-
+      operationId: updateUser
+      description: >
         Updates the User piecemeal. Any fields not included are ignored.
       responses:
         '200':
           description: ''
           schema:
             $ref: '#/definitions/User'
+
     delete:
-      operationId: DELETE_user-id
-      description: >-
+      operationId: deleteUser
+      description: >
         Deletes the requested user.  Cannot be undone.
       responses:
         '204':
           description: ''
+
     put:
-      operationId: PUT_user-id
-      description: >-
+      operationId: replaceUser
+      description: >
         Updates the User wholesale. Any fields not included will be blanked.
       responses:
         '200':
           description: ''
           schema:
             $ref: '#/definitions/User'
+
   /user:
     post:
-      description: >-
+      description: >
         Creates a new user.
-      operationId: post_User
+      operationId: createUser
       parameters:
         - name: body
           in: body
@@ -82,10 +88,11 @@ paths:
           description: 'Everything is ok!'
           schema:
             $ref: '#/definitions/User'
+
     get:
-      description: >-
+      description: >
         Returns a list of all available users.
-      operationId: get_User
+      operationId: returnAllUsers
       parameters:
         - name: token
           in: query
@@ -98,6 +105,7 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/UserArray'
+
 definitions:
   User:
     title: User
@@ -133,6 +141,7 @@ definitions:
       email:
         type: string
         description: The address the user can be reached at via email.
+
   UserArray:
     title: UserArray
     description: An array of Users
