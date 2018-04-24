@@ -2,7 +2,7 @@ swagger: '2.0'
 info:
   version: v1.0
   title: Order API
-  description: >-
+  description: >
     An Order represents a confirmed request for goods or services.
     These are generally what a business wants a lot of to make money.
 host: api.hanzo.io
@@ -12,6 +12,7 @@ consumes:
   - application/json
 produces:
   - application/json
+
 securityDefinitions:
   oauth2:
     type: oauth2
@@ -26,6 +27,7 @@ securityDefinitions:
     name: token
     type: apiKey
     in: query
+
 paths:
   '/order/{id}':
     parameters:
@@ -34,8 +36,8 @@ paths:
         required: true
         type: string
     delete:
-      operationId: DELETE_order-id
-      description: >-
+      operationId: deleteOrder
+      description: >
         Completely deletes the associated Order.  Cannot be undone.
       produces:
         - text/html
@@ -56,9 +58,10 @@ paths:
             properties: {}
           examples:
             application/json: null
+
     get:
-      operationId: GET_order-id
-      description: >-
+      operationId: getOrder
+      description: >
         Returns a specified order.
       parameters:
         - name: token
@@ -74,9 +77,10 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Order'
+
     patch:
-      operationId: PATCH_order-id
-      description: >-
+      operationId: updateOrder
+      description: >
         Updates the specified Order object piecemeal. Any fields not
         included are not updated.
       parameters:
@@ -89,9 +93,10 @@ paths:
           description: 'Everything is OK.'
           schema:
             $ref: '#/definitions/Order'
+
     put:
-      operationId: PUT_order-id
-      description: >-
+      operationId: replaceOrder
+      description: >
         Wholly replaces the specified Order object in-place. Any fields not
         included will be blanked.
       responses:
@@ -99,10 +104,11 @@ paths:
           description: 'Everything is OK.'
           schema:
             $ref: '#/definitions/Order'
+
   /order:
     post:
-      operationId: POST_order
-      description: >-
+      operationId: createOrder
+      description: >
         Creates a new Order.
       parameters:
         - name: body
@@ -114,8 +120,9 @@ paths:
           description: 'Everything is OK. New order created.'
           schema:
             $ref: '#/definitions/Order'
+
     get:
-      operationId: GET_order
+      operationId: retrieveOrder
       description: Returns a list of all available orders.
       parameters:
         - name: token
@@ -129,6 +136,7 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/OrderArray'
+
   '/order/{id}/refund':
     parameters:
       - name: id
@@ -136,8 +144,8 @@ paths:
         required: true
         type: string
     post:
-      operationId: POST_order-id-refund
-      description: >-
+      operationId: createOrderRefund
+      description: >
         Issues a refund for the amount (specified in the POST body) to
         the order specified by the given ID.
       parameters:
@@ -167,6 +175,7 @@ paths:
           description: 'Everything is OK.'
           schema:
               $ref: '#/definitions/Order'
+
   '/order/{id}/payments':
     parameters:
       - name: id
@@ -174,14 +183,15 @@ paths:
         required: true
         type: string
     get:
-      operationId: GET_order-id-payments
-      description: >-
+      operationId: listOrderPayments
+      description: >
         Retrieves payments on an order with the given ID.
       responses:
         '200':
           description: ''
           schema:
             $ref: '#/definitions/PaymentArray'
+
   '/order/{id}/capture':
     parameters:
       - name: id
@@ -189,14 +199,15 @@ paths:
         required: true
         type: string
     post:
-      operationId: POST_order-id-capture
-      description: >-
+      operationId: captureOrderPayment
+      description: >
         Captures a pre-Authorized payment.
       responses:
         '200':
           description: ''
           schema:
             $ref: '#/definitions/Payment'
+
   '/checkout/capture/{id}':
     parameters:
       - name: id
@@ -204,8 +215,8 @@ paths:
         required: true
         type: string
     post:
-      operationId: POST_checkout-capture-id
-      description: >-
+      operationId: capturePayment
+      description: >
         Captures a specified order. Second step in the two-step payment process.
       parameters:
         - name: token
@@ -231,10 +242,11 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Order'
+
   /checkout/charge:
     post:
-      operationId: POST_checkout-charge
-      description: >-
+      operationId: chargePayment
+      description: >
         Authorizes and charges an included order in a one-step process.
       parameters:
         - name: token
@@ -254,10 +266,11 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Order'
+
   /checkout/authorize:
     post:
-      operationId: POST_checkout-authorize
-      description: >-
+      operationId: authorizePayment
+      description: >
         Captures a specified order. First step in the two-step payment process.
       parameters:
         - name: token
@@ -277,6 +290,7 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Order'
+
 definitions:
   Payment:
     title: Payment
@@ -286,7 +300,8 @@ definitions:
         type: object
       currency:
         type: string
-        description: The three-digit identifier for the currency the payment
+        description: >
+          The three-digit identifier for the currency the payment
           was made in. USD = United States Dollar, JPY = Japanese Yen, etc.
       chargeid:
         type: string
@@ -294,13 +309,15 @@ definitions:
       amount:
         type: integer
         format: int64
-        description: The specific quantity of money paid. Represented in the least significant
+        description: >
+          The specific quantity of money paid. Represented in the least significant
           unit in the associated currency (so cent for USD, which has partial Dollars, but Yen
           for JPY, which has no concept of partial Yen.)
       amountrefunded:
         type: integer
         format: int64
-        description: The specific quantity of money refunded. Represented in the least significant
+        description: >
+          The specific quantity of money refunded. Represented in the least significant
           unit in the associated currency (so cent for USD, which has partial Dollars, but Yen
           for JPY, which has no concept of partial Yen.)
       status:
@@ -312,12 +329,14 @@ definitions:
       live:
         type: boolean
         description: Whether or not the paymnet is a live one (false implies it's a test)
+
   PaymentArray:
     title: PaymentArray
     description: An array of Payments
     type: array
     items:
       $ref: '#/definitions/Payment'
+
   Order:
     title: Order
     description: An Order model
@@ -338,26 +357,30 @@ definitions:
       shipping:
         type: integer
         format: int64
-        description: A monetary measure of shipping charges. Represented in the least
+        description: >
+          A monetary measure of shipping charges. Represented in the least
           significant measure of the store's set currency (so cents for USD, yen for
           JPY, etc).
       tax:
         type: integer
         format: int64
-        description: A monetary measure of all taxes assessed on the order.
+        description: >
+          A monetary measure of all taxes assessed on the order.
           Represented in the least significant measure of the store's set
           currency (so cents for USD, yen for JPY, etc).
       subtotal:
         type: integer
         format: int64
-        description: A monetary measure of the order's line items, without any
+        description: >
+          A monetary measure of the order's line items, without any
           extra charges such as shipping or tax.  Represented in the least
           significant measure of the store's set  currency (so cents for
           USD, yen for JPY, etc).
       total:
         type: integer
         format: int64
-        description: A monetary measure of the order's grand total, including
+        description: >
+          A monetary measure of the order's grand total, including
           extra charges such as shipping or tax.  Represented in the least
           significant measure of the store's set  currency (so cents for
           USD, yen for JPY, etc).
@@ -369,19 +392,22 @@ definitions:
       balance:
         type: integer
         format: int64
-        description: The amount currently due on this order. Represented in the least
+        description: >
+          The amount currently due on this order. Represented in the least
           significant measure of the store's set  currency (so cents for
           USD, yen for JPY, etc).
       paid:
         type: integer
         format: int64
-        description: The amount that has been paid on this order. Represented
+        description: >
+          The amount that has been paid on this order. Represented
           in the least significant measure of the store's setcurrency (so
           cents for USD, yen for JPY, etc).
       refunded:
         type: integer
         format: int64
-        description: The amount that has been refunded on this order.
+        description: >
+          The amount that has been refunded on this order.
           Represented in the least significant measure of the store's
           set currency (so cents for USD, yen for JPY, etc).
       billingAddress:
@@ -394,7 +420,8 @@ definitions:
         type: array
         items:
           type: string
-        description: A listing of non-payment adjustments that have
+        description: >
+          A listing of non-payment adjustments that have
           been applied to this order.
       payments:
         type: array
@@ -413,6 +440,7 @@ definitions:
       test:
         type: boolean
         description: Whether or not the order is a test.
+
   OrderArray:
     title: OrderArray
     description: An array of Orders
