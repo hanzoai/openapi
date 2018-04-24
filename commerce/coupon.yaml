@@ -2,7 +2,7 @@ swagger: '2.0'
 info:
   version: v1.0
   title: Coupon API
-  description: >-
+  description: >
     A Coupon represents a special offer attached to a code or certificate
     that is redeemable in your store. This API supports everything from
     flat and percentage discounts, free shipping vouchers, and even
@@ -28,11 +28,12 @@ securityDefinitions:
     name: token
     type: apiKey
     in: query
+
 paths:
   /coupon:
     get:
-      operationId: GET_coupon
-      description: >-
+      operationId: ReturnAllCoupons
+      description: >
         Returns all available coupons.
       parameters:
         - name: token
@@ -46,8 +47,11 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/CouponArray'
+
     post:
-      operationId: POST_coupon
+      operationId: CreateCoupon
+      description: >
+        Creates a new coupon.
       parameters:
         - name: token
           in: query
@@ -61,15 +65,17 @@ paths:
           description: 'Everything is OK - new coupon created.'
           schema:
             $ref: '#/definitions/Coupon'
+
   '/coupon/{id}':
     parameters:
       - name: id
         in: path
         required: true
         type: string
+
     put:
-      operationId: PUT_coupon-id
-      description: >-
+      operationId: replaceCoupon
+      description: >
         Wholly replaces the requested coupon. Any fields not provided are blanked.
       parameters:
         - name: token
@@ -84,9 +90,10 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Coupon'
+
     patch:
-      operationId: PATCH_coupon-id
-      description: >-
+      operationId: updateCoupon
+      description: >
         Replaces the requested coupon piecemeal. Any fields not provided are not changed.
       parameters:
         - name: token
@@ -101,9 +108,10 @@ paths:
           description: 'Everything is OK'
           schema:
             $ref: '#/definitions/Coupon'
+
     delete:
-      operationId: DELETE_coupon-id
-      description: >-
+      operationId: deleteCoupon
+      description: >
         Deletes the specified coupon. Cannot be undone.
       responses:
         '204':
@@ -111,9 +119,10 @@ paths:
           schema:
             type: object
             properties: {}
+
     get:
       operationId: GET_coupon-id
-      description: >-
+      description: >
         Returns the specified coupon.
       parameters:
         - name: token
@@ -129,6 +138,7 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Coupon'
+
 definitions:
   Coupon:
     title: Coupon
@@ -139,16 +149,16 @@ definitions:
         description: The hanzo-assigned guid to identify this item.
       createdAt:
         type: string
-        description: The time this Variant was created. Conforms to RFC3339.
+        description: The time this Coupon was created. Conforms to RFC3339.
       updatedAt:
         type: string
-        description: The time this Variant was last updated. Conforms to RFC3339.
+        description: The time this Coupon was last updated. Conforms to RFC3339.
       name:
         type: string
         description: The human-friendly identifier for the coupon.
       type:
         type: string
-        description: The general class of coupon, such as a discount, free shipping, etc.
+        description: The general class of Coupon, such as a discount, free shipping, etc.
       code:
         type: string
         description: The unique key, preferably human friendly, that users will enter
@@ -179,6 +189,7 @@ definitions:
         type: integer
         format: int64
         description: How many times the coupon has been redeemed.
+
   CouponArray:
     title: CouponArray
     description: An array of Coupons

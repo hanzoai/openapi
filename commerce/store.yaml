@@ -2,7 +2,7 @@ swagger: '2.0'
 info:
   version: v1.0
   title: Store API
-  description: >-
+  description: >
     A Store represents your sales presence on the Hanzo platform.
 host: api.hanzo.io
 schemes:
@@ -25,6 +25,7 @@ securityDefinitions:
     name: token
     type: apiKey
     in: query
+
 paths:
   '/store/{id}':
     parameters:
@@ -33,17 +34,18 @@ paths:
         required: true
         type: string
     get:
-      operationId: GET_store-id
-      description: >-
+      operationId: retrieveStore
+      description: >
         Returns a specific store.
       responses:
         '200':
           description: ''
           schema:
             $ref: '#/definitions/Store'
+
     delete:
-      operationId: DELETE_store-id
-      description: >-
+      operationId: deleteStore
+      description: >
         Permanently deletes a Store
       produces:
         - text/html
@@ -63,9 +65,10 @@ paths:
           schema:
             type: object
             properties: {}
+
     patch:
-      operationId: PATCH_store-id
-      description: >-
+      operationId: updateStore
+      description: >
         Updates a store partially. Parameters not passed are not updated.
       parameters:
         - name: body
@@ -77,10 +80,11 @@ paths:
           description: 'Everything is OK.'
           schema:
             $ref: '#/definitions/Store'
+
     put:
-      operationId: PUT_store-id
-      description: >-
-        Updates the object wholly. Unpassed parameters are blanked.
+      operationId: replaceStore
+      description: >
+        Replaces the object wholly. Unpassed parameters are blanked.
       parameters:
         - name: body
           in: body
@@ -91,10 +95,11 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Store'
+
   '/store':
     post:
-      operationId: POST_store
-      description: >-
+      operationId: createStore
+      description: >
         Creates a new Store.
       parameters:
         - name: body
@@ -106,8 +111,10 @@ paths:
           description: 'Everything is OK. New store created.'
           schema:
             $ref: '#/definitions/Store'
+
     get:
-      description: >-
+      operationId: retrieveAllStores
+      description: >
         Returns a list of all available Stores.
       parameters:
         - name: token
@@ -121,14 +128,16 @@ paths:
           description: 'Everything is OK.'
           schema:
             $ref: '#/definitions/StoreArray'
+
   '/site/{siteid}/deploy':
     parameters:
       - name: siteid
         in: path
         required: true
         type: string
+
     post:
-      operationId: POST_site-siteid-deploy
+      operationId: deploySite
       parameters:
         - name: token
           in: query
@@ -190,10 +199,12 @@ paths:
               url: 'http://site-02mg.hanzo.io'
               createdAt: '2016-04-15T04:54:13Z'
               updatedAt: '2016-04-15T04:54:13Z'
+
 definitions:
   Variant:
     title: Variant
-    description: A Variant model, usable in POST, PUT, or PATCH requests,
+    description: >
+      A Variant model, usable in POST, PUT, or PATCH requests,
       and returned as a response from GET, POST, PUT, and PATCH.
     type: object
     properties:
@@ -202,11 +213,13 @@ definitions:
         description: The hanzo-assigned guid to identify this item.
       productId:
         type: string
-        description: The ID of the product this Variant is
+        description: >
+          The ID of the product this Variant is
           associated with (or, a variant of).
       sku:
         type: string
-        description: The unique identifier for stock-keeping.
+        description: >
+          The unique identifier for stock-keeping.
           Can technically be whatever as long as it is unique,
           but recommended to be the same as UPC if you have
           one available for your product.
@@ -219,7 +232,8 @@ definitions:
       price:
         type: integer
         format: int64
-        description: How much something costs, in the lowest
+        description: >
+          How much something costs, in the lowest
           value unit available in the currency your store runs
           in. USD stores will use cents, JPY stores will use yen, etc.
       inventory:
@@ -232,10 +246,12 @@ definitions:
         description: The mass of the item. Traditionally kept in grams.
       dimensions:
         type: string
-        description: The physical measurements of the item. Traditionally
+        description: >
+          The physical measurements of the item. Traditionally
           kept in length x width x height and in centimeters.
       options:
         type: object
+
   Store:
     title: Store
     type: object
@@ -261,6 +277,7 @@ definitions:
       currency:
         type: string
         description: The money denomination this store operates with.
+
   StoreArray:
     title: StoreArray
     description: An array of Stores

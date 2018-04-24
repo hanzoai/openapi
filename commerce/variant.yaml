@@ -2,7 +2,7 @@ swagger: '2.0'
 info:
   version: v1.0
   title: Variant API
-  description: >-
+  description: >
     A Variant represents a specific kind of Product. Typically,
     they are used to represent a particular color, size, color/size
     combination, etc.
@@ -27,6 +27,7 @@ securityDefinitions:
     name: token
     type: apiKey
     in: query
+
 paths:
   '/variant/{id}':
     parameters:
@@ -35,8 +36,8 @@ paths:
         required: true
         type: string
     delete:
-      operationId: DELETE_variant-id
-      description: >-
+      operationId: deleteVariant
+      description: >
         Permanently deletes a Variant
       produces:
         - text/html
@@ -56,9 +57,10 @@ paths:
           schema:
             type: object
             properties: {}
+
     patch:
-      operationId: PATCH_variant-id
-      description: >-
+      operationId: updateVariant
+      description: >
         Updates a variant partially. Parameters not passed are not updated.
       parameters:
         - name: body
@@ -70,9 +72,10 @@ paths:
           description: 'Everything is OK.'
           schema:
             $ref: '#/definitions/Variant'
+
     put:
-      operationId: PUT_variant-id
-      description: >-
+      operationId: replaceVariant
+      description: >
         Updates the object wholly. Unpassed parameters are blanked.
       parameters:
         - name: body
@@ -84,9 +87,10 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Variant'
+
     get:
-      operationId: GET_variant-id
-      description: >-
+      operationId: retrieveVariant
+      description: >
         Gets a specific Variant, keyed by ID.
       parameters:
         - name: token
@@ -102,11 +106,12 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Variant'
+
   /variant:
     post:
-      description: >-
+      operationId: createVariant
+      description: >
         Creates a new Variant.
-      operationId: post_variant
       parameters:
         - name: body
           in: body
@@ -117,8 +122,10 @@ paths:
           description: 'Everything is ok!'
           schema:
             $ref: '#/definitions/Variant'
+
     get:
-      description: >-
+      operationId: retrieveVariants
+      description: >
         Returns a list of all available Variants.
       parameters:
         - name: token
@@ -132,6 +139,7 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/VariantArray'
+
   '/store/{id}/variant/{key}':
     parameters:
       - name: id
@@ -143,17 +151,18 @@ paths:
         required: true
         type: string
     get:
-      operationId: GET_store-id-variant-key
-      description: >-
+      operationId: retrieveStoreVariant
+      description: >
         Returns a specific Variant if it is accessible inside the store.
       responses:
         '200':
           description: ''
           schema:
             $ref: '#/definitions/Variant'
+
     patch:
-      operationId: PATCH_store-id-variant-key
-      description: >-
+      operationId: updateStoreVariant
+      description: >
         Updates a variant the store has access to partially. Parameters
         not included are ignored.
       responses:
@@ -161,9 +170,10 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Variant'
+
     delete:
-      operationId: DELETE_store-id-variant-key
-      description: >-
+      operationId: deleteStoreVariant
+      description: >
         Deletes a variant the store has access to. Cannot be undone.
       responses:
         '204':
@@ -171,9 +181,10 @@ paths:
           schema:
             type: object
             properties: {}
+
     put:
-      operationId: PUT_store-id-variant-key
-      description: >-
+      operationId: replaceStoreVariant
+      description: >
         Wholly replaces a variant the store has access to. Parameters
         not included are blanked.
       responses:
@@ -181,10 +192,12 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Variant'
+
 definitions:
   Variant:
     title: Variant
-    description: A Variant model, usable in POST, PUT, or PATCH requests,
+    description: >
+      A Variant model, usable in POST, PUT, or PATCH requests,
       and returned as a response from GET, POST, PUT, and PATCH.
     type: object
     properties:
@@ -193,11 +206,13 @@ definitions:
         description: The hanzo-assigned guid to identify this item.
       productId:
         type: string
-        description: The ID of the product this Variant is
+        description: >
+          The ID of the product this Variant is
           associated with (or, a variant of).
       sku:
         type: string
-        description: The unique identifier for stock-keeping.
+        description: >
+          The unique identifier for stock-keeping.
           Can technically be whatever as long as it is unique,
           but recommended to be the same as UPC if you have
           one available for your product.
@@ -210,7 +225,8 @@ definitions:
       price:
         type: integer
         format: int64
-        description: How much something costs, in the lowest
+        description: >
+          How much something costs, in the lowest
           value unit available in the currency your store runs
           in. USD stores will use cents, JPY stores will use yen, etc.
       inventory:
@@ -223,10 +239,12 @@ definitions:
         description: The mass of the item. Traditionally kept in grams.
       dimensions:
         type: string
-        description: The physical measurements of the item. Traditionally
+        description: >
+          The physical measurements of the item. Traditionally
           kept in length x width x height and in centimeters.
       options:
         type: object
+
   VariantArray:
     title: VariantArray
     description: An array of Variants

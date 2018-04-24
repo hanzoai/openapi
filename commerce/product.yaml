@@ -2,7 +2,7 @@ swagger: '2.0'
 info:
   version: v1.0
   title: Product API
-  description: >-
+  description: >
     A product represents a specific offering in your store. Typically,
     these are unique and distinct things or services; for closely related things
     or services, consider using the Variant API.
@@ -27,10 +27,11 @@ securityDefinitions:
     name: token
     type: apiKey
     in: query
+
 paths:
   /product:
     post:
-      operationId: POST_product
+      operationId: createProduct
       description: Creates a new product
       parameters:
         - name: token
@@ -45,9 +46,10 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Product'
+
     get:
-      operationId: GET_product
-      description: >-
+      operationId: getProduct
+      description: >
         Gets a list of all available products.
       parameters:
         - name: token
@@ -61,15 +63,17 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/ProductArray'
+
   '/product/{id}':
     parameters:
       - name: id
         in: path
         required: true
         type: string
+
     patch:
-      operationId: PATCH_product-id
-      description: >-
+      operationId: updateProduct
+      description: >
         Replaces a product piecemeal. Parameters not passed are not updated.
       parameters:
         - name: token
@@ -85,9 +89,10 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Product'
+
     get:
-      operationId: GET_product-id
-      description: >-
+      operationId: retrieveProduct
+      description: >
         Retrieves a specified product
       parameters:
         - name: token
@@ -103,9 +108,10 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Product'
+
     delete:
-      operationId: DELETE_product-id
-      description: >-
+      operationId: deleteProduct
+      description: >
         Permanently deletes a specified product. Cannot be undone.
       produces:
         - text/html
@@ -126,9 +132,10 @@ paths:
             properties: {}
           examples:
             application/json: null
+
     put:
-      operationId: PUT_product-id
-      description: >-
+      operationId: replaceProduct
+      description: >
         Wholly replaces a given product. Parameters not passed are blanked.
       parameters:
         - name: token
@@ -144,6 +151,7 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Product'
+
   '/store/{id}/product/{key}':
     parameters:
       - name: id
@@ -155,14 +163,15 @@ paths:
         required: true
         type: string
     get:
-      operationId: GET_store-id-product-key
-      description: >-
+      operationId: retrieveStoreProduct
+      description: >
         Gets a specific product that the store has access to.
       responses:
         '200':
           description: ''
           schema:
             $ref: '#/definitions/Product'
+
 definitions:
   Product:
     title: Product
@@ -173,10 +182,10 @@ definitions:
         description: The hanzo-assigned guid to identify this item.
       createdAt:
         type: string
-        description: The time this Variant was created. Conforms to RFC3339.
+        description: The time this Product was created. Conforms to RFC3339.
       updatedAt:
         type: string
-        description: The time this Variant was last updated. Conforms to RFC3339.
+        description: The time this Product was last updated. Conforms to RFC3339.
       slug:
         type: string
         description: The human-readable URL extension for this product.
@@ -198,6 +207,7 @@ definitions:
       available:
         type: boolean
         description: Whether or not the product is able to be purchased.
+
   ProductArray:
     title: ProductArray
     description: An array of Products
