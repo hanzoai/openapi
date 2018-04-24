@@ -2,7 +2,7 @@ swagger: '2.0'
 info:
   version: v1.0
   title: Form API
-  description: >-
+  description: >
     A Form is a specific set of inputs that are submitted back for your records.
     This API can be used to capture basically any arbitrary set of data that you
     need, but it is most commonly used to set up mailing list collections.
@@ -27,6 +27,7 @@ securityDefinitions:
     name: token
     type: apiKey
     in: query
+
 paths:
   '/form/{id}':
     parameters:
@@ -35,8 +36,8 @@ paths:
         required: true
         type: string
     delete:
-      operationId: DELETE_form-id
-      description: >-
+      operationId: deleteForm
+      description: >
         Deletes the requested form. Cannot be undone.
       parameters:
         - name: token
@@ -54,9 +55,10 @@ paths:
           schema:
             type: object
             properties: {}
+
     put:
-      operationId: PUT_form-id
-      description: >-
+      operationId: replaceForm
+      description: >
         Replaces the specified form wholly. Any fields not passed are blanked.
       parameters:
         - name: body
@@ -68,9 +70,10 @@ paths:
           description: 'Everything is OK'
           schema:
             $ref: '#/definitions/Form'
+
     patch:
-      operationId: PATCH_form-id
-      description: >-
+      operationId: updateForm
+      description: >
         Replaces a form object piecemeal. Any fields not passed are not changed.
       parameters:
         - name: body
@@ -84,7 +87,7 @@ paths:
             $ref: '#/definitions/Form'
     get:
       operationId: GET_form-id
-      description: >-
+      description: >
         Returns the specified Form.
       responses:
         '200':
@@ -93,8 +96,8 @@ paths:
             $ref: '#/definitions/Form'
   '/form':
     post:
-      operationId: POST_form
-      description: >-
+      operationId: createForm
+      description: >
         Creates a new Form.
       parameters:
         - name: body
@@ -107,7 +110,8 @@ paths:
           schema:
             $ref: '#/definitions/Form'
     get:
-      description: >-
+      operationId: retrieveAllForms
+      description: >
         Returns a list of all available Forms.
       parameters:
         - name: token
@@ -121,6 +125,7 @@ paths:
           description: 'Everything is OK.'
           schema:
             $ref: '#/definitions/FormArray'
+
   '/form/{id}/submit':
     parameters:
       - name: id
@@ -128,8 +133,8 @@ paths:
         required: true
         type: string
     post:
-      operationId: POST_form-id-submit
-      description: >-
+      operationId: submitForm
+      description: >
         Submits the specified form.
       responses:
         '200':
@@ -158,6 +163,7 @@ definitions:
       sendWelcome:
         type: boolean
         description: Whether or not the form should send a welcome email upon submission.
+
   FormArray:
     title: FormArray
     description: An array of Forms
