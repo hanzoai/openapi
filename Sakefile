@@ -1,0 +1,30 @@
+use 'sake-outdated'
+use 'sake-publish'
+use 'sake-version'
+
+fs    = require 'fs'
+path  = require 'path'
+mkdir = require 'mkdirp-sync'
+read  = require 'read-yaml'
+write = require 'write-yaml'
+
+task 'clean', 'clean project', ->
+  exec 'rm -rf build'
+
+task 'build', 'build project', ->
+  specs = ['commerce']
+
+  mkdir 'build'
+
+  for spec in specs
+    yaml = read.sync "#{spec}/#{spec}.yaml"
+    yaml.definitions = {}
+    yaml.paths       = {}
+
+    for file in fs.readdirSync spec
+      api = read.sync path.join spec, file
+      for k,v of api.paths
+        yaml.paths[k] = v
+      for k,v of api.definitions
+        yaml.definitions[k] = v
+      write.sync "build/#{spec}.yaml", yaml
