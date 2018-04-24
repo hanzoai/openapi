@@ -2,7 +2,7 @@ swagger: '2.0'
 info:
   version: v1.0
   title: Transaction API
-  description: >-
+  description: >
     A Transaction represents money moving to satisfy a payment or refund.
 host: api.hanzo.io
 schemes:
@@ -25,6 +25,7 @@ securityDefinitions:
     name: token
     type: apiKey
     in: query
+
 paths:
   '/transaction/{id}':
     parameters:
@@ -33,14 +34,15 @@ paths:
         required: true
         type: string
     get:
-      operationId: GET_transaction-id
-      description: >-
+      operationId: getTransaction
+      description: >
         Returns a specific Transaction.
       responses:
         '200':
           description: ''
           schema:
             $ref: '#/definitions/Transaction'
+
 definitions:
   Transaction:
     title: Transaction
@@ -63,12 +65,14 @@ definitions:
         description: The general type of transaction.
       currency:
         type: string
-        description: The type of money used on the transaction. USD for United States
+        description: >
+          The type of money used on the transaction. USD for United States
           Dollar, JPY for Japanese yen, etc. Conforms to ISO 4217 codes.
       amount:
         type: integer
         format: int64
-        description: The quantity of money involved in the Transaction. Represented in
+        description: >
+          The quantity of money involved in the Transaction. Represented in
           the least significant denomination possible in the given currency - so
           cents in USD, yen in JPY, etc.
       test:
