@@ -200,6 +200,79 @@ paths:
               createdAt: '2016-04-15T04:54:13Z'
               updatedAt: '2016-04-15T04:54:13Z'
 
+  '/store/{id}/product/{key}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      - name: key
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: retrieveStoreProduct
+      description: >
+        Gets a specific product that the store has access to.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Product'
+
+  '/store/{id}/variant/{key}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      - name: key
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: retrieveStoreVariant
+      description: >
+        Returns a specific Variant if it is accessible inside the store.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Variant'
+
+    patch:
+      operationId: updateStoreVariant
+      description: >
+        Updates a variant the store has access to partially. Parameters
+        not included are ignored.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Variant'
+
+    delete:
+      operationId: deleteStoreVariant
+      description: >
+        Deletes a variant the store has access to. Cannot be undone.
+      responses:
+        '204':
+          description: 'Everything is OK.'
+          schema:
+            type: object
+            properties: {}
+
+    put:
+      operationId: replaceStoreVariant
+      description: >
+        Wholly replaces a variant the store has access to. Parameters
+        not included are blanked.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Variant'
+
 definitions:
   Variant:
     title: Variant
