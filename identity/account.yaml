@@ -3,7 +3,7 @@ swagger: '2.0'
 info:
   version: v1.0
   title: Account API
-  description: >-
+  description: >
     An Account represents a user's records on your store
     or in your website. They are used to provide a
     persistent identity for the user, and also to help
@@ -30,10 +30,11 @@ securityDefinitions:
     name: token
     type: apiKey
     in: query
+
 paths:
   /account/login:
       post:
-        operationId: POST_account-login
+        operationId: accountLogin
         consumes:
           - application/x-www-form-urlencoded
         parameters:
@@ -59,7 +60,7 @@ paths:
                   type: string
             examples:
               application/json:
-                token: >-
+                token: >
                   eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE0NjA2OTYwOTgsImV4cCI6MTQ2MDc4MjQ5OCwiaXNzIjoieTVJWjNHYkZsalJRIiwianRpIjoidWtxUDJSU2FWNW8iLCJGaXJzdE5hbWUiOiIiLCJMYXN0TmFtZSI6IiIsImFwcCI6IlN0b3JlIiwidXNyIjoiUnlIMDI2QnUyM0cxIiwib3JnIjoic3VjaHRlZXMiLCJ0eXAiOiJjdXN0b21lciIsInRzdCI6dHJ1ZSwiYml0Ijo0NTAzNjE3MDc1Njc1MTc2fQ.dQZt_A9rLBpmBYu-QpaRdU4XlwwG5SyMv25rVqrz7a0
           '401':
             description: ''
@@ -78,9 +79,10 @@ paths:
                 error:
                   type: api-error
                   message: Email or password is incorrect
+
   /account:
     patch:
-      operationId: PATCH_account
+      operationId: updateAccount
       consumes:
         - application/x-www-form-urlencoded
       parameters:
@@ -93,8 +95,9 @@ paths:
           description: 'Everything is OK!'
           schema:
             $ref: '#/definitions/Account'
+
     get:
-      operationId: GET_account
+      operationId: returnAccount
       parameters:
         - name: token
           in: query
@@ -107,9 +110,10 @@ paths:
           description: 'Everything is OK!'
           schema:
             $ref: '#/definitions/Account'
+
   /account/create:
     post:
-      operationId: POST_account-create
+      operationId: createAccount
       parameters:
         - name: token
           in: query
@@ -140,10 +144,12 @@ paths:
               error:
                 type: api-error
                 message: Email is not valid
+
 definitions:
   Account:
     title: Account
-    description: An Account model, usable in POST, PUT, or PATCH requests,
+    description: >
+      An Account model, usable in POST, PUT, or PATCH requests,
       and returned as a response from GET, POST, PUT, and PATCH.
     type: object
     properties:
