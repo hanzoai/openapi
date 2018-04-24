@@ -8,7 +8,9 @@ mkdir = require 'mkdirp-sync'
 read  = require 'read-yaml'
 write = require 'write-data'
 
-specs = ['commerce','identity']
+specs =
+  commerce: '5adf8f9c47d5e7000382e297'
+  identity: '5adf8fa75620ce0003495003'
 
 task 'clean', 'clean project', ->
   exec 'rm -rf build'
@@ -16,7 +18,7 @@ task 'clean', 'clean project', ->
 task 'build', 'build project', ->
   mkdir 'build'
 
-  for spec in specs
+  for k of specs
     yaml = read.sync "#{spec}/#{spec}.yaml"
     yaml.definitions = {}
     yaml.paths       = {}
@@ -30,5 +32,7 @@ task 'build', 'build project', ->
       write.sync "build/#{spec}.json", yaml
 
 task 'publish', 'publish api specs', ->
-  for spec in specs
-    exec.sync "rdme swagger build/#{spec}.json --token=#{process.env.READMEIO_TOKEN}"
+  for spec, id of specs
+    token = process.env.READMEIO_TOKEN
+    token += "-#{id}" if id
+    exec.sync "rdme swagger build/#{spec}.json --token=#{token}"
