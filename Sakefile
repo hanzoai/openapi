@@ -20,7 +20,7 @@ task 'clean', 'clean project', ->
   exec 'rm -rf build'
 
 task 'build', 'build project', (opts) ->
-  specs = [opts.spec] if opts.spec
+  specs = { [opts.spec]: specs[opts.spec] } if opts.spec
 
   mkdir 'build'
 
@@ -38,7 +38,7 @@ task 'build', 'build project', (opts) ->
       write.sync "build/#{spec}.json", yaml
 
 task 'publish', 'publish api specs', (opts) ->
-  specs = [opts.spec] if opts.spec
+  specs = { [opts.spec]: specs[opts.spec] } if opts.spec
 
   for spec, id of specs
     token = process.env.READMEIO_TOKEN
