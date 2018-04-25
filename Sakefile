@@ -33,7 +33,11 @@ task 'build', 'build project', ->
         yaml.definitions[k] = v
       write.sync "build/#{spec}.json", yaml
 
-task 'publish', 'publish api specs', ->
+option '-s', '--spec', 'specification to target'
+
+task 'publish', 'publish api specs', (opts) ->
+  specs = [spec] if opts.spec
+
   for spec, id of specs
     token = process.env.READMEIO_TOKEN
     token += "-#{id}" if id
