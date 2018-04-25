@@ -1,0 +1,241 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Payment API
+  description: >
+    A Payment represents a exchange of currency. In general, you shouldn't need
+    to interact with this API directly, aside from issuing refunds. Manipulating
+    payments directly should only be required in edge cases such as data corruption.
+host: api.hanzo.io
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.io/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  '/payment/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: deletePayment
+      description: >
+        Completely deletes the associated Payment.  Cannot be undone.
+      produces:
+        - text/html
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: 'Everything is OK.'
+          schema:
+            type: object
+            properties: {}
+          examples:
+            application/json: null
+
+    get:
+      operationId: getPayment
+      description: >
+        Returns a specified payment.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Payment'
+
+    patch:
+      operationId: updatePayment
+      description: >
+        Updates the specified Payment object piecemeal. Any fields not
+        included are not updated.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Payment'
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/Payment'
+
+    put:
+      operationId: replacePayment
+      description: >
+        Wholly replaces the specified Payment object in-place. Any fields not
+        included will be blanked.
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/Payment'
+
+  /payment:
+    post:
+      operationId: createPayment
+      description: >
+        Creates a new Payment.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Payment'
+      responses:
+        '201':
+          description: 'Everything is OK. New payment created.'
+          schema:
+            $ref: '#/definitions/Payment'
+
+    get:
+      operationId: retrievePayment
+      description: Returns a list of all available payments.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/PaymentArray'
+
+  '/payment/{id}/refund':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    post:
+      operationId: createPaymentRefund
+      description: >
+        Issues a refund for the amount (specified in the POST body) to
+        the payment specified by the given ID.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              amount:
+                type: integer
+            example:
+              id: 0WizkeyjF2HwmEKFD1gJ
+              amount: 2400
+        - name: Accept
+          in: header
+          type: string
+        - name: Content-Type
+          in: header
+          type: string
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+              $ref: '#/definitions/Payment'
+
+definitions:
+  Payment:
+    title: Payment
+    type: object
+    properties:
+      createdAt:
+        type: string
+        description: The time this object was created. Conforms to RFCE3339.
+      updatedAt:
+        type: string
+        description: The time this object was last updated. Conforms to RFCE3339.
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      account:
+        type: object
+      currency:
+        type: string
+        description: >
+          The three-digit identifier for the currency the payment
+          was made in. USD = United States Dollar, JPY = Japanese Yen, etc.
+      orderId:
+        type: string
+        description: The unique identiifer for the charge associated with the payment.
+      amount:
+        type: integer
+        format: int64
+        description: >
+          The specific quantity of money paid. Represented in the least significant
+          unit in the associated currency (so cent for USD, which has partial Dollars, but Yen
+          for JPY, which has no concept of partial Yen.)
+      amountrefunded:
+        type: integer
+        format: int64
+        description: >
+          The specific quantity of money refunded. Represented in the least significant
+          unit in the associated currency (so cent for USD, which has partial Dollars, but Yen
+          for JPY, which has no concept of partial Yen.)
+      fee:
+        type: integer
+        format: int64
+        description: >
+          Fees garnished for various purposes, such as affiliate fees.
+          Represented in the least significant unit in the associated
+          currency (so cent for USD, which has partial Dollars, but Yen
+          for JPY, which has no concept of partial Yen.)
+      status:
+        type: string
+        description: A marker describing the current state of the payment.
+      captured:
+        type: boolean
+        description: Whether or not the payment has been officially acquired.
+      live:
+        type: boolean
+        description: Whether or not the paymnet is a live one (false implies it's a test)
+
+  PaymentArray:
+    title: PaymentArray
+    description: An array of Payments
+    type: array
+    items:
+      $ref: '#/definitions/Payment'
