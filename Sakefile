@@ -14,10 +14,14 @@ specs =
   marketing: '5adfab915ba2fe0003b009d2'
   payments: '5ae0c45b0fe7870003115d5c'
 
+option '-s', '--spec', 'specification to target'
+
 task 'clean', 'clean project', ->
   exec 'rm -rf build'
 
-task 'build', 'build project', ->
+task 'build', 'build project', (opts) ->
+  specs = [opts.spec] if opts.spec
+
   mkdir 'build'
 
   for spec of specs
@@ -33,10 +37,8 @@ task 'build', 'build project', ->
         yaml.definitions[k] = v
       write.sync "build/#{spec}.json", yaml
 
-option '-s', '--spec', 'specification to target'
-
 task 'publish', 'publish api specs', (opts) ->
-  specs = [spec] if opts.spec
+  specs = [opts.spec] if opts.spec
 
   for spec, id of specs
     token = process.env.READMEIO_TOKEN
