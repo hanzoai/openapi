@@ -1,0 +1,181 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Webhook API
+  description: >
+    A Webhook represents a custom callback to allow responsive programming
+    to specific event happening.
+host: api.hanzo.io
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.io/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  /webhook:
+    get:
+      operationId: ReturnAllWebhooks
+      description: >
+        Returns all available webhooks.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/WebhookArray'
+
+    post:
+      operationId: CreateWebhook
+      description: >
+        Creates a new webhook.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Webhook'
+      responses:
+        '201':
+          description: 'Everything is OK - new webhook created.'
+          schema:
+            $ref: '#/definitions/Webhook'
+
+  '/webhook/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+
+    put:
+      operationId: replaceWebhook
+      description: >
+        Wholly replaces the requested webhook. Any fields not provided are blanked.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Webhook'
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Webhook'
+
+    patch:
+      operationId: updateWebhook
+      description: >
+        Replaces the requested webhook piecemeal. Any fields not provided are not changed.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Webhook'
+      responses:
+        '200':
+          description: 'Everything is OK'
+          schema:
+            $ref: '#/definitions/Webhook'
+
+    delete:
+      operationId: deleteWebhook
+      description: >
+        Deletes the specified webhook. Cannot be undone.
+      responses:
+        '204':
+          description: 'Everything is OK.'
+          schema:
+            type: object
+            properties: {}
+
+    get:
+      operationId: getWebhook
+      description: >
+        Returns the specified webhook.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Webhook'
+
+definitions:
+  Webhook:
+    title: Webhook
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      createdAt:
+        type: string
+        description: The time this Webhook was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this Webhook was last updated. Conforms to RFC3339.
+      name:
+        type: string
+        description: The human-friendly identifier for the webhook.
+      url:
+        type: string
+        description: The endpoint to deliver events to.
+      live:
+        type: boolean
+        description: Whether to use live or test data.
+      all:
+        type: boolean
+        description: >
+          Whether to send all Events, or selectively send them using the Events
+          object.
+      accessToken:
+        type: string
+        description: A token to selectively check against.
+      events:
+        type: array
+        description: An array of strings mapped to booleans, describing which user events to send.
+
+
+  WebhookArray:
+    title: WebhookArray
+    description: An array of Webhooks
+    type: array
+    items:
+      $ref: '#/definitions/Webhook'
