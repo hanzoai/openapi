@@ -1,0 +1,172 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Media API
+  description: >
+    A Media object is a visual resource used for site construction or ad campaigns.
+host: api.hanzo.io
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.io/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  /media:
+    get:
+      operationId: ReturnAllMedias
+      description: >
+        Returns all available medias.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/MediaArray'
+
+    post:
+      operationId: CreateMedia
+      description: >
+        Creates a new media.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Media'
+      responses:
+        '201':
+          description: 'Everything is OK - new media created.'
+          schema:
+            $ref: '#/definitions/Media'
+
+  '/media/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+
+    put:
+      operationId: replaceMedia
+      description: >
+        Wholly replaces the requested media. Any fields not provided are blanked.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Media'
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Media'
+
+    patch:
+      operationId: updateMedia
+      description: >
+        Replaces the requested media piecemeal. Any fields not provided are not changed.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Media'
+      responses:
+        '200':
+          description: 'Everything is OK'
+          schema:
+            $ref: '#/definitions/Media'
+
+    delete:
+      operationId: deleteMedia
+      description: >
+        Deletes the specified media. Cannot be undone.
+      responses:
+        '204':
+          description: 'Everything is OK.'
+          schema:
+            type: object
+            properties: {}
+
+    get:
+      operationId: getMedia
+      description: >
+        Returns the specified media.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Media'
+
+definitions:
+  Media:
+    title: Media
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      createdAt:
+        type: string
+        description: The time this Media was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this Media was last updated. Conforms to RFC3339.
+      type:
+        type: string
+        description: The general classification of Media. One of 'image', 'video'.
+      parentMedaId:
+        type: string
+        description: The hanzo-assigned guid to identify this item's parent.
+      usage:
+        type: string
+        description: The expected usage for this component. One of 'ad', 'product', 'unknown'.
+      productId:
+        type: string
+        description: The ID of the product this media depicts.
+
+
+  MediaArray:
+    title: MediaArray
+    description: An array of Medias
+    type: array
+    items:
+      $ref: '#/definitions/Media'
