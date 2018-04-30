@@ -138,6 +138,68 @@ paths:
           schema:
             $ref: '#/definitions/OrganizationArray'
 
+    '/organization/{id}/integrations':
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: string
+      get:
+        operationId: retrieveOrganizationIntegrations
+        description: Returns a list of an organization's integrations.
+        parameters:
+          - name: token
+            in: query
+            type: string
+          - name: Accept
+            in: header
+            type: string
+        responses:
+          '200':
+            description: 'OK'
+            schema:
+              $ref: '#/definitions/IntegrationArray'
+      post:
+        operationId: createOrganizationIntegrations
+        description: Creates or replaces a list of an organization's integrations.
+        parameters:
+          - name: token
+            in: query
+            type: string
+          - name: Accept
+            in: header
+            type: string
+        responses:
+          '200':
+            description: 'OK'
+            schema:
+              $ref: '#/definitions/IntegrationArray'
+    '/organization/{id}/integrations/{integrationId}':
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: string
+        - name: integrationId
+          in: path
+          required: true
+          type: string
+      delete:
+        operationId: deleteOrganizationIntegration
+        description: Deletes a specific integration.
+        parameters:
+          - name: token
+            in: query
+            type: string
+          - name: Accept
+            in: header
+            type: string
+        responses:
+          '200':
+            description: 'OK'
+            schema:
+              $ref: '#/definitions/IntegrationArray'
+
 definitions:
   Organization:
     title: Organization
@@ -182,6 +244,41 @@ definitions:
       country:
         type: string
         description: The business's host country.
+
+  Integration:
+    title: Integration
+    type: object
+    properties:
+      createdAt:
+        type: string
+        description: The time this object was created. Conforms to RFCE3339.
+      updatedAt:
+        type: string
+        description: The time this object was last updated. Conforms to RFCE3339.
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      enabled:
+        type: boolean
+        description: Whether or not this integration is enabled.
+      show:
+        type: boolean
+        description: Whether or not this integration should be shown.
+      type:
+        type: string
+        description: >
+          The general classification of an integration. One of 'analytics-custom',
+          'analytics-facebook-pixel', 'analytics-facebook-conversions', 'analytics-google-adwords',
+          'analytics-google-analytics', 'analytics-heap', 'analytics-sentry', 'bitcoin',
+          'ethereum', 'mailchimp', 'mandrill', 'netlify', 'reamaze', 'recaptcha', 'salesforce',
+          'shipwire', 'stripe'
+
+  IntegrationArray:
+    title: IntegrationArray
+    description: An array of Integrations
+    type: array
+    items:
+      $ref: '#/definitions/Integration'
 
   OrganizationArray:
     title: OrganizationArray
