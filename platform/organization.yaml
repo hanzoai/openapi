@@ -138,67 +138,67 @@ paths:
           schema:
             $ref: '#/definitions/OrganizationArray'
 
-    '/organization/{id}/integrations':
+  '/organization/{id}/integrations':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: retrieveOrganizationIntegrations
+      description: Returns a list of an organization's integrations.
       parameters:
-        - name: id
-          in: path
-          required: true
+        - name: token
+          in: query
           type: string
-      get:
-        operationId: retrieveOrganizationIntegrations
-        description: Returns a list of an organization's integrations.
-        parameters:
-          - name: token
-            in: query
-            type: string
-          - name: Accept
-            in: header
-            type: string
-        responses:
-          '200':
-            description: 'OK'
-            schema:
-              $ref: '#/definitions/IntegrationArray'
-      post:
-        operationId: createOrganizationIntegrations
-        description: Creates or replaces a list of an organization's integrations.
-        parameters:
-          - name: token
-            in: query
-            type: string
-          - name: Accept
-            in: header
-            type: string
-        responses:
-          '200':
-            description: 'OK'
-            schema:
-              $ref: '#/definitions/IntegrationArray'
-    '/organization/{id}/integrations/{integrationId}':
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: 'OK'
+          schema:
+            $ref: '#/definitions/IntegrationArray'
+    post:
+      operationId: createOrganizationIntegrations
+      description: Creates or replaces a list of an organization's integrations.
       parameters:
-        - name: id
-          in: path
-          required: true
+        - name: token
+          in: query
           type: string
-        - name: integrationId
-          in: path
-          required: true
+        - name: Accept
+          in: header
           type: string
-      delete:
-        operationId: deleteOrganizationIntegration
-        description: Deletes a specific integration.
-        parameters:
-          - name: token
-            in: query
-            type: string
-          - name: Accept
-            in: header
-            type: string
-        responses:
-          '200':
-            description: 'OK'
-            schema:
-              $ref: '#/definitions/IntegrationArray'
+      responses:
+        '200':
+          description: 'OK'
+          schema:
+            $ref: '#/definitions/IntegrationArray'
+  '/organization/{id}/integrations/{integrationId}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      - name: integrationId
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: deleteOrganizationIntegration
+      description: Deletes a specific integration.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: 'OK'
+          schema:
+            $ref: '#/definitions/IntegrationArray'
 
 definitions:
   Organization:
@@ -220,12 +220,18 @@ definitions:
       owners:
         type: array
         description: An array of strings denoting the owners by user id.
+        items:
+          type: string
       admins:
         type: array
         description: An array of strings denoting the admins by user id.
+        items:
+          type: string
       moderators:
         type: array
         description: An array of strings denoting the moderators by user id.
+        items:
+          type: string
       enabled:
         type: boolean
         description: Whether or not the organization is active.
