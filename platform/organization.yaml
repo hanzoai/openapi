@@ -36,34 +36,11 @@ paths:
         in: path
         required: true
         type: string
-    delete:
-      operationId: deleteOrganization
-      description: >
-        Completely deletes the associated Organization.  Cannot be undone.
-      produces:
-        - text/html
-      parameters:
-        - name: token
-          in: query
-          required: false
-          type: string
-        - name: Accept
-          in: header
-          required: false
-          type: string
-      responses:
-        '204':
-          description: 'Everything is OK.'
-          schema:
-            type: object
-            properties: {}
-          examples:
-            application/json: null
 
     get:
       operationId: getOrganization
       description: >
-        Returns a specified organization.
+        Returns the details of specified organization.
       parameters:
         - name: token
           in: query
@@ -82,8 +59,8 @@ paths:
     patch:
       operationId: updateOrganization
       description: >
-        Updates the specified Organization object piecemeal. Any fields not
-        included are not updated.
+        Updates the settings of a given organization. Any fields not included
+        are not updated.
       parameters:
         - name: body
           in: body
@@ -98,8 +75,8 @@ paths:
     put:
       operationId: replaceOrganization
       description: >
-        Wholly replaces the specified Organization object in-place. Any fields not
-        included will be blanked.
+        Replaces the settings of a given Organization. Any fields omitted will
+        be null or zeroed.
       responses:
         '200':
           description: 'Everything is OK.'
@@ -118,12 +95,12 @@ paths:
             $ref: '#/definitions/Organization'
       responses:
         '201':
-          description: 'Everything is OK. New organization created.'
+          description: 'New organization created.'
           schema:
             $ref: '#/definitions/Organization'
 
     get:
-      operationId: retrieveOrganization
+      operationId: listOrganizations
       description: Returns a list of all available organizations.
       parameters:
         - name: token
@@ -145,7 +122,7 @@ paths:
         required: true
         type: string
     get:
-      operationId: retrieveOrganizationIntegrations
+      operationId: listOrganizationIntegrations
       description: Returns a list of an organization's integrations.
       parameters:
         - name: token
@@ -263,7 +240,7 @@ definitions:
         description: The time this object was last updated. Conforms to RFCE3339.
       id:
         type: string
-        description: The hanzo-assigned guid to identify this item.
+        description: The hanzo-assigned ID of this integration.
       enabled:
         type: boolean
         description: Whether or not this integration is enabled.
@@ -273,11 +250,12 @@ definitions:
       type:
         type: string
         description: >
-          The general classification of an integration. One of 'analytics-custom',
-          'analytics-facebook-pixel', 'analytics-facebook-conversions', 'analytics-google-adwords',
-          'analytics-google-analytics', 'analytics-heap', 'analytics-sentry', 'bitcoin',
-          'ethereum', 'mailchimp', 'mandrill', 'netlify', 'reamaze', 'recaptcha', 'salesforce',
-          'shipwire', 'stripe'
+          The general classification of an integration. One of
+          'analytics-custom', 'analytics-facebook-pixel',
+          'analytics-facebook-conversions', 'analytics-google-adwords',
+          'analytics-google-analytics', 'analytics-heap', 'analytics-sentry',
+          'bitcoin', 'ethereum', 'mailchimp', 'mandrill', 'netlify', 'reamaze',
+          'recaptcha', 'salesforce', 'shipwire', 'stripe'
 
   IntegrationArray:
     title: IntegrationArray
