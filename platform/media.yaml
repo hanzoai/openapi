@@ -3,7 +3,9 @@ info:
   version: v1.0
   title: Media API
   description: >
-    A Media object is a visual resource used for site construction or ad campaigns.
+    Media are objects which represent some underlying audio or visual content.
+    Media can be referenced in products, variants and are automatically served
+    via our CDN backend.
 host: api.hanzo.io
 schemes:
   - https
@@ -29,9 +31,9 @@ securityDefinitions:
 paths:
   /media:
     get:
-      operationId: ReturnAllMedias
+      operationId: listMedia
       description: >
-        Returns all available medias.
+        Returns a list of media.
       parameters:
         - name: token
           in: query
@@ -46,7 +48,7 @@ paths:
             $ref: '#/definitions/MediaArray'
 
     post:
-      operationId: CreateMedia
+      operationId: createMedia
       description: >
         Creates a new media.
       parameters:
@@ -152,13 +154,22 @@ definitions:
         description: The time this Media was last updated. Conforms to RFC3339.
       type:
         type: string
-        description: The general classification of Media. One of 'image', 'video'.
-      parentMedaId:
+        description: The general classification of Media. One of 'image', 'video', 'webgl', 'audio', 'embed'.
+      alt:
         type: string
-        description: The hanzo-assigned guid to identify this item's parent.
-      usage:
+        description: The alt text description for this item.
+      url:
         type: string
-        description: The expected usage for this component. One of 'ad', 'product', 'unknown'.
+        description: URL to media item
+      x:
+        type: string
+        description: Width of media item
+      y:
+        type: string
+        description: Height of media item
+      # usage:
+      #   type: string
+      #   description: The expected usage for this component. One of 'ad', 'product', 'unknown'.
       productId:
         type: string
         description: The ID of the product this media depicts.
@@ -166,7 +177,7 @@ definitions:
 
   MediaArray:
     title: MediaArray
-    description: An array of Medias
+    description: An array of Media items
     type: array
     items:
       $ref: '#/definitions/Media'
