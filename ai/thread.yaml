@@ -1,0 +1,711 @@
+openapi: 3.0.0
+info:
+  title: Threads API
+  version: 1.0.0
+  description: API endpoints for managing threads and their interactions with assistants.
+servers:
+  - url: https://api.hanzo.ai/v1
+    description: Main API server
+paths:
+  /threads:
+    post:
+      summary: Create a thread
+      description: Create a new thread.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                messages:
+                  type: array
+                  description: A list of messages to start the thread with.
+                metadata:
+                  type: object
+                  description: Metadata for the thread.
+      responses:
+        '200':
+          description: A thread object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+  /threads/{thread_id}:
+    get:
+      summary: Retrieve a thread
+      description: Retrieves a thread.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A thread object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+    post:
+      summary: Modify a thread
+      description: Modifies a thread.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                metadata:
+                  type: object
+                  description: Metadata for the thread.
+      responses:
+        '200':
+          description: The modified thread object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+    delete:
+      summary: Delete a thread
+      description: Delete a thread.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deletion status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  object:
+                    type: string
+                  deleted:
+                    type: boolean
+  /threads/{thread_id}/messages:
+    post:
+      summary: Create a message
+      description: Create a message within a thread.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  description: The role of the entity that is creating the message.
+                  enum:
+                    - user
+                    - assistant
+                content:
+                  type: string
+                  description: The content of the message.
+                file_ids:
+                  type: array
+                  description: A list of File IDs that the message should use.
+                  items:
+                    type: string
+                metadata:
+                  type: object
+                  description: Metadata for the message.
+      responses:
+        '200':
+          description: A message object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+    get:
+      summary: List messages
+      description: Returns a list of messages for a given thread.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: order
+          schema:
+            type: string
+            default: desc
+        - in: query
+          name: after
+          schema:
+            type: string
+        - in: query
+          name: before
+          schema:
+            type: string
+        - in: query
+          name: run_id
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of message objects.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+  /threads/{thread_id}/messages/{message_id}:
+    get:
+      summary: Retrieve a message
+      description: Retrieve a message.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: message_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A message object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+    post:
+      summary: Modify a message
+      description: Modifies a message.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: message_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                metadata:
+                  type: object
+                  description: Metadata for the message.
+      responses:
+        '200':
+          description: The modified message object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+  /threads/{thread_id}/messages/{message_id}/files:
+    get:
+      summary: List message files
+      description: Returns a list of message files.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: message_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: order
+          schema:
+            type: string
+            default: desc
+        - in: query
+          name: after
+          schema:
+            type: string
+        - in: query
+          name: before
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of message file objects.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MessageFile'
+  /threads/{thread_id}/messages/{message_id}/files/{file_id}:
+    get:
+      summary: Retrieve a message file
+      description: Retrieves a message file.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: message_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: file_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A message file object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageFile'
+  /threads/{thread_id}/runs:
+    post:
+      summary: Create a run
+      description: Create a run for a given thread.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                assistant_id:
+                  type: string
+                  description: The ID of the assistant to use to execute this run.
+                model:
+                  type: string
+                  description: The ID of the model to be used to execute this run.
+                instructions:
+                  type: string
+                  description: Overrides the instructions of the assistant.
+                additional_instructions:
+                  type: string
+                  description: Appends additional instructions at the end of the instructions for the run.
+                additional_messages:
+                  type: array
+                  description: Adds additional messages to the thread before creating the run.
+                  items:
+                    $ref: '#/components/schemas/Message'
+                tools:
+                  type: array
+                  description: Override the tools the assistant can use for this run.
+                  items:
+                    $ref: '#/components/schemas/Tool'
+                metadata:
+                  type: object
+                  description: Metadata for the run.
+                temperature:
+                  type: number
+                  description: The sampling temperature to use.
+                  default: 1
+                top_p:
+                  type: number
+                  description: The nucleus sampling value to use.
+                  default: 1
+                stream:
+                  type: boolean
+                  description: If true, returns a stream of events during the run.
+                max_prompt_tokens:
+                  type: integer
+                  description: The maximum number of prompt tokens.
+                max_completion_tokens:
+                  type: integer
+                  description: The maximum number of completion tokens.
+                truncation_strategy:
+                  type: object
+                tool_choice:
+                  type: string
+                  description: Controls which tool is called by the model.
+                response_format:
+                  type: string
+                  description: Specifies the format that the model must output.
+      responses:
+        '200':
+          description: A run object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+    get:
+      summary: List runs
+
+
+      description: Returns a list of runs belonging to a thread.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: order
+          schema:
+            type: string
+            default: desc
+        - in: query
+          name: after
+          schema:
+            type: string
+        - in: query
+          name: before
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of run objects.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Run'
+  /threads/{thread_id}/runs/{run_id}:
+    get:
+      summary: Retrieve a run
+      description: Retrieves a run.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: run_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A run object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+    post:
+      summary: Modify a run
+      description: Modifies a run.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: run_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                metadata:
+                  type: object
+                  description: Metadata for the run.
+      responses:
+        '200':
+          description: The modified run object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+  /threads/{thread_id}/runs/{run_id}/steps:
+    get:
+      summary: List run steps
+      description: Returns a list of run steps belonging to a run.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: run_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: order
+          schema:
+            type: string
+            default: desc
+        - in: query
+          name: after
+          schema:
+            type: string
+        - in: query
+          name: before
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of run step objects.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RunStep'
+  /threads/{thread_id}/runs/{run_id}/steps/{step_id}:
+    get:
+      summary: Retrieve a run step
+      description: Retrieves a run step.
+      parameters:
+        - in: path
+          name: thread_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: run_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: step_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A run step object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunStep'
+components:
+  schemas:
+    Thread:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+        created_at:
+          type: integer
+        metadata:
+          type: object
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+        created_at:
+          type: integer
+        thread_id:
+          type: string
+        role:
+          type: string
+        content:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              text:
+                type: object
+                properties:
+                  value:
+                    type: string
+                  annotations:
+                    type: array
+                    items:
+                      type: string
+        file_ids:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+    MessageFile:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+        created_at:
+          type: integer
+        message_id:
+          type: string
+    Run:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+        created_at:
+          type: integer
+        assistant_id:
+          type: string
+        thread_id:
+          type: string
+        status:
+          type: string
+        required_action:
+          type: object
+        last_error:
+          type: object
+        expires_at:
+          type: integer
+        started_at:
+          type: integer
+        cancelled_at:
+          type: integer
+        failed_at:
+          type: integer
+        completed_at:
+          type: integer
+        incomplete_details:
+          type: object
+        model:
+          type: string
+        instructions:
+          type: string
+        tools:
+          type: array
+          items:
+            type: object
+        file_ids:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+        usage:
+          type: object
+        temperature:
+          type: number
+        top_p:
+          type: number
+        max_prompt_tokens:
+          type: integer
+        max_completion_tokens:
+          type: integer
+        truncation_strategy:
+          type: object
+        tool_choice:
+          type: string
+        response_format:
+          type: string
+    RunStep:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+        created_at:
+          type: integer
+        run_id:
+          type: string
+        assistant_id:
+          type: string
+        thread_id:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        step_details:
+          type: object
+        last_error:
+          type: object
+        expired_at:
+          type: integer
+        cancelled_at:
+          type: integer
+        failed_at:
+          type: integer
+        completed_at:
+          type: integer
+        metadata:
+          type: object
+        usage:
+          type: object
+    Tool:
+      type: object
+      properties:
+        type:
+          type: string
+        function:
+          type: object
+          properties:
+            name:
+              type: string
+            description:
+              type: string
+            parameters:
+              type: object
+              properties:
+                type:
+                  type: string
+                properties:
+                  type: object
+                  additionalProperties:
+                    type: object
+                  required:
+                    type: array
+                    items:
+                      type: string
+```
