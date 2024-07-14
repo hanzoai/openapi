@@ -1,0 +1,188 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Agent API
+  description: >
+    This API allows for the creation and management of customized agents (LLMs) with their own vector embeddings, and chat history management.
+
+host: api.hanzo.ai
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.ai/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  '/agent/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: deleteAgent
+      description: >
+        Deletes the requested agent. Cannot be undone.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+          description: The unique identifier for the agent.
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: 'Agent successfully deleted.'
+          schema:
+            type: object
+            properties: {}
+
+    put:
+      operationId: replaceAgent
+      description: >
+        Replaces the specified agent wholly. Any fields not passed are blanked.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Agent'
+      responses:
+        '200':
+          description: 'Agent successfully replaced.'
+          schema:
+            $ref: '#/definitions/Agent'
+
+    patch:
+      operationId: updateAgent
+      description: >
+        Updates an agent object piecemeal. Any fields not passed are not changed.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Agent'
+      responses:
+        '200':
+          description: 'Agent successfully updated.'
+          schema:
+            $ref: '#/definitions/Agent'
+
+    get:
+      operationId: getAgent
+      description: >
+        Returns the specified agent.
+      responses:
+        '200':
+          description: 'Agent details retrieved successfully.'
+          schema:
+            $ref: '#/definitions/Agent'
+
+  '/agent':
+    post:
+      operationId: createAgent
+      description: >
+        Creates a new agent.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Agent'
+      responses:
+        '201':
+          description: 'New agent created successfully.'
+          schema:
+            $ref: '#/definitions/Agent'
+
+    get:
+      operationId: retrieveAllAgents
+      description: >
+        Returns a list of all available agents.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: 'List of agents retrieved successfully.'
+          schema:
+            $ref: '#/definitions/AgentArray'
+
+definitions:
+  Agent:
+    title: Agent
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this agent.
+      createdAt:
+        type: string
+        description: The time this agent was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this agent was last updated. Conforms to RFC3339.
+      embeddings:
+        $ref: '#/definitions/VectorEmbeddings'
+      chatHistory:
+        $ref: '#/definitions/ChatHistory'
+
+  VectorEmbeddings:
+    title: VectorEmbeddings
+    description: The vector embeddings associated with the agent.
+    type: object
+    properties:
+      vectors:
+        type: array
+        items:
+          type: number
+        description: A list of vector values.
+
+  ChatHistory:
+    title: ChatHistory
+    description: The chat history for the agent.
+    type: array
+    items:
+      $ref: '#/definitions/ChatMessage'
+
+  ChatMessage:
+    title: ChatMessage
+    description: A single chat message in the agent's history.
+    type: object
+    properties:
+      timestamp:
+        type: string
+        description: The time the message was sent. Conforms to RFC3339.
+      sender:
+        type: string
+        description: The sender of the message.
+      message:
+        type: string
+        description: The content of the message.
+
+  AgentArray:
+    title: AgentArray
+    description: An array of agents.
+    type: array
+    items:
+      $ref: '#/definitions/Agent'
