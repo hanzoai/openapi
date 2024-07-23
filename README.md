@@ -1,5 +1,5 @@
-# swagger
-Swagger API Blueprints for the Hanzo APIs.
+# openapi
+Open API 3.1 Blueprints for the Hanzo APIs.
 
 ## Organization
 Each Hanzo API is broken down into an individual YAML file and organized into
