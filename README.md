@@ -46,7 +46,7 @@ Unified OpenAPI specifications for ALL Hanzo services. Single `HANZO_API_KEY` fo
 
 | Service | Version | Spec | Endpoint | Org | Description |
 |---------|---------|------|----------|-----|-------------|
-| **Engine** | 1.0.0 | `engine/openapi.yaml` | `engine.hanzo.ai` | @hanzoml | GPU scheduling, ML pipelines, model serving |
+| **Engine** | 1.0.0 | `engine/openapi.yaml` | `engine.hanzo.ai` | @hanzo-ml | GPU scheduling, ML pipelines, model serving |
 | **O11y** | 1.0.0 | `o11y/openapi.yaml` | `o11y.hanzo.ai` | @hanzoo11y | Logs, metrics, traces, alerts |
 | **DNS** | 1.0.0 | `dns/openapi.yaml` | `dns.hanzo.ai` | @hanzodns | DNS zones, records, DNSSEC |
 | **ZT** | 1.0.0 | `zt/openapi.yaml` | `zt.hanzo.ai` | @hanzozt | Zero-trust networking, overlay mesh |
@@ -70,7 +70,7 @@ Full Heroku/Vercel parity and beyond:
 | Metrics / APM | O11y | `o11y/openapi.yaml` | @hanzoo11y | **NEW** |
 | DNS Management | DNS | `dns/openapi.yaml` | @hanzodns | **NEW** |
 | CDN | Gateway | `gateway/openapi.yaml` | @hanzoai | Updated |
-| GPU Scheduling / ML Pipelines | Engine | `engine/openapi.yaml` | @hanzoml | **NEW** |
+| GPU Scheduling / ML Pipelines | Engine | `engine/openapi.yaml` | @hanzo-ml | **NEW** |
 | Zero Trust Networking | ZT | `zt/openapi.yaml` | @hanzozt | **NEW** |
 | VM Management | Visor | `visor/openapi.yaml` | @hanzoai | Existing |
 | Computer Use / Automation | Operative | `operative/openapi.yaml` | @hanzoai | Existing |
@@ -89,7 +89,7 @@ Full Heroku/Vercel parity and beyond:
 |-----|---------|----------------|
 | [@hanzoai](https://github.com/hanzoai) | Core platform | — |
 | [@hanzozt](https://github.com/hanzozt) | Zero-trust networking | OpenZiti (79 repos) |
-| [@hanzoml](https://github.com/hanzoml) | GPU/ML infrastructure | kubeflow, kuberay |
+| [@hanzo-ml](https://github.com/hanzo-ml) | GPU/ML infrastructure | kubeflow, kuberay |
 | [@hanzodns](https://github.com/hanzodns) | DNS management | coredns |
 | [@hanzofn](https://github.com/hanzofn) | Edge functions | supabase/edge-runtime |
 | [@hanzodb](https://github.com/hanzodb) | Serverless Postgres | neondatabase/neon |
