@@ -39,8 +39,9 @@ Unified OpenAPI specifications for ALL Hanzo services. Single `HANZO_API_KEY` fo
 | **Vector** | 1.0.0 | `vector/openapi.yaml` | `vector.hanzo.ai` | @hanzoai | Vector database, collections, search |
 | **Nexus** | 1.70.0 | `nexus/openapi.yaml` | `nexus.hanzo.ai` | @hanzoai | Knowledge base, RAG, embeddings |
 | **Registry** | 1.0.0 | `registry/openapi.yaml` | `registry.hanzo.ai` | @hanzocr | Container registry (Harbor) |
-| **DB** | 1.0.0 | `db/openapi.yaml` | `db.hanzo.ai` | @hanzodb | Serverless Postgres, instant branching (Neon) |
+| **DB** | 1.0.0 | `db/openapi.yaml` | `db.hanzo.ai` | @hanzosql | Serverless Postgres, instant branching (Neon) |
 | **Edge** | 1.0.0 | `edge/openapi.yaml` | `edge.hanzo.ai` | @hanzofn | Edge functions, Deno-based serverless |
+| **KV** | 1.0.0 | `kv/openapi.yaml` | `kv.hanzo.ai` | @hanzokv | Key-value store, caching, pub/sub (Valkey) |
 
 ### Operations
 
@@ -63,7 +64,8 @@ Full Heroku/Vercel parity and beyond:
 | Billing & Metering | Commerce | `commerce/openapi.yaml` | @hanzoai | Existing |
 | Build System (Nixpacks) | PaaS | `paas/openapi.yaml` | @hanzoai | **NEW** |
 | Container Registry | Registry | `registry/openapi.yaml` | @hanzocr | **NEW** |
-| Managed Databases (Serverless Postgres) | DB | `db/openapi.yaml` | @hanzodb | **NEW** |
+| Managed Databases (Serverless Postgres) | DB | `db/openapi.yaml` | @hanzosql | **NEW** |
+| Key-Value Store / Caching | KV | `kv/openapi.yaml` | @hanzokv | **NEW** |
 | Edge Functions (Deno) | Edge | `edge/openapi.yaml` | @hanzofn | **NEW** |
 | Cron / Scheduled Jobs | Auto | `auto/openapi.yaml` | @hanzoai | Existing |
 | Log Aggregation / SIEM | O11y | `o11y/openapi.yaml` | @hanzoo11y | **NEW** |
@@ -92,7 +94,8 @@ Full Heroku/Vercel parity and beyond:
 | [@hanzo-ml](https://github.com/hanzo-ml) | GPU/ML infrastructure | kubeflow, kuberay |
 | [@hanzodns](https://github.com/hanzodns) | DNS management | coredns |
 | [@hanzofn](https://github.com/hanzofn) | Edge functions | supabase/edge-runtime |
-| [@hanzodb](https://github.com/hanzodb) | Serverless Postgres | neondatabase/neon |
+| [@hanzosql](https://github.com/hanzosql) | Serverless Postgres | neondatabase/neon |
+| [@hanzokv](https://github.com/hanzokv) | Key-value store | valkey-io/valkey |
 | [@hanzocr](https://github.com/hanzocr) | Container registry | goharbor/harbor |
 | [@hanzoo11y](https://github.com/hanzoo11y) | Observability | grafana/loki, grafana/grafana, SigNoz/signoz |
 
@@ -133,6 +136,7 @@ openapi/
 ├── registry/openapi.yaml   # NEW — Container registry
 ├── db/openapi.yaml         # NEW — Serverless Postgres
 ├── edge/openapi.yaml       # NEW — Edge functions
+├── kv/openapi.yaml         # NEW — Key-value store
 │
 │   # Operations (4)
 ├── engine/openapi.yaml     # NEW — GPU/ML
@@ -186,6 +190,7 @@ api.hanzo.ai/v1/nexus/*             → Nexus (knowledge base)
 api.hanzo.ai/v1/registry/*          → Registry (containers)
 api.hanzo.ai/v1/db/*                → DB (Postgres)
 api.hanzo.ai/v1/edge/*              → Edge (functions)
+api.hanzo.ai/v1/kv/*                → KV (key-value store)
 
 # Operations
 api.hanzo.ai/v1/engine/*            → Engine (GPU/ML)

@@ -1,0 +1,1219 @@
+openapi: 3.1.0
+info:
+  title: Hanzo KV API
+  description: |
+    Hanzo KV provides a managed key-value store with caching, pub/sub messaging,
+    and stream processing.
+
+    Based on Valkey with Hanzo extensions for:
+    - Multi-tenant namespace isolation
+    - REST API over the wire protocol
+    - Managed clusters with automatic failover
+    - Per-key TTL and eviction policies
+    - Pub/sub channels with WebSocket support
+    - Append-only streams for event sourcing
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://kv.hanzo.ai
+    description: Production
+  - url: https://api.hanzo.ai/v1/kv
+    description: Gateway Proxy
+
+tags:
+  - name: Keys
+    description: Key-value CRUD operations
+  - name: Hash
+    description: Hash (field-value map) operations
+  - name: List
+    description: List (ordered collection) operations
+  - name: Set
+    description: Set (unique collection) operations
+  - name: Sorted Set
+    description: Sorted set (scored unique collection) operations
+  - name: Pub/Sub
+    description: Publish/subscribe messaging
+  - name: Streams
+    description: Append-only log streams
+  - name: Namespaces
+    description: Namespace (tenant) management
+  - name: Clusters
+    description: Managed KV cluster lifecycle
+  - name: Health
+    description: Service health
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HANZO_API_KEY
+      description: Hanzo API Key (Bearer hk-...)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: integer
+
+    KeyValue:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+        type:
+          type: string
+          enum: [string, hash, list, set, zset, stream]
+        ttl:
+          type: integer
+          description: Time-to-live in seconds (-1 for no expiry)
+        size:
+          type: integer
+          description: Size in bytes
+
+    Namespace:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        max_memory_mb:
+          type: integer
+          description: Memory limit in MB
+        used_memory_mb:
+          type: number
+        key_count:
+          type: integer
+        eviction_policy:
+          type: string
+          enum: [noeviction, allkeys-lru, allkeys-lfu, volatile-lru, volatile-lfu, allkeys-random, volatile-random, volatile-ttl]
+        created_at:
+          type: string
+          format: date-time
+
+    Cluster:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+          enum: [provisioning, running, degraded, stopped, deleted]
+        version:
+          type: string
+          description: Valkey version
+        mode:
+          type: string
+          enum: [standalone, sentinel, cluster]
+        nodes:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              role:
+                type: string
+                enum: [primary, replica]
+              host:
+                type: string
+              port:
+                type: integer
+              status:
+                type: string
+                enum: [online, offline, syncing]
+              memory_used_mb:
+                type: number
+              memory_max_mb:
+                type: integer
+        replicas:
+          type: integer
+        max_memory_mb:
+          type: integer
+        connection_uri:
+          type: string
+          description: Connection string (valkey://...)
+        tls:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    ClusterCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        mode:
+          type: string
+          enum: [standalone, sentinel, cluster]
+          default: standalone
+        version:
+          type: string
+          default: "8.0"
+        max_memory_mb:
+          type: integer
+          default: 256
+        replicas:
+          type: integer
+          default: 0
+        tls:
+          type: boolean
+          default: true
+        eviction_policy:
+          type: string
+          enum: [noeviction, allkeys-lru, allkeys-lfu, volatile-lru, volatile-lfu, allkeys-random]
+          default: allkeys-lru
+
+    StreamEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Stream entry ID (timestamp-sequence)
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+
+    PubSubMessage:
+      type: object
+      properties:
+        channel:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Key not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  # Health
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy]
+                  version:
+                    type: string
+
+  # Clusters
+  /clusters:
+    get:
+      tags:
+        - Clusters
+      summary: List KV clusters
+      operationId: listClusters
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [provisioning, running, degraded, stopped]
+      responses:
+        '200':
+          description: List of clusters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clusters:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Cluster'
+                  total:
+                    type: integer
+    post:
+      tags:
+        - Clusters
+      summary: Create KV cluster
+      operationId: createCluster
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClusterCreate'
+      responses:
+        '201':
+          description: Cluster created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cluster'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /clusters/{id}:
+    get:
+      tags:
+        - Clusters
+      summary: Get cluster
+      operationId: getCluster
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cluster details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cluster'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Clusters
+      summary: Update cluster
+      operationId: updateCluster
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                max_memory_mb:
+                  type: integer
+                replicas:
+                  type: integer
+                eviction_policy:
+                  type: string
+      responses:
+        '200':
+          description: Cluster updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cluster'
+    delete:
+      tags:
+        - Clusters
+      summary: Delete cluster
+      operationId: deleteCluster
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cluster deleted
+
+  /clusters/{id}/stats:
+    get:
+      tags:
+        - Clusters
+      summary: Get cluster stats
+      operationId: getClusterStats
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cluster statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connected_clients:
+                    type: integer
+                  used_memory_mb:
+                    type: number
+                  used_memory_peak_mb:
+                    type: number
+                  total_commands_processed:
+                    type: integer
+                    format: int64
+                  keyspace_hits:
+                    type: integer
+                    format: int64
+                  keyspace_misses:
+                    type: integer
+                    format: int64
+                  hit_rate:
+                    type: number
+                  ops_per_sec:
+                    type: integer
+                  total_keys:
+                    type: integer
+                  expired_keys:
+                    type: integer
+                  evicted_keys:
+                    type: integer
+
+  # Namespaces
+  /namespaces:
+    get:
+      tags:
+        - Namespaces
+      summary: List namespaces
+      operationId: listNamespaces
+      responses:
+        '200':
+          description: List of namespaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Namespace'
+    post:
+      tags:
+        - Namespaces
+      summary: Create namespace
+      operationId: createNamespace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                max_memory_mb:
+                  type: integer
+                  default: 64
+                eviction_policy:
+                  type: string
+                  default: allkeys-lru
+      responses:
+        '201':
+          description: Namespace created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Namespace'
+
+  /namespaces/{name}:
+    get:
+      tags:
+        - Namespaces
+      summary: Get namespace
+      operationId: getNamespace
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Namespace details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Namespace'
+    delete:
+      tags:
+        - Namespaces
+      summary: Delete namespace and all keys
+      operationId: deleteNamespace
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Namespace deleted
+
+  # Key-Value Operations
+  /keys:
+    get:
+      tags:
+        - Keys
+      summary: Scan keys
+      operationId: scanKeys
+      parameters:
+        - name: pattern
+          in: query
+          schema:
+            type: string
+            default: "*"
+          description: Glob-style pattern (e.g. user:*, session:*)
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [string, hash, list, set, zset, stream]
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            default: "0"
+        - name: count
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Key scan results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cursor:
+                    type: string
+                    description: Next cursor (0 when scan complete)
+                  keys:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KeyValue'
+
+  /keys/{key}:
+    get:
+      tags:
+        - Keys
+      summary: Get key value
+      operationId: getKey
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Key value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeyValue'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Keys
+      summary: Set key value
+      operationId: setKey
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - value
+              properties:
+                value:
+                  type: string
+                ttl:
+                  type: integer
+                  description: TTL in seconds (omit for no expiry)
+                nx:
+                  type: boolean
+                  description: Only set if key does not exist
+                xx:
+                  type: boolean
+                  description: Only set if key already exists
+      responses:
+        '200':
+          description: Key set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeyValue'
+    delete:
+      tags:
+        - Keys
+      summary: Delete key
+      operationId: deleteKey
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Key deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: boolean
+
+  /keys/{key}/ttl:
+    put:
+      tags:
+        - Keys
+      summary: Set key TTL
+      operationId: setKeyTTL
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ttl
+              properties:
+                ttl:
+                  type: integer
+                  description: TTL in seconds (-1 to remove expiry)
+      responses:
+        '200':
+          description: TTL set
+
+  /keys/{key}/incr:
+    post:
+      tags:
+        - Keys
+      summary: Increment numeric key
+      operationId: incrKey
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                by:
+                  type: number
+                  default: 1
+      responses:
+        '200':
+          description: New value after increment
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  value:
+                    type: number
+
+  # Batch operations
+  /batch:
+    post:
+      tags:
+        - Keys
+      summary: Batch get/set/delete
+      operationId: batchOperation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                namespace:
+                  type: string
+                operations:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - op
+                      - key
+                    properties:
+                      op:
+                        type: string
+                        enum: [get, set, delete]
+                      key:
+                        type: string
+                      value:
+                        type: string
+                      ttl:
+                        type: integer
+      responses:
+        '200':
+          description: Batch results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                        value:
+                          type: string
+                        ok:
+                          type: boolean
+
+  # Hash Operations
+  /hash/{key}:
+    get:
+      tags:
+        - Hash
+      summary: Get all hash fields
+      operationId: hashGetAll
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Hash fields and values
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+    put:
+      tags:
+        - Hash
+      summary: Set hash fields
+      operationId: hashSet
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+      responses:
+        '200':
+          description: Fields set
+
+  /hash/{key}/{field}:
+    get:
+      tags:
+        - Hash
+      summary: Get hash field
+      operationId: hashGetField
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: field
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Field value
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  value:
+                    type: string
+    delete:
+      tags:
+        - Hash
+      summary: Delete hash field
+      operationId: hashDeleteField
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: field
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Field deleted
+
+  # List Operations
+  /list/{key}:
+    get:
+      tags:
+        - List
+      summary: Get list range
+      operationId: listRange
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: start
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: stop
+          in: query
+          schema:
+            type: integer
+            default: -1
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List elements
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  values:
+                    type: array
+                    items:
+                      type: string
+                  length:
+                    type: integer
+
+  /list/{key}/push:
+    post:
+      tags:
+        - List
+      summary: Push to list
+      operationId: listPush
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - values
+              properties:
+                values:
+                  type: array
+                  items:
+                    type: string
+                direction:
+                  type: string
+                  enum: [left, right]
+                  default: right
+      responses:
+        '200':
+          description: New list length
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  length:
+                    type: integer
+
+  /list/{key}/pop:
+    post:
+      tags:
+        - List
+      summary: Pop from list
+      operationId: listPop
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                direction:
+                  type: string
+                  enum: [left, right]
+                  default: left
+                count:
+                  type: integer
+                  default: 1
+      responses:
+        '200':
+          description: Popped values
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  values:
+                    type: array
+                    items:
+                      type: string
+
+  # Pub/Sub
+  /pubsub/publish:
+    post:
+      tags:
+        - Pub/Sub
+      summary: Publish message to channel
+      operationId: publish
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - channel
+                - message
+              properties:
+                channel:
+                  type: string
+                message:
+                  type: string
+      responses:
+        '200':
+          description: Message published
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  receivers:
+                    type: integer
+
+  /pubsub/subscribe:
+    get:
+      tags:
+        - Pub/Sub
+      summary: Subscribe to channels (SSE)
+      operationId: subscribe
+      parameters:
+        - name: channels
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+          description: Channels to subscribe to
+        - name: pattern
+          in: query
+          schema:
+            type: string
+          description: Pattern to subscribe to (e.g. user:*)
+      responses:
+        '200':
+          description: SSE stream of messages
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /pubsub/channels:
+    get:
+      tags:
+        - Pub/Sub
+      summary: List active channels
+      operationId: listChannels
+      parameters:
+        - name: pattern
+          in: query
+          schema:
+            type: string
+            default: "*"
+      responses:
+        '200':
+          description: Active channels
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  channels:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        subscribers:
+                          type: integer
+
+  # Streams
+  /streams/{key}:
+    get:
+      tags:
+        - Streams
+      summary: Read stream entries
+      operationId: streamRead
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: start
+          in: query
+          schema:
+            type: string
+            default: "-"
+          description: Start ID (- for beginning)
+        - name: end
+          in: query
+          schema:
+            type: string
+            default: "+"
+          description: End ID (+ for latest)
+        - name: count
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stream entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StreamEntry'
+                  length:
+                    type: integer
+
+  /streams/{key}/add:
+    post:
+      tags:
+        - Streams
+      summary: Add entry to stream
+      operationId: streamAdd
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fields
+              properties:
+                id:
+                  type: string
+                  description: Entry ID (auto-generated if omitted)
+                fields:
+                  type: object
+                  additionalProperties:
+                    type: string
+                maxlen:
+                  type: integer
+                  description: Trim stream to this max length
+      responses:
+        '201':
+          description: Entry added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Generated entry ID
+
+  /streams/{key}/info:
+    get:
+      tags:
+        - Streams
+      summary: Get stream info
+      operationId: streamInfo
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stream info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  length:
+                    type: integer
+                  first_entry:
+                    $ref: '#/components/schemas/StreamEntry'
+                  last_entry:
+                    $ref: '#/components/schemas/StreamEntry'
+                  groups:
+                    type: integer
