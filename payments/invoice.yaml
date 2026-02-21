@@ -1,0 +1,209 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Invoice API
+  description: >
+    An Invoice represents a listing of goods and services a customer has been charged
+    for over a specific time period. It is intended as a reporting and communication
+    tool for recurring payments.
+host: api.hanzo.ai
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.ai/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  '/invoice/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: deleteInvoice
+      description: >
+        Completely deletes the associated Invoice.  Cannot be undone.
+      produces:
+        - text/html
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: 'Everything is OK.'
+          schema:
+            type: object
+            properties: {}
+          examples:
+            application/json: null
+
+    get:
+      operationId: getInvoice
+      description: >
+        Returns a specified invoice.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Invoice'
+
+    patch:
+      operationId: updateInvoice
+      description: >
+        Updates the specified Invoice object piecemeal. Any fields not
+        included are not updated.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Invoice'
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/Invoice'
+
+    put:
+      operationId: replaceInvoice
+      description: >
+        Wholly replaces the specified Invoice object in-place. Any fields not
+        included will be blanked.
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/Invoice'
+
+  /invoice:
+    post:
+      operationId: createInvoice
+      description: >
+        Creates a new Invoice.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Invoice'
+      responses:
+        '201':
+          description: 'Everything is OK. New invoice created.'
+          schema:
+            $ref: '#/definitions/Invoice'
+
+    get:
+      operationId: retrieveInvoice
+      description: Returns a list of all available invoices.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/InvoiceArray'
+
+definitions:
+  Invoice:
+    title: Invoice
+    type: object
+    properties:
+      createdAt:
+        type: string
+        description: The time this object was created. Conforms to RFCE3339.
+      updatedAt:
+        type: string
+        description: The time this object was last updated. Conforms to RFCE3339.
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      account:
+        type: object
+      currency:
+        type: string
+        description: >
+          The three-digit identifier for the currency the invoice
+          was made in. USD = United States Dollar, JPY = Japanese Yen, etc.
+      orderId:
+        type: string
+        description: The unique identiifer for the charge associated with the invoice.
+      amountDue:
+        type: integer
+        format: int64
+        description: >
+          The specific quantity of money due. Represented in the least significant
+          unit in the associated currency (so cent for USD, which has partial Dollars, but Yen
+          for JPY, which has no concept of partial Yen.)
+      amountPaid:
+        type: integer
+        format: int64
+        description: >
+          The specific quantity of money paid. Represented in the least significant
+          unit in the associated currency (so cent for USD, which has partial Dollars, but Yen
+          for JPY, which has no concept of partial Yen.)
+      amountRemaining:
+        type: integer
+        format: int64
+        description: >
+          The specific quantity of money ultimately scheduled to be paid. Represented in the least significant
+          unit in the associated currency (so cent for USD, which has partial Dollars, but Yen
+          for JPY, which has no concept of partial Yen.)
+      applicationFee:
+        type: integer
+        format: int64
+        description: >
+          Fees garnished for various purposes.
+          Represented in the least significant unit in the associated
+          currency (so cent for USD, which has partial Dollars, but Yen
+          for JPY, which has no concept of partial Yen.)
+      attemptedCount:
+        type: integer
+        description: How many times the invoice has attempted to collect payment.
+      attempted:
+        type: boolean
+        description: Whether or not an attempt has been made to pay the invoice.
+      closed:
+        type: boolean
+        description: Whether or not the invoice is still attempting to collect payment.
+
+  InvoiceArray:
+    title: InvoiceArray
+    description: An array of Invoices
+    type: array
+    items:
+      $ref: '#/definitions/Invoice'

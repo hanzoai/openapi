@@ -1,0 +1,359 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Store API
+  description: >
+    A Store represents your sales presence on the Hanzo platform.
+host: api.hanzo.ai
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.ai/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  '/store/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: retrieveStore
+      description: >
+        Returns a specific store.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Store'
+
+    delete:
+      operationId: deleteStore
+      description: >
+        Permanently deletes a Store
+      produces:
+        - text/html
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+          description: The unique identifier for the Store.
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: 'Everything is OK.'
+          schema:
+            type: object
+            properties: {}
+
+    patch:
+      operationId: updateStore
+      description: >
+        Updates a store partially. Parameters not passed are not updated.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Store'
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/Store'
+
+    put:
+      operationId: replaceStore
+      description: >
+        Replaces the object wholly. Unpassed parameters are blanked.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Store'
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Store'
+
+  '/store':
+    post:
+      operationId: createStore
+      description: >
+        Creates a new Store.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Store'
+      responses:
+        '201':
+          description: 'Everything is OK. New store created.'
+          schema:
+            $ref: '#/definitions/Store'
+
+    get:
+      operationId: retrieveAllStores
+      description: >
+        Returns a list of all available Stores.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/StoreArray'
+
+  '/site/{siteid}/deploy':
+    parameters:
+      - name: siteid
+        in: path
+        required: true
+        type: string
+
+    post:
+      operationId: deploySite
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              siteId:
+                type: string
+              files:
+                type: object
+                properties:
+                  index.html:
+                    type: string
+            example:
+              siteId: 7lUOzwphlox9
+              files:
+                index.html: ca08d7cc98edaa9481224faba78eb80f2160ddea
+        - name: Content-Type
+          in: header
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '201':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              siteId:
+                type: string
+              state:
+                type: string
+              required:
+                type: array
+                items:
+                  type: string
+              deployUrl:
+                type: string
+              url:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+          examples:
+            application/json:
+              id: 571073f5d6865d30969f33fa
+              siteId: 7lUOzwphlox9
+              state: uploading
+              required:
+                - ca08d7cc98edaa9481224faba78eb80f2160ddea
+              deployUrl: 'http://571073f5d6865d30969f33fa.site-02mg.hanzo.ai'
+              url: 'http://site-02mg.hanzo.ai'
+              createdAt: '2016-04-15T04:54:13Z'
+              updatedAt: '2016-04-15T04:54:13Z'
+
+  '/store/{id}/product/{key}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      - name: key
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: retrieveStoreProduct
+      description: >
+        Gets a specific product that the store has access to.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Product'
+
+  '/store/{id}/variant/{key}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      - name: key
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: retrieveStoreVariant
+      description: >
+        Returns a specific Variant if it is accessible inside the store.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Variant'
+
+    patch:
+      operationId: updateStoreVariant
+      description: >
+        Updates a variant the store has access to partially. Parameters
+        not included are ignored.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Variant'
+
+    delete:
+      operationId: deleteStoreVariant
+      description: >
+        Deletes a variant the store has access to. Cannot be undone.
+      responses:
+        '204':
+          description: 'Everything is OK.'
+          schema:
+            type: object
+            properties: {}
+
+    put:
+      operationId: replaceStoreVariant
+      description: >
+        Wholly replaces a variant the store has access to. Parameters
+        not included are blanked.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Variant'
+
+definitions:
+  Variant:
+    title: Variant
+    description: >
+      A Variant model, usable in POST, PUT, or PATCH requests,
+      and returned as a response from GET, POST, PUT, and PATCH.
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      productId:
+        type: string
+        description: >
+          The ID of the product this Variant is
+          associated with (or, a variant of).
+      sku:
+        type: string
+        description: >
+          The unique identifier for stock-keeping.
+          Can technically be whatever as long as it is unique,
+          but recommended to be the same as UPC if you have
+          one available for your product.
+      createdAt:
+        type: string
+        description: The time this Variant was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this Variant was last updated. Conforms to RFC3339.
+      price:
+        type: integer
+        format: int64
+        description: >
+          How much something costs, in the lowest
+          value unit available in the currency your store runs
+          in. USD stores will use cents, JPY stores will use yen, etc.
+      inventory:
+        type: integer
+        format: int64
+        description: The number of items on hand and ready for sale.
+      weight:
+        type: integer
+        format: int64
+        description: The mass of the item. Traditionally kept in grams.
+      dimensions:
+        type: string
+        description: >
+          The physical measurements of the item. Traditionally
+          kept in length x width x height and in centimeters.
+      options:
+        type: object
+
+  Store:
+    title: Store
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      createdAt:
+        type: string
+        description: The time this Variant was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this Variant was last updated. Conforms to RFC3339.
+      name:
+        type: string
+        description: The human-friendly identifier for the store.
+      slug:
+        type: string
+        description: The human-readable identifier for the store, mostly used in URLs.
+      hostname:
+        type: string
+        description: The off-site host this store lives at.
+      currency:
+        type: string
+        description: The money denomination this store operates with.
+
+  StoreArray:
+    title: StoreArray
+    description: An array of Stores
+    type: array
+    items:
+      $ref: '#/definitions/Store'

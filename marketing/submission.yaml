@@ -1,0 +1,202 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Submission API
+  description: >
+    A Submission is a specific set of inputs that are submitted back for your records.
+    This API can be used to capture basically any arbitrary set of data that you
+    need, but it is most commonly used to set up mailing list collections.
+host: api.hanzo.ai
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.ai/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  '/submission/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: deleteSubmission
+      description: >
+        Deletes the requested submission. Cannot be undone.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+          description: The unique identifier for the Store.
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: ''
+          schema:
+            type: object
+            properties: {}
+
+    put:
+      operationId: replaceSubmission
+      description: >
+        Replaces the specified submission wholly. Any fields not passed are blanked.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Submission'
+      responses:
+        '200':
+          description: 'Everything is OK'
+          schema:
+            $ref: '#/definitions/Submission'
+
+    patch:
+      operationId: updateSubmission
+      description: >
+        Replaces a submission object piecemeal. Any fields not passed are not changed.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Submission'
+      responses:
+        '200':
+          description: 'Everything is OK'
+          schema:
+            $ref: '#/definitions/Submission'
+    get:
+      operationId: GET_submission-id
+      description: >
+        Returns the specified Submission.
+      responses:
+        '200':
+          description: 'Everything is OK'
+          schema:
+            $ref: '#/definitions/Submission'
+  '/submission':
+    post:
+      operationId: createSubmission
+      description: >
+        Creates a new Submission.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Submission'
+      responses:
+        '201':
+          description: 'Everything is OK. New submission created.'
+          schema:
+            $ref: '#/definitions/Submission'
+    get:
+      operationId: retrieveAllSubmissions
+      description: >
+        Returns a list of all available Submissions.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/SubmissionArray'
+
+definitions:
+  Submission:
+    title: Submission
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      createdAt:
+        type: string
+        description: The time this Variant was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this Variant was last updated. Conforms to RFC3339.
+      userId:
+        type: string
+        description: The human-friendly identifier for the submission.
+      email:
+        type: string
+        description: The email used with the submission.
+      client:
+        $ref: '#/definitions/Client'
+      metadata:
+        type: array
+        description: The data submitted from the form this came from. This is a key-value array of strings.
+        items:
+          type: object
+
+  Client:
+    title: Client
+    description: Data on the a client that has interacted with the platform.
+    properties:
+      ip:
+        type: string
+        description: The IP address of the client.
+      userAgent:
+        type: string
+        description: The user agent of the client.
+      referer:
+        type: string
+        description: The referer string (from the browser).
+      language:
+        type: string
+        description: The language used by the client.
+      country:
+        type: string
+        description: The originating country of the client.
+      region:
+        type: string
+        description: The region the client comes from.
+      city:
+        type: string
+        description: The client's city.
+      geoPoint:
+        $ref: '#/definitions/GeoPoint'
+
+  GeoPoint:
+    title: GeoPoint
+    description: A geological point from AppEngine.
+    type: object
+    properties:
+      lat:
+        type: number
+        description: Latitude.
+      lng:
+        type: number
+        description: Longitude.
+
+  SubmissionArray:
+    title: SubmissionArray
+    description: An array of Submissions
+    type: array
+    items:
+      $ref: '#/definitions/Submission'
