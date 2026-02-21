@@ -1,0 +1,442 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Hanzo Vector API
+  description: >
+    Hanzo Vector provides a hyper-scalable vector database service.
+    This API allows for the creation, retrieval, updating, deletion, and searching of vector embeddings,
+    as well as managing HNSW indexes for efficient querying. It supports hosted databases with vector database add-ons,
+    enabling apps to easily set up and use vector APIs.
+
+host: api.hanzo.ai
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.ai/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  '/database/{dbName}/vector':
+    parameters:
+      - name: dbName
+        in: path
+        required: true
+        type: string
+
+    post:
+      operationId: createVector
+      description: >
+        Creates a new vector embedding in the specified database.
+        SQL Equivalent: CREATE TABLE items (id bigserial PRIMARY KEY, embedding vector(3));
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/VectorEmbedding'
+      responses:
+        '201':
+          description: 'Vector embedding created successfully.'
+          schema:
+            $ref: '#/definitions/VectorEmbedding'
+
+  '/database/{dbName}/vector/{vectorId}':
+    parameters:
+      - name: dbName
+        in: path
+        required: true
+        type: string
+      - name: vectorId
+        in: path
+        required: true
+        type: string
+
+    get:
+      operationId: getVector
+      description: >
+        Retrieves a specific vector embedding by ID from the specified database.
+        SQL Equivalent: SELECT * FROM items WHERE id = {vectorId};
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: 'Vector embedding retrieved successfully.'
+          schema:
+            $ref: '#/definitions/VectorEmbedding'
+
+    put:
+      operationId: updateVector
+      description: >
+        Updates a specific vector embedding by ID in the specified database.
+        SQL Equivalent: UPDATE items SET embedding = '[1,2,3]' WHERE id = {vectorId};
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/VectorEmbedding'
+      responses:
+        '200':
+          description: 'Vector embedding updated successfully.'
+          schema:
+            $ref: '#/definitions/VectorEmbedding'
+
+    delete:
+      operationId: deleteVector
+      description: >
+        Deletes a specific vector embedding by ID from the specified database.
+        SQL Equivalent: DELETE FROM items WHERE id = {vectorId};
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: 'Vector embedding deleted successfully.'
+          schema:
+            type: object
+            properties: {}
+
+  '/database/{dbName}/vector/embedding':
+    parameters:
+      - name: dbName
+        in: path
+        required: true
+        type: string
+
+    post:
+      operationId: createEmbedding
+      description: >
+        Creates a new embedding for a specific vector in the specified database.
+        SQL Equivalent: INSERT INTO items (embedding) VALUES ('[1,2,3]');
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Embedding'
+      responses:
+        '201':
+          description: 'Embedding created successfully.'
+          schema:
+            $ref: '#/definitions/Embedding'
+
+  '/database/{dbName}/vector/embedding/{embeddingId}':
+    parameters:
+      - name: dbName
+        in: path
+        required: true
+        type: string
+      - name: embeddingId
+        in: path
+        required: true
+        type: string
+
+    get:
+      operationId: getEmbedding
+      description: >
+        Retrieves a specific embedding by ID from the specified database.
+        SQL Equivalent: SELECT * FROM items WHERE id = {embeddingId};
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: 'Embedding retrieved successfully.'
+          schema:
+            $ref: '#/definitions/Embedding'
+
+    put:
+      operationId: updateEmbedding
+      description: >
+        Updates a specific embedding by ID in the specified database.
+        SQL Equivalent: UPDATE items SET embedding = '[1,2,3]' WHERE id = {embeddingId};
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Embedding'
+      responses:
+        '200':
+          description: 'Embedding updated successfully.'
+          schema:
+            $ref: '#/definitions/Embedding'
+
+    delete:
+      operationId: deleteEmbedding
+      description: >
+        Deletes a specific embedding by ID from the specified database.
+        SQL Equivalent: DELETE FROM items WHERE id = {embeddingId};
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: 'Embedding deleted successfully.'
+          schema:
+            type: object
+            properties: {}
+
+  '/database/{dbName}/vector/search':
+    parameters:
+      - name: dbName
+        in: path
+        required: true
+        type: string
+
+    post:
+      operationId: searchVectors
+      description: >
+        Searches for vectors in the specified database that match the query.
+        SQL Equivalent: SELECT * FROM items ORDER BY embedding <-> '[3,1,2]' LIMIT 5;
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/SearchQuery'
+      responses:
+        '200':
+          description: 'Search results retrieved successfully.'
+          schema:
+            $ref: '#/definitions/SearchResults'
+
+  '/database/{dbName}/vector/index':
+    parameters:
+      - name: dbName
+        in: path
+        required: true
+        type: string
+
+    post:
+      operationId: createIndex
+      description: >
+        Creates a new HNSW index on the specified vector database.
+        SQL Equivalent: CREATE INDEX ON items USING hnsw (embedding vector_l2_ops);
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Index'
+      responses:
+        '201':
+          description: 'Index created successfully.'
+          schema:
+            $ref: '#/definitions/Index'
+
+    get:
+      operationId: listIndexes
+      description: >
+        Retrieves a list of HNSW indexes from the specified database.
+        SQL Equivalent: SELECT * FROM pg_indexes WHERE tablename = 'items';
+      parameters:
+        - name: indexId
+          in: query
+          type: string
+          description: The ID of the index to retrieve.
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: 'Indexes retrieved successfully.'
+          schema:
+            $ref: '#/definitions/IndexArray'
+
+  '/database/{dbName}/vector/index/{indexId}':
+    parameters:
+      - name: dbName
+        in: path
+        required: true
+        type: string
+      - name: indexId
+        in: path
+        required: true
+        type: string
+
+    get:
+      operationId: getIndex
+      description: >
+        Retrieves a specific HNSW index by ID from the specified database.
+        SQL Equivalent: SELECT * FROM pg_indexes WHERE indexname = {indexId};
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: 'Index retrieved successfully.'
+          schema:
+            $ref: '#/definitions/Index'
+
+    put:
+      operationId: updateIndex
+      description: >
+        Updates a specific HNSW index by ID in the specified database.
+        SQL Equivalent: REINDEX INDEX {indexId};
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Index'
+      responses:
+        '200':
+          description: 'Index updated successfully.'
+          schema:
+            $ref: '#/definitions/Index'
+
+    delete:
+      operationId: deleteIndex
+      description: >
+        Deletes a specific HNSW index by ID from the specified database.
+        SQL Equivalent: DROP INDEX {indexId};
+      parameters:
+        - name
+
+: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: 'Index deleted successfully.'
+          schema:
+            type: object
+            properties: {}
+
+definitions:
+  VectorEmbedding:
+    title: VectorEmbedding
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned GUID to identify this vector embedding.
+      createdAt:
+        type: string
+        description: The time this vector embedding was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this vector embedding was last updated. Conforms to RFC3339.
+      vector:
+        type: array
+        items:
+          type: number
+        description: The array of numerical values representing the vector embedding.
+      metadata:
+        type: object
+        description: Additional metadata associated with the vector embedding.
+
+  Embedding:
+    title: Embedding
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned GUID to identify this embedding.
+      vector:
+        type: array
+        items:
+          type: number
+        description: The array of numerical values representing the embedding.
+      metadata:
+        type: object
+        description: Additional metadata associated with the embedding.
+
+  SearchQuery:
+    title: SearchQuery
+    type: object
+    properties:
+      vector:
+        type: array
+        items:
+          type: number
+        description: The array of numerical values representing the search vector.
+      limit:
+        type: integer
+        description: The number of nearest neighbors to return.
+      distance:
+        type: string
+        description: The distance function to use (e.g., '<->' for L2 distance).
+
+  SearchResults:
+    title: SearchResults
+    type: object
+    properties:
+      results:
+        type: array
+        items:
+          $ref: '#/definitions/Embedding'
+        description: The list of embeddings that match the search criteria.
+
+  Index:
+    title: Index
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned GUID to identify this index.
+      type:
+        type: string
+        description: The type of index (e.g., 'HNSW').
+      parameters:
+        type: object
+        description: Additional parameters for the index.
+
+  IndexArray:
+    title: IndexArray
+    type: array
+    items:
+      $ref: '#/definitions/Index'
+    description: An array of index objects.
+```

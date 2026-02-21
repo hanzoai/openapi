@@ -1,0 +1,179 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Review API
+host: api.hanzo.ai
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.ai/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  /review:
+    get:
+      operationId: returnAllReviews
+      description: >
+        Returns all available reviews.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/ReviewArray'
+
+    post:
+      operationId: createReview
+      description: >
+        Creates a new review.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Review'
+      responses:
+        '201':
+          description: 'Everything is OK - new review created.'
+          schema:
+            $ref: '#/definitions/Review'
+
+  '/review/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+
+    put:
+      operationId: replaceReview
+      description: >
+        Wholly replaces the requested review. Any fields not provided are blanked.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Review'
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Review'
+
+    patch:
+      operationId: updateReview
+      description: >
+        Replaces the requested review piecemeal. Any fields not provided are not changed.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Review'
+      responses:
+        '200':
+          description: 'Everything is OK'
+          schema:
+            $ref: '#/definitions/Review'
+
+    delete:
+      operationId: deleteReview
+      description: >
+        Deletes the specified review. Cannot be undone.
+      responses:
+        '204':
+          description: 'Everything is OK.'
+          schema:
+            type: object
+            properties: {}
+
+    get:
+      operationId: retrieveReview
+      description: >
+        Returns the specified review.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Review'
+
+definitions:
+  Review:
+    title: Review
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      createdAt:
+        type: string
+        description: The time this review was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this review was last updated. Conforms to RFC3339.
+      userId:
+        type: string
+        description: The user that created this review.
+      name:
+        type: string
+        description: The name of the review.
+      comment:
+        type: string
+        description: The review's text.
+      rating:
+        type: integer
+        description: The numeric rating attached to the review.
+      device:
+        type: string
+        description: The device the review was created on.
+      productId:
+        type: string
+        description: The hanzo-provided unique product ID that this review applies to.
+      variantId:
+        type: string
+        description: The hanzo-provided unique variant ID that this review applies to.
+
+  ReviewArray:
+    title: ReviewArray
+    description: An array of reviews
+    type: array
+    items:
+      $ref: '#/definitions/Review'
+

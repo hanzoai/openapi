@@ -1,0 +1,182 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Wallet API
+  description: >
+    A Wallet is a set of cryptographic keys used for sending and receiving
+    money on a specific blockchain.
+
+host: api.hanzo.ai
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.ai/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  '/wallet/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: deleteWallet
+      description: >
+        Deletes the requested wallet. Cannot be undone.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+          description: The unique identifier for the Store.
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: ''
+          schema:
+            type: object
+            properties: {}
+
+    put:
+      operationId: replaceWallet
+      description: >
+        Replaces the specified wallet wholly. Any fields not passed are blanked.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Wallet'
+      responses:
+        '200':
+          description: 'Everything is OK'
+          schema:
+            $ref: '#/definitions/Wallet'
+
+    patch:
+      operationId: updateWallet
+      description: >
+        Replaces a wallet object piecemeal. Any fields not passed are not changed.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Wallet'
+      responses:
+        '200':
+          description: 'Everything is OK'
+          schema:
+            $ref: '#/definitions/Wallet'
+    get:
+      operationId: GET_wallet-id
+      description: >
+        Returns the specified Wallet.
+      responses:
+        '200':
+          description: 'Everything is OK'
+          schema:
+            $ref: '#/definitions/Wallet'
+  '/wallet':
+    post:
+      operationId: createWallet
+      description: >
+        Creates a new Wallet.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Wallet'
+      responses:
+        '201':
+          description: 'Everything is OK. New wallet created.'
+          schema:
+            $ref: '#/definitions/Wallet'
+    get:
+      operationId: retrieveAllWallets
+      description: >
+        Returns a list of all available Wallets.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/WalletArray'
+
+definitions:
+  Wallet:
+    title: Wallet
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      createdAt:
+        type: string
+        description: The time this Variant was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this Variant was last updated. Conforms to RFC3339.
+      accounts:
+        $ref: '#/definitions/AccountArray'
+
+  Account:
+    title: Account
+    description: A single set of cryptographic keys.
+    type: object
+    properties:
+      encrypted:
+        type: string
+        description: >
+          The encrypted form of the private key, locked with password (not stored on Hanzo's side).
+      salt:
+        type: string
+        description: >
+          The salt used to encrypt this key.
+      name:
+        type: string
+        description: The human friendly name for this account.
+      address:
+        type: string
+        description: The publicly sharable address for this account.
+      type:
+        type: string
+        description: >
+          The blockchain this account lives on. One of 'ethereum', 'ethereum-morden',
+          'ethereum-ropsten', 'bitcoin', 'bitcoin-testnet'
+
+  AccountArray:
+    title: AccountArray
+    description: An array of Accounts
+    type: array
+    items:
+      $ref: '#/definitions/Account'
+  WalletArray:
+    title: WalletArray
+    description: An array of Wallets
+    type: array
+    items:
+      $ref: '#/definitions/Wallet'
