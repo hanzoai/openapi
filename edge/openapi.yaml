@@ -1,0 +1,803 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Edge API
+  description: |
+    Hanzo Edge provides serverless edge functions with global deployment,
+    instant scaling, and zero cold starts.
+
+    Features:
+    - Deploy TypeScript/JavaScript functions to edge locations worldwide
+    - Sub-millisecond cold starts via V8 isolates
+    - Integrated secrets management
+    - Custom domain support with automatic TLS
+    - Streaming responses and SSE support
+    - Built-in metrics and log tailing
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://edge.hanzo.ai
+    description: Production
+  - url: https://api.hanzo.ai/v1/edge
+    description: Gateway Proxy
+
+tags:
+  - name: Functions
+    description: Edge function lifecycle management
+  - name: Versions
+    description: Function version history
+  - name: Logs
+    description: Function execution logs
+  - name: Secrets
+    description: Environment secrets for functions
+  - name: Domains
+    description: Custom domain management
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HANZO_API_KEY
+      description: Hanzo API Key (Bearer hk-...)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    Function:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+          description: URL-safe function identifier
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, deploying, failed]
+        version:
+          type: integer
+          description: Current deployed version number
+        runtime:
+          type: string
+          enum: [deno, node]
+          default: deno
+        entrypoint:
+          type: string
+          default: index.ts
+        import_map:
+          type: boolean
+        verify_jwt:
+          type: boolean
+          description: Whether to verify JWT tokens on invocation
+        invoke_url:
+          type: string
+          format: uri
+          description: Public invocation URL
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FunctionCreate:
+      type: object
+      required:
+        - slug
+        - name
+      properties:
+        slug:
+          type: string
+          pattern: ^[a-z0-9][a-z0-9-]{2,63}$
+        name:
+          type: string
+        verify_jwt:
+          type: boolean
+          default: true
+        import_map:
+          type: boolean
+          default: false
+        entrypoint:
+          type: string
+          default: index.ts
+
+    FunctionUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        verify_jwt:
+          type: boolean
+        import_map:
+          type: boolean
+        entrypoint:
+          type: string
+
+    FunctionVersion:
+      type: object
+      properties:
+        version:
+          type: integer
+        status:
+          type: string
+          enum: [active, inactive]
+        entrypoint:
+          type: string
+        import_map:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    FunctionMetrics:
+      type: object
+      properties:
+        function_id:
+          type: string
+        period:
+          type: string
+        invocations:
+          type: integer
+          format: int64
+        errors:
+          type: integer
+          format: int64
+        avg_duration_ms:
+          type: number
+        p95_duration_ms:
+          type: number
+        p99_duration_ms:
+          type: number
+        data_in_bytes:
+          type: integer
+          format: int64
+        data_out_bytes:
+          type: integer
+          format: int64
+
+    LogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        event_type:
+          type: string
+          enum: [uncaughtException, log, boot, beforeUnload]
+        level:
+          type: string
+          enum: [info, warn, error, debug]
+        message:
+          type: string
+        execution_id:
+          type: string
+
+    Secret:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+          description: Only returned on creation
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SecretCreate:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          pattern: ^[A-Z_][A-Z0-9_]{0,127}$
+        value:
+          type: string
+
+    Domain:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        hostname:
+          type: string
+        function_slug:
+          type: string
+        status:
+          type: string
+          enum: [pending, active, error]
+        tls_state:
+          type: string
+          enum: [pending, provisioning, active, failed]
+        verification:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [CNAME, TXT]
+            name:
+              type: string
+            value:
+              type: string
+        created_at:
+          type: string
+          format: date-time
+
+    DomainCreate:
+      type: object
+      required:
+        - hostname
+        - function_slug
+      properties:
+        hostname:
+          type: string
+        function_slug:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  # Functions
+  /functions:
+    get:
+      tags:
+        - Functions
+      summary: List functions
+      operationId: listFunctions
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, deploying, failed]
+      responses:
+        '200':
+          description: List of functions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Function'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Functions
+      summary: Create function
+      operationId: createFunction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FunctionCreate'
+      responses:
+        '201':
+          description: Function created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Function'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /functions/{slug}:
+    get:
+      tags:
+        - Functions
+      summary: Get function
+      operationId: getFunction
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Function details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Function'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Functions
+      summary: Update function
+      operationId: updateFunction
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FunctionUpdate'
+      responses:
+        '200':
+          description: Function updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Function'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Functions
+      summary: Delete function
+      operationId: deleteFunction
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Function deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /functions/{slug}/deploy:
+    post:
+      tags:
+        - Functions
+      summary: Deploy function
+      operationId: deployFunction
+      description: |
+        Deploy function source code. Upload a tarball or zip containing
+        the function source. Creates a new version on success.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Function deployed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Function'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /functions/{slug}/invoke:
+    post:
+      tags:
+        - Functions
+      summary: Invoke function
+      operationId: invokeFunction
+      description: |
+        Invoke an edge function directly. The request body is passed
+        through to the function handler.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+          text/plain:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Function response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+            text/plain:
+              schema:
+                type: string
+            text/event-stream:
+              schema:
+                type: string
+                description: Server-Sent Events stream
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # Versions
+  /functions/{slug}/versions:
+    get:
+      tags:
+        - Versions
+      summary: List function versions
+      operationId: listFunctionVersions
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FunctionVersion'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /functions/{slug}/rollback:
+    post:
+      tags:
+        - Versions
+      summary: Rollback to version
+      operationId: rollbackFunction
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - version
+              properties:
+                version:
+                  type: integer
+                  description: Version number to rollback to
+      responses:
+        '200':
+          description: Function rolled back
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Function'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Logs
+  /functions/{slug}/logs:
+    get:
+      tags:
+        - Logs
+      summary: Get function logs
+      operationId: getFunctionLogs
+      description: |
+        Returns function execution logs. Supports SSE streaming
+        via Accept: text/event-stream header for live tailing.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Return logs after this timestamp
+        - name: until
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: level
+          in: query
+          schema:
+            type: string
+            enum: [info, warn, error, debug]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+      responses:
+        '200':
+          description: Log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LogEntry'
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE stream of log entries
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Metrics
+  /functions/{slug}/metrics:
+    get:
+      tags:
+        - Functions
+      summary: Get function metrics
+      operationId: getFunctionMetrics
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: granularity
+          in: query
+          schema:
+            type: string
+            enum: [minute, hour, day]
+            default: hour
+      responses:
+        '200':
+          description: Function metrics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FunctionMetrics'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Secrets
+  /secrets:
+    get:
+      tags:
+        - Secrets
+      summary: List secrets
+      operationId: listSecrets
+      description: Returns secret names only; values are never exposed after creation.
+      responses:
+        '200':
+          description: List of secrets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time
+                    updated_at:
+                      type: string
+                      format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Secrets
+      summary: Create secret
+      operationId: createSecret
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecretCreate'
+      responses:
+        '201':
+          description: Secret created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Secret'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /secrets/{name}:
+    put:
+      tags:
+        - Secrets
+      summary: Update secret
+      operationId: updateSecret
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - value
+              properties:
+                value:
+                  type: string
+      responses:
+        '200':
+          description: Secret updated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Secrets
+      summary: Delete secret
+      operationId: deleteSecret
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Secret deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Domains
+  /domains:
+    get:
+      tags:
+        - Domains
+      summary: List custom domains
+      operationId: listDomains
+      responses:
+        '200':
+          description: List of domains
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Domain'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Domains
+      summary: Add custom domain
+      operationId: createDomain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DomainCreate'
+      responses:
+        '201':
+          description: Domain created (verify DNS to activate)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Domain'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /domains/{id}:
+    delete:
+      tags:
+        - Domains
+      summary: Remove custom domain
+      operationId: deleteDomain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Domain removed
+        '404':
+          $ref: '#/components/responses/NotFound'

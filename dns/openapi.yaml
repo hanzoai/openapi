@@ -1,0 +1,793 @@
+openapi: 3.1.0
+info:
+  title: Hanzo DNS API
+  description: |
+    Hanzo DNS provides authoritative DNS hosting with a REST API for
+    zone and record management, DNSSEC support, and query analytics.
+
+    Based on CoreDNS with Hanzo extensions for:
+    - Multi-tenant zone management
+    - DNSSEC signing and key rotation
+    - BIND zone file import/export
+    - Real-time query analytics
+    - Full DNS record type support (A, AAAA, CNAME, MX, TXT, SRV, NS, SOA, CAA)
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://dns.hanzo.ai
+    description: Production
+  - url: https://api.hanzo.ai/v1/dns
+    description: Gateway Proxy
+
+tags:
+  - name: Zones
+    description: DNS zone management
+  - name: Records
+    description: DNS record management
+  - name: DNSSEC
+    description: DNSSEC signing and key management
+  - name: Analytics
+    description: DNS query analytics
+  - name: Health
+    description: Service health
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HANZO_API_KEY
+      description: Hanzo API Key (Bearer hk-...)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    Zone:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        zone:
+          type: string
+          description: Zone name (e.g. example.com.)
+        status:
+          type: string
+          enum: [active, pending, disabled]
+        nameservers:
+          type: array
+          items:
+            type: string
+          description: Assigned authoritative nameservers
+        soa:
+          $ref: '#/components/schemas/SOARecord'
+        record_count:
+          type: integer
+        dnssec_enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ZoneCreate:
+      type: object
+      required:
+        - zone
+      properties:
+        zone:
+          type: string
+          description: Zone name (e.g. example.com)
+
+    SOARecord:
+      type: object
+      properties:
+        mname:
+          type: string
+          description: Primary nameserver
+        rname:
+          type: string
+          description: Admin email (DNS format)
+        serial:
+          type: integer
+          format: int64
+        refresh:
+          type: integer
+          default: 3600
+        retry:
+          type: integer
+          default: 600
+        expire:
+          type: integer
+          default: 604800
+        minimum:
+          type: integer
+          default: 300
+          description: Negative cache TTL
+
+    Record:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: Record name (relative to zone, @ for apex)
+        type:
+          type: string
+          enum: [A, AAAA, CNAME, MX, TXT, SRV, NS, SOA, CAA]
+        ttl:
+          type: integer
+          default: 300
+        content:
+          type: string
+          description: Record value
+        priority:
+          type: integer
+          description: Priority (MX, SRV records)
+        proxied:
+          type: boolean
+          default: false
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    RecordCreate:
+      type: object
+      required:
+        - name
+        - type
+        - content
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [A, AAAA, CNAME, MX, TXT, SRV, NS, CAA]
+        ttl:
+          type: integer
+          default: 300
+        content:
+          type: string
+          description: |
+            Record content varies by type:
+            - A: IPv4 address (e.g. 1.2.3.4)
+            - AAAA: IPv6 address
+            - CNAME: Target hostname
+            - MX: Mail server hostname
+            - TXT: Text value (auto-quoted)
+            - SRV: weight port target (priority set separately)
+            - NS: Nameserver hostname
+            - CAA: flags tag value (e.g. 0 issue letsencrypt.org)
+        priority:
+          type: integer
+          description: Required for MX and SRV records
+        proxied:
+          type: boolean
+          default: false
+
+    DNSSECStatus:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        status:
+          type: string
+          enum: [active, pending, disabled]
+        algorithm:
+          type: string
+          default: ECDSAP256SHA256
+        ds_record:
+          type: string
+          description: DS record to add at registrar
+        key_tag:
+          type: integer
+        digest_type:
+          type: string
+        digest:
+          type: string
+        public_key:
+          type: string
+
+    QueryAnalytics:
+      type: object
+      properties:
+        zone:
+          type: string
+        period:
+          type: string
+        total_queries:
+          type: integer
+          format: int64
+        by_type:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+          description: Query count by record type
+        by_response_code:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+          description: Query count by RCODE (NOERROR, NXDOMAIN, SERVFAIL, etc.)
+        by_country:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+        top_queried_names:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              count:
+                type: integer
+                format: int64
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  # Health
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+
+  # Zones
+  /zones:
+    get:
+      tags:
+        - Zones
+      summary: List zones
+      operationId: listZones
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, pending, disabled]
+        - name: name
+          in: query
+          schema:
+            type: string
+          description: Filter by zone name (substring match)
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of zones
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  zones:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Zone'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Zones
+      summary: Create zone
+      operationId: createZone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ZoneCreate'
+      responses:
+        '201':
+          description: Zone created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Zone'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /zones/{zone}:
+    get:
+      tags:
+        - Zones
+      summary: Get zone
+      operationId: getZone
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Zone details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Zone'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Zones
+      summary: Update zone
+      operationId: updateZone
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [active, disabled]
+      responses:
+        '200':
+          description: Zone updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Zone'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Zones
+      summary: Delete zone
+      operationId: deleteZone
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Zone deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Records
+  /zones/{zone}/records:
+    get:
+      tags:
+        - Records
+      summary: List DNS records
+      operationId: listRecords
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [A, AAAA, CNAME, MX, TXT, SRV, NS, SOA, CAA]
+        - name: name
+          in: query
+          schema:
+            type: string
+          description: Filter by record name
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: List of DNS records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  records:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Record'
+                  total:
+                    type: integer
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      tags:
+        - Records
+      summary: Create DNS record
+      operationId: createRecord
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordCreate'
+      responses:
+        '201':
+          description: Record created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Record'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /zones/{zone}/records/{id}:
+    get:
+      tags:
+        - Records
+      summary: Get DNS record
+      operationId: getRecord
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Record details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Record'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Records
+      summary: Update DNS record
+      operationId: updateRecord
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                content:
+                  type: string
+                ttl:
+                  type: integer
+                priority:
+                  type: integer
+                proxied:
+                  type: boolean
+      responses:
+        '200':
+          description: Record updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Record'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Records
+      summary: Delete DNS record
+      operationId: deleteRecord
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Record deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # DNSSEC
+  /zones/{zone}/dnssec:
+    get:
+      tags:
+        - DNSSEC
+      summary: Get DNSSEC status
+      operationId: getDnssecStatus
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: DNSSEC status and DS record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DNSSECStatus'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - DNSSEC
+      summary: Disable DNSSEC
+      operationId: disableDnssec
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: DNSSEC disabled
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /zones/{zone}/dnssec/enable:
+    post:
+      tags:
+        - DNSSEC
+      summary: Enable DNSSEC
+      operationId: enableDnssec
+      description: |
+        Enables DNSSEC signing for the zone. Returns the DS record
+        that must be added at the domain registrar.
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: DNSSEC enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DNSSECStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Zone Import/Export
+  /zones/{zone}/import:
+    post:
+      tags:
+        - Zones
+      summary: Import zone file
+      operationId: importZone
+      description: Import DNS records from a BIND-format zone file.
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+              description: BIND zone file content
+      responses:
+        '200':
+          description: Import result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  records_added:
+                    type: integer
+                  records_updated:
+                    type: integer
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        line:
+                          type: integer
+                        message:
+                          type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /zones/{zone}/export:
+    get:
+      tags:
+        - Zones
+      summary: Export zone file
+      operationId: exportZone
+      description: Export zone as a BIND-format zone file.
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: BIND zone file
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Analytics
+  /zones/{zone}/analytics:
+    get:
+      tags:
+        - Analytics
+      summary: Get query analytics
+      operationId: getZoneAnalytics
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: granularity
+          in: query
+          schema:
+            type: string
+            enum: [hour, day, week]
+            default: day
+      responses:
+        '200':
+          description: Query analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryAnalytics'
+        '404':
+          $ref: '#/components/responses/NotFound'

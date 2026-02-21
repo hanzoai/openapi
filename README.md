@@ -2,7 +2,9 @@
 
 Unified OpenAPI specifications for ALL Hanzo services. Single `HANZO_API_KEY` for everything via `api.hanzo.ai`.
 
-## Services
+**Version**: 4.0.0 — Hanzo Unified Cloud
+
+## Services (24)
 
 ### Core
 
@@ -11,7 +13,7 @@ Unified OpenAPI specifications for ALL Hanzo services. Single `HANZO_API_KEY` fo
 | **IAM** | 1.503.0 | `iam/openapi.yaml` | `hanzo.id` | Identity, auth, OAuth2/OIDC/SAML/Web3 |
 | **Commerce** | 1.0.0 | `commerce/openapi.yaml` | `commerce.hanzo.ai` | Billing, payments, invoicing, orders, subscriptions |
 | **Cloud** | 1.70.0 | `cloud/openapi.yaml` | `api.cloud.hanzo.ai` | AI model API (86+ models), usage tracking |
-| **Gateway** | 1.0.0 | `gateway/openapi.yaml` | `api.hanzo.ai` | Unified API proxy, LLM routing, rate limiting |
+| **Gateway** | 1.1.0 | `gateway/openapi.yaml` | `api.hanzo.ai` | Unified API proxy, LLM routing, CDN, edge routing |
 | **Console** | 1.0.0 | `console/openapi.yaml` | `console.hanzo.ai` | Observability, traces, scores, prompts |
 | **KMS** | 1.0.0 | `kms/openapi.yaml` | `kms.hanzo.ai` | Secrets management, encryption, audit |
 
@@ -28,41 +30,115 @@ Unified OpenAPI specifications for ALL Hanzo services. Single `HANZO_API_KEY` fo
 
 ### Infrastructure
 
-| Service | Version | Spec | Endpoint | Description |
-|---------|---------|------|----------|-------------|
-| **Platform** | 1.0.0 | `platform/openapi.yaml` | `platform.hanzo.ai` | PaaS, deployments, containers |
-| **Visor** | 1.0.0 | `visor/openapi.yaml` | `vm.hanzo.ai` | VM management, cloud instances |
-| **Operative** | 1.0.0 | `operative/openapi.yaml` | `operative.hanzo.ai` | Computer use, browser automation |
-| **Vector** | 1.0.0 | `vector/openapi.yaml` | `vector.hanzo.ai` | Vector database, collections, search |
-| **Nexus** | 1.70.0 | `nexus/openapi.yaml` | `nexus.hanzo.ai` | Knowledge base, RAG, embeddings |
+| Service | Version | Spec | Endpoint | Org | Description |
+|---------|---------|------|----------|-----|-------------|
+| **PaaS** | 1.0.0 | `paas/openapi.yaml` | `paas.hanzo.ai` | @hanzoai | K8s-native GitOps, cluster management |
+| **Platform** | 1.0.0 | `platform/openapi.yaml` | `platform.hanzo.ai` | @hanzoai | Local dev PaaS, Docker deployments |
+| **Visor** | 1.0.0 | `visor/openapi.yaml` | `vm.hanzo.ai` | @hanzoai | VM management, cloud instances |
+| **Operative** | 1.0.0 | `operative/openapi.yaml` | `operative.hanzo.ai` | @hanzoai | Computer use, browser automation |
+| **Vector** | 1.0.0 | `vector/openapi.yaml` | `vector.hanzo.ai` | @hanzoai | Vector database, collections, search |
+| **Nexus** | 1.70.0 | `nexus/openapi.yaml` | `nexus.hanzo.ai` | @hanzoai | Knowledge base, RAG, embeddings |
+| **Registry** | 1.0.0 | `registry/openapi.yaml` | `registry.hanzo.ai` | @hanzocr | Container registry (Harbor) |
+| **DB** | 1.0.0 | `db/openapi.yaml` | `db.hanzo.ai` | @hanzodb | Serverless Postgres, instant branching (Neon) |
+| **Edge** | 1.0.0 | `edge/openapi.yaml` | `edge.hanzo.ai` | @hanzofn | Edge functions, Deno-based serverless |
+
+### Operations
+
+| Service | Version | Spec | Endpoint | Org | Description |
+|---------|---------|------|----------|-----|-------------|
+| **Engine** | 1.0.0 | `engine/openapi.yaml` | `engine.hanzo.ai` | @hanzoml | GPU scheduling, ML pipelines, model serving |
+| **O11y** | 1.0.0 | `o11y/openapi.yaml` | `o11y.hanzo.ai` | @hanzoo11y | Logs, metrics, traces, alerts |
+| **DNS** | 1.0.0 | `dns/openapi.yaml` | `dns.hanzo.ai` | @hanzodns | DNS zones, records, DNSSEC |
+| **ZT** | 1.0.0 | `zt/openapi.yaml` | `zt.hanzo.ai` | @hanzozt | Zero-trust networking, overlay mesh |
+
+## Platform Capabilities
+
+Full Heroku/Vercel parity and beyond:
+
+| Capability | Service | Spec | Org | Status |
+|---|---|---|---|---|
+| AI Model API (86+ providers) | Cloud | `cloud/openapi.yaml` | @hanzoai | Existing |
+| Unified API Gateway | Gateway | `gateway/openapi.yaml` | @hanzoai | Updated |
+| Identity & Auth (OAuth2/OIDC/SAML/Web3) | IAM | `iam/openapi.yaml` | @hanzoai | Existing |
+| Billing & Metering | Commerce | `commerce/openapi.yaml` | @hanzoai | Existing |
+| Build System (Nixpacks) | PaaS | `paas/openapi.yaml` | @hanzoai | **NEW** |
+| Container Registry | Registry | `registry/openapi.yaml` | @hanzocr | **NEW** |
+| Managed Databases (Serverless Postgres) | DB | `db/openapi.yaml` | @hanzodb | **NEW** |
+| Edge Functions (Deno) | Edge | `edge/openapi.yaml` | @hanzofn | **NEW** |
+| Cron / Scheduled Jobs | Auto | `auto/openapi.yaml` | @hanzoai | Existing |
+| Log Aggregation / SIEM | O11y | `o11y/openapi.yaml` | @hanzoo11y | **NEW** |
+| Metrics / APM | O11y | `o11y/openapi.yaml` | @hanzoo11y | **NEW** |
+| DNS Management | DNS | `dns/openapi.yaml` | @hanzodns | **NEW** |
+| CDN | Gateway | `gateway/openapi.yaml` | @hanzoai | Updated |
+| GPU Scheduling / ML Pipelines | Engine | `engine/openapi.yaml` | @hanzoml | **NEW** |
+| Zero Trust Networking | ZT | `zt/openapi.yaml` | @hanzozt | **NEW** |
+| VM Management | Visor | `visor/openapi.yaml` | @hanzoai | Existing |
+| Computer Use / Automation | Operative | `operative/openapi.yaml` | @hanzoai | Existing |
+| Vector Database | Vector | `vector/openapi.yaml` | @hanzoai | Existing |
+| Knowledge Base / RAG | Nexus | `nexus/openapi.yaml` | @hanzoai | Existing |
+| AI Chat | Chat | `chat/openapi.yaml` | @hanzoai | Existing |
+| Workflow Automation | Flow | `flow/openapi.yaml` | @hanzoai | Existing |
+| Bot Framework (743 skills) | Bot | `bot/openapi.yaml` | @hanzoai | Existing |
+| AI Search (Generative UI) | Search | `search/openapi.yaml` | @hanzoai | Existing |
+| Secrets Management | KMS | `kms/openapi.yaml` | @hanzoai | Existing |
+| Observability / Tracing | Console | `console/openapi.yaml` | @hanzoai | Existing |
+
+## GitHub Organizations
+
+| Org | Purpose | Upstream Forks |
+|-----|---------|----------------|
+| [@hanzoai](https://github.com/hanzoai) | Core platform | — |
+| [@hanzozt](https://github.com/hanzozt) | Zero-trust networking | OpenZiti (79 repos) |
+| [@hanzoml](https://github.com/hanzoml) | GPU/ML infrastructure | kubeflow, kuberay |
+| [@hanzodns](https://github.com/hanzodns) | DNS management | coredns |
+| [@hanzofn](https://github.com/hanzofn) | Edge functions | supabase/edge-runtime |
+| [@hanzodb](https://github.com/hanzodb) | Serverless Postgres | neondatabase/neon |
+| [@hanzocr](https://github.com/hanzocr) | Container registry | goharbor/harbor |
+| [@hanzoo11y](https://github.com/hanzoo11y) | Observability | grafana/loki, grafana/grafana, SigNoz/signoz |
 
 ## Directory Structure
 
 ```
 openapi/
 ├── README.md              # This file
-├── hanzo.yaml             # Master unified spec (OpenAPI 3.1.0)
+├── hanzo.yaml             # Master unified spec (v4.0.0, OpenAPI 3.1.0)
 ├── shared/
 │   ├── errors.yaml        # Shared error responses
 │   ├── pagination.yaml    # Pagination schemas
 │   └── auth.yaml          # Auth schemas
-├── iam/openapi.yaml       # → ../../iam/swagger/swagger.yml
-├── commerce/openapi.yaml  # → ../../commerce/openapi.yaml
-├── cloud/openapi.yaml     # → ../../cloud/swagger/swagger.yml
-├── nexus/openapi.yaml     # → ../../nexus/swagger/swagger.yml
+│
+│   # Core (6)
+├── iam/openapi.yaml
+├── commerce/openapi.yaml
+├── cloud/openapi.yaml
 ├── gateway/openapi.yaml
-├── vector/openapi.yaml
+├── console/openapi.yaml
+├── kms/openapi.yaml
+│
+│   # Application (6)
 ├── chat/openapi.yaml
-├── analytics/openapi.yaml
 ├── flow/openapi.yaml
 ├── auto/openapi.yaml
+├── analytics/openapi.yaml
 ├── bot/openapi.yaml
 ├── search/openapi.yaml
-├── kms/openapi.yaml
-├── console/openapi.yaml
+│
+│   # Infrastructure (9)
+├── paas/openapi.yaml       # NEW — K8s-native PaaS
 ├── platform/openapi.yaml
+├── visor/openapi.yaml
 ├── operative/openapi.yaml
-└── visor/openapi.yaml
+├── vector/openapi.yaml
+├── nexus/openapi.yaml
+├── registry/openapi.yaml   # NEW — Container registry
+├── db/openapi.yaml         # NEW — Serverless Postgres
+├── edge/openapi.yaml       # NEW — Edge functions
+│
+│   # Operations (4)
+├── engine/openapi.yaml     # NEW — GPU/ML
+├── o11y/openapi.yaml       # NEW — Observability
+├── dns/openapi.yaml        # NEW — DNS management
+└── zt/openapi.yaml         # NEW — Zero trust
 ```
 
 ## Authentication
@@ -82,21 +158,40 @@ API keys are managed at [hanzo.id](https://hanzo.id) or [console.hanzo.ai](https
 
 ## Unified API Gateway
 
-All services are accessible through `api.hanzo.ai`:
+All 24 services accessible through `api.hanzo.ai`:
 
 ```
+# Core
 api.hanzo.ai/v1/chat/completions    → Cloud API (AI models)
 api.hanzo.ai/v1/models              → Cloud API (model listing)
 api.hanzo.ai/v1/billing/*           → Commerce (billing/usage)
 api.hanzo.ai/v1/auth/*              → IAM (identity)
+api.hanzo.ai/v1/kms/*               → KMS (secrets)
+api.hanzo.ai/v1/console/*           → Console (observability)
+
+# Application
 api.hanzo.ai/v1/analytics/*         → Analytics
 api.hanzo.ai/v1/search/*            → Search
 api.hanzo.ai/v1/flow/*              → Flow (workflows)
 api.hanzo.ai/v1/bot/*               → Bot framework
-api.hanzo.ai/v1/kms/*               → KMS (secrets)
+api.hanzo.ai/v1/chat/*              → Chat
+
+# Infrastructure
+api.hanzo.ai/v1/paas/*              → PaaS (GitOps deployments)
+api.hanzo.ai/v1/platform/*          → Platform (local dev)
 api.hanzo.ai/v1/vm/*                → Visor (VMs)
-api.hanzo.ai/v1/platform/*          → Platform (PaaS)
-api.hanzo.ai/v1/console/*           → Console (observability)
+api.hanzo.ai/v1/operative/*         → Operative (computer use)
+api.hanzo.ai/v1/vector/*            → Vector DB
+api.hanzo.ai/v1/nexus/*             → Nexus (knowledge base)
+api.hanzo.ai/v1/registry/*          → Registry (containers)
+api.hanzo.ai/v1/db/*                → DB (Postgres)
+api.hanzo.ai/v1/edge/*              → Edge (functions)
+
+# Operations
+api.hanzo.ai/v1/engine/*            → Engine (GPU/ML)
+api.hanzo.ai/v1/o11y/*              → O11y (observability)
+api.hanzo.ai/v1/dns/*               → DNS
+api.hanzo.ai/v1/zt/*                → ZT (zero trust)
 ```
 
 ## Generate Clients

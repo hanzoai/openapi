@@ -1,0 +1,1677 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Engine API
+  description: |
+    Hanzo Engine provides GPU cluster management, ML job orchestration,
+    model serving, and pipeline execution.
+
+    Components:
+    - **Clusters**: GPU cluster registration and node management
+    - **Jobs**: Training and inference job submission with GPU scheduling
+    - **Ray**: KubeRay cluster lifecycle and autoscaling
+    - **Pipelines**: KubeFlow-compatible ML pipeline orchestration
+    - **GPUs**: GPU inventory and allocation tracking
+    - **Serve**: Model serving endpoint management with autoscaling
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://engine.hanzo.ai
+    description: Production
+  - url: https://api.hanzo.ai/v1/engine
+    description: Gateway Proxy
+
+tags:
+  - name: Clusters
+    description: GPU cluster registration and management
+  - name: Jobs
+    description: Training and inference job orchestration
+  - name: Ray
+    description: Ray cluster management (KubeRay)
+  - name: Pipelines
+    description: ML pipeline execution (KubeFlow)
+  - name: GPUs
+    description: GPU inventory and allocation
+  - name: Serve
+    description: Model serving endpoints
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HANZO_API_KEY
+      description: Hanzo API Key (Bearer hk-...)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    # Clusters
+    Cluster:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+          enum: [online, offline, degraded, provisioning]
+        provider:
+          type: string
+          enum: [bare_metal, aws, gcp, azure, lambda, coreweave]
+        region:
+          type: string
+        node_count:
+          type: integer
+        total_gpus:
+          type: integer
+        available_gpus:
+          type: integer
+        gpu_types:
+          type: array
+          items:
+            type: string
+        total_memory_gb:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ClusterCreate:
+      type: object
+      required:
+        - name
+        - provider
+      properties:
+        name:
+          type: string
+        provider:
+          type: string
+          enum: [bare_metal, aws, gcp, azure, lambda, coreweave]
+        region:
+          type: string
+        kubeconfig:
+          type: string
+          description: Base64-encoded kubeconfig for the cluster
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+
+    ClusterNode:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [ready, not_ready, cordoned, draining]
+        gpus:
+          type: array
+          items:
+            $ref: '#/components/schemas/GPUDevice'
+        cpu_cores:
+          type: integer
+        memory_gb:
+          type: integer
+        ip:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+
+    GPUDevice:
+      type: object
+      properties:
+        index:
+          type: integer
+        model:
+          type: string
+          description: GPU model (e.g. A100-SXM4-80GB, H100-SXM5-80GB)
+        memory_mb:
+          type: integer
+        utilization_percent:
+          type: number
+        memory_used_mb:
+          type: integer
+        temperature_c:
+          type: integer
+        power_draw_w:
+          type: number
+        status:
+          type: string
+          enum: [idle, allocated, error]
+
+    # Jobs
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [training, inference, fine_tune, evaluation]
+        status:
+          type: string
+          enum: [pending, scheduling, running, succeeded, failed, cancelled]
+        cluster_id:
+          type: string
+          format: uuid
+        image:
+          type: string
+          description: Container image
+        command:
+          type: array
+          items:
+            type: string
+        resources:
+          $ref: '#/components/schemas/JobResources'
+        env:
+          type: object
+          additionalProperties:
+            type: string
+        priority:
+          type: integer
+          default: 0
+        max_retries:
+          type: integer
+          default: 0
+        timeout_seconds:
+          type: integer
+        metrics:
+          $ref: '#/components/schemas/JobMetrics'
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    JobCreate:
+      type: object
+      required:
+        - name
+        - type
+        - image
+        - resources
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [training, inference, fine_tune, evaluation]
+        cluster_id:
+          type: string
+          format: uuid
+          description: Target cluster (auto-selected if omitted)
+        image:
+          type: string
+        command:
+          type: array
+          items:
+            type: string
+        resources:
+          $ref: '#/components/schemas/JobResources'
+        env:
+          type: object
+          additionalProperties:
+            type: string
+        priority:
+          type: integer
+          default: 0
+        max_retries:
+          type: integer
+          default: 0
+        timeout_seconds:
+          type: integer
+
+    JobResources:
+      type: object
+      required:
+        - gpu_count
+      properties:
+        gpu_count:
+          type: integer
+          minimum: 1
+        gpu_type:
+          type: string
+          description: Required GPU model (e.g. A100, H100)
+        cpu_cores:
+          type: integer
+        memory_gb:
+          type: integer
+        shared_memory_gb:
+          type: integer
+          description: Shared memory (/dev/shm) size
+        storage_gb:
+          type: integer
+
+    JobMetrics:
+      type: object
+      properties:
+        gpu_utilization:
+          type: number
+          description: Average GPU utilization percent
+        gpu_memory_used_mb:
+          type: integer
+        throughput_samples_per_sec:
+          type: number
+        loss:
+          type: number
+        epoch:
+          type: integer
+        step:
+          type: integer
+
+    # Ray
+    RayCluster:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        status:
+          type: string
+          enum: [creating, running, suspended, failed, deleting]
+        head:
+          type: object
+          properties:
+            cpu:
+              type: integer
+            memory_gb:
+              type: integer
+            gpu_count:
+              type: integer
+            status:
+              type: string
+              enum: [running, pending, failed]
+        workers:
+          type: array
+          items:
+            type: object
+            properties:
+              group_name:
+                type: string
+              replicas:
+                type: integer
+              min_replicas:
+                type: integer
+              max_replicas:
+                type: integer
+              cpu:
+                type: integer
+              memory_gb:
+                type: integer
+              gpu_count:
+                type: integer
+              gpu_type:
+                type: string
+              status:
+                type: string
+                enum: [running, pending, failed]
+        ray_version:
+          type: string
+        dashboard_url:
+          type: string
+          format: uri
+        created_at:
+          type: string
+          format: date-time
+
+    RayClusterCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+          default: default
+        ray_version:
+          type: string
+          default: "2.9.0"
+        head:
+          type: object
+          properties:
+            cpu:
+              type: integer
+              default: 4
+            memory_gb:
+              type: integer
+              default: 16
+            gpu_count:
+              type: integer
+              default: 0
+        workers:
+          type: array
+          items:
+            type: object
+            required:
+              - group_name
+              - replicas
+            properties:
+              group_name:
+                type: string
+              replicas:
+                type: integer
+              min_replicas:
+                type: integer
+              max_replicas:
+                type: integer
+              cpu:
+                type: integer
+                default: 8
+              memory_gb:
+                type: integer
+                default: 32
+              gpu_count:
+                type: integer
+                default: 1
+              gpu_type:
+                type: string
+
+    RayClusterScale:
+      type: object
+      required:
+        - workers
+      properties:
+        workers:
+          type: array
+          items:
+            type: object
+            required:
+              - group_name
+              - replicas
+            properties:
+              group_name:
+                type: string
+              replicas:
+                type: integer
+              min_replicas:
+                type: integer
+              max_replicas:
+                type: integer
+
+    # Pipelines
+    Pipeline:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        parameters:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              type:
+                type: string
+              default:
+                type: string
+              description:
+                type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PipelineCreate:
+      type: object
+      required:
+        - name
+        - spec
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        spec:
+          type: object
+          description: KubeFlow pipeline spec (YAML or Argo Workflow)
+          additionalProperties: true
+        parameters:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              type:
+                type: string
+              default:
+                type: string
+
+    PipelineRun:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        pipeline_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, succeeded, failed, cancelled, skipped]
+        parameters:
+          type: object
+          additionalProperties:
+            type: string
+        artifacts:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              uri:
+                type: string
+                format: uri
+              type:
+                type: string
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    PipelineRunCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        parameters:
+          type: object
+          additionalProperties:
+            type: string
+
+    # GPU Inventory
+    GPUType:
+      type: object
+      properties:
+        model:
+          type: string
+          description: GPU model name
+        memory_gb:
+          type: integer
+        architecture:
+          type: string
+          enum: [Ampere, Hopper, Ada_Lovelace, Blackwell]
+        fp16_tflops:
+          type: number
+        bf16_tflops:
+          type: number
+        fp8_tflops:
+          type: number
+        interconnect:
+          type: string
+          enum: [PCIe, NVLink, NVSwitch]
+        total_count:
+          type: integer
+        available_count:
+          type: integer
+
+    GPUAllocation:
+      type: object
+      properties:
+        gpu_type:
+          type: string
+        allocated:
+          type: integer
+        total:
+          type: integer
+        utilization_percent:
+          type: number
+        allocations:
+          type: array
+          items:
+            type: object
+            properties:
+              job_id:
+                type: string
+              job_name:
+                type: string
+              gpu_count:
+                type: integer
+              cluster_id:
+                type: string
+              node_id:
+                type: string
+
+    # Serve
+    ServingEndpoint:
+      type: object
+      properties:
+        name:
+          type: string
+        model:
+          type: string
+          description: Model identifier or path
+        status:
+          type: string
+          enum: [provisioning, running, scaling, failed, stopped]
+        replicas:
+          type: integer
+        min_replicas:
+          type: integer
+        max_replicas:
+          type: integer
+        gpu_type:
+          type: string
+        gpu_per_replica:
+          type: integer
+        framework:
+          type: string
+          enum: [vllm, tgi, triton, custom]
+        url:
+          type: string
+          format: uri
+          description: Inference endpoint URL
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ServingEndpointCreate:
+      type: object
+      required:
+        - name
+        - model
+      properties:
+        name:
+          type: string
+        model:
+          type: string
+        framework:
+          type: string
+          enum: [vllm, tgi, triton, custom]
+          default: vllm
+        gpu_type:
+          type: string
+          default: A100
+        gpu_per_replica:
+          type: integer
+          default: 1
+        min_replicas:
+          type: integer
+          default: 1
+        max_replicas:
+          type: integer
+          default: 4
+        env:
+          type: object
+          additionalProperties:
+            type: string
+        scale_to_zero:
+          type: boolean
+          default: false
+        max_batch_size:
+          type: integer
+        max_concurrent_requests:
+          type: integer
+
+    ServingMetrics:
+      type: object
+      properties:
+        endpoint_name:
+          type: string
+        period:
+          type: string
+        request_count:
+          type: integer
+          format: int64
+        error_count:
+          type: integer
+          format: int64
+        avg_latency_ms:
+          type: number
+        p50_latency_ms:
+          type: number
+        p95_latency_ms:
+          type: number
+        p99_latency_ms:
+          type: number
+        tokens_per_second:
+          type: number
+        gpu_utilization:
+          type: number
+        gpu_memory_used_mb:
+          type: integer
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  # Clusters
+  /clusters:
+    get:
+      tags:
+        - Clusters
+      summary: List GPU clusters
+      operationId: listClusters
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [online, offline, degraded, provisioning]
+        - name: provider
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of clusters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clusters:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Cluster'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Clusters
+      summary: Register GPU cluster
+      operationId: registerCluster
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClusterCreate'
+      responses:
+        '201':
+          description: Cluster registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cluster'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /clusters/{id}:
+    get:
+      tags:
+        - Clusters
+      summary: Get cluster
+      operationId: getCluster
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cluster details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cluster'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Clusters
+      summary: Update cluster
+      operationId: updateCluster
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                kubeconfig:
+                  type: string
+                labels:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        '200':
+          description: Cluster updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cluster'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Clusters
+      summary: Deregister cluster
+      operationId: deleteCluster
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cluster deregistered
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /clusters/{id}/nodes:
+    get:
+      tags:
+        - Clusters
+      summary: List cluster nodes
+      operationId: listClusterNodes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cluster nodes with GPU status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClusterNode'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Jobs
+  /jobs:
+    get:
+      tags:
+        - Jobs
+      summary: List jobs
+      operationId: listJobs
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, scheduling, running, succeeded, failed, cancelled]
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [training, inference, fine_tune, evaluation]
+        - name: cluster_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Job'
+                  total:
+                    type: integer
+
+    post:
+      tags:
+        - Jobs
+      summary: Submit job
+      operationId: submitJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobCreate'
+      responses:
+        '201':
+          description: Job submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /jobs/{id}:
+    get:
+      tags:
+        - Jobs
+      summary: Get job
+      operationId: getJob
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Jobs
+      summary: Delete job
+      operationId: deleteJob
+      description: Deletes a completed or cancelled job and its artifacts.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jobs/{id}/cancel:
+    post:
+      tags:
+        - Jobs
+      summary: Cancel job
+      operationId: cancelJob
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jobs/{id}/logs:
+    get:
+      tags:
+        - Jobs
+      summary: Get job logs
+      operationId: getJobLogs
+      description: Returns job logs. Use Accept text/event-stream for streaming.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: tail
+          in: query
+          schema:
+            type: integer
+            default: 100
+          description: Number of lines from the end
+        - name: follow
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Stream logs in real time
+      responses:
+        '200':
+          description: Job logs
+          content:
+            text/plain:
+              schema:
+                type: string
+            text/event-stream:
+              schema:
+                type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /jobs/{id}/metrics:
+    get:
+      tags:
+        - Jobs
+      summary: Get job metrics
+      operationId: getJobMetrics
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job GPU and training metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobMetrics'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Ray Clusters
+  /ray/clusters:
+    get:
+      tags:
+        - Ray
+      summary: List Ray clusters
+      operationId: listRayClusters
+      parameters:
+        - name: namespace
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [creating, running, suspended, failed, deleting]
+      responses:
+        '200':
+          description: List of Ray clusters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clusters:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RayCluster'
+
+    post:
+      tags:
+        - Ray
+      summary: Create Ray cluster
+      operationId: createRayCluster
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RayClusterCreate'
+      responses:
+        '201':
+          description: Ray cluster created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RayCluster'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /ray/clusters/{name}:
+    get:
+      tags:
+        - Ray
+      summary: Get Ray cluster
+      operationId: getRayCluster
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ray cluster details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RayCluster'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Ray
+      summary: Delete Ray cluster
+      operationId: deleteRayCluster
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ray cluster deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /ray/clusters/{name}/scale:
+    put:
+      tags:
+        - Ray
+      summary: Scale Ray workers
+      operationId: scaleRayCluster
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RayClusterScale'
+      responses:
+        '200':
+          description: Ray cluster scaled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RayCluster'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /ray/clusters/{name}/dashboard:
+    get:
+      tags:
+        - Ray
+      summary: Get Ray dashboard URL
+      operationId: getRayDashboard
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dashboard URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    format: uri
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /ray/clusters/{name}/status:
+    get:
+      tags:
+        - Ray
+      summary: Get Ray cluster status
+      operationId: getRayClusterStatus
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Head and worker node status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RayCluster'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Pipelines
+  /pipelines:
+    get:
+      tags:
+        - Pipelines
+      summary: List ML pipelines
+      operationId: listPipelines
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of pipelines
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pipelines:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Pipeline'
+                  total:
+                    type: integer
+
+    post:
+      tags:
+        - Pipelines
+      summary: Create ML pipeline
+      operationId: createPipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PipelineCreate'
+      responses:
+        '201':
+          description: Pipeline created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pipeline'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /pipelines/{id}:
+    get:
+      tags:
+        - Pipelines
+      summary: Get pipeline
+      operationId: getPipeline
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Pipeline details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pipeline'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Pipelines
+      summary: Delete pipeline
+      operationId: deletePipeline
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Pipeline deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /pipelines/{id}/runs:
+    get:
+      tags:
+        - Pipelines
+      summary: List pipeline runs
+      operationId: listPipelineRuns
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, succeeded, failed, cancelled]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of pipeline runs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PipelineRun'
+                  total:
+                    type: integer
+
+    post:
+      tags:
+        - Pipelines
+      summary: Create pipeline run
+      operationId: createPipelineRun
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PipelineRunCreate'
+      responses:
+        '201':
+          description: Pipeline run created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineRun'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /pipelines/{id}/runs/{run_id}:
+    get:
+      tags:
+        - Pipelines
+      summary: Get pipeline run
+      operationId: getPipelineRun
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Pipeline run status and artifacts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineRun'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # GPUs
+  /gpus:
+    get:
+      tags:
+        - GPUs
+      summary: List available GPU types
+      operationId: listGPUTypes
+      responses:
+        '200':
+          description: Available GPU types with capacity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gpus:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GPUType'
+
+  /gpus/allocations:
+    get:
+      tags:
+        - GPUs
+      summary: Get GPU allocations
+      operationId: getGPUAllocations
+      parameters:
+        - name: gpu_type
+          in: query
+          schema:
+            type: string
+        - name: cluster_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current GPU allocations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  allocations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GPUAllocation'
+
+  # Serve
+  /serve/endpoints:
+    get:
+      tags:
+        - Serve
+      summary: List serving endpoints
+      operationId: listServingEndpoints
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [provisioning, running, scaling, failed, stopped]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of serving endpoints
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  endpoints:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServingEndpoint'
+                  total:
+                    type: integer
+
+    post:
+      tags:
+        - Serve
+      summary: Create serving endpoint
+      operationId: createServingEndpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServingEndpointCreate'
+      responses:
+        '201':
+          description: Serving endpoint created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServingEndpoint'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /serve/endpoints/{name}:
+    get:
+      tags:
+        - Serve
+      summary: Get serving endpoint
+      operationId: getServingEndpoint
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Serving endpoint details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServingEndpoint'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Serve
+      summary: Update serving endpoint
+      operationId: updateServingEndpoint
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model:
+                  type: string
+                min_replicas:
+                  type: integer
+                max_replicas:
+                  type: integer
+                gpu_type:
+                  type: string
+                gpu_per_replica:
+                  type: integer
+                env:
+                  type: object
+                  additionalProperties:
+                    type: string
+                scale_to_zero:
+                  type: boolean
+      responses:
+        '200':
+          description: Serving endpoint updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServingEndpoint'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Serve
+      summary: Delete serving endpoint
+      operationId: deleteServingEndpoint
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Serving endpoint deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /serve/endpoints/{name}/metrics:
+    get:
+      tags:
+        - Serve
+      summary: Get serving endpoint metrics
+      operationId: getServingMetrics
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: granularity
+          in: query
+          schema:
+            type: string
+            enum: [minute, hour, day]
+            default: hour
+      responses:
+        '200':
+          description: Serving metrics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServingMetrics'
+        '404':
+          $ref: '#/components/responses/NotFound'

@@ -10,7 +10,10 @@ info:
     - Organization and team hierarchies
     - Spend tracking and budgets
     - Custom routing rules
-  version: 1.0.0
+    - Edge function proxy routing
+    - CDN caching and purge
+    - DNS proxy routes
+  version: 1.1.0
   contact:
     name: Hanzo AI
     url: https://hanzo.ai
@@ -44,6 +47,14 @@ tags:
     description: Usage and spend tracking
   - name: Budget
     description: Budget management
+  - name: Edge
+    description: Edge function proxy routing
+  - name: CDN
+    description: CDN caching, purge, and analytics
+  - name: DNS
+    description: DNS proxy routes
+  - name: Routes
+    description: Custom routing rules
   - name: Health
     description: Health checks
 
@@ -294,6 +305,75 @@ components:
             type: string
         metadata:
           type: object
+
+    RoutingRule:
+      type: object
+      required:
+        - id
+        - match
+        - action
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        match:
+          type: object
+          properties:
+            path:
+              type: string
+              description: Path pattern (supports wildcards)
+            method:
+              type: string
+              enum: [GET, POST, PUT, DELETE, PATCH, '*']
+            headers:
+              type: object
+              additionalProperties:
+                type: string
+        action:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [proxy, redirect, rewrite, block]
+            target:
+              type: string
+              description: Target URL or service
+            headers:
+              type: object
+              additionalProperties:
+                type: string
+            strip_prefix:
+              type: boolean
+        priority:
+          type: integer
+          default: 100
+        enabled:
+          type: boolean
+          default: true
+        created_at:
+          type: string
+          format: date-time
+
+    CDNPurgeRequest:
+      type: object
+      properties:
+        urls:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Specific URLs to purge
+        tags:
+          type: array
+          items:
+            type: string
+          description: Cache tags to purge
+        purge_all:
+          type: boolean
+          default: false
+          description: Purge all cached content
 
 paths:
   # Chat Completions
@@ -754,3 +834,272 @@ paths:
                     type: string
                   cache_status:
                     type: string
+
+  # Edge Function Routing
+  /v1/edge/{slug}:
+    post:
+      tags:
+        - Edge
+      summary: Invoke edge function via gateway
+      operationId: invokeEdgeFunction
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Function slug
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+          '*/*':
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Function response
+          content:
+            application/json:
+              schema:
+                type: object
+            text/event-stream:
+              schema:
+                type: string
+        '404':
+          description: Function not found
+        '502':
+          description: Function execution error
+    get:
+      tags:
+        - Edge
+      summary: Invoke edge function (GET)
+      operationId: invokeEdgeFunctionGet
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Function response
+
+  # CDN Cache Management
+  /cdn/purge:
+    post:
+      tags:
+        - CDN
+      summary: Purge CDN cache
+      operationId: purgeCDNCache
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CDNPurgeRequest'
+      responses:
+        '200':
+          description: Cache purged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  purged:
+                    type: integer
+                    description: Number of items purged
+                  status:
+                    type: string
+                    enum: [ok]
+        '400':
+          description: Invalid purge request
+
+  /cdn/analytics:
+    get:
+      tags:
+        - CDN
+      summary: CDN cache analytics
+      operationId: getCDNAnalytics
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: granularity
+          in: query
+          schema:
+            type: string
+            enum: [minute, hour, day]
+            default: hour
+      responses:
+        '200':
+          description: CDN analytics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_requests:
+                    type: integer
+                  cache_hits:
+                    type: integer
+                  cache_misses:
+                    type: integer
+                  hit_ratio:
+                    type: number
+                  bandwidth_bytes:
+                    type: integer
+                  timeseries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        timestamp:
+                          type: string
+                          format: date-time
+                        requests:
+                          type: integer
+                        hits:
+                          type: integer
+                        misses:
+                          type: integer
+
+  # DNS Proxy Routes
+  /v1/dns/zones:
+    get:
+      tags:
+        - DNS
+      summary: List DNS zones (proxy to dns.hanzo.ai)
+      operationId: listDNSZonesProxy
+      responses:
+        '200':
+          description: List of zones
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /v1/dns/zones/{zone}/records:
+    get:
+      tags:
+        - DNS
+      summary: List DNS records (proxy to dns.hanzo.ai)
+      operationId: listDNSRecordsProxy
+      parameters:
+        - name: zone
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of records
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # Custom Routing Rules
+  /routes:
+    get:
+      tags:
+        - Routes
+      summary: List custom routing rules
+      operationId: listRoutes
+      responses:
+        '200':
+          description: List of routing rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoutingRule'
+    post:
+      tags:
+        - Routes
+      summary: Create routing rule
+      operationId: createRoute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoutingRule'
+      responses:
+        '201':
+          description: Rule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingRule'
+
+  /routes/{id}:
+    get:
+      tags:
+        - Routes
+      summary: Get routing rule
+      operationId: getRoute
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Routing rule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingRule'
+    put:
+      tags:
+        - Routes
+      summary: Update routing rule
+      operationId: updateRoute
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoutingRule'
+      responses:
+        '200':
+          description: Rule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingRule'
+    delete:
+      tags:
+        - Routes
+      summary: Delete routing rule
+      operationId: deleteRoute
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Rule deleted

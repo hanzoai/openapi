@@ -1,0 +1,1506 @@
+openapi: 3.1.0
+info:
+  title: Hanzo O11y API
+  description: |
+    Hanzo O11y provides unified observability with logs, metrics, and traces
+    in a single platform.
+
+    Components:
+    - **Logs**: Loki-compatible LogQL query engine for structured and unstructured logs
+    - **Metrics**: Prometheus-compatible PromQL query engine for time-series metrics
+    - **Traces**: Distributed tracing with service dependency mapping
+    - **Dashboards**: Configurable dashboards for visualization
+    - **Alerts**: Rule-based alerting with multi-channel notifications
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://o11y.hanzo.ai
+    description: Production
+  - url: https://api.hanzo.ai/v1/o11y
+    description: Gateway Proxy
+
+tags:
+  - name: Logs
+    description: Log ingestion and querying (Loki-compatible)
+  - name: Metrics
+    description: Metric querying (Prometheus-compatible)
+  - name: Traces
+    description: Distributed tracing
+  - name: Dashboards
+    description: Dashboard management
+  - name: Alerts
+    description: Alert rules and notification channels
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HANZO_API_KEY
+      description: Hanzo API Key (Bearer hk-...)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+
+    # Logs
+    LogQueryResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          type: object
+          properties:
+            resultType:
+              type: string
+              enum: [streams, matrix, vector]
+            result:
+              type: array
+              items:
+                type: object
+                properties:
+                  stream:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: Label key-value pairs
+                  values:
+                    type: array
+                    items:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 2
+                      maxItems: 2
+                      description: "[timestamp_ns, log_line]"
+            stats:
+              type: object
+              properties:
+                ingester:
+                  type: object
+                store:
+                  type: object
+                summary:
+                  type: object
+                  properties:
+                    bytesProcessedPerSecond:
+                      type: integer
+                    totalBytesProcessed:
+                      type: integer
+                    execTime:
+                      type: number
+
+    LogPushRequest:
+      type: object
+      required:
+        - streams
+      properties:
+        streams:
+          type: array
+          items:
+            type: object
+            required:
+              - stream
+              - values
+            properties:
+              stream:
+                type: object
+                additionalProperties:
+                  type: string
+                description: Label set identifying the stream
+              values:
+                type: array
+                items:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 2
+                  maxItems: 3
+                  description: "[timestamp_ns, line, structured_metadata?]"
+
+    # Metrics
+    MetricQueryResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        data:
+          type: object
+          properties:
+            resultType:
+              type: string
+              enum: [matrix, vector, scalar, string]
+            result:
+              type: array
+              items:
+                type: object
+                properties:
+                  metric:
+                    type: object
+                    additionalProperties:
+                      type: string
+                  value:
+                    type: array
+                    items: {}
+                    description: "[unix_timestamp, value] for vector/scalar"
+                  values:
+                    type: array
+                    items:
+                      type: array
+                      items: {}
+                    description: "[[unix_timestamp, value], ...] for matrix"
+        errorType:
+          type: string
+        error:
+          type: string
+
+    SeriesResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: string
+
+    # Traces
+    Trace:
+      type: object
+      properties:
+        traceID:
+          type: string
+        rootServiceName:
+          type: string
+        rootTraceName:
+          type: string
+        startTimeUnixNano:
+          type: string
+        durationMs:
+          type: integer
+        spanCount:
+          type: integer
+        errorCount:
+          type: integer
+        spans:
+          type: array
+          items:
+            $ref: '#/components/schemas/Span'
+
+    Span:
+      type: object
+      properties:
+        traceID:
+          type: string
+        spanID:
+          type: string
+        parentSpanID:
+          type: string
+        operationName:
+          type: string
+        serviceName:
+          type: string
+        startTimeUnixNano:
+          type: string
+        durationNano:
+          type: string
+        status:
+          type: string
+          enum: [OK, ERROR, UNSET]
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              timeUnixNano:
+                type: string
+              attributes:
+                type: object
+                additionalProperties:
+                  type: string
+
+    ServiceInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        span_count:
+          type: integer
+          format: int64
+        error_count:
+          type: integer
+          format: int64
+
+    ServiceOperation:
+      type: object
+      properties:
+        name:
+          type: string
+        span_kind:
+          type: string
+          enum: [SERVER, CLIENT, PRODUCER, CONSUMER, INTERNAL]
+
+    DependencyLink:
+      type: object
+      properties:
+        parent:
+          type: string
+        child:
+          type: string
+        call_count:
+          type: integer
+          format: int64
+        error_count:
+          type: integer
+          format: int64
+
+    # Dashboards
+    Dashboard:
+      type: object
+      properties:
+        uid:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        panels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Panel'
+        time:
+          type: object
+          properties:
+            from:
+              type: string
+            to:
+              type: string
+        refresh:
+          type: string
+          description: Auto-refresh interval (e.g. 30s, 1m, 5m)
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DashboardCreate:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        panels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Panel'
+        time:
+          type: object
+          properties:
+            from:
+              type: string
+              default: now-1h
+            to:
+              type: string
+              default: now
+        refresh:
+          type: string
+          default: 30s
+
+    Panel:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        type:
+          type: string
+          enum: [graph, stat, table, logs, traces, gauge, bar, heatmap, text]
+        datasource:
+          type: string
+          enum: [loki, prometheus, traces]
+        query:
+          type: string
+          description: LogQL, PromQL, or trace search query
+        grid_position:
+          type: object
+          properties:
+            x:
+              type: integer
+            y:
+              type: integer
+            w:
+              type: integer
+            h:
+              type: integer
+        options:
+          type: object
+          additionalProperties: true
+
+    # Alerts
+    AlertRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+        datasource:
+          type: string
+          enum: [loki, prometheus]
+        query:
+          type: string
+          description: LogQL or PromQL expression
+        condition:
+          type: object
+          properties:
+            evaluator:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: [gt, lt, eq, within_range, outside_range]
+                params:
+                  type: array
+                  items:
+                    type: number
+            operator:
+              type: string
+              enum: [and, or]
+        for_duration:
+          type: string
+          description: Duration condition must be true before firing (e.g. 5m)
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+          description: Template-based annotations (summary, description, runbook)
+        channel_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Notification channels to alert
+        state:
+          type: string
+          enum: [ok, pending, firing, inactive]
+        last_evaluated:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AlertRuleCreate:
+      type: object
+      required:
+        - name
+        - datasource
+        - query
+        - condition
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+          default: true
+        datasource:
+          type: string
+          enum: [loki, prometheus]
+        query:
+          type: string
+        condition:
+          type: object
+          required:
+            - evaluator
+          properties:
+            evaluator:
+              type: object
+              required:
+                - type
+                - params
+              properties:
+                type:
+                  type: string
+                params:
+                  type: array
+                  items:
+                    type: number
+        for_duration:
+          type: string
+          default: 5m
+        severity:
+          type: string
+          enum: [info, warning, critical]
+          default: warning
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+        channel_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    NotificationChannel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [slack, email, webhook, pagerduty]
+        config:
+          type: object
+          properties:
+            url:
+              type: string
+              format: uri
+              description: Webhook URL or Slack incoming webhook
+            channel:
+              type: string
+              description: Slack channel name
+            email:
+              type: string
+              format: email
+            routing_key:
+              type: string
+              description: PagerDuty routing key
+            severity_map:
+              type: object
+              additionalProperties:
+                type: string
+              description: Map alert severity to PagerDuty severity
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NotificationChannelCreate:
+      type: object
+      required:
+        - name
+        - type
+        - config
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [slack, email, webhook, pagerduty]
+        config:
+          type: object
+          properties:
+            url:
+              type: string
+              format: uri
+            channel:
+              type: string
+            email:
+              type: string
+              format: email
+            routing_key:
+              type: string
+        enabled:
+          type: boolean
+          default: true
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  # Logs - Loki-compatible
+  /loki/api/v1/query:
+    get:
+      tags:
+        - Logs
+      summary: Instant LogQL query
+      operationId: lokiQuery
+      description: Evaluate a LogQL expression at a single point in time.
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+          description: LogQL query expression
+        - name: time
+          in: query
+          schema:
+            type: string
+          description: Evaluation timestamp (Unix epoch or RFC3339, default now)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [forward, backward]
+            default: backward
+      responses:
+        '200':
+          description: Query result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogQueryResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /loki/api/v1/query_range:
+    get:
+      tags:
+        - Logs
+      summary: Range LogQL query
+      operationId: lokiQueryRange
+      description: Evaluate a LogQL expression over a range of time.
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: start
+          in: query
+          schema:
+            type: string
+          description: Start timestamp (Unix epoch or RFC3339)
+        - name: end
+          in: query
+          schema:
+            type: string
+          description: End timestamp (Unix epoch or RFC3339)
+        - name: step
+          in: query
+          schema:
+            type: string
+          description: Query step (e.g. 15s, 1m, 5m)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [forward, backward]
+            default: backward
+      responses:
+        '200':
+          description: Range query result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogQueryResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /loki/api/v1/labels:
+    get:
+      tags:
+        - Logs
+      summary: List log labels
+      operationId: lokiLabels
+      parameters:
+        - name: start
+          in: query
+          schema:
+            type: string
+        - name: end
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Label names
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: string
+
+  /loki/api/v1/label/{name}/values:
+    get:
+      tags:
+        - Logs
+      summary: Get label values
+      operationId: lokiLabelValues
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: start
+          in: query
+          schema:
+            type: string
+        - name: end
+          in: query
+          schema:
+            type: string
+        - name: query
+          in: query
+          schema:
+            type: string
+          description: LogQL stream selector to filter
+      responses:
+        '200':
+          description: Label values
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: string
+
+  /loki/api/v1/push:
+    post:
+      tags:
+        - Logs
+      summary: Push log entries
+      operationId: lokiPush
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogPushRequest'
+      responses:
+        '204':
+          description: Logs accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /loki/api/v1/tail:
+    get:
+      tags:
+        - Logs
+      summary: Live tail logs (WebSocket)
+      operationId: lokiTail
+      description: |
+        WebSocket endpoint for live log tailing. Upgrade connection
+        to WebSocket to receive real-time log entries matching the query.
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+          description: LogQL query expression
+        - name: delay_for
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Seconds to delay entries for deduplication
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '101':
+          description: WebSocket upgrade for live tail
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # Metrics - Prometheus-compatible
+  /api/v1/query:
+    get:
+      tags:
+        - Metrics
+      summary: Instant PromQL query
+      operationId: promQuery
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+          description: PromQL expression
+        - name: time
+          in: query
+          schema:
+            type: string
+          description: Evaluation timestamp
+        - name: timeout
+          in: query
+          schema:
+            type: string
+          description: Evaluation timeout (e.g. 30s)
+      responses:
+        '200':
+          description: Query result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricQueryResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/query_range:
+    get:
+      tags:
+        - Metrics
+      summary: Range PromQL query
+      operationId: promQueryRange
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: step
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Query resolution step (e.g. 15s, 1m)
+        - name: timeout
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Range query result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricQueryResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/series:
+    get:
+      tags:
+        - Metrics
+      summary: Find series by label matchers
+      operationId: promSeries
+      parameters:
+        - name: match[]
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+          description: Series selector (at least one required)
+        - name: start
+          in: query
+          schema:
+            type: string
+        - name: end
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching series
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeriesResult'
+
+  /api/v1/labels:
+    get:
+      tags:
+        - Metrics
+      summary: List metric label names
+      operationId: promLabels
+      parameters:
+        - name: start
+          in: query
+          schema:
+            type: string
+        - name: end
+          in: query
+          schema:
+            type: string
+        - name: match[]
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Label names
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: string
+
+  /api/v1/label/{name}/values:
+    get:
+      tags:
+        - Metrics
+      summary: Get metric label values
+      operationId: promLabelValues
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: start
+          in: query
+          schema:
+            type: string
+        - name: end
+          in: query
+          schema:
+            type: string
+        - name: match[]
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Label values
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: string
+
+  # Traces
+  /api/v1/traces:
+    get:
+      tags:
+        - Traces
+      summary: Search traces
+      operationId: searchTraces
+      parameters:
+        - name: service
+          in: query
+          schema:
+            type: string
+          description: Filter by service name
+        - name: operation
+          in: query
+          schema:
+            type: string
+          description: Filter by operation name
+        - name: tags
+          in: query
+          schema:
+            type: string
+          description: "Key-value tag filter (e.g. http.status_code=500)"
+        - name: min_duration
+          in: query
+          schema:
+            type: string
+          description: Minimum trace duration (e.g. 100ms, 1s)
+        - name: max_duration
+          in: query
+          schema:
+            type: string
+        - name: start
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Matching traces
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  traces:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Trace'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/traces/{traceId}:
+    get:
+      tags:
+        - Traces
+      summary: Get trace by ID
+      operationId: getTrace
+      parameters:
+        - name: traceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Trace with all spans
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trace'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/services:
+    get:
+      tags:
+        - Traces
+      summary: List traced services
+      operationId: listServices
+      responses:
+        '200':
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  services:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceInfo'
+
+  /api/v1/services/{name}/operations:
+    get:
+      tags:
+        - Traces
+      summary: List service operations
+      operationId: listServiceOperations
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: span_kind
+          in: query
+          schema:
+            type: string
+            enum: [SERVER, CLIENT, PRODUCER, CONSUMER, INTERNAL]
+      responses:
+        '200':
+          description: Operations for the service
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceOperation'
+
+  /api/v1/dependencies:
+    get:
+      tags:
+        - Traces
+      summary: Get service dependency graph
+      operationId: getDependencies
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Dependency links between services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dependencies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DependencyLink'
+
+  # Dashboards
+  /api/dashboards:
+    get:
+      tags:
+        - Dashboards
+      summary: List dashboards
+      operationId: listDashboards
+      parameters:
+        - name: tag
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of dashboards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    uid:
+                      type: string
+                    title:
+                      type: string
+                    tags:
+                      type: array
+                      items:
+                        type: string
+                    updated_at:
+                      type: string
+                      format: date-time
+
+    post:
+      tags:
+        - Dashboards
+      summary: Create dashboard
+      operationId: createDashboard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DashboardCreate'
+      responses:
+        '201':
+          description: Dashboard created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/dashboards/{uid}:
+    get:
+      tags:
+        - Dashboards
+      summary: Get dashboard
+      operationId: getDashboard
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dashboard details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Dashboards
+      summary: Update dashboard
+      operationId: updateDashboard
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DashboardCreate'
+      responses:
+        '200':
+          description: Dashboard updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Dashboards
+      summary: Delete dashboard
+      operationId: deleteDashboard
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dashboard deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Alert Rules
+  /api/v1/rules:
+    get:
+      tags:
+        - Alerts
+      summary: List alert rules
+      operationId: listAlertRules
+      parameters:
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [info, warning, critical]
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [ok, pending, firing, inactive]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of alert rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlertRule'
+
+    post:
+      tags:
+        - Alerts
+      summary: Create alert rule
+      operationId: createAlertRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertRuleCreate'
+      responses:
+        '201':
+          description: Alert rule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertRule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/rules/{id}:
+    get:
+      tags:
+        - Alerts
+      summary: Get alert rule
+      operationId: getAlertRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Alert rule details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertRule'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Alerts
+      summary: Update alert rule
+      operationId: updateAlertRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertRuleCreate'
+      responses:
+        '200':
+          description: Alert rule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertRule'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Alerts
+      summary: Delete alert rule
+      operationId: deleteAlertRule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Alert rule deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Notification Channels
+  /api/v1/channels:
+    get:
+      tags:
+        - Alerts
+      summary: List notification channels
+      operationId: listNotificationChannels
+      responses:
+        '200':
+          description: List of notification channels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NotificationChannel'
+
+    post:
+      tags:
+        - Alerts
+      summary: Create notification channel
+      operationId: createNotificationChannel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationChannelCreate'
+      responses:
+        '201':
+          description: Notification channel created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationChannel'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/channels/{id}:
+    put:
+      tags:
+        - Alerts
+      summary: Update notification channel
+      operationId: updateNotificationChannel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationChannelCreate'
+      responses:
+        '200':
+          description: Notification channel updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationChannel'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Alerts
+      summary: Delete notification channel
+      operationId: deleteNotificationChannel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Notification channel deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
