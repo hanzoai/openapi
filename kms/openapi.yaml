@@ -1,0 +1,3322 @@
+openapi: 3.1.0
+info:
+  title: Hanzo KMS API
+  description: |
+    Hanzo KMS is a key management service for managing secrets, API keys,
+    certificates, and encryption keys across infrastructure. Based on
+    Infisical, it provides a comprehensive secrets management platform
+    with support for dynamic secrets, PKI, integrations, and audit logging.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://kms.hanzo.ai
+    description: Production
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Authenticate using a Bearer token. Supported token types:
+        JWT (user session), Identity Access Token, Service Token, or API Key.
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+        message:
+          type: string
+        error:
+          type: string
+
+    # --- Auth ---
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        providerAuthToken:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        isMfaEnabled:
+          type: boolean
+        mfaMethod:
+          type: string
+
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        expiresIn:
+          type: integer
+        accessTokenMaxTTL:
+          type: integer
+        tokenType:
+          type: string
+          default: Bearer
+
+    # --- Organization ---
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # --- Project ---
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        orgId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [SecretManager, CertManager]
+        environments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Environment'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateProjectRequest:
+      type: object
+      required: [projectName, organizationId]
+      properties:
+        projectName:
+          type: string
+        organizationId:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        type:
+          type: string
+          enum: [SecretManager, CertManager]
+        templateId:
+          type: string
+          format: uuid
+
+    # --- Environment ---
+    Environment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        position:
+          type: integer
+
+    CreateEnvironmentRequest:
+      type: object
+      required: [name, slug]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        position:
+          type: integer
+
+    UpdateEnvironmentRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        position:
+          type: integer
+
+    # --- Secret ---
+    Secret:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        type:
+          type: string
+          enum: [shared, personal]
+        secretKey:
+          type: string
+        secretValue:
+          type: string
+        secretComment:
+          type: string
+        secretPath:
+          type: string
+        environment:
+          type: string
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/SecretTag'
+        secretMetadata:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              value:
+                type: string
+        secretReminderNote:
+          type: string
+        secretReminderRepeatDays:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateSecretRequest:
+      type: object
+      required: [secretKey, secretValue, environment, secretPath]
+      properties:
+        secretKey:
+          type: string
+        secretValue:
+          type: string
+        secretComment:
+          type: string
+        secretPath:
+          type: string
+          default: /
+        environment:
+          type: string
+        type:
+          type: string
+          enum: [shared, personal]
+          default: shared
+        tagIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        secretMetadata:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              value:
+                type: string
+        secretReminderNote:
+          type: string
+        secretReminderRepeatDays:
+          type: integer
+
+    UpdateSecretRequest:
+      type: object
+      required: [secretKey, environment, secretPath]
+      properties:
+        secretKey:
+          type: string
+        secretValue:
+          type: string
+        secretComment:
+          type: string
+        secretPath:
+          type: string
+          default: /
+        environment:
+          type: string
+        newSecretName:
+          type: string
+        tagIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        secretMetadata:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              value:
+                type: string
+        secretReminderNote:
+          type: string
+        secretReminderRepeatDays:
+          type: integer
+
+    BatchSecretRequest:
+      type: object
+      properties:
+        create:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateSecretRequest'
+        update:
+          type: array
+          items:
+            $ref: '#/components/schemas/UpdateSecretRequest'
+        delete:
+          type: array
+          items:
+            type: object
+            required: [secretKey, environment, secretPath]
+            properties:
+              secretKey:
+                type: string
+              environment:
+                type: string
+              secretPath:
+                type: string
+
+    # --- Secret Tag ---
+    SecretTag:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # --- Secret Folder ---
+    SecretFolder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        environment:
+          type: string
+        path:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # --- Secret Import ---
+    SecretImport:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        importEnv:
+          type: string
+        importPath:
+          type: string
+        position:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # --- Identity ---
+    Identity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        authMethod:
+          type: string
+          enum: [universal-auth, token-auth, kubernetes-auth, gcp-auth, aws-iam-auth, azure-auth, oidc-auth, jwt-auth, ldap-auth, tls-cert-auth, alicloud-auth, oci-auth]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateIdentityRequest:
+      type: object
+      required: [name, organizationId, role]
+      properties:
+        name:
+          type: string
+        organizationId:
+          type: string
+          format: uuid
+        role:
+          type: string
+
+    # --- Identity Universal Auth ---
+    UniversalAuthConfig:
+      type: object
+      properties:
+        identityId:
+          type: string
+          format: uuid
+        clientId:
+          type: string
+        accessTokenTrustedIps:
+          type: array
+          items:
+            type: object
+            properties:
+              ipAddress:
+                type: string
+        accessTokenTTL:
+          type: integer
+        accessTokenMaxTTL:
+          type: integer
+        accessTokenNumUsesLimit:
+          type: integer
+
+    UniversalAuthLoginRequest:
+      type: object
+      required: [clientId, clientSecret]
+      properties:
+        clientId:
+          type: string
+        clientSecret:
+          type: string
+
+    CreateClientSecretResponse:
+      type: object
+      properties:
+        clientSecret:
+          type: string
+        clientSecretId:
+          type: string
+          format: uuid
+
+    # --- Integration ---
+    Integration:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        isActive:
+          type: boolean
+        integration:
+          type: string
+          description: Target platform (e.g., aws-parameter-store, github, vercel)
+        integrationAuthId:
+          type: string
+          format: uuid
+        envId:
+          type: string
+          format: uuid
+        secretPath:
+          type: string
+        targetEnvironment:
+          type: string
+        app:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    IntegrationAuth:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        integration:
+          type: string
+        projectId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # --- Service Token ---
+    ServiceToken:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: object
+            properties:
+              environment:
+                type: string
+              secretPath:
+                type: string
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    # --- Webhook ---
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        envId:
+          type: string
+          format: uuid
+        secretPath:
+          type: string
+        isDisabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # --- Audit Log ---
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        actor:
+          type: object
+          properties:
+            type:
+              type: string
+            metadata:
+              type: object
+        orgId:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        event:
+          type: object
+          properties:
+            type:
+              type: string
+            metadata:
+              type: object
+        ipAddress:
+          type: string
+        userAgent:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    # --- Certificate Authority ---
+    CertificateAuthority:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [root, intermediate]
+        status:
+          type: string
+          enum: [active, disabled, pending-certificate]
+        friendlyName:
+          type: string
+        organization:
+          type: string
+        commonName:
+          type: string
+        dn:
+          type: string
+        maxPathLength:
+          type: integer
+        keyAlgorithm:
+          type: string
+          enum: [RSA_2048, RSA_4096, ECDSA_P256, ECDSA_P384]
+        notBefore:
+          type: string
+          format: date-time
+        notAfter:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    # --- Certificate ---
+    Certificate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        caId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [active, revoked]
+        friendlyName:
+          type: string
+        commonName:
+          type: string
+        serialNumber:
+          type: string
+        notBefore:
+          type: string
+          format: date-time
+        notAfter:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    IssueCertificateRequest:
+      type: object
+      required: [friendlyName, commonName]
+      properties:
+        friendlyName:
+          type: string
+        commonName:
+          type: string
+        altNames:
+          type: string
+          description: Comma-separated SANs
+        ttl:
+          type: string
+          description: Duration string (e.g., 365d, 1y)
+
+    # --- App Connection ---
+    AppConnection:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        app:
+          type: string
+          description: Service type (e.g., aws, github, gcp)
+        orgId:
+          type: string
+          format: uuid
+        credentials:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # --- Secret Sync ---
+    SecretSync:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        destination:
+          type: string
+          description: Sync destination (e.g., aws-parameter-store, github)
+        sourceEnvironment:
+          type: string
+        sourcePath:
+          type: string
+        connectionId:
+          type: string
+          format: uuid
+        isAutoSyncEnabled:
+          type: boolean
+        lastSyncedAt:
+          type: string
+          format: date-time
+        syncStatus:
+          type: string
+          enum: [succeeded, failed, pending]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # --- Secret Sharing ---
+    SharedSecret:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        encryptedValue:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        expiresAfterViews:
+          type: integer
+        accessType:
+          type: string
+          enum: [anyone, organization]
+        createdAt:
+          type: string
+          format: date-time
+
+    # --- KMS / CMEK ---
+    KmsKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        isDisabled:
+          type: boolean
+        projectId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    EncryptDataRequest:
+      type: object
+      required: [plaintext]
+      properties:
+        plaintext:
+          type: string
+          description: Base64-encoded plaintext to encrypt
+
+    EncryptDataResponse:
+      type: object
+      properties:
+        ciphertext:
+          type: string
+
+    DecryptDataRequest:
+      type: object
+      required: [ciphertext]
+      properties:
+        ciphertext:
+          type: string
+
+    DecryptDataResponse:
+      type: object
+      properties:
+        plaintext:
+          type: string
+
+    # --- Dashboard ---
+    DashboardSecrets:
+      type: object
+      properties:
+        secrets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Secret'
+        folders:
+          type: array
+          items:
+            $ref: '#/components/schemas/SecretFolder'
+        imports:
+          type: array
+          items:
+            $ref: '#/components/schemas/SecretImport'
+
+    # --- Approval Policy ---
+    ApprovalPolicy:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [change, access]
+        approvals:
+          type: integer
+        secretPath:
+          type: string
+        envId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # --- User ---
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        superAdmin:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+  parameters:
+    projectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    envId:
+      name: envId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+tags:
+  - name: Auth
+    description: Authentication and login endpoints
+  - name: Organizations
+    description: Organization management
+  - name: Projects
+    description: Project (workspace) management
+  - name: Environments
+    description: Project environment management
+  - name: Secrets
+    description: Secret CRUD and batch operations (v4)
+  - name: Secret Tags
+    description: Tag management for secrets
+  - name: Secret Folders
+    description: Folder hierarchy for secrets
+  - name: Secret Imports
+    description: Cross-environment secret imports
+  - name: Secret Sharing
+    description: Shared secret links
+  - name: Identities
+    description: Machine identity management
+  - name: Identity Auth
+    description: Identity authentication methods (Universal Auth, Token Auth, Kubernetes, etc.)
+  - name: Service Tokens
+    description: Service token management (v2)
+  - name: Integrations
+    description: Third-party secret sync integrations
+  - name: Integration Auth
+    description: Integration authentication management
+  - name: Webhooks
+    description: Webhook management for secret change events
+  - name: Audit Logs
+    description: Audit log retrieval
+  - name: Certificate Authorities
+    description: PKI certificate authority management
+  - name: Certificates
+    description: Certificate issuance and management
+  - name: App Connections
+    description: Reusable app connections for integrations and syncs
+  - name: Secret Syncs
+    description: Continuous secret sync to external destinations
+  - name: KMS
+    description: Customer-managed encryption keys (CMEK)
+  - name: Approval Policies
+    description: Secret change and access approval policies
+  - name: Dashboard
+    description: Dashboard data retrieval
+  - name: Admin
+    description: Server administration
+  - name: Users
+    description: User management
+  - name: SSO
+    description: Single sign-on configuration
+
+paths:
+  # ── Auth ────────────────────────────────────────────────────
+  /api/v3/auth/login1:
+    post:
+      operationId: login1
+      tags: [Auth]
+      summary: Login step 1 - SRP init
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login challenge or MFA prompt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
+  /api/v1/auth/token/renew:
+    post:
+      operationId: renewAccessToken
+      tags: [Auth]
+      summary: Renew access token
+      responses:
+        '200':
+          description: Renewed token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+
+  /api/v1/auth/universal-auth/login:
+    post:
+      operationId: universalAuthLogin
+      tags: [Identity Auth]
+      summary: Login with Universal Auth
+      description: Exchange clientId and clientSecret for an access token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UniversalAuthLoginRequest'
+      responses:
+        '200':
+          description: Access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+      security: []
+
+  /api/v1/auth/token-auth/identities/{identityId}/tokens:
+    post:
+      operationId: createIdentityToken
+      tags: [Identity Auth]
+      summary: Create an identity token
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Token created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+
+  # ── Organizations ───────────────────────────────────────────
+  /api/v1/organization:
+    get:
+      operationId: listOrganizations
+      tags: [Organizations]
+      summary: List organizations the user belongs to
+      responses:
+        '200':
+          description: Organization list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  organizations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Organization'
+
+  /api/v1/organization/{organizationId}:
+    get:
+      operationId: getOrganization
+      tags: [Organizations]
+      summary: Get an organization by ID
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Organization details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  organization:
+                    $ref: '#/components/schemas/Organization'
+    patch:
+      operationId: updateOrganization
+      tags: [Organizations]
+      summary: Update an organization
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+      responses:
+        '200':
+          description: Updated organization
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  organization:
+                    $ref: '#/components/schemas/Organization'
+
+  # ── Projects ────────────────────────────────────────────────
+  /api/v1/projects:
+    post:
+      operationId: createProject
+      tags: [Projects]
+      summary: Create a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '200':
+          description: Created project
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    $ref: '#/components/schemas/Project'
+
+  /api/v1/projects/{projectId}:
+    get:
+      operationId: getProject
+      tags: [Projects]
+      summary: Get a project by ID
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    $ref: '#/components/schemas/Project'
+    patch:
+      operationId: updateProject
+      tags: [Projects]
+      summary: Update a project
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    $ref: '#/components/schemas/Project'
+    delete:
+      operationId: deleteProject
+      tags: [Projects]
+      summary: Delete a project
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      responses:
+        '200':
+          description: Deletion confirmation
+
+  /api/v1/projects/{projectId}/users:
+    get:
+      operationId: listProjectUsers
+      tags: [Projects]
+      summary: List project members
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - name: includeGroupMembers
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Project members
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+
+  # ── Environments ────────────────────────────────────────────
+  /api/v1/projects/{projectId}/environments:
+    get:
+      operationId: listEnvironments
+      tags: [Environments]
+      summary: List project environments
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      responses:
+        '200':
+          description: Environment list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  environments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Environment'
+    post:
+      operationId: createEnvironment
+      tags: [Environments]
+      summary: Create an environment
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEnvironmentRequest'
+      responses:
+        '200':
+          description: Created environment
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  environment:
+                    $ref: '#/components/schemas/Environment'
+
+  /api/v1/projects/{projectId}/environments/{envId}:
+    patch:
+      operationId: updateEnvironment
+      tags: [Environments]
+      summary: Update an environment
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - $ref: '#/components/parameters/envId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEnvironmentRequest'
+      responses:
+        '200':
+          description: Updated environment
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  environment:
+                    $ref: '#/components/schemas/Environment'
+    delete:
+      operationId: deleteEnvironment
+      tags: [Environments]
+      summary: Delete an environment
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - $ref: '#/components/parameters/envId'
+      responses:
+        '200':
+          description: Deletion confirmation
+
+  # ── Secrets (v4) ────────────────────────────────────────────
+  /api/v4/secrets:
+    get:
+      operationId: listSecrets
+      tags: [Secrets]
+      summary: List secrets
+      parameters:
+        - name: workspaceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: environment
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: secretPath
+          in: query
+          schema:
+            type: string
+            default: /
+        - name: expandSecretReferences
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: recursive
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: include_imports
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: tagSlugs
+          in: query
+          schema:
+            type: string
+            description: Comma-separated tag slugs to filter by
+        - name: metadataFilter
+          in: query
+          schema:
+            type: string
+            description: 'Metadata filter in format: key=k1,value=v1|key=k2,value=v2'
+      responses:
+        '200':
+          description: Secret list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secrets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Secret'
+                  imports:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        environment:
+                          type: string
+                        secretPath:
+                          type: string
+                        folderId:
+                          type: string
+                        secrets:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/Secret'
+
+  /api/v4/secrets/{secretKey}:
+    get:
+      operationId: getSecret
+      tags: [Secrets]
+      summary: Get a secret by key
+      parameters:
+        - name: secretKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: workspaceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: environment
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: secretPath
+          in: query
+          schema:
+            type: string
+            default: /
+        - name: expandSecretReferences
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: version
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Secret details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret:
+                    $ref: '#/components/schemas/Secret'
+    post:
+      operationId: createSecret
+      tags: [Secrets]
+      summary: Create a secret
+      parameters:
+        - name: secretKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSecretRequest'
+      responses:
+        '200':
+          description: Created secret
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret:
+                    $ref: '#/components/schemas/Secret'
+    patch:
+      operationId: updateSecret
+      tags: [Secrets]
+      summary: Update a secret
+      parameters:
+        - name: secretKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSecretRequest'
+      responses:
+        '200':
+          description: Updated secret
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret:
+                    $ref: '#/components/schemas/Secret'
+    delete:
+      operationId: deleteSecret
+      tags: [Secrets]
+      summary: Delete a secret
+      parameters:
+        - name: secretKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: workspaceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: environment
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: secretPath
+          in: query
+          schema:
+            type: string
+            default: /
+      responses:
+        '200':
+          description: Deleted secret
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret:
+                    $ref: '#/components/schemas/Secret'
+
+  /api/v4/secrets/batch:
+    post:
+      operationId: batchSecrets
+      tags: [Secrets]
+      summary: Batch create, update, and delete secrets
+      parameters:
+        - name: workspaceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchSecretRequest'
+      responses:
+        '200':
+          description: Batch operation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  created:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Secret'
+                  updated:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Secret'
+                  deleted:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Secret'
+
+  # ── Secret Tags ─────────────────────────────────────────────
+  /api/v1/projects/{projectId}/tags:
+    get:
+      operationId: listSecretTags
+      tags: [Secret Tags]
+      summary: List secret tags for a project
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      responses:
+        '200':
+          description: Tag list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tags:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SecretTag'
+    post:
+      operationId: createSecretTag
+      tags: [Secret Tags]
+      summary: Create a secret tag
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug, color]
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+                color:
+                  type: string
+      responses:
+        '200':
+          description: Created tag
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tag:
+                    $ref: '#/components/schemas/SecretTag'
+
+  /api/v1/projects/{projectId}/tags/{tagId}:
+    get:
+      operationId: getSecretTag
+      tags: [Secret Tags]
+      summary: Get a secret tag by ID
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tag details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tag:
+                    $ref: '#/components/schemas/SecretTag'
+    patch:
+      operationId: updateSecretTag
+      tags: [Secret Tags]
+      summary: Update a secret tag
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+                color:
+                  type: string
+      responses:
+        '200':
+          description: Updated tag
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tag:
+                    $ref: '#/components/schemas/SecretTag'
+    delete:
+      operationId: deleteSecretTag
+      tags: [Secret Tags]
+      summary: Delete a secret tag
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deletion confirmation
+
+  # ── Secret Folders ──────────────────────────────────────────
+  /api/v2/folders:
+    get:
+      operationId: listSecretFolders
+      tags: [Secret Folders]
+      summary: List secret folders
+      parameters:
+        - name: workspaceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: environment
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: directory
+          in: query
+          schema:
+            type: string
+            default: /
+      responses:
+        '200':
+          description: Folder list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  folders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SecretFolder'
+    post:
+      operationId: createSecretFolder
+      tags: [Secret Folders]
+      summary: Create a secret folder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workspaceId, environment, name]
+              properties:
+                workspaceId:
+                  type: string
+                  format: uuid
+                environment:
+                  type: string
+                name:
+                  type: string
+                directory:
+                  type: string
+                  default: /
+      responses:
+        '200':
+          description: Created folder
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  folder:
+                    $ref: '#/components/schemas/SecretFolder'
+
+  /api/v2/folders/{folderId}:
+    patch:
+      operationId: updateSecretFolder
+      tags: [Secret Folders]
+      summary: Update a secret folder
+      parameters:
+        - name: folderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                workspaceId:
+                  type: string
+                  format: uuid
+                environment:
+                  type: string
+                directory:
+                  type: string
+      responses:
+        '200':
+          description: Updated folder
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  folder:
+                    $ref: '#/components/schemas/SecretFolder'
+    delete:
+      operationId: deleteSecretFolder
+      tags: [Secret Folders]
+      summary: Delete a secret folder
+      parameters:
+        - name: folderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workspaceId, environment]
+              properties:
+                workspaceId:
+                  type: string
+                  format: uuid
+                environment:
+                  type: string
+                directory:
+                  type: string
+      responses:
+        '200':
+          description: Deletion confirmation
+
+  # ── Secret Imports ──────────────────────────────────────────
+  /api/v2/secret-imports:
+    get:
+      operationId: listSecretImports
+      tags: [Secret Imports]
+      summary: List secret imports
+      parameters:
+        - name: workspaceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: environment
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: directory
+          in: query
+          schema:
+            type: string
+            default: /
+      responses:
+        '200':
+          description: Import list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secretImports:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SecretImport'
+    post:
+      operationId: createSecretImport
+      tags: [Secret Imports]
+      summary: Create a secret import
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workspaceId, environment, directory, import]
+              properties:
+                workspaceId:
+                  type: string
+                  format: uuid
+                environment:
+                  type: string
+                directory:
+                  type: string
+                  default: /
+                import:
+                  type: object
+                  required: [environment, path]
+                  properties:
+                    environment:
+                      type: string
+                    path:
+                      type: string
+      responses:
+        '200':
+          description: Created import
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secretImport:
+                    $ref: '#/components/schemas/SecretImport'
+
+  /api/v2/secret-imports/{importId}:
+    patch:
+      operationId: updateSecretImport
+      tags: [Secret Imports]
+      summary: Update a secret import
+      parameters:
+        - name: importId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                position:
+                  type: integer
+                import:
+                  type: object
+                  properties:
+                    environment:
+                      type: string
+                    path:
+                      type: string
+      responses:
+        '200':
+          description: Updated import
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secretImport:
+                    $ref: '#/components/schemas/SecretImport'
+    delete:
+      operationId: deleteSecretImport
+      tags: [Secret Imports]
+      summary: Delete a secret import
+      parameters:
+        - name: importId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deletion confirmation
+
+  # ── Identities ──────────────────────────────────────────────
+  /api/v1/identities:
+    post:
+      operationId: createIdentity
+      tags: [Identities]
+      summary: Create a machine identity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIdentityRequest'
+      responses:
+        '200':
+          description: Created identity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identity:
+                    $ref: '#/components/schemas/Identity'
+
+  /api/v1/identities/{identityId}:
+    get:
+      operationId: getIdentity
+      tags: [Identities]
+      summary: Get an identity by ID
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Identity details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identity:
+                    $ref: '#/components/schemas/Identity'
+    patch:
+      operationId: updateIdentity
+      tags: [Identities]
+      summary: Update an identity
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                role:
+                  type: string
+      responses:
+        '200':
+          description: Updated identity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identity:
+                    $ref: '#/components/schemas/Identity'
+    delete:
+      operationId: deleteIdentity
+      tags: [Identities]
+      summary: Delete an identity
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deletion confirmation
+
+  # ── Identity Universal Auth ─────────────────────────────────
+  /api/v1/auth/universal-auth/identities/{identityId}:
+    get:
+      operationId: getUniversalAuth
+      tags: [Identity Auth]
+      summary: Get Universal Auth configuration for an identity
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Universal auth config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UniversalAuthConfig'
+    post:
+      operationId: attachUniversalAuth
+      tags: [Identity Auth]
+      summary: Attach Universal Auth to an identity
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accessTokenTrustedIps:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      ipAddress:
+                        type: string
+                accessTokenTTL:
+                  type: integer
+                  default: 2592000
+                accessTokenMaxTTL:
+                  type: integer
+                  default: 2592000
+                accessTokenNumUsesLimit:
+                  type: integer
+                  default: 0
+      responses:
+        '200':
+          description: Attached universal auth
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UniversalAuthConfig'
+
+  /api/v1/auth/universal-auth/identities/{identityId}/client-secrets:
+    post:
+      operationId: createUniversalAuthClientSecret
+      tags: [Identity Auth]
+      summary: Create a client secret for Universal Auth
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type: string
+                ttl:
+                  type: integer
+                numUsesLimit:
+                  type: integer
+      responses:
+        '200':
+          description: Client secret created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateClientSecretResponse'
+
+  # ── Service Tokens ──────────────────────────────────────────
+  /api/v2/service-token:
+    get:
+      operationId: getServiceToken
+      tags: [Service Tokens]
+      summary: Get the service token associated with the current request
+      responses:
+        '200':
+          description: Service token details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  serviceToken:
+                    $ref: '#/components/schemas/ServiceToken'
+
+  # ── Integrations ────────────────────────────────────────────
+  /api/v1/integration:
+    post:
+      operationId: createIntegration
+      tags: [Integrations]
+      summary: Create an integration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [integrationAuthId, integration, app, sourceEnvironment, secretPath]
+              properties:
+                integrationAuthId:
+                  type: string
+                  format: uuid
+                integration:
+                  type: string
+                app:
+                  type: string
+                sourceEnvironment:
+                  type: string
+                secretPath:
+                  type: string
+                  default: /
+                targetEnvironment:
+                  type: string
+      responses:
+        '200':
+          description: Created integration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  integration:
+                    $ref: '#/components/schemas/Integration'
+
+  /api/v1/integration/{integrationId}:
+    patch:
+      operationId: updateIntegration
+      tags: [Integrations]
+      summary: Update an integration
+      parameters:
+        - name: integrationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app:
+                  type: string
+                isActive:
+                  type: boolean
+                targetEnvironment:
+                  type: string
+      responses:
+        '200':
+          description: Updated integration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  integration:
+                    $ref: '#/components/schemas/Integration'
+    delete:
+      operationId: deleteIntegration
+      tags: [Integrations]
+      summary: Delete an integration
+      parameters:
+        - name: integrationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deletion confirmation
+
+  # ── Webhooks ────────────────────────────────────────────────
+  /api/v1/webhooks:
+    get:
+      operationId: listWebhooks
+      tags: [Webhooks]
+      summary: List webhooks for a project
+      parameters:
+        - name: workspaceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Webhook list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhooks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Webhook'
+    post:
+      operationId: createWebhook
+      tags: [Webhooks]
+      summary: Create a webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workspaceId, environment, webhookUrl]
+              properties:
+                workspaceId:
+                  type: string
+                  format: uuid
+                environment:
+                  type: string
+                webhookUrl:
+                  type: string
+                  format: uri
+                secretPath:
+                  type: string
+                  default: /
+                webhookSecretKey:
+                  type: string
+      responses:
+        '200':
+          description: Created webhook
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhook:
+                    $ref: '#/components/schemas/Webhook'
+
+  /api/v1/webhooks/{webhookId}:
+    patch:
+      operationId: updateWebhook
+      tags: [Webhooks]
+      summary: Update a webhook
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isDisabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated webhook
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhook:
+                    $ref: '#/components/schemas/Webhook'
+    delete:
+      operationId: deleteWebhook
+      tags: [Webhooks]
+      summary: Delete a webhook
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deletion confirmation
+
+  /api/v1/webhooks/{webhookId}/test:
+    post:
+      operationId: testWebhook
+      tags: [Webhooks]
+      summary: Test a webhook
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Test result
+
+  # ── Secret Sharing ──────────────────────────────────────────
+  /api/v1/secret-sharing/shared:
+    get:
+      operationId: listSharedSecrets
+      tags: [Secret Sharing]
+      summary: List shared secrets created by the user
+      responses:
+        '200':
+          description: Shared secret list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secrets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SharedSecret'
+    post:
+      operationId: createSharedSecret
+      tags: [Secret Sharing]
+      summary: Create a shared secret
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [secretValue]
+              properties:
+                secretValue:
+                  type: string
+                expiresAt:
+                  type: string
+                  format: date-time
+                expiresAfterViews:
+                  type: integer
+                accessType:
+                  type: string
+                  enum: [anyone, organization]
+                  default: anyone
+      responses:
+        '200':
+          description: Created shared secret
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+
+  /api/v1/secret-sharing/shared/{sharedSecretId}:
+    get:
+      operationId: getSharedSecret
+      tags: [Secret Sharing]
+      summary: Get a shared secret by ID (consumes a view)
+      parameters:
+        - name: sharedSecretId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Shared secret value
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secretValue:
+                    type: string
+                  expiresAt:
+                    type: string
+                    format: date-time
+      security: []
+    delete:
+      operationId: deleteSharedSecret
+      tags: [Secret Sharing]
+      summary: Delete a shared secret
+      parameters:
+        - name: sharedSecretId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deletion confirmation
+
+  # ── App Connections ─────────────────────────────────────────
+  /api/v1/app-connections:
+    get:
+      operationId: listAppConnections
+      tags: [App Connections]
+      summary: List app connections
+      parameters:
+        - name: orgId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: App connection list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  appConnections:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AppConnection'
+    post:
+      operationId: createAppConnection
+      tags: [App Connections]
+      summary: Create an app connection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, app, credentials]
+              properties:
+                name:
+                  type: string
+                app:
+                  type: string
+                credentials:
+                  type: object
+      responses:
+        '200':
+          description: Created app connection
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  appConnection:
+                    $ref: '#/components/schemas/AppConnection'
+
+  /api/v1/app-connections/{connectionId}:
+    get:
+      operationId: getAppConnection
+      tags: [App Connections]
+      summary: Get an app connection by ID
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: App connection details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  appConnection:
+                    $ref: '#/components/schemas/AppConnection'
+    patch:
+      operationId: updateAppConnection
+      tags: [App Connections]
+      summary: Update an app connection
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                credentials:
+                  type: object
+      responses:
+        '200':
+          description: Updated app connection
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  appConnection:
+                    $ref: '#/components/schemas/AppConnection'
+    delete:
+      operationId: deleteAppConnection
+      tags: [App Connections]
+      summary: Delete an app connection
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deletion confirmation
+
+  # ── Secret Syncs ────────────────────────────────────────────
+  /api/v1/secret-syncs:
+    get:
+      operationId: listSecretSyncs
+      tags: [Secret Syncs]
+      summary: List secret syncs
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Secret sync list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secretSyncs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SecretSync'
+    post:
+      operationId: createSecretSync
+      tags: [Secret Syncs]
+      summary: Create a secret sync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, destination, projectId, sourceEnvironment, sourcePath, connectionId]
+              properties:
+                name:
+                  type: string
+                destination:
+                  type: string
+                projectId:
+                  type: string
+                  format: uuid
+                sourceEnvironment:
+                  type: string
+                sourcePath:
+                  type: string
+                connectionId:
+                  type: string
+                  format: uuid
+                isAutoSyncEnabled:
+                  type: boolean
+                  default: true
+                destinationConfig:
+                  type: object
+      responses:
+        '200':
+          description: Created secret sync
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secretSync:
+                    $ref: '#/components/schemas/SecretSync'
+
+  /api/v1/secret-syncs/{syncId}:
+    get:
+      operationId: getSecretSync
+      tags: [Secret Syncs]
+      summary: Get a secret sync by ID
+      parameters:
+        - name: syncId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Secret sync details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secretSync:
+                    $ref: '#/components/schemas/SecretSync'
+    patch:
+      operationId: updateSecretSync
+      tags: [Secret Syncs]
+      summary: Update a secret sync
+      parameters:
+        - name: syncId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                isAutoSyncEnabled:
+                  type: boolean
+                destinationConfig:
+                  type: object
+      responses:
+        '200':
+          description: Updated secret sync
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secretSync:
+                    $ref: '#/components/schemas/SecretSync'
+    delete:
+      operationId: deleteSecretSync
+      tags: [Secret Syncs]
+      summary: Delete a secret sync
+      parameters:
+        - name: syncId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deletion confirmation
+
+  /api/v1/secret-syncs/{syncId}/trigger:
+    post:
+      operationId: triggerSecretSync
+      tags: [Secret Syncs]
+      summary: Manually trigger a secret sync
+      parameters:
+        - name: syncId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Sync triggered
+
+  # ── KMS (CMEK) ─────────────────────────────────────────────
+  /api/v1/kms/keys:
+    get:
+      operationId: listKmsKeys
+      tags: [KMS]
+      summary: List KMS encryption keys
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: KMS key list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KmsKey'
+    post:
+      operationId: createKmsKey
+      tags: [KMS]
+      summary: Create a KMS encryption key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, projectId]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                projectId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Created KMS key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    $ref: '#/components/schemas/KmsKey'
+
+  /api/v1/kms/keys/{keyId}:
+    patch:
+      operationId: updateKmsKey
+      tags: [KMS]
+      summary: Update a KMS key
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                isDisabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated KMS key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    $ref: '#/components/schemas/KmsKey'
+    delete:
+      operationId: deleteKmsKey
+      tags: [KMS]
+      summary: Delete a KMS key
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deletion confirmation
+
+  /api/v1/kms/keys/{keyId}/encrypt:
+    post:
+      operationId: encryptData
+      tags: [KMS]
+      summary: Encrypt data with a KMS key
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncryptDataRequest'
+      responses:
+        '200':
+          description: Encrypted data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncryptDataResponse'
+
+  /api/v1/kms/keys/{keyId}/decrypt:
+    post:
+      operationId: decryptData
+      tags: [KMS]
+      summary: Decrypt data with a KMS key
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecryptDataRequest'
+      responses:
+        '200':
+          description: Decrypted data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecryptDataResponse'
+
+  # ── Certificate Authorities ─────────────────────────────────
+  /api/v1/cert-manager/ca:
+    post:
+      operationId: createCertificateAuthority
+      tags: [Certificate Authorities]
+      summary: Create a certificate authority
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, type, friendlyName, commonName, keyAlgorithm]
+              properties:
+                projectId:
+                  type: string
+                  format: uuid
+                type:
+                  type: string
+                  enum: [root, intermediate]
+                friendlyName:
+                  type: string
+                commonName:
+                  type: string
+                organization:
+                  type: string
+                ou:
+                  type: string
+                country:
+                  type: string
+                province:
+                  type: string
+                locality:
+                  type: string
+                keyAlgorithm:
+                  type: string
+                  enum: [RSA_2048, RSA_4096, ECDSA_P256, ECDSA_P384]
+                maxPathLength:
+                  type: integer
+                notAfter:
+                  type: string
+                  description: Duration (e.g., "10y")
+      responses:
+        '200':
+          description: Created CA
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ca:
+                    $ref: '#/components/schemas/CertificateAuthority'
+
+  /api/v1/cert-manager/ca/{caId}:
+    get:
+      operationId: getCertificateAuthority
+      tags: [Certificate Authorities]
+      summary: Get a certificate authority by ID
+      parameters:
+        - name: caId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: CA details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ca:
+                    $ref: '#/components/schemas/CertificateAuthority'
+    patch:
+      operationId: updateCertificateAuthority
+      tags: [Certificate Authorities]
+      summary: Update a certificate authority
+      parameters:
+        - name: caId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [active, disabled]
+      responses:
+        '200':
+          description: Updated CA
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ca:
+                    $ref: '#/components/schemas/CertificateAuthority'
+    delete:
+      operationId: deleteCertificateAuthority
+      tags: [Certificate Authorities]
+      summary: Delete a certificate authority
+      parameters:
+        - name: caId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deletion confirmation
+
+  # ── Certificates ────────────────────────────────────────────
+  /api/v1/cert-manager/certificates:
+    get:
+      operationId: listCertificates
+      tags: [Certificates]
+      summary: List certificates
+      parameters:
+        - name: caId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Certificate list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  certificates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Certificate'
+                  totalCount:
+                    type: integer
+
+  /api/v1/cert-manager/ca/{caId}/issue-certificate:
+    post:
+      operationId: issueCertificate
+      tags: [Certificates]
+      summary: Issue a certificate from a CA
+      parameters:
+        - name: caId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCertificateRequest'
+      responses:
+        '200':
+          description: Issued certificate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  certificate:
+                    type: string
+                    description: PEM-encoded certificate
+                  certificateChain:
+                    type: string
+                    description: PEM-encoded certificate chain
+                  privateKey:
+                    type: string
+                    description: PEM-encoded private key
+                  serialNumber:
+                    type: string
+
+  /api/v1/cert-manager/certificates/{certificateId}:
+    get:
+      operationId: getCertificate
+      tags: [Certificates]
+      summary: Get a certificate by ID
+      parameters:
+        - name: certificateId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Certificate details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  certificate:
+                    $ref: '#/components/schemas/Certificate'
+    delete:
+      operationId: revokeCertificate
+      tags: [Certificates]
+      summary: Revoke a certificate
+      parameters:
+        - name: certificateId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revocationReason:
+                  type: string
+      responses:
+        '200':
+          description: Certificate revoked
+
+  # ── Approval Policies ───────────────────────────────────────
+  /api/v1/approval-policies/change:
+    get:
+      operationId: listChangeApprovalPolicies
+      tags: [Approval Policies]
+      summary: List secret change approval policies
+      parameters:
+        - name: workspaceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Policy list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  approvalPolicies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApprovalPolicy'
+    post:
+      operationId: createChangeApprovalPolicy
+      tags: [Approval Policies]
+      summary: Create a secret change approval policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workspaceId, name, approvals, environment]
+              properties:
+                workspaceId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                approvals:
+                  type: integer
+                  minimum: 1
+                environment:
+                  type: string
+                secretPath:
+                  type: string
+      responses:
+        '200':
+          description: Created policy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  approvalPolicy:
+                    $ref: '#/components/schemas/ApprovalPolicy'
+
+  # ── Dashboard ───────────────────────────────────────────────
+  /api/v1/dashboard/{projectId}/secrets-overview:
+    get:
+      operationId: getDashboardSecretsOverview
+      tags: [Dashboard]
+      summary: Get secrets overview for the dashboard
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - name: environments
+          in: query
+          schema:
+            type: string
+            description: Comma-separated environment slugs
+        - name: secretPath
+          in: query
+          schema:
+            type: string
+            default: /
+      responses:
+        '200':
+          description: Dashboard secrets data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSecrets'
+
+  # ── Audit Logs ──────────────────────────────────────────────
+  /api/v1/events:
+    get:
+      operationId: listAuditLogs
+      tags: [Audit Logs]
+      summary: List audit log events
+      parameters:
+        - name: workspaceId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: eventType
+          in: query
+          schema:
+            type: string
+        - name: actor
+          in: query
+          schema:
+            type: string
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auditLogs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLog'
+                  totalCount:
+                    type: integer
+
+  # ── Users ───────────────────────────────────────────────────
+  /api/v1/user:
+    get:
+      operationId: getCurrentUser
+      tags: [Users]
+      summary: Get the current authenticated user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+
+  # ── SSO ─────────────────────────────────────────────────────
+  /api/v1/sso/config:
+    get:
+      operationId: getSsoConfig
+      tags: [SSO]
+      summary: Get SSO configuration for an organization
+      parameters:
+        - name: orgId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: SSO configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  type:
+                    type: string
+                    enum: [saml, oidc]
+                  isActive:
+                    type: boolean
+                  orgId:
+                    type: string
+                    format: uuid
+    post:
+      operationId: createSsoConfig
+      tags: [SSO]
+      summary: Create SSO configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orgId, type]
+              properties:
+                orgId:
+                  type: string
+                  format: uuid
+                type:
+                  type: string
+                  enum: [saml, oidc]
+                isActive:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Created SSO config
+
+  # ── Admin ───────────────────────────────────────────────────
+  /api/v1/admin/config:
+    get:
+      operationId: getServerConfig
+      tags: [Admin]
+      summary: Get server configuration
+      responses:
+        '200':
+          description: Server config
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  allowSignUp:
+                    type: boolean
+                  allowedSignUpDomain:
+                    type: string
+                  isMigrationModeOn:
+                    type: boolean
+    patch:
+      operationId: updateServerConfig
+      tags: [Admin]
+      summary: Update server configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                allowSignUp:
+                  type: boolean
+                allowedSignUpDomain:
+                  type: string
+      responses:
+        '200':
+          description: Updated config

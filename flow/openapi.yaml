@@ -1,0 +1,2705 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Flow API
+  description: |
+    Hanzo Flow is a visual workflow automation platform for building AI-powered
+    automations. It provides APIs for managing flows, connections, triggers,
+    pieces (integrations), projects, and more.
+
+    Based on the ActivePieces engine with Hanzo ecosystem integration
+    (Hanzo MQ, Hanzo KV).
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://flow.hanzo.ai
+    description: Production
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: flows
+    description: Create, read, update, delete, and operate on flows
+  - name: flow-runs
+    description: List and manage flow execution runs
+  - name: app-connections
+    description: Manage connections to external services
+  - name: pieces
+    description: Browse and manage integration pieces
+  - name: triggers
+    description: Manage flow triggers and trigger events
+  - name: projects
+    description: Project management
+  - name: folders
+    description: Organize flows into folders
+  - name: authentication
+    description: Sign up, sign in, and token management
+  - name: webhooks
+    description: Incoming webhook endpoints for flow triggers
+  - name: store-entries
+    description: Key-value store for flow state
+  - name: templates
+    description: Flow templates
+  - name: users
+    description: User management
+  - name: user-invitations
+    description: Invite users to projects
+  - name: platform
+    description: Platform-level settings
+  - name: ai-providers
+    description: AI provider configuration
+  - name: tables
+    description: Database tables for structured data
+  - name: fields
+    description: Table field definitions
+  - name: records
+    description: Table record CRUD
+  - name: todos
+    description: Task management within flows
+  - name: mcp
+    description: Model Context Protocol server management
+  - name: flags
+    description: Feature flags and system configuration
+  - name: health
+    description: Health check
+  - name: sample-data
+    description: Sample data for flow step testing
+  - name: tags
+    description: Piece tagging
+  - name: solutions
+    description: Packaged flow solutions (EE)
+  - name: alerts
+    description: Platform alert configuration (EE)
+  - name: api-keys
+    description: API key management (EE)
+  - name: project-members
+    description: Project membership management (EE)
+  - name: project-roles
+    description: RBAC role management (EE)
+  - name: project-releases
+    description: Release and versioning (EE)
+  - name: git-repos
+    description: Git sync for flows (EE)
+  - name: global-connections
+    description: Platform-wide shared connections (EE)
+  - name: signing-keys
+    description: JWT signing key management (EE)
+  - name: audit-events
+    description: Audit logging (EE)
+  - name: oauth-apps
+    description: OAuth application configuration (EE)
+  - name: custom-domains
+    description: Custom domain management (EE)
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: API key generated from the platform admin console
+
+  schemas:
+    SeekPage:
+      type: object
+      properties:
+        data:
+          type: array
+          items: {}
+        next:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+
+    Flow:
+      type: object
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        folderId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [ENABLED, DISABLED]
+        externalId:
+          type: string
+        version:
+          $ref: '#/components/schemas/FlowVersion'
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+
+    FlowVersion:
+      type: object
+      properties:
+        id:
+          type: string
+        flowId:
+          type: string
+        displayName:
+          type: string
+        trigger:
+          type: object
+        valid:
+          type: boolean
+        state:
+          type: string
+          enum: [DRAFT, LOCKED]
+        updatedBy:
+          type: string
+          nullable: true
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+
+    FlowRun:
+      type: object
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        flowId:
+          type: string
+        flowVersionId:
+          type: string
+        flowDisplayName:
+          type: string
+        status:
+          type: string
+          enum: [RUNNING, SUCCEEDED, FAILED, TIMEOUT, PAUSED, STOPPED, INTERNAL_ERROR, QUOTA_EXCEEDED]
+        startTime:
+          type: string
+          format: date-time
+        finishTime:
+          type: string
+          format: date-time
+          nullable: true
+        duration:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+
+    AppConnection:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        displayName:
+          type: string
+        pieceName:
+          type: string
+        projectId:
+          type: string
+        type:
+          type: string
+          enum: [OAUTH2, CLOUD_OAUTH2, PLATFORM_OAUTH2, SECRET_TEXT, BASIC_AUTH, CUSTOM_AUTH]
+        status:
+          type: string
+          enum: [ACTIVE, ERROR, MISSING_PERMISSIONS]
+        externalId:
+          type: string
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+
+    Piece:
+      type: object
+      properties:
+        name:
+          type: string
+        displayName:
+          type: string
+        description:
+          type: string
+        logoUrl:
+          type: string
+        version:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+        actions:
+          type: object
+        triggers:
+          type: object
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        platformId:
+          type: string
+        externalId:
+          type: string
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+
+    Folder:
+      type: object
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        projectId:
+          type: string
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+
+    StoreEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+        value:
+          {}
+        projectId:
+          type: string
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+
+    Template:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        pieces:
+          type: array
+          items:
+            type: string
+        template:
+          type: object
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        status:
+          type: string
+        platformId:
+          type: string
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+
+    UserInvitation:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        platformId:
+          type: string
+        projectId:
+          type: string
+        projectRoleId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, ACCEPTED]
+        created:
+          type: string
+          format: date-time
+
+    Platform:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        primaryColor:
+          type: string
+        logoIconUrl:
+          type: string
+        fullLogoUrl:
+          type: string
+        favIconUrl:
+          type: string
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+
+    Table:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        projectId:
+          type: string
+        externalId:
+          type: string
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+
+    Field:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        tableId:
+          type: string
+        externalId:
+          type: string
+
+    Record:
+      type: object
+      properties:
+        id:
+          type: string
+        cells:
+          type: object
+        tableId:
+          type: string
+        projectId:
+          type: string
+        created:
+          type: string
+          format: date-time
+
+    Todo:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        projectId:
+          type: string
+        flowId:
+          type: string
+        created:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+
+paths:
+  # ── Health ──────────────────────────────────────────────────────────────────
+  /v1/health:
+    get:
+      operationId: getHealth
+      tags: [health]
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+
+  # ── Flags ───────────────────────────────────────────────────────────────────
+  /v1/flags:
+    get:
+      operationId: getFlags
+      tags: [flags]
+      summary: Get feature flags and configuration
+      security: []
+      responses:
+        '200':
+          description: Flags returned
+
+  # ── Authentication ──────────────────────────────────────────────────────────
+  /v1/authentication/sign-up:
+    post:
+      operationId: signUp
+      tags: [authentication]
+      summary: Sign up a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, firstName, lastName]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+      responses:
+        '200':
+          description: Authentication token returned
+
+  /v1/authentication/sign-in:
+    post:
+      operationId: signIn
+      tags: [authentication]
+      summary: Sign in with credentials
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Authentication token returned
+
+  # ── Flows ───────────────────────────────────────────────────────────────────
+  /v1/flows:
+    get:
+      operationId: listFlows
+      tags: [flows]
+      summary: List flows
+      parameters:
+        - name: folderId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ENABLED, DISABLED]
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Paginated list of flows
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SeekPage'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Flow'
+    post:
+      operationId: createFlow
+      tags: [flows]
+      summary: Create a flow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName]
+              properties:
+                displayName:
+                  type: string
+                folderId:
+                  type: string
+      responses:
+        '201':
+          description: Flow created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Flow'
+
+  /v1/flows/count:
+    get:
+      operationId: countFlows
+      tags: [flows]
+      summary: Count flows
+      parameters:
+        - name: folderId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Flow count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+
+  /v1/flows/{id}:
+    get:
+      operationId: getFlow
+      tags: [flows]
+      summary: Get a flow by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versionId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Flow details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Flow'
+    post:
+      operationId: updateFlow
+      tags: [flows]
+      summary: Apply an operation to a flow
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, request]
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - CHANGE_STATUS
+                    - CHANGE_FOLDER
+                    - CHANGE_NAME
+                    - LOCK_AND_PUBLISH
+                    - IMPORT_FLOW
+                    - UPDATE_TRIGGER
+                    - ADD_ACTION
+                    - UPDATE_ACTION
+                    - DELETE_ACTION
+                    - MOVE_ACTION
+                    - DUPLICATE_ACTION
+                request:
+                  type: object
+      responses:
+        '200':
+          description: Updated flow
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Flow'
+    delete:
+      operationId: deleteFlow
+      tags: [flows]
+      summary: Delete a flow
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Flow deleted
+
+  /v1/flows/{id}/template:
+    get:
+      operationId: getFlowTemplate
+      tags: [flows]
+      summary: Export flow as template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Flow template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+
+  # ── Flow Runs ───────────────────────────────────────────────────────────────
+  /v1/flow-runs:
+    get:
+      operationId: listFlowRuns
+      tags: [flow-runs]
+      summary: List flow runs
+      parameters:
+        - name: flowId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [RUNNING, SUCCEEDED, FAILED, TIMEOUT, PAUSED, STOPPED]
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: createdAfter
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: createdBefore
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Paginated list of flow runs
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SeekPage'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/FlowRun'
+
+  /v1/flow-runs/{id}:
+    get:
+      operationId: getFlowRun
+      tags: [flow-runs]
+      summary: Get a flow run by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Flow run details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowRun'
+
+  /v1/flow-runs/{id}/requests/{requestId}:
+    post:
+      operationId: resumeFlowRun
+      tags: [flow-runs]
+      summary: Resume a paused flow run with human input
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Run resumed
+
+  /v1/flow-runs/bulk/cancel:
+    post:
+      operationId: bulkCancelFlowRuns
+      tags: [flow-runs]
+      summary: Bulk cancel running flow runs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                flowRunIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Runs cancelled
+
+  /v1/flow-runs/{id}/retry:
+    post:
+      operationId: retryFlowRun
+      tags: [flow-runs]
+      summary: Retry a failed flow run
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                strategy:
+                  type: string
+                  enum: [ON_LATEST_VERSION, FROM_FAILED_STEP]
+      responses:
+        '200':
+          description: Run retried
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowRun'
+
+  # ── App Connections ─────────────────────────────────────────────────────────
+  /v1/app-connections:
+    get:
+      operationId: listAppConnections
+      tags: [app-connections]
+      summary: List app connections
+      parameters:
+        - name: pieceName
+          in: query
+          schema:
+            type: string
+        - name: displayName
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [ACTIVE, ERROR, MISSING_PERMISSIONS]
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Paginated list of app connections
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SeekPage'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AppConnection'
+    post:
+      operationId: upsertAppConnection
+      tags: [app-connections]
+      summary: Upsert an app connection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName, pieceName, type, value]
+              properties:
+                displayName:
+                  type: string
+                pieceName:
+                  type: string
+                externalId:
+                  type: string
+                type:
+                  type: string
+                  enum: [OAUTH2, CLOUD_OAUTH2, PLATFORM_OAUTH2, SECRET_TEXT, BASIC_AUTH, CUSTOM_AUTH]
+                value:
+                  type: object
+                metadata:
+                  type: object
+      responses:
+        '201':
+          description: Connection created or updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppConnection'
+
+  /v1/app-connections/owners:
+    get:
+      operationId: listAppConnectionOwners
+      tags: [app-connections]
+      summary: List app connection owners
+      responses:
+        '200':
+          description: Connection owners
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeekPage'
+
+  /v1/app-connections/replace:
+    post:
+      operationId: replaceAppConnections
+      tags: [app-connections]
+      summary: Replace one connection with another across all flows
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceAppConnectionId, targetAppConnectionId]
+              properties:
+                sourceAppConnectionId:
+                  type: string
+                targetAppConnectionId:
+                  type: string
+      responses:
+        '200':
+          description: Connections replaced
+
+  /v1/app-connections/{id}:
+    post:
+      operationId: updateAppConnection
+      tags: [app-connections]
+      summary: Update an app connection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                metadata:
+                  type: object
+      responses:
+        '200':
+          description: Connection updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppConnection'
+    delete:
+      operationId: deleteAppConnection
+      tags: [app-connections]
+      summary: Delete an app connection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Connection deleted
+
+  # ── Pieces ──────────────────────────────────────────────────────────────────
+  /v1/pieces:
+    get:
+      operationId: listPieces
+      tags: [pieces]
+      summary: List available pieces
+      security: []
+      parameters:
+        - name: searchQuery
+          in: query
+          schema:
+            type: string
+        - name: categories
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: includeHidden
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: includeTags
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+        - name: orderBy
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of pieces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Piece'
+
+  /v1/pieces/categories:
+    get:
+      operationId: listPieceCategories
+      tags: [pieces]
+      summary: List piece categories
+      security: []
+      responses:
+        '200':
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /v1/pieces/versions:
+    get:
+      operationId: listPieceVersions
+      tags: [pieces]
+      summary: List available versions of a piece
+      security: []
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Version list
+
+  /v1/pieces/registry:
+    get:
+      operationId: getPieceRegistry
+      tags: [pieces]
+      summary: Get piece registry metadata
+      security: []
+      responses:
+        '200':
+          description: Registry data
+
+  /v1/pieces/sync:
+    post:
+      operationId: syncPieces
+      tags: [pieces]
+      summary: Sync piece metadata from registry
+      responses:
+        '200':
+          description: Sync completed
+
+  /v1/pieces/options:
+    post:
+      operationId: getPieceOptions
+      tags: [pieces]
+      summary: Get dynamic property options for a piece action/trigger
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [flowId, flowVersionId, actionOrTriggerName, propertyName, pieceName, pieceVersion]
+              properties:
+                flowId:
+                  type: string
+                flowVersionId:
+                  type: string
+                actionOrTriggerName:
+                  type: string
+                propertyName:
+                  type: string
+                pieceName:
+                  type: string
+                pieceVersion:
+                  type: string
+                input:
+                  type: object
+                searchValue:
+                  type: string
+      responses:
+        '200':
+          description: Dynamic options
+
+  /v1/pieces/{name}:
+    get:
+      operationId: getPiece
+      tags: [pieces]
+      summary: Get piece metadata by name
+      security: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Piece metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Piece'
+
+  /v1/pieces/{scope}/{name}:
+    get:
+      operationId: getScopedPiece
+      tags: [pieces]
+      summary: Get scoped piece metadata
+      security: []
+      parameters:
+        - name: scope
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Piece metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Piece'
+
+  # ── Triggers ────────────────────────────────────────────────────────────────
+  /v1/trigger-events:
+    get:
+      operationId: listTriggerEvents
+      tags: [triggers]
+      summary: List trigger events for a flow
+      parameters:
+        - name: flowId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Trigger events
+
+  /v1/test-trigger:
+    post:
+      operationId: testTrigger
+      tags: [triggers]
+      summary: Test a trigger and get sample data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [flowId, flowVersionId]
+              properties:
+                flowId:
+                  type: string
+                flowVersionId:
+                  type: string
+      responses:
+        '200':
+          description: Sample trigger output
+
+  /v1/trigger-runs:
+    get:
+      operationId: listTriggerRuns
+      tags: [triggers]
+      summary: List trigger run history
+      parameters:
+        - name: flowId
+          in: query
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Trigger run history
+
+  # ── Webhooks ────────────────────────────────────────────────────────────────
+  /v1/webhooks/{flowId}:
+    post:
+      operationId: handleWebhook
+      tags: [webhooks]
+      summary: Receive incoming webhook for a flow trigger
+      security: []
+      parameters:
+        - name: flowId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Webhook processed
+
+  /v1/webhooks/{flowId}/sync:
+    post:
+      operationId: handleWebhookSync
+      tags: [webhooks]
+      summary: Receive webhook and wait for flow run result
+      security: []
+      parameters:
+        - name: flowId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Flow run result
+
+  /v1/webhooks/{flowId}/simulate:
+    get:
+      operationId: simulateWebhook
+      tags: [webhooks]
+      summary: Simulate a webhook to capture sample data
+      parameters:
+        - name: flowId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Simulated webhook captured
+
+  # ── Projects ────────────────────────────────────────────────────────────────
+  /v1/projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List projects
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+
+  /v1/projects/{id}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get a project by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+    post:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update project settings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+      responses:
+        '200':
+          description: Project updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  # ── Folders ─────────────────────────────────────────────────────────────────
+  /v1/folders:
+    get:
+      operationId: listFolders
+      tags: [folders]
+      summary: List folders
+      responses:
+        '200':
+          description: Folder list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Folder'
+    post:
+      operationId: createFolder
+      tags: [folders]
+      summary: Create a folder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName]
+              properties:
+                displayName:
+                  type: string
+      responses:
+        '201':
+          description: Folder created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Folder'
+
+  /v1/folders/{id}:
+    get:
+      operationId: getFolder
+      tags: [folders]
+      summary: Get a folder by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Folder details
+    post:
+      operationId: updateFolder
+      tags: [folders]
+      summary: Update a folder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+      responses:
+        '200':
+          description: Folder updated
+    delete:
+      operationId: deleteFolder
+      tags: [folders]
+      summary: Delete a folder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Folder deleted
+
+  # ── Store Entries ───────────────────────────────────────────────────────────
+  /v1/store-entries:
+    get:
+      operationId: listStoreEntries
+      tags: [store-entries]
+      summary: List store entries
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Store entries
+    post:
+      operationId: upsertStoreEntry
+      tags: [store-entries]
+      summary: Create or update a store entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key, value]
+              properties:
+                key:
+                  type: string
+                value:
+                  {}
+      responses:
+        '200':
+          description: Entry created or updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoreEntry'
+
+  /v1/store-entries/{key}:
+    get:
+      operationId: getStoreEntry
+      tags: [store-entries]
+      summary: Get a store entry by key
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Store entry value
+    delete:
+      operationId: deleteStoreEntry
+      tags: [store-entries]
+      summary: Delete a store entry
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Entry deleted
+
+  # ── Templates ───────────────────────────────────────────────────────────────
+  /v1/templates:
+    get:
+      operationId: listTemplates
+      tags: [templates]
+      summary: List flow templates
+      parameters:
+        - name: pieces
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Template list
+
+  /v1/templates/{id}:
+    get:
+      operationId: getTemplate
+      tags: [templates]
+      summary: Get a template by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Template details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+
+  # ── Users ───────────────────────────────────────────────────────────────────
+  /v1/users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List platform users
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SeekPage'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/User'
+
+  /v1/users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  # ── User Invitations ────────────────────────────────────────────────────────
+  /v1/user-invitations:
+    get:
+      operationId: listUserInvitations
+      tags: [user-invitations]
+      summary: List pending invitations
+      responses:
+        '200':
+          description: Invitation list
+    post:
+      operationId: createUserInvitation
+      tags: [user-invitations]
+      summary: Invite a user to a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, projectRoleId]
+              properties:
+                email:
+                  type: string
+                  format: email
+                projectRoleId:
+                  type: string
+      responses:
+        '201':
+          description: Invitation sent
+
+  /v1/user-invitations/{id}/accept:
+    post:
+      operationId: acceptUserInvitation
+      tags: [user-invitations]
+      summary: Accept an invitation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invitation accepted
+
+  # ── Platform ────────────────────────────────────────────────────────────────
+  /v1/platforms/{id}:
+    get:
+      operationId: getPlatform
+      tags: [platform]
+      summary: Get platform settings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Platform settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Platform'
+    post:
+      operationId: updatePlatform
+      tags: [platform]
+      summary: Update platform settings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                primaryColor:
+                  type: string
+                logoIconUrl:
+                  type: string
+                fullLogoUrl:
+                  type: string
+                favIconUrl:
+                  type: string
+      responses:
+        '200':
+          description: Platform updated
+
+  # ── AI Providers ────────────────────────────────────────────────────────────
+  /v1/ai-providers:
+    get:
+      operationId: listAiProviders
+      tags: [ai-providers]
+      summary: List configured AI providers
+      responses:
+        '200':
+          description: AI provider list
+    post:
+      operationId: upsertAiProvider
+      tags: [ai-providers]
+      summary: Add or update an AI provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, baseUrl]
+              properties:
+                provider:
+                  type: string
+                baseUrl:
+                  type: string
+                apiKey:
+                  type: string
+      responses:
+        '200':
+          description: AI provider saved
+
+  /v1/ai-providers/{provider}:
+    delete:
+      operationId: deleteAiProvider
+      tags: [ai-providers]
+      summary: Delete an AI provider
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Provider deleted
+
+  # ── Tables ──────────────────────────────────────────────────────────────────
+  /v1/tables:
+    get:
+      operationId: listTables
+      tags: [tables]
+      summary: List tables
+      responses:
+        '200':
+          description: Table list
+    post:
+      operationId: createTable
+      tags: [tables]
+      summary: Create a table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Table created
+
+  /v1/tables/{id}:
+    get:
+      operationId: getTable
+      tags: [tables]
+      summary: Get a table
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Table details
+    delete:
+      operationId: deleteTable
+      tags: [tables]
+      summary: Delete a table
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Table deleted
+
+  # ── Fields ──────────────────────────────────────────────────────────────────
+  /v1/fields:
+    get:
+      operationId: listFields
+      tags: [fields]
+      summary: List fields for a table
+      parameters:
+        - name: tableId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Field list
+    post:
+      operationId: createField
+      tags: [fields]
+      summary: Create a field in a table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type, tableId]
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                tableId:
+                  type: string
+      responses:
+        '201':
+          description: Field created
+
+  # ── Records ─────────────────────────────────────────────────────────────────
+  /v1/records:
+    get:
+      operationId: listRecords
+      tags: [records]
+      summary: List records in a table
+      parameters:
+        - name: tableId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Record list
+    post:
+      operationId: createRecord
+      tags: [records]
+      summary: Create a record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tableId, cells]
+              properties:
+                tableId:
+                  type: string
+                cells:
+                  type: object
+      responses:
+        '201':
+          description: Record created
+
+  /v1/records/{id}:
+    get:
+      operationId: getRecord
+      tags: [records]
+      summary: Get a record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Record details
+    patch:
+      operationId: updateRecord
+      tags: [records]
+      summary: Update a record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cells:
+                  type: object
+      responses:
+        '200':
+          description: Record updated
+    delete:
+      operationId: deleteRecord
+      tags: [records]
+      summary: Delete a record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Record deleted
+
+  # ── Todos ───────────────────────────────────────────────────────────────────
+  /v1/todos:
+    get:
+      operationId: listTodos
+      tags: [todos]
+      summary: List todos
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Todo list
+
+  /v1/todos/{id}:
+    get:
+      operationId: getTodo
+      tags: [todos]
+      summary: Get a todo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Todo details
+    post:
+      operationId: updateTodo
+      tags: [todos]
+      summary: Update a todo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+      responses:
+        '200':
+          description: Todo updated
+
+  /v1/todo-activities:
+    get:
+      operationId: listTodoActivities
+      tags: [todos]
+      summary: List todo activity log
+      parameters:
+        - name: todoId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Activity log
+
+  # ── MCP Server ──────────────────────────────────────────────────────────────
+  /v1/projects/{projectId}/mcp-server:
+    get:
+      operationId: getMcpServer
+      tags: [mcp]
+      summary: Get MCP server configuration for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: MCP server configuration
+
+  # ── Sample Data ─────────────────────────────────────────────────────────────
+  /v1/sample-data:
+    get:
+      operationId: getSampleData
+      tags: [sample-data]
+      summary: Get sample data for a flow step
+      parameters:
+        - name: flowId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: flowVersionId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: stepName
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sample data
+    post:
+      operationId: saveSampleData
+      tags: [sample-data]
+      summary: Save sample data for a flow step
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [flowId, flowVersionId, stepName, payload]
+              properties:
+                flowId:
+                  type: string
+                flowVersionId:
+                  type: string
+                stepName:
+                  type: string
+                payload:
+                  type: object
+      responses:
+        '200':
+          description: Sample data saved
+
+  # ── Tags ────────────────────────────────────────────────────────────────────
+  /v1/tags:
+    get:
+      operationId: listTags
+      tags: [tags]
+      summary: List piece tags
+      responses:
+        '200':
+          description: Tag list
+
+  # ── Step Files ──────────────────────────────────────────────────────────────
+  /v1/step-files:
+    get:
+      operationId: getStepFile
+      tags: [flows]
+      summary: Get a file produced by a flow step
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+  # ── Human Input ─────────────────────────────────────────────────────────────
+  /v1/human-input/form/{flowId}:
+    get:
+      operationId: getHumanInputForm
+      tags: [flows]
+      summary: Get human input form definition for a flow
+      security: []
+      parameters:
+        - name: flowId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Form definition
+
+  # ── Analytics ───────────────────────────────────────────────────────────────
+  /v1/analytics:
+    get:
+      operationId: getAnalytics
+      tags: [platform]
+      summary: Get platform analytics data
+      responses:
+        '200':
+          description: Analytics data
+
+  # ── App Events ──────────────────────────────────────────────────────────────
+  /v1/app-events/{pieceUrl}:
+    post:
+      operationId: handleAppEvent
+      tags: [triggers]
+      summary: Handle incoming app event for trigger routing
+      security: []
+      parameters:
+        - name: pieceUrl
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Event routed
+
+  # ── EE: Solutions ───────────────────────────────────────────────────────────
+  /v1/solutions:
+    get:
+      operationId: listSolutions
+      tags: [solutions]
+      summary: List packaged solutions (EE)
+      responses:
+        '200':
+          description: Solution list
+    post:
+      operationId: createSolution
+      tags: [solutions]
+      summary: Create a solution from flows (EE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [flowIds]
+              properties:
+                flowIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Solution created
+
+  /v1/solutions/{id}/apply:
+    post:
+      operationId: applySolution
+      tags: [solutions]
+      summary: Apply a solution to the project (EE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Solution applied
+
+  # ── EE: API Keys ────────────────────────────────────────────────────────────
+  /v1/api-keys:
+    get:
+      operationId: listApiKeys
+      tags: [api-keys]
+      summary: List API keys (EE)
+      responses:
+        '200':
+          description: API key list
+    post:
+      operationId: createApiKey
+      tags: [api-keys]
+      summary: Create an API key (EE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName]
+              properties:
+                displayName:
+                  type: string
+      responses:
+        '201':
+          description: API key created
+
+  /v1/api-keys/{id}:
+    delete:
+      operationId: deleteApiKey
+      tags: [api-keys]
+      summary: Delete an API key (EE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: API key deleted
+
+  # ── EE: Alerts ──────────────────────────────────────────────────────────────
+  /v1/alerts:
+    get:
+      operationId: listAlerts
+      tags: [alerts]
+      summary: List alerts (EE)
+      responses:
+        '200':
+          description: Alert list
+    post:
+      operationId: createAlert
+      tags: [alerts]
+      summary: Create an alert (EE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Alert created
+
+  /v1/alerts/{id}:
+    delete:
+      operationId: deleteAlert
+      tags: [alerts]
+      summary: Delete an alert (EE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Alert deleted
+
+  # ── EE: Project Members ─────────────────────────────────────────────────────
+  /v1/project-members:
+    get:
+      operationId: listProjectMembers
+      tags: [project-members]
+      summary: List project members (EE)
+      responses:
+        '200':
+          description: Member list
+    post:
+      operationId: addProjectMember
+      tags: [project-members]
+      summary: Add a project member (EE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, projectRoleId]
+              properties:
+                userId:
+                  type: string
+                projectRoleId:
+                  type: string
+      responses:
+        '201':
+          description: Member added
+
+  /v1/project-members/{id}:
+    delete:
+      operationId: removeProjectMember
+      tags: [project-members]
+      summary: Remove a project member (EE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Member removed
+
+  # ── EE: Project Roles ───────────────────────────────────────────────────────
+  /v1/project-roles:
+    get:
+      operationId: listProjectRoles
+      tags: [project-roles]
+      summary: List project roles (EE)
+      responses:
+        '200':
+          description: Role list
+
+  # ── EE: Project Releases ────────────────────────────────────────────────────
+  /v1/project-releases:
+    get:
+      operationId: listProjectReleases
+      tags: [project-releases]
+      summary: List releases (EE)
+      responses:
+        '200':
+          description: Release list
+    post:
+      operationId: createProjectRelease
+      tags: [project-releases]
+      summary: Create a release (EE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Release created
+
+  # ── EE: Git Repos ──────────────────────────────────────────────────────────
+  /v1/git-repos:
+    get:
+      operationId: listGitRepos
+      tags: [git-repos]
+      summary: List connected git repos (EE)
+      responses:
+        '200':
+          description: Git repo list
+    post:
+      operationId: connectGitRepo
+      tags: [git-repos]
+      summary: Connect a git repo for sync (EE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [remoteUrl]
+              properties:
+                remoteUrl:
+                  type: string
+                branch:
+                  type: string
+                slug:
+                  type: string
+                sshPrivateKey:
+                  type: string
+      responses:
+        '201':
+          description: Git repo connected
+
+  /v1/git-repos/{id}:
+    delete:
+      operationId: disconnectGitRepo
+      tags: [git-repos]
+      summary: Disconnect a git repo (EE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Git repo disconnected
+
+  /v1/git-repos/{id}/push:
+    post:
+      operationId: pushToGitRepo
+      tags: [git-repos]
+      summary: Push flows to git (EE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pushed
+
+  /v1/git-repos/{id}/pull:
+    post:
+      operationId: pullFromGitRepo
+      tags: [git-repos]
+      summary: Pull flows from git (EE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pulled
+
+  # ── EE: Global Connections ──────────────────────────────────────────────────
+  /v1/global-connections:
+    get:
+      operationId: listGlobalConnections
+      tags: [global-connections]
+      summary: List platform-wide connections (EE)
+      responses:
+        '200':
+          description: Global connection list
+    post:
+      operationId: createGlobalConnection
+      tags: [global-connections]
+      summary: Create a global connection (EE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Global connection created
+
+  /v1/global-connections/{id}:
+    post:
+      operationId: updateGlobalConnection
+      tags: [global-connections]
+      summary: Update a global connection (EE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Global connection updated
+    delete:
+      operationId: deleteGlobalConnection
+      tags: [global-connections]
+      summary: Delete a global connection (EE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Global connection deleted
+
+  # ── EE: Signing Keys ───────────────────────────────────────────────────────
+  /v1/signing-keys:
+    get:
+      operationId: listSigningKeys
+      tags: [signing-keys]
+      summary: List signing keys (EE)
+      responses:
+        '200':
+          description: Signing key list
+    post:
+      operationId: createSigningKey
+      tags: [signing-keys]
+      summary: Create a signing key (EE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName]
+              properties:
+                displayName:
+                  type: string
+      responses:
+        '201':
+          description: Signing key created
+
+  # ── EE: Audit Events ───────────────────────────────────────────────────────
+  /v1/audit-events:
+    get:
+      operationId: listAuditEvents
+      tags: [audit-events]
+      summary: List audit log events (EE)
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Audit event list
+
+  # ── EE: OAuth Apps ─────────────────────────────────────────────────────────
+  /v1/oauth-apps:
+    get:
+      operationId: listOAuthApps
+      tags: [oauth-apps]
+      summary: List OAuth app configurations (EE)
+      responses:
+        '200':
+          description: OAuth app list
+    post:
+      operationId: upsertOAuthApp
+      tags: [oauth-apps]
+      summary: Upsert an OAuth app (EE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pieceName, clientId]
+              properties:
+                pieceName:
+                  type: string
+                clientId:
+                  type: string
+                clientSecret:
+                  type: string
+      responses:
+        '200':
+          description: OAuth app saved
+
+  /v1/oauth-apps/{id}:
+    delete:
+      operationId: deleteOAuthApp
+      tags: [oauth-apps]
+      summary: Delete an OAuth app (EE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: OAuth app deleted
+
+  # ── EE: Custom Domains ─────────────────────────────────────────────────────
+  /v1/custom-domains:
+    get:
+      operationId: listCustomDomains
+      tags: [custom-domains]
+      summary: List custom domains (EE)
+      responses:
+        '200':
+          description: Domain list
+    post:
+      operationId: createCustomDomain
+      tags: [custom-domains]
+      summary: Add a custom domain (EE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain]
+              properties:
+                domain:
+                  type: string
+      responses:
+        '201':
+          description: Domain added
+
+  /v1/custom-domains/{id}:
+    delete:
+      operationId: deleteCustomDomain
+      tags: [custom-domains]
+      summary: Remove a custom domain (EE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Domain removed
+
+  # ── EE: Federated Auth ─────────────────────────────────────────────────────
+  /v1/authn/federated/login:
+    get:
+      operationId: federatedLogin
+      tags: [authentication]
+      summary: Initiate federated authentication (EE)
+      security: []
+      responses:
+        '302':
+          description: Redirect to identity provider
+
+  /v1/authn/federated/claim:
+    post:
+      operationId: federatedClaim
+      tags: [authentication]
+      summary: Complete federated authentication (EE)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Authentication token
+
+  # ── Docs ────────────────────────────────────────────────────────────────────
+  /v1/docs:
+    get:
+      operationId: getDocs
+      tags: [health]
+      summary: Get auto-generated OpenAPI documentation
+      security: []
+      responses:
+        '200':
+          description: OpenAPI spec (JSON)
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # ── Queue Metrics ───────────────────────────────────────────────────────────
+  /v1/queue-metrics:
+    get:
+      operationId: getQueueMetrics
+      tags: [platform]
+      summary: Get worker queue metrics (EE)
+      responses:
+        '200':
+          description: Queue metrics data

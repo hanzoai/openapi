@@ -1,0 +1,199 @@
+# Shared Error Response Schemas
+# These can be referenced by all service specs
+
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - status
+        - msg
+      properties:
+        status:
+          type: string
+          enum: [error]
+          description: Always "error" for error responses
+        msg:
+          type: string
+          description: Human-readable error message
+        code:
+          type: integer
+          description: Application-specific error code
+        data:
+          type: object
+          description: Additional error context
+        data2:
+          type: object
+          description: Additional error details
+        requestId:
+          type: string
+          description: Request ID for debugging
+
+    ValidationError:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [error]
+        msg:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              code:
+                type: string
+
+  responses:
+    BadRequest:
+      description: Bad Request - Invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalidParameter:
+              value:
+                status: error
+                msg: "Invalid parameter: email format is incorrect"
+                code: 400
+
+    Unauthorized:
+      description: Unauthorized - Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missingToken:
+              value:
+                status: error
+                msg: "Authentication required"
+                code: 401
+            invalidToken:
+              value:
+                status: error
+                msg: "Invalid or expired token"
+                code: 401
+
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            insufficientPermissions:
+              value:
+                status: error
+                msg: "You don't have permission to access this resource"
+                code: 403
+
+    NotFound:
+      description: Not Found - Resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            resourceNotFound:
+              value:
+                status: error
+                msg: "Resource not found"
+                code: 404
+
+    Conflict:
+      description: Conflict - Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            alreadyExists:
+              value:
+                status: error
+                msg: "Resource with this ID already exists"
+                code: 409
+
+    UnprocessableEntity:
+      description: Unprocessable Entity - Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          examples:
+            validationFailed:
+              value:
+                status: error
+                msg: "Validation failed"
+                errors:
+                  - field: email
+                    message: "Invalid email format"
+                    code: "invalid_format"
+
+    TooManyRequests:
+      description: Too Many Requests - Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per window
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests in window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when window resets
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retry
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            rateLimited:
+              value:
+                status: error
+                msg: "Rate limit exceeded. Please retry after 60 seconds"
+                code: 429
+
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            serverError:
+              value:
+                status: error
+                msg: "An internal error occurred"
+                code: 500
+                requestId: "req_abc123"
+
+    ServiceUnavailable:
+      description: Service Unavailable - Temporary outage
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retry
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            maintenance:
+              value:
+                status: error
+                msg: "Service temporarily unavailable"
+                code: 503

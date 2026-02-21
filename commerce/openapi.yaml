@@ -1,0 +1,3703 @@
+openapi: 3.0.3
+info:
+  title: Hanzo Commerce API
+  description: |
+    Hanzo Commerce API provides a complete e-commerce platform with support for
+    orders, carts, payments, users, products, subscriptions, and more.
+
+    ## Authentication
+
+    The API uses Bearer token authentication. Include your API token in the
+    Authorization header:
+
+    ```
+    Authorization: Bearer <your-token>
+    ```
+
+    Tokens can be obtained via the OAuth2 password grant flow at `/auth`.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+
+servers:
+  - url: https://api.hanzo.ai/v1
+    description: Production server
+  - url: https://api.staging.hanzo.ai/v1
+    description: Staging server
+  - url: https://api.sandbox.hanzo.ai/v1
+    description: Sandbox server
+
+tags:
+  - name: Auth
+    description: Authentication and OAuth2 token management
+  - name: Account
+    description: User account operations (login, registration, profile)
+  - name: Orders
+    description: Order CRUD and management
+  - name: Cart
+    description: Shopping cart operations
+  - name: Checkout
+    description: Payment authorization, capture, and refunds
+  - name: Users
+    description: User management (admin)
+  - name: Products
+    description: Product catalog management
+  - name: Transactions
+    description: Financial transactions and holds
+  - name: Subscriptions
+    description: Subscription management
+  - name: Store
+    description: Store-specific operations
+  - name: Search
+    description: Search users, orders, and notes
+  - name: Affiliates
+    description: Affiliate management
+  - name: Marketing
+    description: Ads and campaign management
+  - name: Forms
+    description: Form submissions and mailing lists
+  - name: Counters
+    description: Analytics counters and metrics
+  - name: Access Tokens
+    description: API access token management
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ============ AUTH ============
+  /auth:
+    post:
+      tags:
+        - Auth
+      summary: Authenticate user (OAuth2)
+      description: |
+        OAuth2 token endpoint supporting password and refresh_token grant types.
+      operationId: authenticate
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OAuthRequest'
+      responses:
+        '200':
+          description: Successfully authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============ ACCESS TOKENS ============
+  /access/{mode}/{id}:
+    get:
+      tags:
+        - Access Tokens
+      summary: Get access token
+      operationId: getAccessToken
+      parameters:
+        - name: mode
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [live, test]
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: email
+          in: query
+          schema:
+            type: string
+        - name: password
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Access token retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessToken'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Access Tokens
+      summary: Create or delete access token
+      operationId: createAccessToken
+      parameters:
+        - name: mode
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [live, test]
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Token operation successful
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags:
+        - Access Tokens
+      summary: Delete access token
+      operationId: deleteAccessToken
+      parameters:
+        - name: mode
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [live, test]
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Token deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============ ACCOUNT ============
+  /account:
+    get:
+      tags:
+        - Account
+      summary: Get current account
+      operationId: getAccount
+      responses:
+        '200':
+          description: Account details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags:
+        - Account
+      summary: Update account
+      operationId: updateAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: Account updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags:
+        - Account
+      summary: Partially update account
+      operationId: patchAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: Account updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /account/login:
+    post:
+      tags:
+        - Account
+      summary: Login to account
+      operationId: accountLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /account/create:
+    post:
+      tags:
+        - Account
+      summary: Create new account
+      operationId: createAccount
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountRequest'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /account/exists/{emailorusername}:
+    get:
+      tags:
+        - Account
+      summary: Check if account exists
+      operationId: accountExists
+      parameters:
+        - name: emailorusername
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Account existence check
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exists:
+                    type: boolean
+
+  /account/enable/{tokenid}:
+    post:
+      tags:
+        - Account
+      summary: Enable account with token
+      operationId: enableAccount
+      parameters:
+        - name: tokenid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Account enabled
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /account/reset:
+    post:
+      tags:
+        - Account
+      summary: Request password reset
+      operationId: requestPasswordReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Reset email sent
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /account/confirm/{tokenid}:
+    post:
+      tags:
+        - Account
+      summary: Confirm password reset
+      operationId: confirmPasswordReset
+      parameters:
+        - name: tokenid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Password reset confirmed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /account/order/{orderid}:
+    get:
+      tags:
+        - Account
+      summary: Get account order
+      operationId: getAccountOrder
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Account
+      summary: Update account order
+      operationId: patchAccountOrder
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+      responses:
+        '200':
+          description: Order updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /account/withdraw:
+    post:
+      tags:
+        - Account
+      summary: Withdraw funds
+      operationId: accountWithdraw
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: integer
+                  description: Amount in cents
+                currency:
+                  type: string
+      responses:
+        '200':
+          description: Withdrawal initiated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /account/paymentmethod/{paymentmethodtype}:
+    post:
+      tags:
+        - Account
+      summary: Create payment method
+      operationId: createPaymentMethod
+      parameters:
+        - name: paymentmethodtype
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [card, paypal, bank]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentMethod'
+      responses:
+        '201':
+          description: Payment method created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethod'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # ============ ORDERS ============
+  /order:
+    get:
+      tags:
+        - Orders
+      summary: List orders
+      operationId: listOrders
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/display'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/q'
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOrders'
+    post:
+      tags:
+        - Orders
+      summary: Create order
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+      responses:
+        '201':
+          description: Order created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /order/{orderid}:
+    get:
+      tags:
+        - Orders
+      summary: Get order
+      operationId: getOrder
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Orders
+      summary: Update order
+      operationId: updateOrder
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+      responses:
+        '200':
+          description: Order updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Orders
+      summary: Partially update order
+      operationId: patchOrder
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+      responses:
+        '200':
+          description: Order updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Orders
+      summary: Delete order
+      operationId: deleteOrder
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Order deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /order/{orderid}/authorize:
+    post:
+      tags:
+        - Orders
+        - Checkout
+      summary: Authorize payment for order
+      operationId: authorizeOrder
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+      responses:
+        '200':
+          description: Payment authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /order/{orderid}/capture:
+    post:
+      tags:
+        - Orders
+        - Checkout
+      summary: Capture authorized payment
+      operationId: captureOrder
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment captured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /order/{orderid}/charge:
+    post:
+      tags:
+        - Orders
+        - Checkout
+      summary: Authorize and capture payment (single step)
+      operationId: chargeOrder
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+      responses:
+        '200':
+          description: Payment charged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /order/{orderid}/refund:
+    post:
+      tags:
+        - Orders
+        - Checkout
+      summary: Refund order
+      operationId: refundOrder
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: integer
+                  description: Amount to refund in cents (optional, full refund if omitted)
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Refund processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /order/{orderid}/payments:
+    get:
+      tags:
+        - Orders
+      summary: Get order payments
+      operationId: getOrderPayments
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Payment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /order/{orderid}/returns:
+    get:
+      tags:
+        - Orders
+      summary: Get order returns
+      operationId: getOrderReturns
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of returns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Return'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /order/{orderid}/status:
+    get:
+      tags:
+        - Orders
+      summary: Get order status
+      operationId: getOrderStatus
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/OrderStatus'
+                  paymentStatus:
+                    $ref: '#/components/schemas/PaymentStatus'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /order/{orderid}/sendorderconfirmation:
+    get:
+      tags:
+        - Orders
+      summary: Send order confirmation email
+      operationId: sendOrderConfirmation
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Confirmation sent
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /order/{orderid}/sendrefundconfirmation:
+    get:
+      tags:
+        - Orders
+      summary: Send refund confirmation email
+      operationId: sendRefundConfirmation
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Confirmation sent
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /order/{orderid}/sendfulfillmentconfirmation:
+    get:
+      tags:
+        - Orders
+      summary: Send fulfillment confirmation email
+      operationId: sendFulfillmentConfirmation
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Confirmation sent
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============ CART ============
+  /cart:
+    get:
+      tags:
+        - Cart
+      summary: List carts
+      operationId: listCarts
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/display'
+      responses:
+        '200':
+          description: List of carts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCarts'
+    post:
+      tags:
+        - Cart
+      summary: Create cart
+      operationId: createCart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Cart'
+      responses:
+        '201':
+          description: Cart created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /cart/{cartid}:
+    get:
+      tags:
+        - Cart
+      summary: Get cart
+      operationId: getCart
+      parameters:
+        - name: cartid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cart details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Cart
+      summary: Update cart
+      operationId: updateCart
+      parameters:
+        - name: cartid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Cart'
+      responses:
+        '200':
+          description: Cart updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Cart
+      summary: Partially update cart
+      operationId: patchCart
+      parameters:
+        - name: cartid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Cart'
+      responses:
+        '200':
+          description: Cart updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Cart
+      summary: Delete cart
+      operationId: deleteCart
+      parameters:
+        - name: cartid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Cart deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /cart/{cartid}/set:
+    post:
+      tags:
+        - Cart
+      summary: Set item in cart
+      operationId: setCartItem
+      parameters:
+        - name: cartid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                productId:
+                  type: string
+                variantId:
+                  type: string
+                quantity:
+                  type: integer
+      responses:
+        '200':
+          description: Item set in cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /cart/{cartid}/discard:
+    post:
+      tags:
+        - Cart
+      summary: Discard cart
+      operationId: discardCart
+      parameters:
+        - name: cartid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cart discarded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============ CHECKOUT ============
+  /checkout/authorize:
+    post:
+      tags:
+        - Checkout
+      summary: Authorize new payment
+      operationId: authorizePayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      responses:
+        '200':
+          description: Payment authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /checkout/authorize/{orderid}:
+    post:
+      tags:
+        - Checkout
+      summary: Authorize payment for existing order
+      operationId: authorizePaymentForOrder
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+      responses:
+        '200':
+          description: Payment authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /checkout/capture/{orderid}:
+    post:
+      tags:
+        - Checkout
+      summary: Capture authorized payment
+      operationId: capturePayment
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment captured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /checkout/charge:
+    post:
+      tags:
+        - Checkout
+      summary: Authorize and capture in one step
+      operationId: chargePayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      responses:
+        '200':
+          description: Payment charged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /checkout/confirm/{orderid}:
+    post:
+      tags:
+        - Checkout
+      summary: Confirm order
+      operationId: confirmOrder
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order confirmed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /checkout/cancel/{orderid}:
+    post:
+      tags:
+        - Checkout
+      summary: Cancel order
+      operationId: cancelOrder
+      parameters:
+        - name: orderid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /checkout/ethereum/lookup/{proxyaddress}:
+    get:
+      tags:
+        - Checkout
+      summary: Lookup Ethereum proxy address
+      operationId: lookupEthereumProxy
+      parameters:
+        - name: proxyaddress
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ethereum address details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  address:
+                    type: string
+                  balance:
+                    type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============ USERS ============
+  /user:
+    get:
+      tags:
+        - Users
+      summary: List users
+      operationId: listUsers
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/display'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/q'
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUsers'
+    post:
+      tags:
+        - Users
+      summary: Create user
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /user/{userid}:
+    get:
+      tags:
+        - Users
+      summary: Get user
+      operationId: getUser
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Users
+      summary: Update user
+      operationId: updateUser
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Users
+      summary: Partially update user
+      operationId: patchUser
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Users
+      summary: Delete user
+      operationId: deleteUser
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: User deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /user/{userid}/password/reset:
+    get:
+      tags:
+        - Users
+      summary: Reset user password (admin)
+      operationId: resetUserPassword
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Password reset initiated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /user/{userid}/orders:
+    get:
+      tags:
+        - Users
+      summary: Get user orders
+      operationId: getUserOrders
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /user/{userid}/referrals:
+    get:
+      tags:
+        - Users
+      summary: Get user referrals
+      operationId: getUserReferrals
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of referrals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Referral'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /user/{userid}/referrers:
+    get:
+      tags:
+        - Users
+      summary: Get user referrers
+      operationId: getUserReferrers
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of referrers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Referrer'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /user/{userid}/transactions:
+    get:
+      tags:
+        - Users
+      summary: Get user transactions
+      operationId: getUserTransactions
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transaction data
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/TransactionData'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /user/{userid}/paymentmethods:
+    get:
+      tags:
+        - Users
+      summary: Get user payment methods
+      operationId: getUserPaymentMethods
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of payment methods
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentMethod'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /user/{userid}/wallet:
+    get:
+      tags:
+        - Users
+      summary: Get user wallet
+      operationId: getUserWallet
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Wallet details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /user/{userid}/wallet/account:
+    post:
+      tags:
+        - Users
+      summary: Create wallet account
+      operationId: createWalletAccount
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                currency:
+                  type: string
+      responses:
+        '201':
+          description: Account created
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /user/{userid}/wallet/account/{name}:
+    get:
+      tags:
+        - Users
+      summary: Get wallet account
+      operationId: getWalletAccount
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Account details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletAccount'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /user/{userid}/wallet/pay:
+    post:
+      tags:
+        - Users
+      summary: Send payment from wallet
+      operationId: walletPay
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to:
+                  type: string
+                amount:
+                  type: integer
+                currency:
+                  type: string
+      responses:
+        '200':
+          description: Payment sent
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # ============ PRODUCTS ============
+  /product:
+    get:
+      tags:
+        - Products
+      summary: List products
+      operationId: listProducts
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/display'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/q'
+      responses:
+        '200':
+          description: List of products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProducts'
+    post:
+      tags:
+        - Products
+      summary: Create product
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /product/{productid}:
+    get:
+      tags:
+        - Products
+      summary: Get product
+      operationId: getProduct
+      parameters:
+        - name: productid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Products
+      summary: Update product
+      operationId: updateProduct
+      parameters:
+        - name: productid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Products
+      summary: Partially update product
+      operationId: patchProduct
+      parameters:
+        - name: productid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Products
+      summary: Delete product
+      operationId: deleteProduct
+      parameters:
+        - name: productid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Product deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============ TRANSACTIONS ============
+  /transaction:
+    post:
+      tags:
+        - Transactions
+      summary: Create transaction
+      operationId: createTransaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Transaction'
+      responses:
+        '201':
+          description: Transaction created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /transaction/{kind}/{id}:
+    get:
+      tags:
+        - Transactions
+      summary: List transactions for entity
+      operationId: listTransactions
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [user, order, wallet]
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /transaction/hold:
+    post:
+      tags:
+        - Transactions
+      summary: Create hold
+      operationId: createHold
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Transaction'
+      responses:
+        '201':
+          description: Hold created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /transaction/hold/{id}:
+    delete:
+      tags:
+        - Transactions
+      summary: Remove hold
+      operationId: removeHold
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Hold removed
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============ SUBSCRIPTIONS ============
+  /subscribe:
+    post:
+      tags:
+        - Subscriptions
+      summary: Create subscription
+      operationId: createSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRequest'
+      responses:
+        '200':
+          description: Subscription created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /subscribe/{subscriptionid}:
+    get:
+      tags:
+        - Subscriptions
+      summary: Get subscription
+      operationId: getSubscription
+      parameters:
+        - name: subscriptionid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Subscription details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Subscriptions
+      summary: Update subscription
+      operationId: updateSubscription
+      parameters:
+        - name: subscriptionid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+      responses:
+        '200':
+          description: Subscription updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Subscriptions
+      summary: Cancel subscription
+      operationId: cancelSubscription
+      parameters:
+        - name: subscriptionid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Subscription cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============ STORE ============
+  /store:
+    get:
+      tags:
+        - Store
+      summary: List stores
+      operationId: listStores
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/display'
+      responses:
+        '200':
+          description: List of stores
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStores'
+    post:
+      tags:
+        - Store
+      summary: Create store
+      operationId: createStore
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Store'
+      responses:
+        '201':
+          description: Store created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /store/{storeid}:
+    get:
+      tags:
+        - Store
+      summary: Get store
+      operationId: getStore
+      parameters:
+        - name: storeid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Store details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /store/{storeid}/product/{key}:
+    get:
+      tags:
+        - Store
+      summary: Get store product
+      operationId: getStoreProduct
+      parameters:
+        - name: storeid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /store/{storeid}/variant/{key}:
+    get:
+      tags:
+        - Store
+      summary: Get store variant
+      operationId: getStoreVariant
+      parameters:
+        - name: storeid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Variant details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Variant'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /store/{storeid}/listing:
+    get:
+      tags:
+        - Store
+      summary: List store listings
+      operationId: listStoreListings
+      parameters:
+        - name: storeid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Listing'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /store/{storeid}/listing/{key}:
+    get:
+      tags:
+        - Store
+      summary: Get store listing
+      operationId: getStoreListing
+      parameters:
+        - name: storeid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Listing details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags:
+        - Store
+      summary: Create store listing
+      operationId: createStoreListing
+      parameters:
+        - name: storeid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Listing'
+      responses:
+        '201':
+          description: Listing created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    put:
+      tags:
+        - Store
+      summary: Update store listing
+      operationId: updateStoreListing
+      parameters:
+        - name: storeid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Listing'
+      responses:
+        '200':
+          description: Listing updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Store
+      summary: Partially update store listing
+      operationId: patchStoreListing
+      parameters:
+        - name: storeid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Listing'
+      responses:
+        '200':
+          description: Listing updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Store
+      summary: Delete store listing
+      operationId: deleteStoreListing
+      parameters:
+        - name: storeid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Listing deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /store/{storeid}/checkout/authorize:
+    post:
+      tags:
+        - Store
+        - Checkout
+      summary: Authorize payment via store
+      operationId: storeAuthorize
+      parameters:
+        - name: storeid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      responses:
+        '200':
+          description: Payment authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /store/{storeid}/checkout/charge:
+    post:
+      tags:
+        - Store
+        - Checkout
+      summary: Charge payment via store
+      operationId: storeCharge
+      parameters:
+        - name: storeid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      responses:
+        '200':
+          description: Payment charged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # ============ SEARCH ============
+  /search/user:
+    get:
+      tags:
+        - Search
+      summary: Search users
+      operationId: searchUsers
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /search/order:
+    get:
+      tags:
+        - Search
+      summary: Search orders
+      operationId: searchOrders
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+
+  /search/note:
+    post:
+      tags:
+        - Search
+      summary: Search notes
+      operationId: searchNotes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Note'
+
+  # ============ AFFILIATES ============
+  /affiliate:
+    get:
+      tags:
+        - Affiliates
+      summary: List affiliates
+      operationId: listAffiliates
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/display'
+      responses:
+        '200':
+          description: List of affiliates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAffiliates'
+    post:
+      tags:
+        - Affiliates
+      summary: Create affiliate
+      operationId: createAffiliate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Affiliate'
+      responses:
+        '201':
+          description: Affiliate created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Affiliate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /affiliate/{affiliateid}:
+    get:
+      tags:
+        - Affiliates
+      summary: Get affiliate
+      operationId: getAffiliate
+      parameters:
+        - name: affiliateid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Affiliate details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Affiliate'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /affiliate/{affiliateid}/connect:
+    get:
+      tags:
+        - Affiliates
+      summary: Connect affiliate
+      operationId: connectAffiliate
+      parameters:
+        - name: affiliateid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Connection established
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============ FORMS ============
+  /form:
+    get:
+      tags:
+        - Forms
+      summary: List forms
+      operationId: listForms
+      responses:
+        '200':
+          description: List of forms
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedForms'
+    post:
+      tags:
+        - Forms
+      summary: Create form
+      operationId: createForm
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Form'
+      responses:
+        '201':
+          description: Form created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Form'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /form/{formid}:
+    get:
+      tags:
+        - Forms
+      summary: Get form
+      operationId: getForm
+      parameters:
+        - name: formid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Form details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Form'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /form/{formid}/submit:
+    post:
+      tags:
+        - Forms
+      summary: Submit form
+      operationId: submitForm
+      security: []
+      parameters:
+        - name: formid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Form submitted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /form/{formid}/subscribe:
+    post:
+      tags:
+        - Forms
+      summary: Subscribe via form
+      operationId: subscribeForm
+      security: []
+      parameters:
+        - name: formid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Subscribed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # ============ COUNTERS ============
+  /counter:
+    post:
+      tags:
+        - Counters
+      summary: Search counters
+      operationId: searchCounters
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                filters:
+                  type: object
+      responses:
+        '200':
+          description: Counter data
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /counter/dashboard/daily:
+    post:
+      tags:
+        - Counters
+      summary: Get daily dashboard metrics
+      operationId: getDailyDashboard
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  format: date
+                endDate:
+                  type: string
+                  format: date
+      responses:
+        '200':
+          description: Daily metrics
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /counter/product/{productid}:
+    get:
+      tags:
+        - Counters
+      summary: Get product counters
+      operationId: getProductCounters
+      parameters:
+        - name: productid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product counter data
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /counter/topline:
+    get:
+      tags:
+        - Counters
+      summary: Get topline metrics
+      operationId: getToplineMetrics
+      responses:
+        '200':
+          description: Topline metrics
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # ============ MARKETING ============
+  /marketing:
+    post:
+      tags:
+        - Marketing
+      summary: Create marketing campaign
+      operationId: createMarketingCampaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Campaign created
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /auth endpoint
+
+  parameters:
+    page:
+      name: page
+      in: query
+      description: Page number (1-indexed)
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    display:
+      name: display
+      in: query
+      description: Number of items per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    sort:
+      name: sort
+      in: query
+      description: Sort field (prefix with - for descending)
+      schema:
+        type: string
+        default: -UpdatedAt
+    q:
+      name: q
+      in: query
+      description: Search query
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: integer
+
+    OAuthRequest:
+      type: object
+      properties:
+        grant_type:
+          type: string
+          enum: [password, refresh_token]
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+        client_id:
+          type: string
+        refresh_token:
+          type: string
+
+    OAuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: jwt
+        expires_in:
+          type: integer
+          description: Token expiration in seconds
+        refresh_token:
+          type: string
+
+    AccessToken:
+      type: object
+      properties:
+        token:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+
+    Address:
+      type: object
+      properties:
+        name:
+          type: string
+        line1:
+          type: string
+        line2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        postalCode:
+          type: string
+        country:
+          type: string
+
+    Buyer:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        userId:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        company:
+          type: string
+        phone:
+          type: string
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+        billingAddress:
+          $ref: '#/components/schemas/Address'
+
+    LineItem:
+      type: object
+      properties:
+        productId:
+          type: string
+        productName:
+          type: string
+        productSlug:
+          type: string
+        productSKU:
+          type: string
+        variantId:
+          type: string
+        variantName:
+          type: string
+        variantSKU:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        price:
+          type: integer
+          description: Price in cents
+        taxable:
+          type: boolean
+        free:
+          type: boolean
+
+    Coupon:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [flat, percent, free-shipping, free-item]
+        code:
+          type: string
+        enabled:
+          type: boolean
+        amount:
+          type: integer
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        limit:
+          type: integer
+        used:
+          type: integer
+
+    OrderStatus:
+      type: string
+      enum: [cancelled, completed, locked, on-hold, open]
+
+    PaymentStatus:
+      type: string
+      enum: [cancelled, credit, disputed, failed, fraudulent, paid, refunded, unpaid]
+
+    FulfillmentStatus:
+      type: string
+      enum: [pending, shipped, delivered, returned]
+
+    Fulfillment:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/FulfillmentStatus'
+        carrier:
+          type: string
+        trackingNumber:
+          type: string
+        shippedAt:
+          type: string
+          format: date-time
+        deliveredAt:
+          type: string
+          format: date-time
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        number:
+          type: integer
+          readOnly: true
+        storeId:
+          type: string
+        campaignId:
+          type: string
+        userId:
+          type: string
+        email:
+          type: string
+          format: email
+        cartId:
+          type: string
+        referrerId:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        paymentStatus:
+          $ref: '#/components/schemas/PaymentStatus'
+        preorder:
+          type: boolean
+        currency:
+          type: string
+          description: 3-letter ISO currency code
+          example: usd
+        mode:
+          type: string
+          enum: ['', deposit, contribution]
+        shippingMethod:
+          type: string
+        lineTotal:
+          type: integer
+          description: Sum of line items in cents
+        discount:
+          type: integer
+          description: Discount in cents
+        subtotal:
+          type: integer
+          description: Subtotal in cents
+        shipping:
+          type: integer
+          description: Shipping cost in cents
+        tax:
+          type: integer
+          description: Tax in cents
+        total:
+          type: integer
+          description: Total in cents
+        balance:
+          type: integer
+          description: Balance owed in cents
+        paid:
+          type: integer
+          description: Amount paid in cents
+        refunded:
+          type: integer
+          description: Amount refunded in cents
+        billingAddress:
+          $ref: '#/components/schemas/Address'
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItem'
+        coupons:
+          type: array
+          items:
+            $ref: '#/components/schemas/Coupon'
+        couponCodes:
+          type: array
+          items:
+            type: string
+        fulfillment:
+          $ref: '#/components/schemas/Fulfillment'
+        gift:
+          type: boolean
+        giftMessage:
+          type: string
+        giftEmail:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        test:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    Cart:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        storeId:
+          type: string
+        campaignId:
+          type: string
+        userId:
+          type: string
+        email:
+          type: string
+          format: email
+        orderId:
+          type: string
+        status:
+          type: string
+          enum: [active, discarded, ordered]
+        currency:
+          type: string
+        lineTotal:
+          type: integer
+        discount:
+          type: integer
+        subtotal:
+          type: integer
+        shipping:
+          type: integer
+        tax:
+          type: integer
+        total:
+          type: integer
+        billingAddress:
+          $ref: '#/components/schemas/Address'
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItem'
+        coupons:
+          type: array
+          items:
+            $ref: '#/components/schemas/Coupon'
+        couponCodes:
+          type: array
+          items:
+            type: string
+        referrerId:
+          type: string
+        gift:
+          type: boolean
+        giftMessage:
+          type: string
+        giftEmail:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        username:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        company:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        billingAddress:
+          $ref: '#/components/schemas/Address'
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+        enabled:
+          type: boolean
+        isAffiliate:
+          type: boolean
+        affiliateId:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        test:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    CreateAccountRequest:
+      type: object
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+        firstName:
+          type: string
+        lastName:
+          type: string
+        company:
+          type: string
+        phone:
+          type: string
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        slug:
+          type: string
+        sku:
+          type: string
+        upc:
+          type: string
+        name:
+          type: string
+        headline:
+          type: string
+        excerpt:
+          type: string
+        description:
+          type: string
+        image:
+          $ref: '#/components/schemas/Media'
+        media:
+          type: array
+          items:
+            $ref: '#/components/schemas/Media'
+        available:
+          type: boolean
+        hidden:
+          type: boolean
+        preorder:
+          type: boolean
+        taxable:
+          type: boolean
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Variant'
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductOption'
+        price:
+          type: integer
+        listPrice:
+          type: integer
+        currency:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    Variant:
+      type: object
+      properties:
+        id:
+          type: string
+        sku:
+          type: string
+        name:
+          type: string
+        price:
+          type: integer
+        listPrice:
+          type: integer
+        available:
+          type: boolean
+        inventory:
+          type: integer
+        image:
+          $ref: '#/components/schemas/Media'
+
+    ProductOption:
+      type: object
+      properties:
+        name:
+          type: string
+        values:
+          type: array
+          items:
+            type: string
+
+    Media:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [image, video]
+        url:
+          type: string
+          format: uri
+        alt:
+          type: string
+        width:
+          type: integer
+        height:
+          type: integer
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        orderId:
+          type: string
+        userId:
+          type: string
+        currency:
+          type: string
+        amount:
+          type: integer
+        amountRefunded:
+          type: integer
+        fee:
+          type: integer
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        captured:
+          type: boolean
+        live:
+          type: boolean
+        buyer:
+          $ref: '#/components/schemas/Buyer'
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    PaymentMethod:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        type:
+          type: string
+          enum: [card, paypal, bank]
+        last4:
+          type: string
+        brand:
+          type: string
+        expMonth:
+          type: integer
+        expYear:
+          type: integer
+        default:
+          type: boolean
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        destinationId:
+          type: string
+        destinationKind:
+          type: string
+        currency:
+          type: string
+        amount:
+          type: integer
+        type:
+          type: string
+          enum: [hold, hold-removed, transfer, deposit, withdraw]
+        test:
+          type: boolean
+        notes:
+          type: string
+        sourceId:
+          type: string
+        sourceKind:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    TransactionData:
+      type: object
+      properties:
+        balance:
+          type: integer
+        held:
+          type: integer
+        available:
+          type: integer
+
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        number:
+          type: integer
+          readOnly: true
+        planId:
+          type: string
+        userId:
+          type: string
+        status:
+          type: string
+          enum: [trialing, active, past_due, canceled, unpaid]
+        quantity:
+          type: integer
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: string
+          format: date-time
+        trialStart:
+          type: string
+          format: date-time
+        trialEnd:
+          type: string
+          format: date-time
+        canceledAt:
+          type: string
+          format: date-time
+        buyer:
+          $ref: '#/components/schemas/Buyer'
+        plan:
+          $ref: '#/components/schemas/Plan'
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    SubscriptionRequest:
+      type: object
+      required:
+        - planId
+      properties:
+        planId:
+          type: string
+        quantity:
+          type: integer
+          default: 1
+        buyer:
+          $ref: '#/components/schemas/Buyer'
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentRequest'
+
+    Plan:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        amount:
+          type: integer
+        currency:
+          type: string
+        interval:
+          type: string
+          enum: [month, year]
+        intervalCount:
+          type: integer
+        trialPeriodDays:
+          type: integer
+
+    Store:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        currency:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    Listing:
+      type: object
+      properties:
+        id:
+          type: string
+        productId:
+          type: string
+        variantId:
+          type: string
+        price:
+          type: integer
+        listPrice:
+          type: integer
+        available:
+          type: boolean
+        inventory:
+          type: integer
+
+    Affiliate:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        userId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        commission:
+          type: object
+          properties:
+            percent:
+              type: number
+            flat:
+              type: integer
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    Referral:
+      type: object
+      properties:
+        id:
+          type: string
+        referrerId:
+          type: string
+        userId:
+          type: string
+        orderId:
+          type: string
+        amount:
+          type: integer
+        status:
+          type: string
+
+    Referrer:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        affiliateId:
+          type: string
+        code:
+          type: string
+        earnings:
+          type: integer
+
+    Form:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+        enabled:
+          type: boolean
+        fields:
+          type: array
+          items:
+            type: object
+        redirectUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    Note:
+      type: object
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        entityId:
+          type: string
+        entityKind:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Return:
+      type: object
+      properties:
+        id:
+          type: string
+        orderId:
+          type: string
+        status:
+          type: string
+        reason:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItem'
+        refundAmount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    Wallet:
+      type: object
+      properties:
+        id:
+          type: string
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/WalletAccount'
+
+    WalletAccount:
+      type: object
+      properties:
+        name:
+          type: string
+        currency:
+          type: string
+        balance:
+          type: integer
+        held:
+          type: integer
+        available:
+          type: integer
+        address:
+          type: string
+
+    PaymentRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [card, paypal, stripe, bitcoin, ethereum, balance]
+        token:
+          type: string
+          description: Payment processor token (e.g., Stripe token)
+        paymentMethodId:
+          type: string
+        amount:
+          type: integer
+          description: Amount in cents (optional, defaults to order total)
+
+    CheckoutRequest:
+      type: object
+      properties:
+        cartId:
+          type: string
+        buyer:
+          $ref: '#/components/schemas/Buyer'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItem'
+        currency:
+          type: string
+        shippingMethod:
+          type: string
+        couponCodes:
+          type: array
+          items:
+            type: string
+        payment:
+          $ref: '#/components/schemas/PaymentRequest'
+        metadata:
+          type: object
+          additionalProperties: true
+
+    # Paginated responses
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: string
+        display:
+          type: string
+        count:
+          type: integer
+
+    PaginatedOrders:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          properties:
+            models:
+              type: array
+              items:
+                $ref: '#/components/schemas/Order'
+
+    PaginatedCarts:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          properties:
+            models:
+              type: array
+              items:
+                $ref: '#/components/schemas/Cart'
+
+    PaginatedUsers:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          properties:
+            models:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'
+
+    PaginatedProducts:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          properties:
+            models:
+              type: array
+              items:
+                $ref: '#/components/schemas/Product'
+
+    PaginatedStores:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          properties:
+            models:
+              type: array
+              items:
+                $ref: '#/components/schemas/Store'
+
+    PaginatedAffiliates:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          properties:
+            models:
+              type: array
+              items:
+                $ref: '#/components/schemas/Affiliate'
+
+    PaginatedForms:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          properties:
+            models:
+              type: array
+              items:
+                $ref: '#/components/schemas/Form'

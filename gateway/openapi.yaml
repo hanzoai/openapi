@@ -1,0 +1,756 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Gateway API
+  description: |
+    Hanzo Gateway provides a unified LLM API gateway with support for multiple providers,
+    key management, usage tracking, rate limiting, and caching.
+
+    Based on LiteLLM with Hanzo extensions for:
+    - Multi-tenant key management
+    - Organization and team hierarchies
+    - Spend tracking and budgets
+    - Custom routing rules
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://gateway.hanzo.ai
+    description: Production
+  - url: https://gateway.staging.hanzo.ai
+    description: Staging
+
+tags:
+  - name: Chat
+    description: Chat completions (OpenAI-compatible)
+  - name: Completions
+    description: Text completions
+  - name: Embeddings
+    description: Text embeddings
+  - name: Models
+    description: Model management
+  - name: Keys
+    description: API key management
+  - name: Teams
+    description: Team management
+  - name: Organizations
+    description: Organization management
+  - name: Users
+    description: User management
+  - name: Spend
+    description: Usage and spend tracking
+  - name: Budget
+    description: Budget management
+  - name: Health
+    description: Health checks
+
+security:
+  - bearerAuth: []
+  - apiKey: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    apiKey:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "Format: Bearer sk-..."
+
+  schemas:
+    ChatMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant, tool]
+        content:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: object
+        name:
+          type: string
+        tool_calls:
+          type: array
+          items:
+            type: object
+        tool_call_id:
+          type: string
+
+    ChatCompletionRequest:
+      type: object
+      required:
+        - model
+        - messages
+      properties:
+        model:
+          type: string
+          description: Model ID (e.g., gpt-4, claude-3-opus)
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+          default: 1
+        top_p:
+          type: number
+          minimum: 0
+          maximum: 1
+        n:
+          type: integer
+          minimum: 1
+          default: 1
+        stream:
+          type: boolean
+          default: false
+        max_tokens:
+          type: integer
+        presence_penalty:
+          type: number
+        frequency_penalty:
+          type: number
+        tools:
+          type: array
+          items:
+            type: object
+        tool_choice:
+          oneOf:
+            - type: string
+            - type: object
+        user:
+          type: string
+        metadata:
+          type: object
+
+    ChatCompletionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+          enum: [chat.completion]
+        created:
+          type: integer
+        model:
+          type: string
+        choices:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              message:
+                $ref: '#/components/schemas/ChatMessage'
+              finish_reason:
+                type: string
+                enum: [stop, length, tool_calls, content_filter]
+        usage:
+          type: object
+          properties:
+            prompt_tokens:
+              type: integer
+            completion_tokens:
+              type: integer
+            total_tokens:
+              type: integer
+
+    EmbeddingRequest:
+      type: object
+      required:
+        - model
+        - input
+      properties:
+        model:
+          type: string
+        input:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+        encoding_format:
+          type: string
+          enum: [float, base64]
+          default: float
+        dimensions:
+          type: integer
+        user:
+          type: string
+
+    EmbeddingResponse:
+      type: object
+      properties:
+        object:
+          type: string
+          enum: [list]
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              object:
+                type: string
+                enum: [embedding]
+              index:
+                type: integer
+              embedding:
+                type: array
+                items:
+                  type: number
+        model:
+          type: string
+        usage:
+          type: object
+          properties:
+            prompt_tokens:
+              type: integer
+            total_tokens:
+              type: integer
+
+    Model:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+          enum: [model]
+        created:
+          type: integer
+        owned_by:
+          type: string
+
+    Key:
+      type: object
+      properties:
+        key:
+          type: string
+          description: The API key (only shown once on creation)
+        key_name:
+          type: string
+        key_alias:
+          type: string
+        user_id:
+          type: string
+        team_id:
+          type: string
+        org_id:
+          type: string
+        models:
+          type: array
+          items:
+            type: string
+        spend:
+          type: number
+        max_budget:
+          type: number
+        budget_duration:
+          type: string
+        expires:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+
+    Team:
+      type: object
+      properties:
+        team_id:
+          type: string
+        team_alias:
+          type: string
+        organization_id:
+          type: string
+        admins:
+          type: array
+          items:
+            type: string
+        members:
+          type: array
+          items:
+            type: string
+        max_budget:
+          type: number
+        spend:
+          type: number
+        models:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+
+paths:
+  # Chat Completions
+  /v1/chat/completions:
+    post:
+      tags:
+        - Chat
+      summary: Create chat completion
+      operationId: createChatCompletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+      responses:
+        '200':
+          description: Chat completion response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatCompletionResponse'
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE stream for streaming responses
+
+  # Completions
+  /v1/completions:
+    post:
+      tags:
+        - Completions
+      summary: Create completion
+      operationId: createCompletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - model
+                - prompt
+              properties:
+                model:
+                  type: string
+                prompt:
+                  oneOf:
+                    - type: string
+                    - type: array
+                      items:
+                        type: string
+                max_tokens:
+                  type: integer
+                temperature:
+                  type: number
+                stream:
+                  type: boolean
+      responses:
+        '200':
+          description: Completion response
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # Embeddings
+  /v1/embeddings:
+    post:
+      tags:
+        - Embeddings
+      summary: Create embeddings
+      operationId: createEmbedding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmbeddingRequest'
+      responses:
+        '200':
+          description: Embedding response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmbeddingResponse'
+
+  # Models
+  /v1/models:
+    get:
+      tags:
+        - Models
+      summary: List models
+      operationId: listModels
+      responses:
+        '200':
+          description: List of models
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum: [list]
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Model'
+
+  /v1/models/{model}:
+    get:
+      tags:
+        - Models
+      summary: Get model
+      operationId: getModel
+      parameters:
+        - name: model
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Model'
+
+  # Key Management
+  /key/generate:
+    post:
+      tags:
+        - Keys
+      summary: Generate API key
+      operationId: generateKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                key_alias:
+                  type: string
+                duration:
+                  type: string
+                  description: Duration like "30d", "1h", etc.
+                models:
+                  type: array
+                  items:
+                    type: string
+                max_budget:
+                  type: number
+                user_id:
+                  type: string
+                team_id:
+                  type: string
+                metadata:
+                  type: object
+      responses:
+        '200':
+          description: Generated key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Key'
+
+  /key/info:
+    get:
+      tags:
+        - Keys
+      summary: Get key info
+      operationId: getKeyInfo
+      parameters:
+        - name: key
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Key information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Key'
+
+  /key/update:
+    post:
+      tags:
+        - Keys
+      summary: Update key
+      operationId: updateKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - key
+              properties:
+                key:
+                  type: string
+                models:
+                  type: array
+                  items:
+                    type: string
+                max_budget:
+                  type: number
+                metadata:
+                  type: object
+      responses:
+        '200':
+          description: Key updated
+
+  /key/delete:
+    post:
+      tags:
+        - Keys
+      summary: Delete key
+      operationId: deleteKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - keys
+              properties:
+                keys:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Keys deleted
+
+  # Teams
+  /team/new:
+    post:
+      tags:
+        - Teams
+      summary: Create team
+      operationId: createTeam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                team_alias:
+                  type: string
+                organization_id:
+                  type: string
+                admins:
+                  type: array
+                  items:
+                    type: string
+                members:
+                  type: array
+                  items:
+                    type: string
+                max_budget:
+                  type: number
+                models:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Team created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+
+  /team/info:
+    get:
+      tags:
+        - Teams
+      summary: Get team info
+      operationId: getTeamInfo
+      parameters:
+        - name: team_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Team information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+
+  /team/list:
+    get:
+      tags:
+        - Teams
+      summary: List teams
+      operationId: listTeams
+      responses:
+        '200':
+          description: List of teams
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Team'
+
+  # Spend Tracking
+  /spend/logs:
+    get:
+      tags:
+        - Spend
+      summary: Get spend logs
+      operationId: getSpendLogs
+      parameters:
+        - name: user_id
+          in: query
+          schema:
+            type: string
+        - name: team_id
+          in: query
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Spend logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    request_id:
+                      type: string
+                    model:
+                      type: string
+                    api_key:
+                      type: string
+                    spend:
+                      type: number
+                    total_tokens:
+                      type: integer
+                    startTime:
+                      type: string
+                      format: date-time
+
+  /spend/calculate:
+    post:
+      tags:
+        - Spend
+      summary: Calculate spend for request
+      operationId: calculateSpend
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model:
+                  type: string
+                messages:
+                  type: array
+                  items:
+                    type: object
+                completion:
+                  type: string
+      responses:
+        '200':
+          description: Calculated spend
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  input_cost:
+                    type: number
+                  output_cost:
+                    type: number
+                  total_cost:
+                    type: number
+
+  # Health
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy]
+                  version:
+                    type: string
+
+  /health/liveliness:
+    get:
+      tags:
+        - Health
+      summary: Liveliness check
+      operationId: livelinessCheck
+      security: []
+      responses:
+        '200':
+          description: Service alive
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /health/readiness:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      operationId: readinessCheck
+      security: []
+      responses:
+        '200':
+          description: Service ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  db_status:
+                    type: string
+                  cache_status:
+                    type: string

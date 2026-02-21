@@ -1,0 +1,647 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Operative API
+  description: |
+    Hanzo Operative is a computer-use agent that allows Claude to interact with
+    a desktop environment via screenshot, mouse, keyboard, bash, and file-editing
+    tools. It runs inside a Docker container with X11/Xvfb and exposes a Streamlit
+    UI for human interaction, an HTTP API for configuration, and WebSocket-based
+    VNC for live desktop viewing.
+
+    The API provides endpoints for managing agent sessions, executing computer-use
+    tasks, retrieving screenshots, and configuring the operative environment.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://operative.hanzo.ai
+    description: Production
+  - url: http://localhost:8080
+    description: Local HTTP server
+  - url: http://localhost:8501
+    description: Local Streamlit UI
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Sessions
+    description: Manage operative agent sessions
+  - name: Tasks
+    description: Submit and monitor computer-use tasks
+  - name: Computer
+    description: Direct computer interaction (screenshot, mouse, keyboard)
+  - name: Tools
+    description: Tool execution (bash, file editor)
+  - name: Configuration
+    description: Environment and agent configuration
+
+paths:
+  /api/v1/sessions:
+    post:
+      operationId: createSession
+      summary: Create a new operative session
+      description: |
+        Creates a new agent session with the specified model, provider, and
+        configuration. Returns a session ID for subsequent interactions.
+      tags:
+        - Sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      operationId: listSessions
+      summary: List all active sessions
+      tags:
+        - Sessions
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, completed, failed]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Session'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/sessions/{sessionId}:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    get:
+      operationId: getSession
+      summary: Get session details
+      tags:
+        - Sessions
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteSession
+      summary: Terminate and delete a session
+      tags:
+        - Sessions
+      responses:
+        '204':
+          description: Session terminated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/sessions/{sessionId}/messages:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    post:
+      operationId: sendMessage
+      summary: Send a message to the operative agent
+      description: |
+        Sends a user message to the agent, which triggers the sampling loop.
+        The agent will process the message, potentially use tools (computer,
+        bash, editor), and return a response with any tool results.
+      tags:
+        - Tasks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+      responses:
+        '200':
+          description: Agent response with tool results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    get:
+      operationId: getMessages
+      summary: Get conversation history for a session
+      tags:
+        - Tasks
+      responses:
+        '200':
+          description: Conversation messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+
+  /api/v1/sessions/{sessionId}/screenshot:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    get:
+      operationId: takeScreenshot
+      summary: Take a screenshot of the current desktop
+      tags:
+        - Computer
+      responses:
+        '200':
+          description: Screenshot captured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScreenshotResult'
+            image/png:
+              schema:
+                type: string
+                format: binary
+
+  /api/v1/sessions/{sessionId}/computer:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    post:
+      operationId: computerAction
+      summary: Execute a computer action
+      description: |
+        Execute a direct computer interaction action such as mouse clicks,
+        keyboard input, scrolling, or taking a screenshot.
+      tags:
+        - Computer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComputerActionRequest'
+      responses:
+        '200':
+          description: Action result with optional screenshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolResult'
+
+  /api/v1/sessions/{sessionId}/bash:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    post:
+      operationId: executeBash
+      summary: Execute a bash command
+      tags:
+        - Tools
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BashRequest'
+      responses:
+        '200':
+          description: Command output
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolResult'
+
+  /api/v1/sessions/{sessionId}/edit:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    post:
+      operationId: editFile
+      summary: Execute a file editing command
+      tags:
+        - Tools
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditRequest'
+      responses:
+        '200':
+          description: Edit result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolResult'
+
+  /api/v1/sessions/{sessionId}/reset:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    post:
+      operationId: resetSession
+      summary: Reset the session environment
+      description: |
+        Resets the desktop environment (kills Xvfb, tint2) and restarts all
+        services. Clears conversation state.
+      tags:
+        - Sessions
+      responses:
+        '200':
+          description: Session reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+
+  /env-config.json:
+    get:
+      operationId: getEnvConfig
+      summary: Get environment configuration
+      description: Returns runtime endpoint configuration for the UI.
+      tags:
+        - Configuration
+      security: []
+      responses:
+        '200':
+          description: Environment configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvConfig'
+
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      tags:
+        - Configuration
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Hanzo API key or JWT token
+
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique session identifier
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    CreateSessionRequest:
+      type: object
+      required:
+        - provider
+      properties:
+        provider:
+          type: string
+          enum: [anthropic, bedrock, vertex]
+          description: API provider to use
+        model:
+          type: string
+          description: Model name (defaults to provider default)
+          example: claude-3-7-sonnet-20250219
+        apiKey:
+          type: string
+          description: API key for the provider (if not set via env)
+        systemPromptSuffix:
+          type: string
+          description: Extra instructions appended to the system prompt
+        toolVersion:
+          type: string
+          enum: [computer_use_20241022, computer_use_20250124]
+          default: computer_use_20250124
+          description: Tool version to use
+        maxTokens:
+          type: integer
+          default: 128000
+          description: Maximum output tokens
+        thinkingBudget:
+          type: integer
+          description: Token budget for thinking (null to disable)
+        onlyNMostRecentImages:
+          type: integer
+          default: 1
+          description: Number of recent screenshots to send to model
+        tokenEfficientToolsBeta:
+          type: boolean
+          default: false
+          description: Enable token-efficient tools beta flag
+        displayWidth:
+          type: integer
+          default: 1024
+          description: Virtual display width in pixels
+        displayHeight:
+          type: integer
+          default: 768
+          description: Virtual display height in pixels
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [active, completed, failed]
+        provider:
+          type: string
+          enum: [anthropic, bedrock, vertex]
+        model:
+          type: string
+        toolVersion:
+          type: string
+        messageCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SendMessageRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: User message text
+
+    AgentResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+        toolResults:
+          type: array
+          items:
+            $ref: '#/components/schemas/ToolResult'
+
+    Message:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, assistant, tool]
+        content:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                $ref: '#/components/schemas/ContentBlock'
+        timestamp:
+          type: string
+          format: date-time
+
+    ContentBlock:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [text, tool_use, tool_result, thinking, image]
+        text:
+          type: string
+        thinking:
+          type: string
+        id:
+          type: string
+          description: Tool use ID
+        name:
+          type: string
+          description: Tool name (computer, bash, str_replace_editor)
+        input:
+          type: object
+          description: Tool input parameters
+        toolUseId:
+          type: string
+          description: Reference to the tool_use block
+        content:
+          type: string
+          description: Tool result content
+        isError:
+          type: boolean
+        base64Image:
+          type: string
+          format: byte
+          description: Base64-encoded PNG screenshot
+
+    ComputerActionRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum:
+            - key
+            - type
+            - mouse_move
+            - left_click
+            - left_click_drag
+            - right_click
+            - middle_click
+            - double_click
+            - triple_click
+            - screenshot
+            - cursor_position
+            - left_mouse_down
+            - left_mouse_up
+            - scroll
+            - hold_key
+            - wait
+          description: The computer action to perform
+        text:
+          type: string
+          description: Text for key/type actions, modifier key for scroll
+        coordinate:
+          type: array
+          items:
+            type: integer
+          minItems: 2
+          maxItems: 2
+          description: "[x, y] pixel coordinates for mouse actions"
+        scrollDirection:
+          type: string
+          enum: [up, down, left, right]
+          description: Scroll direction (for scroll action)
+        scrollAmount:
+          type: integer
+          description: Number of scroll clicks
+        duration:
+          type: number
+          description: Duration in seconds (for hold_key, wait actions)
+        key:
+          type: string
+          description: Modifier key to hold during click actions
+
+    BashRequest:
+      type: object
+      properties:
+        command:
+          type: string
+          description: Bash command to execute
+        restart:
+          type: boolean
+          default: false
+          description: Restart the bash session
+
+    EditRequest:
+      type: object
+      required:
+        - command
+        - path
+      properties:
+        command:
+          type: string
+          enum: [view, create, str_replace, insert, undo_edit]
+          description: Editor command to execute
+        path:
+          type: string
+          description: Absolute file path
+        fileText:
+          type: string
+          description: File content (for create command)
+        oldStr:
+          type: string
+          description: String to find (for str_replace command)
+        newStr:
+          type: string
+          description: Replacement string (for str_replace and insert commands)
+        insertLine:
+          type: integer
+          description: Line number to insert at (for insert command)
+        viewRange:
+          type: array
+          items:
+            type: integer
+          minItems: 2
+          maxItems: 2
+          description: "[startLine, endLine] range to view"
+
+    ToolResult:
+      type: object
+      properties:
+        output:
+          type: string
+          description: Standard output text
+        error:
+          type: string
+          description: Error message if the tool failed
+        base64Image:
+          type: string
+          format: byte
+          description: Base64-encoded PNG screenshot
+        system:
+          type: string
+          description: System message (e.g. tool restart notice)
+
+    ScreenshotResult:
+      type: object
+      properties:
+        base64Image:
+          type: string
+          format: byte
+          description: Base64-encoded PNG of the current desktop
+        width:
+          type: integer
+        height:
+          type: integer
+
+    EnvConfig:
+      type: object
+      properties:
+        APP_ENDPOINT:
+          type: string
+          example: operative-app.hanzo.ai
+        VNC_ENDPOINT:
+          type: string
+          example: operative-vnc.hanzo.ai
+
+    Error:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+        code:
+          type: string

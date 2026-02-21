@@ -1,0 +1,1374 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Bot API
+  description: |
+    Hanzo Bot Hub is the skill registry and marketplace for Hanzo Bot.
+    It provides APIs for browsing, publishing, and managing bot skills,
+    personas, integrations, and user profiles.
+
+    The Hub API is a Hono-based service backed by PostgreSQL with
+    pgvector for semantic skill search.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://app.hanzo.bot
+    description: Production
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: auth
+    description: OAuth login, session management, current user
+  - name: skills
+    description: Browse, publish, star, and comment on bot skills
+  - name: personas
+    description: Bot persona definitions and versions
+  - name: integrations
+    description: Integration pieces (ActivePieces-sourced)
+  - name: search
+    description: Hybrid vector + lexical search across skills and personas
+  - name: users
+    description: User profiles and their published skills
+  - name: tokens
+    description: API token management
+  - name: upload
+    description: Presigned upload URL generation
+  - name: health
+    description: Health check
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Session token from OAuth callback or API token (bh_... prefix).
+        Pass as `Authorization: Bearer <token>`.
+
+  schemas:
+    Skill:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+          description: URL-safe unique identifier
+        displayName:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        ownerUserId:
+          type: string
+          format: uuid
+        forkOf:
+          type: string
+          format: uuid
+          nullable: true
+        latestVersionId:
+          type: string
+          format: uuid
+          nullable: true
+        tags:
+          type: object
+        badges:
+          type: object
+          nullable: true
+        batch:
+          type: string
+          nullable: true
+          description: Grouping key (e.g. "integration")
+        moderationStatus:
+          type: string
+          enum: [active, pending, rejected]
+        quality:
+          type: object
+          nullable: true
+        statsDownloads:
+          type: integer
+        statsStars:
+          type: integer
+        statsVersions:
+          type: integer
+        statsComments:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        ownerHandle:
+          type: string
+          nullable: true
+        ownerImage:
+          type: string
+          nullable: true
+
+    SkillVersion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: string
+          description: Semver version string
+        changelog:
+          type: string
+          nullable: true
+        changelogSource:
+          type: string
+          nullable: true
+        createdBy:
+          type: string
+          format: uuid
+        sha256hash:
+          type: string
+          nullable: true
+        vtAnalysis:
+          type: object
+          nullable: true
+        llmAnalysis:
+          type: object
+          nullable: true
+        files:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              size:
+                type: integer
+              storageKey:
+                type: string
+              sha256:
+                type: string
+              contentType:
+                type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Persona:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        displayName:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        ownerUserId:
+          type: string
+          format: uuid
+        latestVersionId:
+          type: string
+          format: uuid
+          nullable: true
+        statsDownloads:
+          type: integer
+        statsStars:
+          type: integer
+        statsVersions:
+          type: integer
+        statsComments:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PersonaVersion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        personaId:
+          type: string
+          format: uuid
+        version:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        handle:
+          type: string
+          nullable: true
+        displayName:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+        image:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [user, admin]
+        trustedPublisher:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    ApiToken:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        prefix:
+          type: string
+          description: First 10 characters of the token
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        body:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        userHandle:
+          type: string
+          nullable: true
+        userImage:
+          type: string
+          nullable: true
+        userDisplayName:
+          type: string
+          nullable: true
+
+    Integration:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        displayName:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        batch:
+          type: string
+        statsDownloads:
+          type: integer
+        statsStars:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PaginatedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: {}
+        nextCursor:
+          type: string
+          nullable: true
+        hasMore:
+          type: boolean
+
+    SearchResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        displayName:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        ownerHandle:
+          type: string
+          nullable: true
+        ownerImage:
+          type: string
+          nullable: true
+        statsDownloads:
+          type: integer
+        statsStars:
+          type: integer
+        score:
+          type: number
+          description: Relevance score (1.0 = exact match, 0 = lexical only)
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+paths:
+  # ── Health ──────────────────────────────────────────────────────────────────
+  /health:
+    get:
+      operationId: getHealth
+      tags: [health]
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  version:
+                    type: string
+                    example: "0.1.0"
+
+  # ── Auth ────────────────────────────────────────────────────────────────────
+  /api/auth/login:
+    get:
+      operationId: authLogin
+      tags: [auth]
+      summary: Initiate OAuth login via Hanzo IAM
+      security: []
+      parameters:
+        - name: redirect_uri
+          in: query
+          schema:
+            type: string
+            format: uri
+          description: Override callback URL
+        - name: state
+          in: query
+          schema:
+            type: string
+          description: Opaque state for CSRF protection
+      responses:
+        '302':
+          description: Redirect to IAM authorization endpoint
+
+  /api/auth/callback:
+    get:
+      operationId: authCallback
+      tags: [auth]
+      summary: OAuth callback - exchange code for session
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Authorization code from IAM
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: error
+          in: query
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to frontend with session token in query params
+        '400':
+          description: OAuth error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/me:
+    get:
+      operationId: authMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Not authenticated
+        '404':
+          description: User not found
+
+  /api/auth/logout:
+    post:
+      operationId: authLogout
+      tags: [auth]
+      summary: Invalidate current session
+      responses:
+        '200':
+          description: Session invalidated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  # ── Skills ──────────────────────────────────────────────────────────────────
+  /api/v1/skills:
+    get:
+      operationId: listSkills
+      tags: [skills]
+      summary: List published skills (paginated)
+      security: []
+      parameters:
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [updated, downloads, stars, created]
+            default: updated
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Cursor for pagination (updatedAt ISO timestamp)
+        - name: batch
+          in: query
+          schema:
+            type: string
+          description: Filter by batch grouping key
+      responses:
+        '200':
+          description: Paginated skill list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Skill'
+
+  /api/v1/skills/{slug}:
+    get:
+      operationId: getSkill
+      tags: [skills]
+      summary: Get skill details by slug
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Skill details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Skill'
+        '404':
+          description: Skill not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      operationId: deleteSkill
+      tags: [skills]
+      summary: Soft-delete a skill (owner or admin only)
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Skill deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '403':
+          description: Forbidden
+        '404':
+          description: Skill not found
+
+  /api/v1/skills/{slug}/publish:
+    post:
+      operationId: publishSkillVersion
+      tags: [skills]
+      summary: Publish a new version of a skill (creates skill if new)
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9][a-z0-9-]*$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName, version, changelog, files]
+              properties:
+                displayName:
+                  type: string
+                version:
+                  type: string
+                  description: Semver version
+                changelog:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                files:
+                  type: array
+                  items:
+                    type: object
+                    required: [path, size, storageKey, sha256]
+                    properties:
+                      path:
+                        type: string
+                      size:
+                        type: integer
+                      storageKey:
+                        type: string
+                      sha256:
+                        type: string
+                      contentType:
+                        type: string
+      responses:
+        '200':
+          description: Version published
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  skillId:
+                    type: string
+                    format: uuid
+                  versionId:
+                    type: string
+                    format: uuid
+                  version:
+                    type: string
+        '400':
+          description: Invalid slug format
+        '403':
+          description: Not the skill owner
+        '409':
+          description: Version already exists
+
+  /api/v1/skills/{slug}/undelete:
+    post:
+      operationId: undeleteSkill
+      tags: [skills]
+      summary: Restore a soft-deleted skill
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Skill restored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '403':
+          description: Forbidden
+        '404':
+          description: Skill not found
+
+  /api/v1/skills/{slug}/versions:
+    get:
+      operationId: listSkillVersions
+      tags: [skills]
+      summary: List versions of a skill
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Version list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SkillVersion'
+        '404':
+          description: Skill not found
+
+  /api/v1/skills/{slug}/versions/{version}/files:
+    get:
+      operationId: getSkillVersionFiles
+      tags: [skills]
+      summary: Get file listing for a specific version
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        path:
+                          type: string
+                        size:
+                          type: integer
+                        storageKey:
+                          type: string
+                        sha256:
+                          type: string
+                        contentType:
+                          type: string
+        '404':
+          description: Skill or version not found
+
+  /api/v1/skills/{slug}/stars:
+    post:
+      operationId: toggleSkillStar
+      tags: [skills]
+      summary: Star or unstar a skill (toggle)
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Star toggled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  starred:
+                    type: boolean
+        '404':
+          description: Skill not found
+
+  /api/v1/skills/{slug}/stars/me:
+    get:
+      operationId: getSkillStarStatus
+      tags: [skills]
+      summary: Check if current user has starred this skill
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Star status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  starred:
+                    type: boolean
+        '404':
+          description: Skill not found
+
+  /api/v1/skills/{slug}/comments:
+    get:
+      operationId: listSkillComments
+      tags: [skills]
+      summary: List comments on a skill
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Comment list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+        '404':
+          description: Skill not found
+    post:
+      operationId: createSkillComment
+      tags: [skills]
+      summary: Add a comment to a skill
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body:
+                  type: string
+                  minLength: 1
+      responses:
+        '200':
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '400':
+          description: Empty comment body
+        '404':
+          description: Skill not found
+
+  /api/v1/skills/{slug}/comments/{commentId}:
+    delete:
+      operationId: deleteSkillComment
+      tags: [skills]
+      summary: Delete a comment (author or admin only)
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Comment deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '403':
+          description: Forbidden
+        '404':
+          description: Comment not found
+
+  # ── Personas ────────────────────────────────────────────────────────────────
+  /api/v1/personas:
+    get:
+      operationId: listPersonas
+      tags: [personas]
+      summary: List personas (paginated)
+      security: []
+      parameters:
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [updated, downloads, stars, created]
+            default: updated
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Paginated persona list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Persona'
+                  hasMore:
+                    type: boolean
+
+  /api/v1/personas/{slug}/detail:
+    get:
+      operationId: getPersona
+      tags: [personas]
+      summary: Get persona detail including latest version and owner
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Persona detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  persona:
+                    allOf:
+                      - $ref: '#/components/schemas/Persona'
+                      - type: object
+                        properties:
+                          latestVersion:
+                            $ref: '#/components/schemas/PersonaVersion'
+                          owner:
+                            type: object
+                            properties:
+                              handle:
+                                type: string
+                              displayName:
+                                type: string
+        '404':
+          description: Persona not found
+
+  /api/v1/personas/{slug}/versions:
+    get:
+      operationId: listPersonaVersions
+      tags: [personas]
+      summary: List versions of a persona
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Version list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PersonaVersion'
+        '404':
+          description: Persona not found
+
+  # ── Integrations ────────────────────────────────────────────────────────────
+  /api/v1/integrations:
+    get:
+      operationId: listIntegrations
+      tags: [integrations]
+      summary: List integrations (paginated)
+      security: []
+      parameters:
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [updated, downloads, name]
+            default: updated
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Paginated integration list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Integration'
+                  hasMore:
+                    type: boolean
+
+  /api/v1/integrations/{slug}:
+    get:
+      operationId: getIntegration
+      tags: [integrations]
+      summary: Get integration detail with latest version
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Integration detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  integration:
+                    $ref: '#/components/schemas/Integration'
+        '404':
+          description: Integration not found
+
+  # ── Search ──────────────────────────────────────────────────────────────────
+  /api/v1/search/skills:
+    get:
+      operationId: searchSkills
+      tags: [search]
+      summary: Hybrid vector + lexical search for skills
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          description: Search query
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Search results ranked by relevance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SearchResult'
+
+  /api/v1/search/personas:
+    get:
+      operationId: searchPersonas
+      tags: [search]
+      summary: Lexical search for personas
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SearchResult'
+
+  # ── Users ───────────────────────────────────────────────────────────────────
+  /api/v1/users/{handle}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user profile by handle
+      security: []
+      parameters:
+        - name: handle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+
+  /api/v1/users/{handle}/skills:
+    get:
+      operationId: listUserSkills
+      tags: [users]
+      summary: List skills published by a user
+      security: []
+      parameters:
+        - name: handle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User's skills
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Skill'
+        '404':
+          description: User not found
+
+  /api/v1/users/{handle}/stars:
+    get:
+      operationId: listUserStars
+      tags: [users]
+      summary: List skills starred by a user
+      security: []
+      parameters:
+        - name: handle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User's starred skills
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        skillId:
+                          type: string
+                          format: uuid
+                        skillSlug:
+                          type: string
+                        skillDisplayName:
+                          type: string
+                        skillSummary:
+                          type: string
+                          nullable: true
+                        starredAt:
+                          type: string
+                          format: date-time
+        '404':
+          description: User not found
+
+  /api/v1/users/me:
+    patch:
+      operationId: updateProfile
+      tags: [users]
+      summary: Update current user's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                bio:
+                  type: string
+                handle:
+                  type: string
+                  pattern: '^[a-z0-9][a-z0-9_-]*$'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '400':
+          description: Invalid handle format
+
+  # ── Tokens ──────────────────────────────────────────────────────────────────
+  /api/v1/tokens:
+    get:
+      operationId: listTokens
+      tags: [tokens]
+      summary: List current user's API tokens
+      responses:
+        '200':
+          description: Token list (secrets are never returned)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApiToken'
+    post:
+      operationId: createToken
+      tags: [tokens]
+      summary: Create a new API token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label]
+              properties:
+                label:
+                  type: string
+                  minLength: 1
+      responses:
+        '200':
+          description: Token created (raw token returned only once)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  token:
+                    type: string
+                    description: Raw token value (bh_...) -- store securely, shown only once
+                  prefix:
+                    type: string
+                  label:
+                    type: string
+        '400':
+          description: Missing label
+
+  /api/v1/tokens/{id}:
+    delete:
+      operationId: revokeToken
+      tags: [tokens]
+      summary: Revoke an API token
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Token revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '404':
+          description: Token not found
+
+  # ── Upload ──────────────────────────────────────────────────────────────────
+  /api/v1/upload/url:
+    post:
+      operationId: getUploadUrl
+      tags: [upload]
+      summary: Generate a presigned upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filename]
+              properties:
+                filename:
+                  type: string
+                contentType:
+                  type: string
+      responses:
+        '200':
+          description: Presigned URL and storage key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    format: uri
+                    description: PUT this URL with file contents
+                  storageKey:
+                    type: string
+                    description: Reference this key when publishing
+        '400':
+          description: Missing filename
+
+  # ── CLI Compatibility ───────────────────────────────────────────────────────
+  /api/whoami:
+    get:
+      operationId: whoami
+      tags: [auth]
+      summary: CLI compatibility alias for /api/auth/me
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'

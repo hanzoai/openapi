@@ -1,0 +1,1019 @@
+openapi: 3.1.0
+info:
+  title: Hanzo AI Platform API
+  description: |
+    Unified API for the Hanzo AI Platform, providing access to all backend services.
+
+    ## Services
+
+    ### Core
+    - **IAM** (`hanzo.id`): Identity and Access Management (OAuth2, OIDC, SAML, Web3)
+    - **Commerce** (`commerce.hanzo.ai`): Billing, payments, invoicing, orders, subscriptions
+    - **Cloud** (`api.cloud.hanzo.ai`): AI model API, 86+ models, usage tracking
+    - **Gateway** (`api.hanzo.ai`): Unified API gateway, LLM proxy, rate limiting
+    - **Console** (`console.hanzo.ai`): Observability, traces, scores, prompt management
+    - **KMS** (`kms.hanzo.ai`): Secrets management, encryption, audit
+
+    ### Application
+    - **Chat** (`hanzo.chat`): AI chat, conversations, messages, file uploads
+    - **Flow** (`flow.hanzo.ai`): Visual workflow builder, automations
+    - **Auto** (`auto.hanzo.ai`): Workflow automation, scheduling, triggers
+    - **Analytics** (`analytics.hanzo.ai`): Web analytics, events, sessions, reports
+    - **Bot** (`app.hanzo.bot`): Bot framework, skills, plugins
+    - **Search** (`search.hanzo.ai`): AI-powered search, generative UI
+
+    ### Infrastructure
+    - **Platform** (`platform.hanzo.ai`): PaaS, deployments, containers
+    - **Visor** (`vm.hanzo.ai`): VM management, cloud instances
+    - **Operative** (`operative.hanzo.ai`): Computer use, browser automation
+    - **Vector** (`vector.hanzo.ai`): Vector database, collections, search
+    - **Nexus** (`nexus.hanzo.ai`): Knowledge base, RAG, embeddings
+
+    ## Authentication
+
+    All APIs use a single `HANZO_API_KEY`. Include it in the Authorization header:
+
+    ```
+    Authorization: Bearer <HANZO_API_KEY>
+    ```
+
+    API keys are managed via Hanzo IAM at hanzo.id. A single key grants access
+    to all services based on your account permissions.
+
+    ## Base URLs
+
+    | Environment | Base URL |
+    |-------------|----------|
+    | Production | https://api.hanzo.ai |
+    | Staging | https://api.staging.hanzo.ai |
+    | Sandbox | https://api.sandbox.hanzo.ai |
+
+  version: 2.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+  x-logo:
+    url: https://hanzo.ai/logo.png
+    altText: Hanzo AI
+
+servers:
+  - url: https://api.hanzo.ai
+    description: Production
+  - url: https://api.staging.hanzo.ai
+    description: Staging
+  - url: https://api.sandbox.hanzo.ai
+    description: Sandbox
+  - url: http://localhost:8080
+    description: Local Development
+
+tags:
+  # IAM
+  - name: Auth
+    description: Authentication, OAuth2, OIDC token management
+  - name: Users
+    description: User management
+  - name: Organizations
+    description: Organization management
+  - name: Applications
+    description: OAuth application management
+  - name: Providers
+    description: Identity providers (OAuth, SAML, Web3, LDAP)
+  - name: Sessions
+    description: Session management
+  - name: MFA
+    description: Multi-factor authentication
+
+  # Commerce / Billing
+  - name: Billing
+    description: Balance, credits, usage recording, deposits
+  - name: Orders
+    description: Order CRUD and management
+  - name: Cart
+    description: Shopping cart operations
+  - name: Checkout
+    description: Payment authorization and capture
+  - name: Products
+    description: Product catalog management
+  - name: Subscriptions
+    description: Subscription management
+  - name: Transactions
+    description: Financial transactions
+  - name: Invoices
+    description: Invoice generation and management
+
+  # Cloud / AI
+  - name: Models
+    description: AI model listing, routing, and inference
+  - name: Chat Completions
+    description: OpenAI-compatible chat completions API
+  - name: AI Apps
+    description: AI application management
+  - name: AI Files
+    description: File storage and management for AI
+
+  # Gateway
+  - name: LLM Proxy
+    description: LLM model proxy and routing
+  - name: API Keys
+    description: API key management
+  - name: Usage
+    description: Usage and spend tracking
+  - name: Rate Limits
+    description: Rate limiting configuration
+
+  # Console / Observability
+  - name: Traces
+    description: LLM trace recording and querying
+  - name: Observations
+    description: Span and event observations
+  - name: Scores
+    description: Quality scores and evaluations
+  - name: Datasets
+    description: Dataset management for evaluation
+  - name: Prompts
+    description: Prompt versioning and management
+
+  # Chat
+  - name: Conversations
+    description: Chat conversations
+  - name: Messages
+    description: Chat messages
+  - name: Presets
+    description: Chat presets and configurations
+
+  # Flow / Auto
+  - name: Flows
+    description: Visual workflow definitions
+  - name: Pieces
+    description: Workflow building blocks (integrations)
+  - name: Connections
+    description: Service connections for workflows
+  - name: Triggers
+    description: Workflow triggers
+  - name: Runs
+    description: Workflow execution runs
+
+  # Analytics
+  - name: Websites
+    description: Website tracking configuration
+  - name: Events
+    description: Analytics event tracking
+  - name: Pageviews
+    description: Pageview analytics
+  - name: Stats
+    description: Statistics and reports
+
+  # Bot
+  - name: Bots
+    description: Bot configuration and management
+  - name: Skills
+    description: Bot skills (743 available)
+  - name: Plugins
+    description: Bot plugins
+  - name: Webhooks
+    description: Bot webhook endpoints
+
+  # Search
+  - name: Search
+    description: AI-powered search queries
+  - name: Sources
+    description: Search source management
+
+  # Infrastructure
+  - name: Secrets
+    description: KMS secret management
+  - name: Projects
+    description: KMS/Platform project management
+  - name: Deployments
+    description: PaaS deployments
+  - name: Domains
+    description: Domain management
+  - name: Containers
+    description: Container management
+  - name: VMs
+    description: Virtual machine management
+  - name: Tasks
+    description: Computer use tasks (Operative)
+
+  # Data
+  - name: Collections
+    description: Vector collections
+  - name: Points
+    description: Vector points and search
+  - name: Snapshots
+    description: Collection snapshots
+  - name: Articles
+    description: Knowledge base articles
+  - name: Embeddings
+    description: Text embeddings and RAG
+
+security:
+  - hanzoApiKey: []
+  - bearerAuth: []
+  - oauth2: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token from Hanzo IAM
+
+    oauth2:
+      type: oauth2
+      description: OAuth2 authentication via Hanzo IAM
+      flows:
+        authorizationCode:
+          authorizationUrl: https://iam.hanzo.ai/login/oauth/authorize
+          tokenUrl: https://iam.hanzo.ai/api/login/oauth/access_token
+          refreshUrl: https://iam.hanzo.ai/api/login/oauth/refresh_token
+          scopes:
+            openid: OpenID Connect
+            profile: User profile
+            email: Email address
+            read: Read access
+            write: Write access
+            admin: Admin access
+
+        clientCredentials:
+          tokenUrl: https://iam.hanzo.ai/api/login/oauth/access_token
+          scopes:
+            read: Read access
+            write: Write access
+            admin: Admin access
+
+    hanzoApiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: HANZO_API_KEY
+      description: |
+        Hanzo API Key — a single key for all Hanzo services.
+        Obtain from hanzo.id or console.hanzo.ai.
+        Format: `Bearer hk-...` or `Bearer sk-hanzo-...`
+
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for service-to-service auth (deprecated, use hanzoApiKey)
+
+  schemas:
+    # Common Schemas
+    Error:
+      type: object
+      required:
+        - status
+        - msg
+      properties:
+        status:
+          type: string
+          enum: [error]
+        msg:
+          type: string
+          description: Error message
+        code:
+          type: integer
+          description: Error code
+        data:
+          type: object
+          description: Additional error details
+
+    Success:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        msg:
+          type: string
+        data:
+          description: Response data
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        total:
+          type: integer
+          description: Total number of items
+
+    # User Schema
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        owner:
+          type: string
+        name:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        avatar:
+          type: string
+          format: uri
+        type:
+          type: string
+          enum: [normal-user, admin]
+        createdTime:
+          type: string
+          format: date-time
+        updatedTime:
+          type: string
+          format: date-time
+
+    # Organization Schema
+    Organization:
+      type: object
+      properties:
+        owner:
+          type: string
+        name:
+          type: string
+        displayName:
+          type: string
+        websiteUrl:
+          type: string
+          format: uri
+        favicon:
+          type: string
+          format: uri
+        passwordType:
+          type: string
+        createdTime:
+          type: string
+          format: date-time
+
+    # Application Schema
+    Application:
+      type: object
+      properties:
+        owner:
+          type: string
+        name:
+          type: string
+        displayName:
+          type: string
+        logo:
+          type: string
+          format: uri
+        homepageUrl:
+          type: string
+          format: uri
+        organization:
+          type: string
+        clientId:
+          type: string
+        clientSecret:
+          type: string
+        redirectUris:
+          type: array
+          items:
+            type: string
+            format: uri
+        grantTypes:
+          type: array
+          items:
+            type: string
+            enum: [authorization_code, refresh_token, client_credentials, password]
+        createdTime:
+          type: string
+          format: date-time
+
+    # Token Schema
+    Token:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum: [Bearer]
+        expires_in:
+          type: integer
+        refresh_token:
+          type: string
+        scope:
+          type: string
+        id_token:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  # Health Check
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  version:
+                    type: string
+
+  # OIDC Discovery
+  /.well-known/openid-configuration:
+    get:
+      tags:
+        - Auth
+      summary: OpenID Connect Discovery
+      operationId: getOidcDiscovery
+      security: []
+      responses:
+        '200':
+          description: OIDC configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issuer:
+                    type: string
+                    format: uri
+                  authorization_endpoint:
+                    type: string
+                    format: uri
+                  token_endpoint:
+                    type: string
+                    format: uri
+                  userinfo_endpoint:
+                    type: string
+                    format: uri
+                  jwks_uri:
+                    type: string
+                    format: uri
+
+  # OAuth2 Token
+  /api/login/oauth/access_token:
+    post:
+      tags:
+        - Auth
+      summary: OAuth2 Token Exchange
+      operationId: getAccessToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - grant_type
+                - client_id
+              properties:
+                grant_type:
+                  type: string
+                  enum: [authorization_code, refresh_token, client_credentials, password]
+                client_id:
+                  type: string
+                client_secret:
+                  type: string
+                code:
+                  type: string
+                redirect_uri:
+                  type: string
+                  format: uri
+                refresh_token:
+                  type: string
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Token response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # User Info
+  /api/userinfo:
+    get:
+      tags:
+        - Users
+      summary: Get current user info
+      operationId: getUserInfo
+      responses:
+        '200':
+          description: User information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # Login
+  /api/login:
+    post:
+      tags:
+        - Auth
+      summary: Login with various methods
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - organization
+                - application
+              properties:
+                type:
+                  type: string
+                  enum: [code, token]
+                signinMethod:
+                  type: string
+                  enum: [Password, Web3-Onboard, SAML, OAuth]
+                organization:
+                  type: string
+                application:
+                  type: string
+                username:
+                  type: string
+                password:
+                  type: string
+                code:
+                  type: string
+                  description: Web3 auth token or OAuth code
+                provider:
+                  type: string
+                redirectUri:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: string
+                        description: Authorization code or token
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # Web3 Nonce (for wallet login)
+  /api/get-web3-nonce:
+    get:
+      tags:
+        - Auth
+      summary: Get nonce for Web3 wallet authentication
+      operationId: getWeb3Nonce
+      security: []
+      parameters:
+        - name: address
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Ethereum wallet address
+      responses:
+        '200':
+          description: Nonce for signing
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: string
+                        description: Nonce to sign
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # Organizations
+  /api/get-organizations:
+    get:
+      tags:
+        - Organizations
+      summary: List organizations
+      operationId: getOrganizations
+      parameters:
+        - name: owner
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of organizations
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Organization'
+
+  # Applications
+  /api/get-applications:
+    get:
+      tags:
+        - Applications
+      summary: List applications
+      operationId: getApplications
+      parameters:
+        - name: owner
+          in: query
+          schema:
+            type: string
+        - name: organization
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of applications
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Application'
+
+  # Users
+  /api/get-users:
+    get:
+      tags:
+        - Users
+      summary: List users
+      operationId: getUsers
+      parameters:
+        - name: owner
+          in: query
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: p
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/User'
+
+  /api/get-user:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      operationId: getUser
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: User ID in format owner/name
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/add-user:
+    post:
+      tags:
+        - Users
+      summary: Create a new user
+      operationId: addUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/update-user:
+    post:
+      tags:
+        - Users
+      summary: Update user
+      operationId: updateUser
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/delete-user:
+    post:
+      tags:
+        - Users
+      summary: Delete user
+      operationId: deleteUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: User deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Providers
+  /api/get-providers:
+    get:
+      tags:
+        - Providers
+      summary: List identity providers
+      operationId: getProviders
+      parameters:
+        - name: owner
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of providers
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            owner:
+                              type: string
+                            name:
+                              type: string
+                            displayName:
+                              type: string
+                            type:
+                              type: string
+                              enum: [OAuth, SAML, Web3, LDAP, Email, SMS]
+                            category:
+                              type: string
+                            clientId:
+                              type: string
+
+  # Sessions
+  /api/get-sessions:
+    get:
+      tags:
+        - Sessions
+      summary: List user sessions
+      operationId: getSessions
+      parameters:
+        - name: owner
+          in: query
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: p
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/delete-session:
+    post:
+      tags:
+        - Sessions
+      summary: Delete/revoke a session
+      operationId: deleteSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                owner:
+                  type: string
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Session deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  # Signup
+  /api/signup:
+    post:
+      tags:
+        - Auth
+      summary: Register new user
+      operationId: signup
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - organization
+                - application
+                - username
+              properties:
+                organization:
+                  type: string
+                application:
+                  type: string
+                username:
+                  type: string
+                name:
+                  type: string
+                password:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                code:
+                  type: string
+                  description: Invitation code
+      responses:
+        '200':
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # Logout
+  /api/logout:
+    post:
+      tags:
+        - Auth
+      summary: Logout current session
+      operationId: logout
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'

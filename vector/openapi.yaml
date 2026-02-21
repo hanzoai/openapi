@@ -1,0 +1,835 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Vector API
+  description: |
+    Hanzo Vector provides a high-performance vector database for embeddings,
+    similarity search, and retrieval-augmented generation (RAG).
+
+    Based on Qdrant with Hanzo extensions for:
+    - Multi-tenant collections
+    - Automatic embedding generation
+    - Integration with Hanzo Gateway for LLM inference
+    - Hybrid search (vector + keyword)
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://vector.hanzo.ai
+    description: Production
+  - url: https://vector.staging.hanzo.ai
+    description: Staging
+
+tags:
+  - name: Collections
+    description: Collection management
+  - name: Points
+    description: Vector point operations
+  - name: Search
+    description: Similarity search
+  - name: Snapshots
+    description: Collection snapshots
+  - name: Cluster
+    description: Cluster management
+  - name: Service
+    description: Service operations
+
+security:
+  - bearerAuth: []
+  - apiKey: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    apiKey:
+      type: apiKey
+      in: header
+      name: api-key
+
+  schemas:
+    CollectionInfo:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [green, yellow, red]
+        optimizer_status:
+          type: string
+        vectors_count:
+          type: integer
+        indexed_vectors_count:
+          type: integer
+        points_count:
+          type: integer
+        segments_count:
+          type: integer
+        config:
+          $ref: '#/components/schemas/CollectionConfig'
+
+    CollectionConfig:
+      type: object
+      properties:
+        params:
+          type: object
+          properties:
+            vectors:
+              oneOf:
+                - $ref: '#/components/schemas/VectorParams'
+                - type: object
+                  additionalProperties:
+                    $ref: '#/components/schemas/VectorParams'
+            shard_number:
+              type: integer
+            replication_factor:
+              type: integer
+        hnsw_config:
+          $ref: '#/components/schemas/HnswConfig'
+        optimizer_config:
+          $ref: '#/components/schemas/OptimizerConfig'
+        wal_config:
+          $ref: '#/components/schemas/WalConfig'
+
+    VectorParams:
+      type: object
+      required:
+        - size
+        - distance
+      properties:
+        size:
+          type: integer
+          description: Vector dimension
+        distance:
+          type: string
+          enum: [Cosine, Euclidean, Dot, Manhattan]
+        on_disk:
+          type: boolean
+
+    HnswConfig:
+      type: object
+      properties:
+        m:
+          type: integer
+          default: 16
+        ef_construct:
+          type: integer
+          default: 100
+        full_scan_threshold:
+          type: integer
+        max_indexing_threads:
+          type: integer
+        on_disk:
+          type: boolean
+
+    OptimizerConfig:
+      type: object
+      properties:
+        deleted_threshold:
+          type: number
+        vacuum_min_vector_number:
+          type: integer
+        default_segment_number:
+          type: integer
+        max_segment_size:
+          type: integer
+        memmap_threshold:
+          type: integer
+        indexing_threshold:
+          type: integer
+        flush_interval_sec:
+          type: integer
+
+    WalConfig:
+      type: object
+      properties:
+        wal_capacity_mb:
+          type: integer
+        wal_segments_ahead:
+          type: integer
+
+    PointStruct:
+      type: object
+      required:
+        - id
+        - vector
+      properties:
+        id:
+          oneOf:
+            - type: integer
+            - type: string
+              format: uuid
+        vector:
+          oneOf:
+            - type: array
+              items:
+                type: number
+            - type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: number
+        payload:
+          type: object
+          additionalProperties: true
+
+    SearchRequest:
+      type: object
+      required:
+        - vector
+      properties:
+        vector:
+          oneOf:
+            - type: array
+              items:
+                type: number
+            - type: object
+              properties:
+                name:
+                  type: string
+                vector:
+                  type: array
+                  items:
+                    type: number
+        filter:
+          $ref: '#/components/schemas/Filter'
+        params:
+          $ref: '#/components/schemas/SearchParams'
+        limit:
+          type: integer
+          default: 10
+        offset:
+          type: integer
+          default: 0
+        with_payload:
+          oneOf:
+            - type: boolean
+            - type: array
+              items:
+                type: string
+        with_vector:
+          oneOf:
+            - type: boolean
+            - type: array
+              items:
+                type: string
+        score_threshold:
+          type: number
+
+    SearchParams:
+      type: object
+      properties:
+        hnsw_ef:
+          type: integer
+        exact:
+          type: boolean
+          default: false
+        quantization:
+          type: object
+          properties:
+            ignore:
+              type: boolean
+            rescore:
+              type: boolean
+            oversampling:
+              type: number
+
+    Filter:
+      type: object
+      properties:
+        must:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        should:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        must_not:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+
+    Condition:
+      oneOf:
+        - type: object
+          properties:
+            key:
+              type: string
+            match:
+              type: object
+              properties:
+                value:
+                  oneOf:
+                    - type: string
+                    - type: integer
+                    - type: boolean
+                any:
+                  type: array
+                  items: {}
+                except:
+                  type: array
+                  items: {}
+        - type: object
+          properties:
+            key:
+              type: string
+            range:
+              type: object
+              properties:
+                lt:
+                  type: number
+                lte:
+                  type: number
+                gt:
+                  type: number
+                gte:
+                  type: number
+
+    ScoredPoint:
+      type: object
+      properties:
+        id:
+          oneOf:
+            - type: integer
+            - type: string
+        version:
+          type: integer
+        score:
+          type: number
+        payload:
+          type: object
+        vector:
+          oneOf:
+            - type: array
+              items:
+                type: number
+            - type: object
+
+    SnapshotDescription:
+      type: object
+      properties:
+        name:
+          type: string
+        creation_time:
+          type: string
+          format: date-time
+        size:
+          type: integer
+
+paths:
+  # Collections
+  /collections:
+    get:
+      tags:
+        - Collections
+      summary: List collections
+      operationId: listCollections
+      responses:
+        '200':
+          description: List of collections
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: object
+                    properties:
+                      collections:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+
+  /collections/{collection_name}:
+    get:
+      tags:
+        - Collections
+      summary: Get collection info
+      operationId: getCollection
+      parameters:
+        - name: collection_name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Collection info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/CollectionInfo'
+
+    put:
+      tags:
+        - Collections
+      summary: Create collection
+      operationId: createCollection
+      parameters:
+        - name: collection_name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                vectors:
+                  oneOf:
+                    - $ref: '#/components/schemas/VectorParams'
+                    - type: object
+                      additionalProperties:
+                        $ref: '#/components/schemas/VectorParams'
+                shard_number:
+                  type: integer
+                replication_factor:
+                  type: integer
+                write_consistency_factor:
+                  type: integer
+                on_disk_payload:
+                  type: boolean
+                hnsw_config:
+                  $ref: '#/components/schemas/HnswConfig'
+                optimizers_config:
+                  $ref: '#/components/schemas/OptimizerConfig'
+                wal_config:
+                  $ref: '#/components/schemas/WalConfig'
+      responses:
+        '200':
+          description: Collection created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: boolean
+
+    delete:
+      tags:
+        - Collections
+      summary: Delete collection
+      operationId: deleteCollection
+      parameters:
+        - name: collection_name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Collection deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: boolean
+
+  # Points
+  /collections/{collection_name}/points:
+    put:
+      tags:
+        - Points
+      summary: Upsert points
+      operationId: upsertPoints
+      parameters:
+        - name: collection_name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wait
+          in: query
+          schema:
+            type: boolean
+            default: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - points
+              properties:
+                points:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PointStruct'
+      responses:
+        '200':
+          description: Points upserted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: object
+                    properties:
+                      operation_id:
+                        type: integer
+                      status:
+                        type: string
+
+  /collections/{collection_name}/points/{id}:
+    get:
+      tags:
+        - Points
+      summary: Get point
+      operationId: getPoint
+      parameters:
+        - name: collection_name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+      responses:
+        '200':
+          description: Point details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/PointStruct'
+
+  /collections/{collection_name}/points/delete:
+    post:
+      tags:
+        - Points
+      summary: Delete points
+      operationId: deletePoints
+      parameters:
+        - name: collection_name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: wait
+          in: query
+          schema:
+            type: boolean
+            default: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                points:
+                  type: array
+                  items:
+                    oneOf:
+                      - type: integer
+                      - type: string
+                filter:
+                  $ref: '#/components/schemas/Filter'
+      responses:
+        '200':
+          description: Points deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: object
+
+  # Search
+  /collections/{collection_name}/points/search:
+    post:
+      tags:
+        - Search
+      summary: Search points
+      operationId: searchPoints
+      parameters:
+        - name: collection_name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScoredPoint'
+
+  /collections/{collection_name}/points/search/batch:
+    post:
+      tags:
+        - Search
+      summary: Batch search
+      operationId: searchBatch
+      parameters:
+        - name: collection_name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - searches
+              properties:
+                searches:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: Batch search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: array
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/ScoredPoint'
+
+  /collections/{collection_name}/points/recommend:
+    post:
+      tags:
+        - Search
+      summary: Recommend points
+      operationId: recommendPoints
+      parameters:
+        - name: collection_name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - positive
+              properties:
+                positive:
+                  type: array
+                  items:
+                    oneOf:
+                      - type: integer
+                      - type: string
+                negative:
+                  type: array
+                  items:
+                    oneOf:
+                      - type: integer
+                      - type: string
+                filter:
+                  $ref: '#/components/schemas/Filter'
+                limit:
+                  type: integer
+                  default: 10
+                with_payload:
+                  type: boolean
+                with_vector:
+                  type: boolean
+      responses:
+        '200':
+          description: Recommendations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScoredPoint'
+
+  # Snapshots
+  /collections/{collection_name}/snapshots:
+    get:
+      tags:
+        - Snapshots
+      summary: List snapshots
+      operationId: listSnapshots
+      parameters:
+        - name: collection_name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of snapshots
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SnapshotDescription'
+
+    post:
+      tags:
+        - Snapshots
+      summary: Create snapshot
+      operationId: createSnapshot
+      parameters:
+        - name: collection_name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Snapshot created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/SnapshotDescription'
+
+  /collections/{collection_name}/snapshots/{snapshot_name}:
+    get:
+      tags:
+        - Snapshots
+      summary: Download snapshot
+      operationId: downloadSnapshot
+      parameters:
+        - name: collection_name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: snapshot_name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Snapshot file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+    delete:
+      tags:
+        - Snapshots
+      summary: Delete snapshot
+      operationId: deleteSnapshot
+      parameters:
+        - name: collection_name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: snapshot_name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Snapshot deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: boolean
+
+  # Service
+  /healthz:
+    get:
+      tags:
+        - Service
+      summary: Health check
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /readyz:
+    get:
+      tags:
+        - Service
+      summary: Readiness check
+      operationId: readinessCheck
+      security: []
+      responses:
+        '200':
+          description: Service ready
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /telemetry:
+    get:
+      tags:
+        - Service
+      summary: Get telemetry
+      operationId: getTelemetry
+      responses:
+        '200':
+          description: Telemetry data
+          content:
+            application/json:
+              schema:
+                type: object

@@ -1,0 +1,161 @@
+# Shared Pagination Schemas
+# These can be referenced by all service specs
+
+components:
+  schemas:
+    PaginationParams:
+      type: object
+      description: Standard pagination parameters
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Page number (1-indexed)
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+          description: Number of items per page
+        sort:
+          type: string
+          description: Field to sort by
+        order:
+          type: string
+          enum: [asc, desc]
+          default: desc
+          description: Sort order
+
+    PaginationMeta:
+      type: object
+      description: Pagination metadata in responses
+      properties:
+        page:
+          type: integer
+          description: Current page number
+        pageSize:
+          type: integer
+          description: Items per page
+        total:
+          type: integer
+          description: Total number of items
+        totalPages:
+          type: integer
+          description: Total number of pages
+        hasNext:
+          type: boolean
+          description: Whether there are more pages
+        hasPrev:
+          type: boolean
+          description: Whether there are previous pages
+
+    CursorPaginationParams:
+      type: object
+      description: Cursor-based pagination parameters
+      properties:
+        cursor:
+          type: string
+          description: Cursor for next page (opaque token)
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+          description: Number of items to return
+
+    CursorPaginationMeta:
+      type: object
+      description: Cursor pagination metadata
+      properties:
+        nextCursor:
+          type: string
+          nullable: true
+          description: Cursor for next page, null if no more pages
+        prevCursor:
+          type: string
+          nullable: true
+          description: Cursor for previous page
+        hasMore:
+          type: boolean
+          description: Whether there are more items
+
+    # Generic paginated response wrapper
+    PaginatedResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        data:
+          type: array
+          items: {}
+          description: Array of items (type varies by endpoint)
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: Page number (1-indexed)
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PageSizeParam:
+      name: pageSize
+      in: query
+      description: Number of items per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+    # Alternative naming (some APIs use 'p' for page)
+    PParam:
+      name: p
+      in: query
+      description: Page number (1-indexed)
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    SortParam:
+      name: sort
+      in: query
+      description: Field to sort by
+      schema:
+        type: string
+
+    OrderParam:
+      name: order
+      in: query
+      description: Sort order
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: desc
+
+    CursorParam:
+      name: cursor
+      in: query
+      description: Cursor for pagination
+      schema:
+        type: string
+
+    LimitParam:
+      name: limit
+      in: query
+      description: Maximum number of items to return
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20

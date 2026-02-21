@@ -1,0 +1,1480 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Visor API
+  description: |
+    Hanzo Visor is a VM and remote session management platform (Casvisor fork).
+    It manages cloud machines, remote desktop sessions via Guacamole (RDP/SSH/Telnet),
+    infrastructure providers, remote assets, audit records, and Kubernetes node pools.
+
+    All mutation endpoints use POST (not PUT/PATCH/DELETE), following the Beego
+    controller convention. Responses are wrapped in a standard envelope with
+    `status`, `msg`, `data`, and optional `data2` (pagination count) fields.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: https://vm.hanzo.ai
+    description: Production
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Auth
+    description: Authentication and account management
+  - name: Machines
+    description: Cloud machine lifecycle management
+  - name: Records
+    description: Audit records and blockchain commit/query
+  - name: Assets
+    description: Remote access assets (SSH/RDP/Telnet targets)
+  - name: Providers
+    description: Cloud infrastructure providers
+  - name: Sessions
+    description: Remote desktop sessions via Guacamole
+  - name: Tunnels
+    description: WebSocket tunnels for remote desktop connections
+  - name: NodePools
+    description: Kubernetes node pool management (DOKS)
+
+paths:
+  # --- Auth ---
+  /api/signin:
+    post:
+      operationId: signin
+      summary: Sign in via IAM OAuth
+      tags: [Auth]
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: OAuth authorization code
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+          description: OAuth state parameter
+      responses:
+        '200':
+          description: Authenticated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/signout:
+    post:
+      operationId: signout
+      summary: Sign out and clear session
+      tags: [Auth]
+      responses:
+        '200':
+          description: Signed out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/get-account:
+    get:
+      operationId: getAccount
+      summary: Get current authenticated account
+      tags: [Auth]
+      responses:
+        '200':
+          description: Account claims
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  # --- Machines ---
+  /api/get-machines:
+    get:
+      operationId: getMachines
+      summary: List all machines
+      tags: [Machines]
+      parameters:
+        - $ref: '#/components/parameters/Owner'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Field'
+        - $ref: '#/components/parameters/Value'
+        - $ref: '#/components/parameters/SortField'
+        - $ref: '#/components/parameters/SortOrder'
+      responses:
+        '200':
+          description: List of machines
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Machine'
+                      data2:
+                        type: integer
+                        description: Total count (when paginated)
+
+  /api/get-machine:
+    get:
+      operationId: getMachine
+      summary: Get a single machine
+      tags: [Machines]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Machine ID in owner/name format
+      responses:
+        '200':
+          description: Machine details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Machine'
+
+  /api/add-machine:
+    post:
+      operationId: addMachine
+      summary: Add a new machine
+      tags: [Machines]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Machine'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/update-machine:
+    post:
+      operationId: updateMachine
+      summary: Update an existing machine
+      tags: [Machines]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Machine ID in owner/name format
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Machine'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/delete-machine:
+    post:
+      operationId: deleteMachine
+      summary: Delete a machine
+      tags: [Machines]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Machine'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/launch-machine:
+    post:
+      operationId: launchMachine
+      summary: Launch a new cloud machine via provider
+      tags: [Machines]
+      parameters:
+        - name: owner
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: provider
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMachineSpec'
+      responses:
+        '200':
+          description: Launched machine
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Machine'
+
+  # --- Records ---
+  /api/get-records:
+    get:
+      operationId: getRecords
+      summary: List all audit records
+      tags: [Records]
+      parameters:
+        - $ref: '#/components/parameters/Owner'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Field'
+        - $ref: '#/components/parameters/Value'
+        - $ref: '#/components/parameters/SortField'
+        - $ref: '#/components/parameters/SortOrder'
+      responses:
+        '200':
+          description: List of records
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Record'
+
+  /api/get-record:
+    get:
+      operationId: getRecord
+      summary: Get a single record
+      tags: [Records]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Record ID in owner/name format
+      responses:
+        '200':
+          description: Record details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Record'
+
+  /api/add-record:
+    post:
+      operationId: addRecord
+      summary: Add an audit record
+      tags: [Records]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Record'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/update-record:
+    post:
+      operationId: updateRecord
+      summary: Update a record
+      tags: [Records]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Record'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/delete-record:
+    post:
+      operationId: deleteRecord
+      summary: Delete a record
+      tags: [Records]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Record'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/commit-record:
+    post:
+      operationId: commitRecord
+      summary: Commit a record to the blockchain
+      tags: [Records]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Record'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/query-record:
+    get:
+      operationId: queryRecord
+      summary: Query a record from the blockchain
+      tags: [Records]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Record ID in owner/name format
+      responses:
+        '200':
+          description: Queried record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  # --- Assets ---
+  /api/get-assets:
+    get:
+      operationId: getAssets
+      summary: List all remote access assets
+      tags: [Assets]
+      parameters:
+        - $ref: '#/components/parameters/Owner'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Field'
+        - $ref: '#/components/parameters/Value'
+        - $ref: '#/components/parameters/SortField'
+        - $ref: '#/components/parameters/SortOrder'
+      responses:
+        '200':
+          description: List of assets
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Asset'
+
+  /api/get-asset:
+    get:
+      operationId: getAsset
+      summary: Get a single asset
+      tags: [Assets]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Asset ID in owner/name format
+      responses:
+        '200':
+          description: Asset details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Asset'
+
+  /api/add-asset:
+    post:
+      operationId: addAsset
+      summary: Add a remote access asset
+      tags: [Assets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Asset'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/update-asset:
+    post:
+      operationId: updateAsset
+      summary: Update an asset
+      tags: [Assets]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Asset'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/delete-asset:
+    post:
+      operationId: deleteAsset
+      summary: Delete an asset
+      tags: [Assets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Asset'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  # --- Providers ---
+  /api/get-providers:
+    get:
+      operationId: getProviders
+      summary: List all infrastructure providers
+      tags: [Providers]
+      parameters:
+        - $ref: '#/components/parameters/Owner'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Field'
+        - $ref: '#/components/parameters/Value'
+        - $ref: '#/components/parameters/SortField'
+        - $ref: '#/components/parameters/SortOrder'
+      responses:
+        '200':
+          description: List of providers
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Provider'
+
+  /api/get-provider:
+    get:
+      operationId: getProvider
+      summary: Get a single provider
+      tags: [Providers]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Provider ID in owner/name format
+      responses:
+        '200':
+          description: Provider details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Provider'
+
+  /api/add-provider:
+    post:
+      operationId: addProvider
+      summary: Add a cloud provider
+      tags: [Providers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Provider'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/update-provider:
+    post:
+      operationId: updateProvider
+      summary: Update a provider
+      tags: [Providers]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Provider'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/delete-provider:
+    post:
+      operationId: deleteProvider
+      summary: Delete a provider
+      tags: [Providers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Provider'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  # --- Sessions ---
+  /api/get-sessions:
+    get:
+      operationId: getSessions
+      summary: List all remote desktop sessions
+      tags: [Sessions]
+      parameters:
+        - $ref: '#/components/parameters/Owner'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Field'
+        - $ref: '#/components/parameters/Value'
+        - $ref: '#/components/parameters/SortField'
+        - $ref: '#/components/parameters/SortOrder'
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by session status
+      responses:
+        '200':
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Session'
+
+  /api/get-session:
+    get:
+      operationId: getSession
+      summary: Get a single session
+      tags: [Sessions]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Session ID
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Session'
+
+  /api/add-session:
+    post:
+      operationId: addSession
+      summary: Add a session record
+      tags: [Sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Session'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/update-session:
+    post:
+      operationId: updateSession
+      summary: Update a session
+      tags: [Sessions]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Session'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/delete-session:
+    post:
+      operationId: deleteSession
+      summary: Delete a session
+      tags: [Sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Session'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/start-session:
+    post:
+      operationId: startSession
+      summary: Start a session (set status to connected)
+      tags: [Sessions]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/stop-session:
+    post:
+      operationId: stopSession
+      summary: Forcibly stop a session
+      tags: [Sessions]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session stopped
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  # --- Tunnels ---
+  /api/add-asset-tunnel:
+    post:
+      operationId: addAssetTunnel
+      summary: Create a Guacamole tunnel session for an asset
+      tags: [Tunnels]
+      parameters:
+        - name: assetId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Asset ID to connect to
+        - name: mode
+          in: query
+          schema:
+            type: string
+          description: Connection mode
+      responses:
+        '200':
+          description: Tunnel session created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Session'
+
+  /api/get-asset-tunnel:
+    get:
+      operationId: getAssetTunnel
+      summary: Open a WebSocket tunnel to a remote desktop
+      description: |
+        Upgrades to a WebSocket connection using the Guacamole protocol.
+        The subprotocol is "guacamole". Requires an existing session from
+        add-asset-tunnel.
+      tags: [Tunnels]
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: width
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: height
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: dpi
+          in: query
+          schema:
+            type: string
+            default: "96"
+        - name: username
+          in: query
+          schema:
+            type: string
+        - name: password
+          in: query
+          schema:
+            type: string
+      responses:
+        '101':
+          description: WebSocket upgrade (Guacamole protocol)
+
+  # --- Node Pools ---
+  /api/get-node-pools:
+    get:
+      operationId: getNodePools
+      summary: List all Kubernetes node pools
+      tags: [NodePools]
+      parameters:
+        - $ref: '#/components/parameters/Owner'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Field'
+        - $ref: '#/components/parameters/Value'
+        - $ref: '#/components/parameters/SortField'
+        - $ref: '#/components/parameters/SortOrder'
+      responses:
+        '200':
+          description: List of node pools
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/NodePool'
+
+  /api/get-node-pool:
+    get:
+      operationId: getNodePool
+      summary: Get a single node pool
+      tags: [NodePools]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Node pool ID in owner/name format
+      responses:
+        '200':
+          description: Node pool details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/NodePool'
+
+  /api/create-node-pool:
+    post:
+      operationId: createNodePool
+      summary: Create a new node pool in DOKS
+      tags: [NodePools]
+      parameters:
+        - name: owner
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: provider
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: clusterId
+          in: query
+          schema:
+            type: string
+          description: DOKS cluster ID (optional, uses provider default)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNodePoolSpec'
+      responses:
+        '200':
+          description: Created node pool
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/NodePool'
+
+  /api/update-node-pool:
+    post:
+      operationId: updateNodePool
+      summary: Update a node pool
+      tags: [NodePools]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodePool'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/delete-node-pool:
+    post:
+      operationId: deleteNodePool
+      summary: Delete a node pool from DOKS and DB
+      tags: [NodePools]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodePool'
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+
+  /api/scale-node-pool:
+    post:
+      operationId: scaleNodePool
+      summary: Scale a node pool to a desired count
+      tags: [NodePools]
+      parameters:
+        - name: owner
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: provider
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: clusterId
+          in: query
+          schema:
+            type: string
+        - name: poolId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: DOKS node pool ID
+        - name: count
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: Desired node count
+      responses:
+        '200':
+          description: Scaled node pool
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/NodePool'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Hanzo IAM JWT token
+
+  parameters:
+    Owner:
+      name: owner
+      in: query
+      schema:
+        type: string
+      description: Owner (organization) name
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: string
+      description: Number of items per page
+    Page:
+      name: p
+      in: query
+      schema:
+        type: string
+      description: Page number
+    Field:
+      name: field
+      in: query
+      schema:
+        type: string
+      description: Field name to filter by
+    Value:
+      name: value
+      in: query
+      schema:
+        type: string
+      description: Value to filter for
+    SortField:
+      name: sortField
+      in: query
+      schema:
+        type: string
+      description: Field to sort by
+    SortOrder:
+      name: sortOrder
+      in: query
+      schema:
+        type: string
+        enum: [ascend, descend]
+      description: Sort direction
+
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, error]
+        msg:
+          type: string
+        data:
+          description: Primary response data
+        data2:
+          description: Secondary data (usually pagination total count)
+
+    ActionResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, error]
+        msg:
+          type: string
+        data:
+          type: string
+          enum: [Affected, Unaffected]
+
+    Machine:
+      type: object
+      properties:
+        owner:
+          type: string
+        name:
+          type: string
+        id:
+          type: string
+        provider:
+          type: string
+        createdTime:
+          type: string
+        updatedTime:
+          type: string
+        expireTime:
+          type: string
+        displayName:
+          type: string
+        region:
+          type: string
+        zone:
+          type: string
+        category:
+          type: string
+        type:
+          type: string
+        size:
+          type: string
+        tag:
+          type: string
+        state:
+          type: string
+        image:
+          type: string
+        os:
+          type: string
+        publicIp:
+          type: string
+        privateIp:
+          type: string
+        cpuSize:
+          type: string
+        memSize:
+          type: string
+        remoteProtocol:
+          type: string
+          enum: [SSH, RDP, Telnet, VNC]
+        remotePort:
+          type: integer
+        remoteUsername:
+          type: string
+        remotePassword:
+          type: string
+          format: password
+
+    CreateMachineSpec:
+      type: object
+      required:
+        - name
+        - instanceType
+        - imageId
+        - os
+        - region
+      properties:
+        name:
+          type: string
+        displayName:
+          type: string
+        instanceType:
+          type: string
+          description: Instance type (e.g. t3.medium, mac2.metal)
+        imageId:
+          type: string
+          description: AMI ID or image name
+        os:
+          type: string
+          enum: [linux, macos, windows]
+        region:
+          type: string
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+
+    Record:
+      type: object
+      properties:
+        id:
+          type: integer
+        owner:
+          type: string
+        name:
+          type: string
+        createdTime:
+          type: string
+        organization:
+          type: string
+        clientIp:
+          type: string
+        userAgent:
+          type: string
+        user:
+          type: string
+        method:
+          type: string
+        requestUri:
+          type: string
+        action:
+          type: string
+        language:
+          type: string
+        object:
+          type: string
+        response:
+          type: string
+        provider:
+          type: string
+        block:
+          type: string
+          description: Blockchain block reference
+        transaction:
+          type: string
+          description: Blockchain transaction hash
+        isTriggered:
+          type: boolean
+
+    Asset:
+      type: object
+      properties:
+        owner:
+          type: string
+        name:
+          type: string
+        createdTime:
+          type: string
+        updatedTime:
+          type: string
+        displayName:
+          type: string
+        category:
+          type: string
+        type:
+          type: string
+        tag:
+          type: string
+        machineName:
+          type: string
+        os:
+          type: string
+        publicIp:
+          type: string
+        privateIp:
+          type: string
+        size:
+          type: string
+        cpuSize:
+          type: string
+        memSize:
+          type: string
+        remoteProtocol:
+          type: string
+          enum: [SSH, RDP, Telnet, VNC]
+        remotePort:
+          type: integer
+        remoteUsername:
+          type: string
+        remotePassword:
+          type: string
+          format: password
+        autoQuery:
+          type: boolean
+        isPermanent:
+          type: boolean
+        language:
+          type: string
+
+    Provider:
+      type: object
+      properties:
+        owner:
+          type: string
+        name:
+          type: string
+        createdTime:
+          type: string
+        updatedTime:
+          type: string
+        displayName:
+          type: string
+        category:
+          type: string
+        type:
+          type: string
+        clientId:
+          type: string
+        clientSecret:
+          type: string
+          format: password
+        region:
+          type: string
+        network:
+          type: string
+        chain:
+          type: string
+        browserUrl:
+          type: string
+        state:
+          type: string
+        providerUrl:
+          type: string
+        clusterId:
+          type: string
+          description: DOKS cluster UUID
+
+    Session:
+      type: object
+      properties:
+        owner:
+          type: string
+        name:
+          type: string
+        createdTime:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        protocol:
+          type: string
+          enum: [rdp, ssh, telnet, vnc]
+        connectionId:
+          type: string
+        asset:
+          type: string
+          description: Asset ID (owner/name)
+        creator:
+          type: string
+        clientIp:
+          type: string
+        userAgent:
+          type: string
+        clientIpDesc:
+          type: string
+        userAgentDesc:
+          type: string
+        width:
+          type: integer
+        height:
+          type: integer
+        status:
+          type: string
+          enum: [Connected, Connecting, Disconnected]
+        recording:
+          type: string
+        code:
+          type: integer
+        message:
+          type: string
+        mode:
+          type: string
+        operations:
+          type: array
+          items:
+            type: string
+        reviewed:
+          type: boolean
+        commandCount:
+          type: integer
+          format: int64
+
+    NodePool:
+      type: object
+      properties:
+        owner:
+          type: string
+        name:
+          type: string
+        createdTime:
+          type: string
+        updatedTime:
+          type: string
+        clusterId:
+          type: string
+          description: DOKS cluster UUID
+        poolId:
+          type: string
+          description: DOKS node pool UUID
+        provider:
+          type: string
+        size:
+          type: string
+          description: Droplet size slug (e.g. s-2vcpu-4gb)
+        count:
+          type: integer
+        minNodes:
+          type: integer
+        maxNodes:
+          type: integer
+        autoScale:
+          type: boolean
+        state:
+          type: string
+        costPerHour:
+          type: integer
+          format: int64
+          description: Cost in cents per hour
+        orgId:
+          type: string
+        projectId:
+          type: string
+
+    CreateNodePoolSpec:
+      type: object
+      required:
+        - name
+        - size
+        - count
+      properties:
+        name:
+          type: string
+        size:
+          type: string
+          description: Droplet size slug
+        count:
+          type: integer
+        minNodes:
+          type: integer
+        maxNodes:
+          type: integer
+        autoScale:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string

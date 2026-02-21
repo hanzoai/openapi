@@ -1,0 +1,4402 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Chat API
+  description: |
+    REST API for Hanzo Chat, an AI chat interface with multi-model support,
+    MCP integration, agents, assistants, and RAG. Based on LibreChat.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://hanzo.chat
+    description: Production
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+    description: Authentication, registration, login, 2FA, and password reset
+  - name: Admin Auth
+    description: Admin panel authentication (local + OpenID)
+  - name: OAuth
+    description: Social and federated OAuth login flows
+  - name: User
+    description: User profile, plugins, email verification, and terms
+  - name: Conversations
+    description: Conversation CRUD, archive, import, fork, duplicate
+  - name: Messages
+    description: Message CRUD, branching, artifacts, and feedback
+  - name: Models
+    description: Available AI models
+  - name: Endpoints
+    description: Configured AI endpoints
+  - name: Agents
+    description: Agent CRUD, categories, chat, tools, and actions
+  - name: Agents - OpenAI Compatible
+    description: OpenAI-compatible /v1/chat/completions interface for agents
+  - name: Agents - Open Responses
+    description: Open Responses API (openresponses.org) for agents
+  - name: Assistants v1
+    description: OpenAI Assistants API v1 integration
+  - name: Assistants v2
+    description: OpenAI Assistants API v2 integration
+  - name: Files
+    description: File upload, download, and management
+  - name: Images
+    description: Image upload
+  - name: Avatar
+    description: User and entity avatar upload
+  - name: Speech
+    description: Text-to-speech and speech-to-text
+  - name: Presets
+    description: User endpoint presets
+  - name: Prompts
+    description: Prompt groups and prompt management
+  - name: Keys
+    description: User-provided API keys per provider
+  - name: API Keys
+    description: Agent API keys for remote agent access
+  - name: Search
+    description: MeiliSearch availability check
+  - name: Share
+    description: Shared conversation links
+  - name: Tags
+    description: Conversation tags (bookmarks)
+  - name: Balance
+    description: User token balance
+  - name: Banner
+    description: Server announcement banner
+  - name: Config
+    description: Application startup configuration
+  - name: Categories
+    description: Prompt categories
+  - name: Roles
+    description: Role and permission management (admin)
+  - name: Memories
+    description: User memory entries
+  - name: MCP
+    description: Model Context Protocol servers, tools, OAuth, and connection management
+  - name: Permissions
+    description: Resource-level access control
+  - name: Settings
+    description: User settings (favorites)
+  - name: Actions
+    description: OAuth actions for assistants and agents
+
+paths:
+  # ===== AUTH =====
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      description: Authenticate with email and password (or LDAP).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+        '403':
+          description: Banned
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      description: Invalidate the current session.
+      responses:
+        '200':
+          description: Logout successful
+
+  /api/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh token
+      description: Exchange a refresh token for a new access token.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Tokens refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, username, password, confirm_password]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                username:
+                  type: string
+                password:
+                  type: string
+                  format: password
+                confirm_password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Registration successful
+        '422':
+          description: Validation error
+
+  /api/auth/requestPasswordReset:
+    post:
+      tags: [Auth]
+      summary: Request password reset email
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Reset email sent
+
+  /api/auth/resetPassword:
+    post:
+      tags: [Auth]
+      summary: Reset password with token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password, confirm_password, userId]
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+                confirm_password:
+                  type: string
+                userId:
+                  type: string
+      responses:
+        '200':
+          description: Password reset successful
+
+  /api/auth/2fa/enable:
+    get:
+      tags: [Auth]
+      summary: Enable 2FA
+      description: Generate a TOTP secret and QR code for 2FA setup.
+      responses:
+        '200':
+          description: 2FA secret and QR code
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  otpauthUrl:
+                    type: string
+                  secret:
+                    type: string
+
+  /api/auth/2fa/verify:
+    post:
+      tags: [Auth]
+      summary: Verify 2FA setup
+      description: Verify TOTP code during 2FA setup.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: 2FA verified
+
+  /api/auth/2fa/verify-temp:
+    post:
+      tags: [Auth]
+      summary: Verify 2FA with temporary token
+      description: Verify 2FA code during login using a temporary token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tempToken, token]
+              properties:
+                tempToken:
+                  type: string
+                token:
+                  type: string
+                backupCode:
+                  type: string
+      responses:
+        '200':
+          description: 2FA verified, returns auth tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /api/auth/2fa/confirm:
+    post:
+      tags: [Auth]
+      summary: Confirm 2FA activation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: 2FA confirmed and activated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  backupCodes:
+                    type: array
+                    items:
+                      type: string
+
+  /api/auth/2fa/disable:
+    post:
+      tags: [Auth]
+      summary: Disable 2FA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: 2FA disabled
+
+  /api/auth/2fa/backup/regenerate:
+    post:
+      tags: [Auth]
+      summary: Regenerate 2FA backup codes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: New backup codes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  backupCodes:
+                    type: array
+                    items:
+                      type: string
+
+  /api/auth/graph-token:
+    get:
+      tags: [Auth]
+      summary: Get Microsoft Graph token
+      description: Returns a Microsoft Graph API token for SharePoint integration.
+      responses:
+        '200':
+          description: Graph token
+
+  # ===== ADMIN AUTH =====
+  /api/admin/login/local:
+    post:
+      tags: [Admin Auth]
+      summary: Admin local login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Admin login successful
+        '403':
+          description: Not an admin
+
+  /api/admin/verify:
+    get:
+      tags: [Admin Auth]
+      summary: Verify admin session
+      responses:
+        '200':
+          description: Admin session valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+
+  /api/admin/oauth/openid/check:
+    get:
+      tags: [Admin Auth]
+      summary: Check if OpenID is configured for admin
+      security: []
+      responses:
+        '200':
+          description: OpenID configured
+        '404':
+          description: OpenID not configured
+
+  /api/admin/oauth/openid:
+    get:
+      tags: [Admin Auth]
+      summary: Initiate admin OpenID login
+      security: []
+      responses:
+        '302':
+          description: Redirect to OpenID provider
+
+  /api/admin/oauth/openid/callback:
+    get:
+      tags: [Admin Auth]
+      summary: Admin OpenID callback
+      security: []
+      responses:
+        '302':
+          description: Redirect to admin panel with auth
+
+  /api/admin/oauth/exchange:
+    post:
+      tags: [Admin Auth]
+      summary: Exchange OAuth code for admin tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  description: 64-character hex exchange code
+      responses:
+        '200':
+          description: Tokens returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  refreshToken:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid or expired code
+
+  # ===== OAUTH =====
+  /oauth/google:
+    get:
+      tags: [OAuth]
+      summary: Initiate Google OAuth
+      security: []
+      responses:
+        '302':
+          description: Redirect to Google
+
+  /oauth/google/callback:
+    get:
+      tags: [OAuth]
+      summary: Google OAuth callback
+      security: []
+      responses:
+        '302':
+          description: Redirect with auth tokens
+
+  /oauth/facebook:
+    get:
+      tags: [OAuth]
+      summary: Initiate Facebook OAuth
+      security: []
+      responses:
+        '302':
+          description: Redirect to Facebook
+
+  /oauth/facebook/callback:
+    get:
+      tags: [OAuth]
+      summary: Facebook OAuth callback
+      security: []
+      responses:
+        '302':
+          description: Redirect with auth tokens
+
+  /oauth/openid:
+    get:
+      tags: [OAuth]
+      summary: Initiate OpenID Connect login
+      security: []
+      responses:
+        '302':
+          description: Redirect to OpenID provider
+
+  /oauth/openid/callback:
+    get:
+      tags: [OAuth]
+      summary: OpenID Connect callback
+      security: []
+      responses:
+        '302':
+          description: Redirect with auth tokens
+
+  /oauth/github:
+    get:
+      tags: [OAuth]
+      summary: Initiate GitHub OAuth
+      security: []
+      responses:
+        '302':
+          description: Redirect to GitHub
+
+  /oauth/github/callback:
+    get:
+      tags: [OAuth]
+      summary: GitHub OAuth callback
+      security: []
+      responses:
+        '302':
+          description: Redirect with auth tokens
+
+  /oauth/discord:
+    get:
+      tags: [OAuth]
+      summary: Initiate Discord OAuth
+      security: []
+      responses:
+        '302':
+          description: Redirect to Discord
+
+  /oauth/discord/callback:
+    get:
+      tags: [OAuth]
+      summary: Discord OAuth callback
+      security: []
+      responses:
+        '302':
+          description: Redirect with auth tokens
+
+  /oauth/apple:
+    get:
+      tags: [OAuth]
+      summary: Initiate Apple OAuth
+      security: []
+      responses:
+        '302':
+          description: Redirect to Apple
+
+  /oauth/apple/callback:
+    post:
+      tags: [OAuth]
+      summary: Apple OAuth callback
+      security: []
+      responses:
+        '302':
+          description: Redirect with auth tokens
+
+  /oauth/saml:
+    get:
+      tags: [OAuth]
+      summary: Initiate SAML login
+      security: []
+      responses:
+        '302':
+          description: Redirect to SAML IdP
+
+  /oauth/saml/callback:
+    post:
+      tags: [OAuth]
+      summary: SAML callback
+      security: []
+      responses:
+        '302':
+          description: Redirect with auth tokens
+
+  /oauth/error:
+    get:
+      tags: [OAuth]
+      summary: OAuth error handler
+      security: []
+      responses:
+        '302':
+          description: Redirect to login with error
+
+  # ===== USER =====
+  /api/user:
+    get:
+      tags: [User]
+      summary: Get current user
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /api/user/terms:
+    get:
+      tags: [User]
+      summary: Get terms acceptance status
+      responses:
+        '200':
+          description: Terms status
+
+  /api/user/terms/accept:
+    post:
+      tags: [User]
+      summary: Accept terms of service
+      responses:
+        '200':
+          description: Terms accepted
+
+  /api/user/plugins:
+    post:
+      tags: [User]
+      summary: Update user plugins
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pluginKey:
+                  type: string
+                action:
+                  type: string
+                  enum: [install, uninstall]
+                auth:
+                  type: object
+      responses:
+        '200':
+          description: Plugins updated
+
+  /api/user/delete:
+    delete:
+      tags: [User]
+      summary: Delete user account
+      responses:
+        '200':
+          description: Account deleted
+
+  /api/user/verify:
+    post:
+      tags: [User]
+      summary: Verify email with token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                email:
+                  type: string
+      responses:
+        '200':
+          description: Email verified
+
+  /api/user/verify/resend:
+    post:
+      tags: [User]
+      summary: Resend verification email
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+      responses:
+        '200':
+          description: Verification email sent
+
+  # ===== SETTINGS =====
+  /api/user/settings/favorites:
+    get:
+      tags: [Settings]
+      summary: Get user favorites
+      responses:
+        '200':
+          description: User favorites
+          content:
+            application/json:
+              schema:
+                type: object
+    post:
+      tags: [Settings]
+      summary: Update user favorites
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Favorites updated
+
+  # ===== CONVERSATIONS =====
+  /api/convos:
+    get:
+      tags: [Conversations]
+      summary: List conversations
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 25
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: isArchived
+          in: query
+          schema:
+            type: string
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: updatedAt
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            default: desc
+      responses:
+        '200':
+          description: Paginated conversations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationListResponse'
+
+    delete:
+      tags: [Conversations]
+      summary: Delete a conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                arg:
+                  type: object
+                  properties:
+                    conversationId:
+                      type: string
+                    source:
+                      type: string
+                    thread_id:
+                      type: string
+                    endpoint:
+                      type: string
+      responses:
+        '201':
+          description: Conversation deleted
+
+  /api/convos/{conversationId}:
+    get:
+      tags: [Conversations]
+      summary: Get a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Conversation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '404':
+          description: Not found
+
+  /api/convos/gen_title/{conversationId}:
+    get:
+      tags: [Conversations]
+      summary: Get generated title for conversation
+      description: Polls for an AI-generated title. Uses exponential backoff.
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Generated title
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  title:
+                    type: string
+        '404':
+          description: Title not found
+
+  /api/convos/all:
+    delete:
+      tags: [Conversations]
+      summary: Delete all conversations
+      responses:
+        '201':
+          description: All conversations deleted
+
+  /api/convos/archive:
+    post:
+      tags: [Conversations]
+      summary: Archive or unarchive a conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                arg:
+                  type: object
+                  required: [conversationId, isArchived]
+                  properties:
+                    conversationId:
+                      type: string
+                    isArchived:
+                      type: boolean
+      responses:
+        '200':
+          description: Conversation updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+  /api/convos/update:
+    post:
+      tags: [Conversations]
+      summary: Update a conversation title
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                arg:
+                  type: object
+                  required: [conversationId, title]
+                  properties:
+                    conversationId:
+                      type: string
+                    title:
+                      type: string
+      responses:
+        '201':
+          description: Conversation updated
+
+  /api/convos/import:
+    post:
+      tags: [Conversations]
+      summary: Import conversations from JSON file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Conversations imported
+
+  /api/convos/fork:
+    post:
+      tags: [Conversations]
+      summary: Fork a conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [conversationId, messageId]
+              properties:
+                conversationId:
+                  type: string
+                messageId:
+                  type: string
+                option:
+                  type: string
+                splitAtTarget:
+                  type: boolean
+                latestMessageId:
+                  type: string
+      responses:
+        '200':
+          description: Fork result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversation:
+                    $ref: '#/components/schemas/Conversation'
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+
+  /api/convos/duplicate:
+    post:
+      tags: [Conversations]
+      summary: Duplicate a conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [conversationId]
+              properties:
+                conversationId:
+                  type: string
+                title:
+                  type: string
+      responses:
+        '201':
+          description: Conversation duplicated
+
+  # ===== MESSAGES =====
+  /api/messages:
+    get:
+      tags: [Messages]
+      summary: Query messages
+      description: Search messages or retrieve by conversation/message ID.
+      parameters:
+        - name: conversationId
+          in: query
+          schema:
+            type: string
+        - name: messageId
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 25
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: createdAt
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            default: desc
+      responses:
+        '200':
+          description: Messages response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+                  nextCursor:
+                    type: string
+                    nullable: true
+
+  /api/messages/branch:
+    post:
+      tags: [Messages]
+      summary: Create a branch message
+      description: Branch a specific agent's content from a parallel response message.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messageId, agentId]
+              properties:
+                messageId:
+                  type: string
+                agentId:
+                  type: string
+      responses:
+        '201':
+          description: Branch message created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+
+  /api/messages/artifact/{messageId}:
+    post:
+      tags: [Messages]
+      summary: Edit artifact content in a message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [index, original, updated]
+              properties:
+                index:
+                  type: integer
+                  minimum: 0
+                original:
+                  type: string
+                updated:
+                  type: string
+      responses:
+        '200':
+          description: Artifact updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversationId:
+                    type: string
+                  content:
+                    type: array
+                  text:
+                    type: string
+
+  /api/messages/{conversationId}:
+    get:
+      tags: [Messages]
+      summary: Get all messages in a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Messages array
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+    post:
+      tags: [Messages]
+      summary: Save a message to a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+      responses:
+        '201':
+          description: Message saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+
+  /api/messages/{conversationId}/{messageId}:
+    get:
+      tags: [Messages]
+      summary: Get a specific message
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '404':
+          description: Not found
+
+    put:
+      tags: [Messages]
+      summary: Update a message
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                index:
+                  type: integer
+                model:
+                  type: string
+      responses:
+        '200':
+          description: Message updated
+
+    delete:
+      tags: [Messages]
+      summary: Delete a message
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Message deleted
+
+  /api/messages/{conversationId}/{messageId}/feedback:
+    put:
+      tags: [Messages]
+      summary: Update message feedback
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                feedback:
+                  type: object
+                  nullable: true
+                  properties:
+                    rating:
+                      type: string
+                      enum: [thumbsUp, thumbsDown]
+                    text:
+                      type: string
+      responses:
+        '200':
+          description: Feedback updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messageId:
+                    type: string
+                  conversationId:
+                    type: string
+                  feedback:
+                    type: object
+
+  # ===== MODELS =====
+  /api/models:
+    get:
+      tags: [Models]
+      summary: List available models
+      description: Returns models grouped by endpoint.
+      responses:
+        '200':
+          description: Models by endpoint
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
+
+  # ===== ENDPOINTS =====
+  /api/endpoints:
+    get:
+      tags: [Endpoints]
+      summary: Get configured endpoints
+      security: []
+      responses:
+        '200':
+          description: Endpoint configurations
+
+  # ===== CONFIG =====
+  /api/config:
+    get:
+      tags: [Config]
+      summary: Get startup configuration
+      security: []
+      description: Returns app title, enabled features, social logins, etc.
+      responses:
+        '200':
+          description: Startup config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartupConfig'
+
+  # ===== BALANCE =====
+  /api/balance:
+    get:
+      tags: [Balance]
+      summary: Get user token balance
+      responses:
+        '200':
+          description: Balance info
+
+  # ===== BANNER =====
+  /api/banner:
+    get:
+      tags: [Banner]
+      summary: Get server announcement banner
+      security: []
+      responses:
+        '200':
+          description: Banner content
+
+  # ===== SEARCH =====
+  /api/search/enable:
+    get:
+      tags: [Search]
+      summary: Check if search is enabled
+      responses:
+        '200':
+          description: Search availability
+          content:
+            application/json:
+              schema:
+                type: boolean
+
+  # ===== CATEGORIES =====
+  /api/categories:
+    get:
+      tags: [Categories]
+      summary: Get all categories
+      responses:
+        '200':
+          description: Categories list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+
+  # ===== PRESETS =====
+  /api/presets:
+    get:
+      tags: [Presets]
+      summary: List user presets
+      responses:
+        '200':
+          description: Presets array
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Preset'
+    post:
+      tags: [Presets]
+      summary: Create or update a preset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Preset'
+      responses:
+        '201':
+          description: Preset saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preset'
+
+  /api/presets/delete:
+    post:
+      tags: [Presets]
+      summary: Delete a preset
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                presetId:
+                  type: string
+      responses:
+        '201':
+          description: Delete count
+
+  # ===== KEYS =====
+  /api/keys:
+    get:
+      tags: [Keys]
+      summary: Get user key expiry info
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Key expiry info
+    put:
+      tags: [Keys]
+      summary: Create or update a user API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, value, expiresAt]
+              properties:
+                name:
+                  type: string
+                value:
+                  type: string
+                expiresAt:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: Key saved
+    delete:
+      tags: [Keys]
+      summary: Delete all user keys
+      parameters:
+        - name: all
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: ['true']
+      responses:
+        '204':
+          description: Keys deleted
+
+  /api/keys/{name}:
+    delete:
+      tags: [Keys]
+      summary: Delete a user key by name
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Key deleted
+
+  # ===== API KEYS =====
+  /api/api-keys:
+    get:
+      tags: [API Keys]
+      summary: List agent API keys
+      responses:
+        '200':
+          description: API keys list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgentApiKey'
+    post:
+      tags: [API Keys]
+      summary: Create an agent API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentApiKey'
+
+  /api/api-keys/{id}:
+    get:
+      tags: [API Keys]
+      summary: Get an API key by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: API key
+    delete:
+      tags: [API Keys]
+      summary: Delete an API key
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: API key deleted
+
+  # ===== AGENTS =====
+  /api/agents:
+    get:
+      tags: [Agents]
+      summary: List agents
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: after
+          in: query
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agents list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentListResponse'
+    post:
+      tags: [Agents]
+      summary: Create an agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentCreateParams'
+      responses:
+        '201':
+          description: Agent created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+
+  /api/agents/categories:
+    get:
+      tags: [Agents]
+      summary: Get agent categories with counts
+      responses:
+        '200':
+          description: Agent categories
+
+  /api/agents/{id}:
+    get:
+      tags: [Agents]
+      summary: Get an agent (basic info)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+    patch:
+      tags: [Agents]
+      summary: Update an agent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentCreateParams'
+      responses:
+        '200':
+          description: Agent updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+    delete:
+      tags: [Agents]
+      summary: Delete an agent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent deleted
+
+  /api/agents/{id}/expanded:
+    get:
+      tags: [Agents]
+      summary: Get agent with full configuration details
+      description: Returns complete agent data including sensitive config (EDIT permission required).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expanded agent details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+
+  /api/agents/{id}/duplicate:
+    post:
+      tags: [Agents]
+      summary: Duplicate an agent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Agent duplicated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+
+  /api/agents/{id}/revert:
+    post:
+      tags: [Agents]
+      summary: Revert agent to a previous version
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version_index]
+              properties:
+                version_index:
+                  type: integer
+      responses:
+        '200':
+          description: Agent reverted
+
+  /api/agents/tools:
+    get:
+      tags: [Agents]
+      summary: List available agent tools
+      responses:
+        '200':
+          description: Tools list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tool'
+
+  /api/agents/tools/calls:
+    get:
+      tags: [Agents]
+      summary: Get tool call history
+      responses:
+        '200':
+          description: Tool calls
+
+  /api/agents/tools/{toolId}/auth:
+    get:
+      tags: [Agents]
+      summary: Verify tool authentication
+      parameters:
+        - name: toolId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Auth status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated:
+                    type: boolean
+                  message:
+                    type: string
+
+  /api/agents/tools/{toolId}/call:
+    post:
+      tags: [Agents]
+      summary: Execute a tool call
+      parameters:
+        - name: toolId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Tool execution result
+
+  /api/agents/actions:
+    get:
+      tags: [Actions]
+      summary: List agent actions
+      responses:
+        '200':
+          description: Actions list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Action'
+
+  /api/agents/actions/{agent_id}:
+    post:
+      tags: [Actions]
+      summary: Add or update actions for an agent
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [functions, metadata]
+              properties:
+                functions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/FunctionTool'
+                action_id:
+                  type: string
+                metadata:
+                  $ref: '#/components/schemas/ActionMetadata'
+      responses:
+        '200':
+          description: Agent and action updated
+
+  /api/agents/actions/{agent_id}/{action_id}:
+    delete:
+      tags: [Actions]
+      summary: Delete an agent action
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: action_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Action deleted
+
+  # ===== AGENT CHAT =====
+  /api/agents/chat:
+    post:
+      tags: [Agents]
+      summary: Chat with an agent
+      description: Send a message to an agent and receive a streaming SSE response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentChatRequest'
+      responses:
+        '200':
+          description: SSE stream of agent response
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /api/agents/chat/{endpoint}:
+    post:
+      tags: [Agents]
+      summary: Chat with an ephemeral agent
+      parameters:
+        - name: endpoint
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentChatRequest'
+      responses:
+        '200':
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /api/agents/chat/abort:
+    post:
+      tags: [Agents]
+      summary: Abort an ongoing agent generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                streamId:
+                  type: string
+                conversationId:
+                  type: string
+                abortKey:
+                  type: string
+      responses:
+        '200':
+          description: Generation aborted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  aborted:
+                    type: string
+
+  /api/agents/chat/stream/{streamId}:
+    get:
+      tags: [Agents]
+      summary: Subscribe to a generation stream
+      description: SSE endpoint for live or replay streaming of agent output.
+      parameters:
+        - name: streamId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: resume
+          in: query
+          schema:
+            type: string
+            enum: ['true']
+      responses:
+        '200':
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /api/agents/chat/active:
+    get:
+      tags: [Agents]
+      summary: Get active generation job IDs
+      responses:
+        '200':
+          description: Active job IDs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activeJobIds:
+                    type: array
+                    items:
+                      type: string
+
+  /api/agents/chat/status/{conversationId}:
+    get:
+      tags: [Agents]
+      summary: Check generation status for a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Generation status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  active:
+                    type: boolean
+                  streamId:
+                    type: string
+                  status:
+                    type: string
+                  aggregatedContent:
+                    type: array
+                  createdAt:
+                    type: string
+                  resumeState:
+                    type: object
+
+  # ===== AGENTS - OPENAI COMPATIBLE =====
+  /api/agents/v1/chat/completions:
+    post:
+      tags: [Agents - OpenAI Compatible]
+      summary: OpenAI-compatible chat completions
+      description: Send chat messages to an agent using OpenAI format. Requires API key auth.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, messages]
+              properties:
+                model:
+                  type: string
+                  description: Agent ID to use
+                messages:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ChatMessage'
+                stream:
+                  type: boolean
+                  default: false
+                conversation_id:
+                  type: string
+                parent_message_id:
+                  type: string
+      responses:
+        '200':
+          description: Chat completion (or SSE stream if stream=true)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatCompletion'
+
+  /api/agents/v1/models:
+    get:
+      tags: [Agents - OpenAI Compatible]
+      summary: List agents as models
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Models list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    example: list
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ModelObject'
+
+  /api/agents/v1/models/{model}:
+    get:
+      tags: [Agents - OpenAI Compatible]
+      summary: Get agent/model details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: model
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelObject'
+
+  # ===== AGENTS - OPEN RESPONSES =====
+  /api/agents/v1/responses:
+    post:
+      tags: [Agents - Open Responses]
+      summary: Create a response
+      description: Open Responses API for creating agent responses.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, input]
+              properties:
+                model:
+                  type: string
+                  description: Agent ID
+                input:
+                  description: String or array of input items
+                  oneOf:
+                    - type: string
+                    - type: array
+                      items:
+                        type: object
+                stream:
+                  type: boolean
+                  default: false
+                previous_response_id:
+                  type: string
+                instructions:
+                  type: string
+                tools:
+                  type: array
+                  items:
+                    type: object
+                tool_choice:
+                  type: string
+                max_output_tokens:
+                  type: integer
+                temperature:
+                  type: number
+      responses:
+        '200':
+          description: Response object (or SSE stream)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseObject'
+
+  /api/agents/v1/responses/models:
+    get:
+      tags: [Agents - Open Responses]
+      summary: List agents as models
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Models list
+
+  /api/agents/v1/responses/{id}:
+    get:
+      tags: [Agents - Open Responses]
+      summary: Get a stored response
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Response object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseObject'
+
+  # ===== ASSISTANTS =====
+  /api/assistants/v1:
+    get:
+      tags: [Assistants v1]
+      summary: List assistants (v1)
+      responses:
+        '200':
+          description: Assistants list
+    post:
+      tags: [Assistants v1]
+      summary: Create an assistant (v1)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Assistant created
+
+  /api/assistants/v1/{id}:
+    get:
+      tags: [Assistants v1]
+      summary: Retrieve an assistant (v1)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Assistant details
+    patch:
+      tags: [Assistants v1]
+      summary: Modify an assistant (v1)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Assistant updated
+    delete:
+      tags: [Assistants v1]
+      summary: Delete an assistant (v1)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Assistant deleted
+
+  /api/assistants/v1/documents:
+    get:
+      tags: [Assistants v1]
+      summary: Get assistant documents
+      responses:
+        '200':
+          description: Assistant documents
+
+  /api/assistants/v1/tools:
+    get:
+      tags: [Assistants v1]
+      summary: List available assistant tools
+      responses:
+        '200':
+          description: Tools list
+
+  /api/assistants/v1/actions/{assistant_id}:
+    post:
+      tags: [Actions]
+      summary: Add or update actions for an assistant (v1)
+      parameters:
+        - name: assistant_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [functions, metadata]
+              properties:
+                functions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/FunctionTool'
+                action_id:
+                  type: string
+                metadata:
+                  $ref: '#/components/schemas/ActionMetadata'
+      responses:
+        '200':
+          description: Updated
+
+  /api/assistants/v1/actions/{assistant_id}/{action_id}/{model}:
+    delete:
+      tags: [Actions]
+      summary: Delete an assistant action (v1)
+      parameters:
+        - name: assistant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: action_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: model
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Action deleted
+
+  /api/assistants/v1/chat:
+    post:
+      tags: [Assistants v1]
+      summary: Chat with an assistant (v1)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /api/assistants/v1/chat/abort:
+    post:
+      tags: [Assistants v1]
+      summary: Abort assistant chat (v1)
+      responses:
+        '200':
+          description: Aborted
+
+  /api/assistants/v2:
+    get:
+      tags: [Assistants v2]
+      summary: List assistants (v2)
+      responses:
+        '200':
+          description: Assistants list
+    post:
+      tags: [Assistants v2]
+      summary: Create an assistant (v2)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Assistant created
+
+  /api/assistants/v2/{id}:
+    get:
+      tags: [Assistants v2]
+      summary: Retrieve an assistant (v2)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Assistant details
+    patch:
+      tags: [Assistants v2]
+      summary: Modify an assistant (v2)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Assistant updated
+    delete:
+      tags: [Assistants v2]
+      summary: Delete an assistant (v2)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Assistant deleted
+
+  /api/assistants/v2/avatar/{assistant_id}:
+    post:
+      tags: [Avatar]
+      summary: Upload assistant avatar (v2)
+      parameters:
+        - name: assistant_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                metadata:
+                  type: string
+      responses:
+        '200':
+          description: Avatar URL
+
+  /api/assistants/v2/documents:
+    get:
+      tags: [Assistants v2]
+      summary: Get assistant documents (v2)
+      responses:
+        '200':
+          description: Documents
+
+  /api/assistants/v2/tools:
+    get:
+      tags: [Assistants v2]
+      summary: List available assistant tools (v2)
+      responses:
+        '200':
+          description: Tools
+
+  /api/assistants/v2/actions/{assistant_id}:
+    post:
+      tags: [Actions]
+      summary: Add or update actions for an assistant (v2)
+      parameters:
+        - name: assistant_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Updated
+
+  /api/assistants/v2/actions/{assistant_id}/{action_id}/{model}:
+    delete:
+      tags: [Actions]
+      summary: Delete an assistant action (v2)
+      parameters:
+        - name: assistant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: action_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: model
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Action deleted
+
+  /api/assistants/v2/chat:
+    post:
+      tags: [Assistants v2]
+      summary: Chat with an assistant (v2)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /api/assistants/v2/chat/abort:
+    post:
+      tags: [Assistants v2]
+      summary: Abort assistant chat (v2)
+      responses:
+        '200':
+          description: Aborted
+
+  # ===== FILES =====
+  /api/files:
+    get:
+      tags: [Files]
+      summary: List user files
+      responses:
+        '200':
+          description: Files list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/File'
+    post:
+      tags: [Files]
+      summary: Upload a file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                file_id:
+                  type: string
+                endpoint:
+                  type: string
+                agent_id:
+                  type: string
+                tool_resource:
+                  type: string
+                message_file:
+                  type: string
+      responses:
+        '200':
+          description: File uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+    delete:
+      tags: [Files]
+      summary: Delete files
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      file_id:
+                        type: string
+                      filepath:
+                        type: string
+                agent_id:
+                  type: string
+                tool_resource:
+                  type: string
+                assistant_id:
+                  type: string
+      responses:
+        '200':
+          description: Files deleted
+
+  /api/files/config:
+    get:
+      tags: [Files]
+      summary: Get file upload configuration
+      responses:
+        '200':
+          description: File config
+
+  /api/files/agent/{agent_id}:
+    get:
+      tags: [Files]
+      summary: Get files for an agent
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/File'
+
+  /api/files/download/{userId}/{file_id}:
+    get:
+      tags: [Files]
+      summary: Download a file
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File download
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+  /api/files/code/download/{session_id}/{fileId}:
+    get:
+      tags: [Files]
+      summary: Download code execution output
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File download
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+  # ===== IMAGES =====
+  /api/files/images:
+    post:
+      tags: [Images]
+      summary: Upload an image
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Image uploaded
+
+  # ===== AVATAR =====
+  /api/files/images/avatar:
+    post:
+      tags: [Avatar]
+      summary: Upload user avatar
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                manual:
+                  type: string
+      responses:
+        '200':
+          description: Avatar URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+
+  /api/files/images/agents/{agent_id}/avatar:
+    post:
+      tags: [Avatar]
+      summary: Upload agent avatar
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                metadata:
+                  type: string
+      responses:
+        '200':
+          description: Avatar URL
+
+  /api/files/images/assistants/{assistant_id}/avatar:
+    post:
+      tags: [Avatar]
+      summary: Upload assistant avatar (v1)
+      parameters:
+        - name: assistant_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                metadata:
+                  type: string
+      responses:
+        '200':
+          description: Avatar URL
+
+  # ===== SPEECH =====
+  /api/files/speech/stt:
+    post:
+      tags: [Speech]
+      summary: Speech to text
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [audio]
+              properties:
+                audio:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Transcription result
+
+  /api/files/speech/tts:
+    post:
+      tags: [Speech]
+      summary: Stream text to speech
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                runId:
+                  type: string
+                messageId:
+                  type: string
+                voice:
+                  type: string
+      responses:
+        '200':
+          description: Audio stream
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+
+  /api/files/speech/tts/manual:
+    post:
+      tags: [Speech]
+      summary: Manual text to speech
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                voice:
+                  type: string
+      responses:
+        '200':
+          description: Audio file
+
+  /api/files/speech/tts/voices:
+    get:
+      tags: [Speech]
+      summary: Get available TTS voices
+      responses:
+        '200':
+          description: Voices list
+
+  /api/files/speech/config/get:
+    get:
+      tags: [Speech]
+      summary: Get custom speech configuration
+      responses:
+        '200':
+          description: Speech config
+
+  # ===== PROMPTS =====
+  /api/prompts:
+    get:
+      tags: [Prompts]
+      summary: List user prompts
+      parameters:
+        - name: groupId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Prompts list
+    post:
+      tags: [Prompts]
+      summary: Create a new prompt group with initial prompt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt, group]
+              properties:
+                prompt:
+                  type: object
+                group:
+                  type: object
+                  required: [name]
+                  properties:
+                    name:
+                      type: string
+                    category:
+                      type: string
+      responses:
+        '200':
+          description: Prompt group created
+
+  /api/prompts/all:
+    get:
+      tags: [Prompts]
+      summary: Get all prompt groups (ACL-aware)
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Prompt groups
+
+  /api/prompts/groups:
+    get:
+      tags: [Prompts]
+      summary: List prompt groups (paginated)
+      parameters:
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated prompt groups
+
+  /api/prompts/groups/{groupId}:
+    get:
+      tags: [Prompts]
+      summary: Get a prompt group by ID
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Prompt group
+    patch:
+      tags: [Prompts]
+      summary: Update a prompt group
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Prompt group updated
+    delete:
+      tags: [Prompts]
+      summary: Delete a prompt group
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Prompt group deleted
+
+  /api/prompts/groups/{groupId}/prompts:
+    post:
+      tags: [Prompts]
+      summary: Add a prompt to an existing group
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                prompt:
+                  type: object
+      responses:
+        '200':
+          description: Prompt added
+
+  /api/prompts/{promptId}:
+    get:
+      tags: [Prompts]
+      summary: Get a prompt
+      parameters:
+        - name: promptId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Prompt
+    delete:
+      tags: [Prompts]
+      summary: Delete a prompt
+      parameters:
+        - name: promptId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Prompt deleted
+
+  /api/prompts/{promptId}/tags/production:
+    patch:
+      tags: [Prompts]
+      summary: Make a prompt the production version
+      parameters:
+        - name: promptId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Prompt set to production
+
+  # ===== SHARE =====
+  /api/share:
+    get:
+      tags: [Share]
+      summary: List shared links
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: isPublic
+          in: query
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: createdAt
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            default: desc
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Shared links
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  links:
+                    type: array
+                  nextCursor:
+                    type: string
+                  hasNextPage:
+                    type: boolean
+
+  /api/share/{shareId}:
+    get:
+      tags: [Share]
+      summary: Get shared conversation messages
+      security: []
+      parameters:
+        - name: shareId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Shared messages
+        '404':
+          description: Not found
+    patch:
+      tags: [Share]
+      summary: Update a shared link
+      parameters:
+        - name: shareId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Share]
+      summary: Delete a shared link
+      parameters:
+        - name: shareId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+
+  /api/share/link/{conversationId}:
+    get:
+      tags: [Share]
+      summary: Get shared link for a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Share link info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  shareId:
+                    type: string
+                  conversationId:
+                    type: string
+
+  /api/share/{conversationId}:
+    post:
+      tags: [Share]
+      summary: Create a shared link
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetMessageId:
+                  type: string
+      responses:
+        '200':
+          description: Share created
+
+  # ===== TAGS =====
+  /api/tags:
+    get:
+      tags: [Tags]
+      summary: Get all conversation tags
+      responses:
+        '200':
+          description: Tags list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConversationTag'
+    post:
+      tags: [Tags]
+      summary: Create a conversation tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationTag'
+      responses:
+        '200':
+          description: Tag created
+
+  /api/tags/{tag}:
+    put:
+      tags: [Tags]
+      summary: Update a conversation tag
+      parameters:
+        - name: tag
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationTag'
+      responses:
+        '200':
+          description: Tag updated
+    delete:
+      tags: [Tags]
+      summary: Delete a conversation tag
+      parameters:
+        - name: tag
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tag deleted
+
+  /api/tags/convo/{conversationId}:
+    put:
+      tags: [Tags]
+      summary: Update tags for a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Conversation tags updated
+
+  # ===== ROLES =====
+  /api/roles/{roleName}:
+    get:
+      tags: [Roles]
+      summary: Get a role by name
+      parameters:
+        - name: roleName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Role details
+
+  /api/roles/{roleName}/prompts:
+    put:
+      tags: [Roles]
+      summary: Update prompt permissions for a role
+      parameters:
+        - name: roleName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Permissions updated
+
+  /api/roles/{roleName}/agents:
+    put:
+      tags: [Roles]
+      summary: Update agent permissions for a role
+      parameters:
+        - name: roleName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Permissions updated
+
+  /api/roles/{roleName}/memories:
+    put:
+      tags: [Roles]
+      summary: Update memory permissions for a role
+      parameters:
+        - name: roleName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Permissions updated
+
+  /api/roles/{roleName}/people-picker:
+    put:
+      tags: [Roles]
+      summary: Update people picker permissions for a role
+      parameters:
+        - name: roleName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Permissions updated
+
+  /api/roles/{roleName}/mcp-servers:
+    put:
+      tags: [Roles]
+      summary: Update MCP servers permissions for a role
+      parameters:
+        - name: roleName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Permissions updated
+
+  /api/roles/{roleName}/marketplace:
+    put:
+      tags: [Roles]
+      summary: Update marketplace permissions for a role
+      parameters:
+        - name: roleName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Permissions updated
+
+  /api/roles/{roleName}/remote-agents:
+    put:
+      tags: [Roles]
+      summary: Update remote agents permissions for a role
+      parameters:
+        - name: roleName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Permissions updated
+
+  # ===== MEMORIES =====
+  /api/memories:
+    get:
+      tags: [Memories]
+      summary: Get all user memories
+      responses:
+        '200':
+          description: Memories with usage info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Memory'
+                  totalTokens:
+                    type: integer
+                  tokenLimit:
+                    type: integer
+                    nullable: true
+                  charLimit:
+                    type: integer
+                  usagePercentage:
+                    type: integer
+                    nullable: true
+    post:
+      tags: [Memories]
+      summary: Create a memory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key, value]
+              properties:
+                key:
+                  type: string
+                value:
+                  type: string
+      responses:
+        '201':
+          description: Memory created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  created:
+                    type: boolean
+                  memory:
+                    $ref: '#/components/schemas/Memory'
+        '409':
+          description: Key already exists
+
+  /api/memories/preferences:
+    patch:
+      tags: [Memories]
+      summary: Update memory preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [memories]
+              properties:
+                memories:
+                  type: boolean
+      responses:
+        '200':
+          description: Preferences updated
+
+  /api/memories/{key}:
+    patch:
+      tags: [Memories]
+      summary: Update a memory
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [value]
+              properties:
+                key:
+                  type: string
+                value:
+                  type: string
+      responses:
+        '200':
+          description: Memory updated
+    delete:
+      tags: [Memories]
+      summary: Delete a memory
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Memory deleted
+
+  # ===== MCP =====
+  /api/mcp/tools:
+    get:
+      tags: [MCP]
+      summary: Get all available MCP tools
+      responses:
+        '200':
+          description: MCP tools list
+
+  /api/mcp/connection/status:
+    get:
+      tags: [MCP]
+      summary: Get connection status for all MCP servers
+      responses:
+        '200':
+          description: Connection statuses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  connectionStatus:
+                    type: object
+
+  /api/mcp/connection/status/{serverName}:
+    get:
+      tags: [MCP]
+      summary: Get connection status for a specific MCP server
+      parameters:
+        - name: serverName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Server connection status
+
+  /api/mcp/{serverName}/auth-values:
+    get:
+      tags: [MCP]
+      summary: Check which auth values exist for an MCP server
+      parameters:
+        - name: serverName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Auth value flags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  serverName:
+                    type: string
+                  authValueFlags:
+                    type: object
+
+  /api/mcp/{serverName}/reinitialize:
+    post:
+      tags: [MCP]
+      summary: Reinitialize an MCP server
+      parameters:
+        - name: serverName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reinitialization result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  oauthUrl:
+                    type: string
+                  serverName:
+                    type: string
+                  oauthRequired:
+                    type: boolean
+
+  /api/mcp/{serverName}/oauth/initiate:
+    get:
+      tags: [MCP]
+      summary: Initiate MCP OAuth flow
+      parameters:
+        - name: serverName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: flowId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to OAuth provider
+
+  /api/mcp/{serverName}/oauth/callback:
+    get:
+      tags: [MCP]
+      summary: MCP OAuth callback
+      security: []
+      parameters:
+        - name: serverName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to success or error page
+
+  /api/mcp/{serverName}/oauth/bind:
+    post:
+      tags: [MCP]
+      summary: Set CSRF binding cookie for MCP OAuth
+      parameters:
+        - name: serverName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CSRF cookie set
+
+  /api/mcp/oauth/tokens/{flowId}:
+    get:
+      tags: [MCP]
+      summary: Get OAuth tokens for a completed flow
+      parameters:
+        - name: flowId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OAuth tokens
+
+  /api/mcp/oauth/status/{flowId}:
+    get:
+      tags: [MCP]
+      summary: Check OAuth flow status
+      parameters:
+        - name: flowId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Flow status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  completed:
+                    type: boolean
+                  failed:
+                    type: boolean
+                  error:
+                    type: string
+
+  /api/mcp/oauth/cancel/{serverName}:
+    post:
+      tags: [MCP]
+      summary: Cancel an OAuth flow
+      parameters:
+        - name: serverName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Flow cancelled
+
+  /api/mcp/servers:
+    get:
+      tags: [MCP]
+      summary: List user-managed MCP servers
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: after
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: MCP servers list
+    post:
+      tags: [MCP]
+      summary: Create a user-managed MCP server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Server created
+
+  /api/mcp/servers/{serverName}:
+    get:
+      tags: [MCP]
+      summary: Get an MCP server by name
+      parameters:
+        - name: serverName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: MCP server details
+    patch:
+      tags: [MCP]
+      summary: Update an MCP server
+      parameters:
+        - name: serverName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Server updated
+    delete:
+      tags: [MCP]
+      summary: Delete an MCP server
+      parameters:
+        - name: serverName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Server deleted
+
+  # ===== PERMISSIONS =====
+  /api/permissions/search-principals:
+    get:
+      tags: [Permissions]
+      summary: Search for users and groups to grant permissions
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching principals
+
+  /api/permissions/{resourceType}/roles:
+    get:
+      tags: [Permissions]
+      summary: Get available roles for a resource type
+      parameters:
+        - name: resourceType
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Available roles
+
+  /api/permissions/{resourceType}/effective/all:
+    get:
+      tags: [Permissions]
+      summary: Get effective permissions for all accessible resources
+      parameters:
+        - name: resourceType
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Effective permissions map
+
+  /api/permissions/{resourceType}/{resourceId}:
+    get:
+      tags: [Permissions]
+      summary: Get all permissions for a resource
+      parameters:
+        - name: resourceType
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: resourceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Resource permissions
+    put:
+      tags: [Permissions]
+      summary: Bulk update permissions for a resource
+      parameters:
+        - name: resourceType
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: resourceId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Permissions updated
+
+  /api/permissions/{resourceType}/{resourceId}/effective:
+    get:
+      tags: [Permissions]
+      summary: Get effective permissions for a specific resource
+      parameters:
+        - name: resourceType
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: resourceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Effective permissions
+
+  # ===== ACTIONS (OAuth for Assistants/Agents) =====
+  /api/actions/{action_id}/oauth/bind:
+    post:
+      tags: [Actions]
+      summary: Set CSRF cookie for action OAuth flow
+      parameters:
+        - name: action_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CSRF cookie set
+
+  /api/actions/{action_id}/oauth/callback:
+    get:
+      tags: [Actions]
+      summary: Action OAuth callback
+      security: []
+      parameters:
+        - name: action_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to success or error page
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from /api/auth/login or /api/auth/refresh
+
+  schemas:
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        refreshToken:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        username:
+          type: string
+        avatar:
+          type: string
+        role:
+          type: string
+        provider:
+          type: string
+        plugins:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Conversation:
+      type: object
+      properties:
+        conversationId:
+          type: string
+        title:
+          type: string
+        user:
+          type: string
+        endpoint:
+          type: string
+        model:
+          type: string
+        isArchived:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ConversationListResponse:
+      type: object
+      properties:
+        conversations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Conversation'
+        nextCursor:
+          type: string
+          nullable: true
+        hasMore:
+          type: boolean
+
+    Message:
+      type: object
+      properties:
+        messageId:
+          type: string
+        conversationId:
+          type: string
+        parentMessageId:
+          type: string
+        text:
+          type: string
+        sender:
+          type: string
+        isCreatedByUser:
+          type: boolean
+        model:
+          type: string
+        endpoint:
+          type: string
+        content:
+          type: array
+          items:
+            type: object
+        unfinished:
+          type: boolean
+        error:
+          type: boolean
+        iconURL:
+          type: string
+        feedback:
+          type: object
+          nullable: true
+        tokenCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    ChatMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant]
+        content:
+          type: string
+
+    ChatCompletion:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+          example: chat.completion
+        created:
+          type: integer
+        model:
+          type: string
+        choices:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              message:
+                $ref: '#/components/schemas/ChatMessage'
+              finish_reason:
+                type: string
+        usage:
+          type: object
+          properties:
+            prompt_tokens:
+              type: integer
+            completion_tokens:
+              type: integer
+            total_tokens:
+              type: integer
+
+    ModelObject:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+          example: model
+        name:
+          type: string
+        provider:
+          type: string
+
+    ResponseObject:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+          example: response
+        created_at:
+          type: integer
+        status:
+          type: string
+          enum: [completed, failed, in_progress, cancelled]
+        model:
+          type: string
+        output:
+          type: array
+          items:
+            type: object
+        usage:
+          type: object
+
+    Agent:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        instructions:
+          type: string
+        model:
+          type: string
+        tools:
+          type: array
+          items:
+            type: string
+        provider:
+          type: string
+        avatar:
+          type: object
+        author:
+          type: string
+        projectIds:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AgentCreateParams:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        instructions:
+          type: string
+        model:
+          type: string
+        tools:
+          type: array
+          items:
+            type: string
+        provider:
+          type: string
+
+    AgentListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Agent'
+        has_more:
+          type: boolean
+        after:
+          type: string
+
+    AgentChatRequest:
+      type: object
+      properties:
+        text:
+          type: string
+        conversationId:
+          type: string
+        parentMessageId:
+          type: string
+        endpoint:
+          type: string
+        model:
+          type: string
+        agent_id:
+          type: string
+
+    File:
+      type: object
+      properties:
+        file_id:
+          type: string
+        user:
+          type: string
+        filename:
+          type: string
+        filepath:
+          type: string
+        type:
+          type: string
+        height:
+          type: integer
+        width:
+          type: integer
+        size:
+          type: integer
+        source:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Preset:
+      type: object
+      properties:
+        presetId:
+          type: string
+        title:
+          type: string
+        endpoint:
+          type: string
+        model:
+          type: string
+
+    ConversationTag:
+      type: object
+      properties:
+        tag:
+          type: string
+        description:
+          type: string
+        count:
+          type: integer
+        position:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Category:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+
+    Memory:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+        tokenCount:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Action:
+      type: object
+      properties:
+        action_id:
+          type: string
+        agent_id:
+          type: string
+        assistant_id:
+          type: string
+        user:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/ActionMetadata'
+
+    ActionMetadata:
+      type: object
+      properties:
+        domain:
+          type: string
+        raw_spec:
+          type: string
+        auth:
+          type: object
+        api_key:
+          type: string
+        oauth_client_id:
+          type: string
+        oauth_client_secret:
+          type: string
+
+    FunctionTool:
+      type: object
+      properties:
+        type:
+          type: string
+          example: function
+        function:
+          type: object
+          properties:
+            name:
+              type: string
+            description:
+              type: string
+            parameters:
+              type: object
+
+    Tool:
+      type: object
+      properties:
+        pluginKey:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        icon:
+          type: string
+        authConfig:
+          type: array
+          items:
+            type: object
+        authenticated:
+          type: boolean
+
+    AgentApiKey:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        key:
+          type: string
+          description: Only returned on creation
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+
+    StartupConfig:
+      type: object
+      properties:
+        appTitle:
+          type: string
+          example: Hanzo Chat
+        socialLogins:
+          type: array
+          items:
+            type: string
+        emailLoginEnabled:
+          type: boolean
+        registrationEnabled:
+          type: boolean
+        socialLoginEnabled:
+          type: boolean
+        passwordResetEnabled:
+          type: boolean
+        sharedLinksEnabled:
+          type: boolean
+        publicSharedLinksEnabled:
+          type: boolean
+        serverDomain:
+          type: string
+        helpAndFaqURL:
+          type: string
+        googleLoginEnabled:
+          type: boolean
+        githubLoginEnabled:
+          type: boolean
+        discordLoginEnabled:
+          type: boolean
+        facebookLoginEnabled:
+          type: boolean
+        appleLoginEnabled:
+          type: boolean
+        openidLoginEnabled:
+          type: boolean
+        openidLabel:
+          type: string
+        samlLoginEnabled:
+          type: boolean
+        interface:
+          type: object
+        balance:
+          type: object
+        modelSpecs:
+          type: object

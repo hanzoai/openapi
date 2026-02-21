@@ -1,0 +1,3230 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Platform API
+  description: |
+    PaaS API for Hanzo Platform (platform.hanzo.ai) — deployments, containers,
+    databases, domains, and infrastructure management.
+
+    The platform exposes two API surfaces:
+
+    1. **tRPC API** — the primary interface at `/api/trpc/{router}.{procedure}`.
+       Queries use GET with URL-encoded JSON `input` param. Mutations use POST
+       with JSON body `{"json": ...}`. All tRPC calls require a valid session
+       cookie or Bearer token.
+
+    2. **Deploy Worker API** — a Hono service for deployment orchestration,
+       authenticated via `X-API-Key` header.
+
+    ## Authentication
+
+    All endpoints (except those marked public) require one of:
+    - **Bearer token** in `Authorization` header (API key from user settings)
+    - **Session cookie** from the platform web UI
+    - **X-API-Key** header (deploy worker only)
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://platform.hanzo.ai
+    description: Production
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: project
+    description: Project management (grouping of services)
+  - name: environment
+    description: Environment management within projects
+  - name: application
+    description: Application lifecycle (create, deploy, start, stop)
+  - name: compose
+    description: Docker Compose service management
+  - name: deployment
+    description: Deployment history and process management
+  - name: domain
+    description: Domain and routing configuration
+  - name: server
+    description: Remote server management
+  - name: docker
+    description: Container inspection and management
+  - name: postgres
+    description: PostgreSQL database services
+  - name: mysql
+    description: MySQL database services
+  - name: redis
+    description: Redis cache services
+  - name: mongo
+    description: MongoDB database services
+  - name: mariadb
+    description: MariaDB database services
+  - name: backup
+    description: Database backup management
+  - name: volume-backups
+    description: Volume backup management
+  - name: certificate
+    description: SSL/TLS certificate management
+  - name: registry
+    description: Container registry management
+  - name: mount
+    description: Volume and file mount management
+  - name: port
+    description: Port exposure management
+  - name: redirect
+    description: HTTP redirect rules
+  - name: security
+    description: Basic auth and security rules
+  - name: notification
+    description: Alert and notification channels
+  - name: ssh-key
+    description: SSH key management
+  - name: git-provider
+    description: Git provider integrations
+  - name: github
+    description: GitHub provider configuration
+  - name: gitlab
+    description: GitLab provider configuration
+  - name: bitbucket
+    description: Bitbucket provider configuration
+  - name: gitea
+    description: Gitea provider configuration
+  - name: user
+    description: User management and API keys
+  - name: organization
+    description: Organization management
+  - name: admin
+    description: Admin-only operations
+  - name: settings
+    description: Platform settings and maintenance
+  - name: cluster
+    description: Docker Swarm cluster management
+  - name: swarm
+    description: Swarm node and service info
+  - name: digitalocean
+    description: DigitalOcean cloud provider
+  - name: destination
+    description: External destination management
+  - name: ai
+    description: AI assistant integration
+  - name: billing
+    description: Billing and subscription management
+  - name: stripe
+    description: Stripe payment integration
+  - name: schedule
+    description: Scheduled task management
+  - name: rollback
+    description: Deployment rollback
+  - name: preview-deployment
+    description: Preview deployment management
+  - name: deploy-worker
+    description: Deploy worker service (Hono)
+
+paths:
+  # ==================================================================
+  # PROJECT
+  # ==================================================================
+  /api/trpc/project.create:
+    post:
+      operationId: project.create
+      tags: [project]
+      summary: Create a new project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  $ref: "#/components/schemas/CreateProjectInput"
+      responses:
+        "200":
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/project.one:
+    get:
+      operationId: project.one
+      tags: [project]
+      summary: Get a single project by ID
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Project details with all environments and services
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/project.all:
+    get:
+      operationId: project.all
+      tags: [project]
+      summary: List all projects in the active organization
+      responses:
+        "200":
+          description: Array of projects with nested environments and services
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/project.remove:
+    post:
+      operationId: project.remove
+      tags: [project]
+      summary: Delete a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [projectId]
+                  properties:
+                    projectId:
+                      type: string
+      responses:
+        "200":
+          description: Project deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/project.update:
+    post:
+      operationId: project.update
+      tags: [project]
+      summary: Update a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  $ref: "#/components/schemas/UpdateProjectInput"
+      responses:
+        "200":
+          description: Project updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/project.duplicate:
+    post:
+      operationId: project.duplicate
+      tags: [project]
+      summary: Duplicate a project or environment with selected services
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [sourceEnvironmentId, name]
+                  properties:
+                    sourceEnvironmentId:
+                      type: string
+                    name:
+                      type: string
+                    description:
+                      type: string
+                    includeServices:
+                      type: boolean
+                      default: true
+                    selectedServices:
+                      type: array
+                      items:
+                        type: object
+                        required: [id, type]
+                        properties:
+                          id:
+                            type: string
+                          type:
+                            type: string
+                            enum: [application, postgres, mariadb, mongo, mysql, redis, compose]
+                    duplicateInSameProject:
+                      type: boolean
+                      default: false
+      responses:
+        "200":
+          description: Duplicated project/environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # ENVIRONMENT
+  # ==================================================================
+  /api/trpc/environment.create:
+    post:
+      operationId: environment.create
+      tags: [environment]
+      summary: Create a new environment within a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [projectId, name]
+                  properties:
+                    projectId:
+                      type: string
+                    name:
+                      type: string
+                      description: Cannot be "production" (reserved)
+                    description:
+                      type: string
+      responses:
+        "200":
+          description: Environment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/environment.one:
+    get:
+      operationId: environment.one
+      tags: [environment]
+      summary: Get a single environment by ID
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Environment with all services
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/environment.byProjectId:
+    get:
+      operationId: environment.byProjectId
+      tags: [environment]
+      summary: List all environments for a project
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Array of environments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/environment.remove:
+    post:
+      operationId: environment.remove
+      tags: [environment]
+      summary: Delete an environment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [environmentId]
+                  properties:
+                    environmentId:
+                      type: string
+      responses:
+        "200":
+          description: Environment deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/environment.update:
+    post:
+      operationId: environment.update
+      tags: [environment]
+      summary: Update an environment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [environmentId]
+                  properties:
+                    environmentId:
+                      type: string
+                    name:
+                      type: string
+                    description:
+                      type: string
+      responses:
+        "200":
+          description: Environment updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/environment.duplicate:
+    post:
+      operationId: environment.duplicate
+      tags: [environment]
+      summary: Duplicate an environment with all services
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [environmentId]
+                  properties:
+                    environmentId:
+                      type: string
+                    name:
+                      type: string
+      responses:
+        "200":
+          description: Duplicated environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # APPLICATION
+  # ==================================================================
+  /api/trpc/application.create:
+    post:
+      operationId: application.create
+      tags: [application]
+      summary: Create a new application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  $ref: "#/components/schemas/CreateApplicationInput"
+      responses:
+        "200":
+          description: Application created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.one:
+    get:
+      operationId: application.one
+      tags: [application]
+      summary: Get application details
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Application with domains, ports, mounts, deployments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.delete:
+    post:
+      operationId: application.delete
+      tags: [application]
+      summary: Delete an application and all associated resources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [applicationId]
+                  properties:
+                    applicationId:
+                      type: string
+      responses:
+        "200":
+          description: Application deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.update:
+    post:
+      operationId: application.update
+      tags: [application]
+      summary: Update application configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  $ref: "#/components/schemas/UpdateApplicationInput"
+      responses:
+        "200":
+          description: Application updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.start:
+    post:
+      operationId: application.start
+      tags: [application]
+      summary: Start a stopped application
+      requestBody: &appIdBody
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [applicationId]
+                  properties:
+                    applicationId:
+                      type: string
+      responses:
+        "200":
+          description: Application started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.stop:
+    post:
+      operationId: application.stop
+      tags: [application]
+      summary: Stop a running application
+      requestBody: *appIdBody
+      responses:
+        "200":
+          description: Application stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.reload:
+    post:
+      operationId: application.reload
+      tags: [application]
+      summary: Reload application container (re-mechanize)
+      requestBody: *appIdBody
+      responses:
+        "200":
+          description: Application reloaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.deploy:
+    post:
+      operationId: application.deploy
+      tags: [application]
+      summary: Trigger a new deployment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [applicationId]
+                  properties:
+                    applicationId:
+                      type: string
+                    title:
+                      type: string
+                    description:
+                      type: string
+      responses:
+        "200":
+          description: Deployment queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.redeploy:
+    post:
+      operationId: application.redeploy
+      tags: [application]
+      summary: Redeploy (rebuild) an application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [applicationId]
+                  properties:
+                    applicationId:
+                      type: string
+                    title:
+                      type: string
+                    description:
+                      type: string
+      responses:
+        "200":
+          description: Redeployment queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.cancelDeployment:
+    post:
+      operationId: application.cancelDeployment
+      tags: [application]
+      summary: Cancel an in-progress deployment
+      requestBody: *appIdBody
+      responses:
+        "200":
+          description: Cancellation requested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.saveEnvironment:
+    post:
+      operationId: application.saveEnvironment
+      tags: [application]
+      summary: Save environment variables and build args
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [applicationId]
+                  properties:
+                    applicationId:
+                      type: string
+                    env:
+                      type: string
+                      description: KEY=VALUE newline-separated
+                    buildArgs:
+                      type: string
+      responses:
+        "200":
+          description: Environment saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.saveBuildType:
+    post:
+      operationId: application.saveBuildType
+      tags: [application]
+      summary: Configure the build type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [applicationId, buildType]
+                  properties:
+                    applicationId:
+                      type: string
+                    buildType:
+                      type: string
+                      enum: [dockerfile, nixpacks, buildpacks, heroku, railpack, static]
+                    dockerfile:
+                      type: string
+                    publishDirectory:
+                      type: string
+                    dockerContextPath:
+                      type: string
+                    dockerBuildStage:
+                      type: string
+                    herokuVersion:
+                      type: string
+                    isStaticSpa:
+                      type: boolean
+                    railpackVersion:
+                      type: string
+      responses:
+        "200":
+          description: Build type saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.saveGithubProvider:
+    post:
+      operationId: application.saveGithubProvider
+      tags: [application]
+      summary: Configure GitHub as source provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [applicationId, repository, branch, owner]
+                  properties:
+                    applicationId:
+                      type: string
+                    repository:
+                      type: string
+                    branch:
+                      type: string
+                    owner:
+                      type: string
+                    buildPath:
+                      type: string
+                    githubId:
+                      type: string
+                    watchPaths:
+                      type: string
+                    triggerType:
+                      type: string
+                      enum: [push, tag]
+                    enableSubmodules:
+                      type: boolean
+      responses:
+        "200":
+          description: GitHub provider saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.saveGitlabProvider:
+    post:
+      operationId: application.saveGitlabProvider
+      tags: [application]
+      summary: Configure GitLab as source provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [applicationId]
+                  properties:
+                    applicationId:
+                      type: string
+                    gitlabRepository:
+                      type: string
+                    gitlabOwner:
+                      type: string
+                    gitlabBranch:
+                      type: string
+                    gitlabBuildPath:
+                      type: string
+                    gitlabId:
+                      type: string
+                    gitlabProjectId:
+                      type: integer
+                    gitlabPathNamespace:
+                      type: string
+      responses:
+        "200":
+          description: GitLab provider saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.saveBitbucketProvider:
+    post:
+      operationId: application.saveBitbucketProvider
+      tags: [application]
+      summary: Configure Bitbucket as source provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [applicationId]
+                  properties:
+                    applicationId:
+                      type: string
+                    bitbucketRepository:
+                      type: string
+                    bitbucketOwner:
+                      type: string
+                    bitbucketBranch:
+                      type: string
+                    bitbucketBuildPath:
+                      type: string
+                    bitbucketId:
+                      type: string
+      responses:
+        "200":
+          description: Bitbucket provider saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.saveGiteaProvider:
+    post:
+      operationId: application.saveGiteaProvider
+      tags: [application]
+      summary: Configure Gitea as source provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [applicationId]
+                  properties:
+                    applicationId:
+                      type: string
+                    giteaRepository:
+                      type: string
+                    giteaOwner:
+                      type: string
+                    giteaBranch:
+                      type: string
+                    giteaBuildPath:
+                      type: string
+                    giteaId:
+                      type: string
+      responses:
+        "200":
+          description: Gitea provider saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.saveDockerProvider:
+    post:
+      operationId: application.saveDockerProvider
+      tags: [application]
+      summary: Configure Docker image as source
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [applicationId, dockerImage]
+                  properties:
+                    applicationId:
+                      type: string
+                    dockerImage:
+                      type: string
+                    username:
+                      type: string
+                    password:
+                      type: string
+                    registryUrl:
+                      type: string
+      responses:
+        "200":
+          description: Docker provider saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.saveGitProdiver:
+    post:
+      operationId: application.saveGitProdiver
+      tags: [application]
+      summary: Configure custom Git URL as source
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [applicationId]
+                  properties:
+                    applicationId:
+                      type: string
+                    customGitBranch:
+                      type: string
+                    customGitBuildPath:
+                      type: string
+                    customGitUrl:
+                      type: string
+                    customGitSSHKeyId:
+                      type: string
+      responses:
+        "200":
+          description: Git provider saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.disconnectGitProvider:
+    post:
+      operationId: application.disconnectGitProvider
+      tags: [application]
+      summary: Disconnect all git providers from application
+      requestBody: *appIdBody
+      responses:
+        "200":
+          description: Git provider disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.refreshToken:
+    post:
+      operationId: application.refreshToken
+      tags: [application]
+      summary: Regenerate webhook refresh token
+      requestBody: *appIdBody
+      responses:
+        "200":
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.readTraefikConfig:
+    get:
+      operationId: application.readTraefikConfig
+      tags: [application]
+      summary: Read Traefik routing config for an application
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Traefik YAML config string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.updateTraefikConfig:
+    post:
+      operationId: application.updateTraefikConfig
+      tags: [application]
+      summary: Write Traefik routing config
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [applicationId, traefikConfig]
+                  properties:
+                    applicationId:
+                      type: string
+                    traefikConfig:
+                      type: string
+      responses:
+        "200":
+          description: Config updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.readAppMonitoring:
+    get:
+      operationId: application.readAppMonitoring
+      tags: [application]
+      summary: Read container monitoring stats
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Container stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.move:
+    post:
+      operationId: application.move
+      tags: [application]
+      summary: Move application to a different environment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [applicationId, targetEnvironmentId]
+                  properties:
+                    applicationId:
+                      type: string
+                    targetEnvironmentId:
+                      type: string
+      responses:
+        "200":
+          description: Application moved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.markRunning:
+    post:
+      operationId: application.markRunning
+      tags: [application]
+      summary: Mark application status as running
+      requestBody: *appIdBody
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/application.cleanQueues:
+    post:
+      operationId: application.cleanQueues
+      tags: [application]
+      summary: Clear pending deployment jobs
+      requestBody: *appIdBody
+      responses:
+        "200":
+          description: Queues cleaned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # COMPOSE
+  # ==================================================================
+  /api/trpc/compose.create:
+    post:
+      operationId: compose.create
+      tags: [compose]
+      summary: Create a Docker Compose service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [name, environmentId]
+                  properties:
+                    name:
+                      type: string
+                    environmentId:
+                      type: string
+                    serverId:
+                      type: string
+                    description:
+                      type: string
+                    composeFile:
+                      type: string
+                    sourceType:
+                      type: string
+                      enum: [raw, github, gitlab, bitbucket, gitea, git]
+      responses:
+        "200":
+          description: Compose created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.one:
+    get:
+      operationId: compose.one
+      tags: [compose]
+      summary: Get compose service details
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Compose details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.update:
+    post:
+      operationId: compose.update
+      tags: [compose]
+      summary: Update compose configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [composeId]
+                  properties:
+                    composeId:
+                      type: string
+                    composeFile:
+                      type: string
+                    env:
+                      type: string
+                    name:
+                      type: string
+                    description:
+                      type: string
+      responses:
+        "200":
+          description: Compose updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.delete:
+    post:
+      operationId: compose.delete
+      tags: [compose]
+      summary: Delete a compose service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [composeId]
+                  properties:
+                    composeId:
+                      type: string
+                    deleteVolumes:
+                      type: boolean
+      responses:
+        "200":
+          description: Compose deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.deploy:
+    post:
+      operationId: compose.deploy
+      tags: [compose]
+      summary: Deploy a compose service
+      requestBody: &composeDeployBody
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [composeId]
+                  properties:
+                    composeId:
+                      type: string
+                    title:
+                      type: string
+                    description:
+                      type: string
+      responses:
+        "200":
+          description: Deployment queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.redeploy:
+    post:
+      operationId: compose.redeploy
+      tags: [compose]
+      summary: Redeploy (rebuild) a compose service
+      requestBody: *composeDeployBody
+      responses:
+        "200":
+          description: Redeployment queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.stop:
+    post:
+      operationId: compose.stop
+      tags: [compose]
+      summary: Stop a compose service
+      requestBody: &composeIdBody
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [composeId]
+                  properties:
+                    composeId:
+                      type: string
+      responses:
+        "200":
+          description: Compose stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.start:
+    post:
+      operationId: compose.start
+      tags: [compose]
+      summary: Start a compose service
+      requestBody: *composeIdBody
+      responses:
+        "200":
+          description: Compose started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.cancelDeployment:
+    post:
+      operationId: compose.cancelDeployment
+      tags: [compose]
+      summary: Cancel in-progress compose deployment
+      requestBody: *composeIdBody
+      responses:
+        "200":
+          description: Cancellation requested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.loadServices:
+    get:
+      operationId: compose.loadServices
+      tags: [compose]
+      summary: List running services within a compose stack
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Service list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.templates:
+    get:
+      operationId: compose.templates
+      tags: [compose]
+      summary: List available one-click templates
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Template list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.deployTemplate:
+    post:
+      operationId: compose.deployTemplate
+      tags: [compose]
+      summary: Deploy a one-click template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [environmentId, id]
+                  properties:
+                    environmentId:
+                      type: string
+                    serverId:
+                      type: string
+                    id:
+                      type: string
+                    baseUrl:
+                      type: string
+      responses:
+        "200":
+          description: Template deployed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.move:
+    post:
+      operationId: compose.move
+      tags: [compose]
+      summary: Move compose to a different environment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [composeId, targetEnvironmentId]
+                  properties:
+                    composeId:
+                      type: string
+                    targetEnvironmentId:
+                      type: string
+      responses:
+        "200":
+          description: Compose moved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.refreshToken:
+    post:
+      operationId: compose.refreshToken
+      tags: [compose]
+      summary: Regenerate webhook token
+      requestBody: *composeIdBody
+      responses:
+        "200":
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.getConvertedCompose:
+    get:
+      operationId: compose.getConvertedCompose
+      tags: [compose]
+      summary: Get final compose YAML with domains injected
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: YAML string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.getDefaultCommand:
+    get:
+      operationId: compose.getDefaultCommand
+      tags: [compose]
+      summary: Get the docker compose command
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Docker command string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.disconnectGitProvider:
+    post:
+      operationId: compose.disconnectGitProvider
+      tags: [compose]
+      summary: Disconnect git providers from compose
+      requestBody: *composeIdBody
+      responses:
+        "200":
+          description: Git provider disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/compose.getTags:
+    get:
+      operationId: compose.getTags
+      tags: [compose]
+      summary: Get unique tags from all templates
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Tag list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # DEPLOYMENT
+  # ==================================================================
+  /api/trpc/deployment.all:
+    get:
+      operationId: deployment.all
+      tags: [deployment]
+      summary: List deployments for an application
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Deployment history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/deployment.allByCompose:
+    get:
+      operationId: deployment.allByCompose
+      tags: [deployment]
+      summary: List deployments for a compose service
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Deployment history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/deployment.allByServer:
+    get:
+      operationId: deployment.allByServer
+      tags: [deployment]
+      summary: List deployments on a server
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Deployment history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/deployment.allByType:
+    get:
+      operationId: deployment.allByType
+      tags: [deployment]
+      summary: List deployments by resource type and ID
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Deployment list with rollback info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/deployment.killProcess:
+    post:
+      operationId: deployment.killProcess
+      tags: [deployment]
+      summary: Kill a running deployment process
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [deploymentId]
+                  properties:
+                    deploymentId:
+                      type: string
+      responses:
+        "200":
+          description: Process killed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # DOMAIN
+  # ==================================================================
+  /api/trpc/domain.create:
+    post:
+      operationId: domain.create
+      tags: [domain]
+      summary: Create a domain mapping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  $ref: "#/components/schemas/CreateDomainInput"
+      responses:
+        "200":
+          description: Domain created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/domain.one:
+    get:
+      operationId: domain.one
+      tags: [domain]
+      summary: Get a domain by ID
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Domain details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/domain.byApplicationId:
+    get:
+      operationId: domain.byApplicationId
+      tags: [domain]
+      summary: List domains for an application
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Domain list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/domain.byComposeId:
+    get:
+      operationId: domain.byComposeId
+      tags: [domain]
+      summary: List domains for a compose service
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Domain list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/domain.update:
+    post:
+      operationId: domain.update
+      tags: [domain]
+      summary: Update a domain mapping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [domainId]
+                  properties:
+                    domainId:
+                      type: string
+                    host:
+                      type: string
+                    port:
+                      type: integer
+                    https:
+                      type: boolean
+                    path:
+                      type: string
+                    certificateType:
+                      type: string
+                      enum: [none, letsencrypt, custom]
+      responses:
+        "200":
+          description: Domain updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/domain.delete:
+    post:
+      operationId: domain.delete
+      tags: [domain]
+      summary: Delete a domain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [domainId]
+                  properties:
+                    domainId:
+                      type: string
+      responses:
+        "200":
+          description: Domain deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/domain.generateDomain:
+    post:
+      operationId: domain.generateDomain
+      tags: [domain]
+      summary: Generate a traefik.me auto-domain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [appName]
+                  properties:
+                    appName:
+                      type: string
+                    serverId:
+                      type: string
+      responses:
+        "200":
+          description: Generated domain string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/domain.validateDomain:
+    post:
+      operationId: domain.validateDomain
+      tags: [domain]
+      summary: Validate DNS for a domain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [domain]
+                  properties:
+                    domain:
+                      type: string
+                    serverIp:
+                      type: string
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # SERVER
+  # ==================================================================
+  /api/trpc/server.create:
+    post:
+      operationId: server.create
+      tags: [server]
+      summary: Register a new remote server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [name, ipAddress, sshKeyId]
+                  properties:
+                    name:
+                      type: string
+                    description:
+                      type: string
+                    ipAddress:
+                      type: string
+                    port:
+                      type: integer
+                    username:
+                      type: string
+                    sshKeyId:
+                      type: string
+      responses:
+        "200":
+          description: Server registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/server.one:
+    get:
+      operationId: server.one
+      tags: [server]
+      summary: Get server details
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Server details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/server.all:
+    get:
+      operationId: server.all
+      tags: [server]
+      summary: List all servers with service counts
+      responses:
+        "200":
+          description: Server list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/server.remove:
+    post:
+      operationId: server.remove
+      tags: [server]
+      summary: Remove a server (must have no active services)
+      requestBody: &serverIdBody
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [serverId]
+                  properties:
+                    serverId:
+                      type: string
+      responses:
+        "200":
+          description: Server removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/server.update:
+    post:
+      operationId: server.update
+      tags: [server]
+      summary: Update server configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [serverId]
+                  properties:
+                    serverId:
+                      type: string
+                    name:
+                      type: string
+                    description:
+                      type: string
+                    ipAddress:
+                      type: string
+                    port:
+                      type: integer
+                    username:
+                      type: string
+      responses:
+        "200":
+          description: Server updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/server.setup:
+    post:
+      operationId: server.setup
+      tags: [server]
+      summary: Run initial setup (install Docker, Traefik, etc.)
+      requestBody: *serverIdBody
+      responses:
+        "200":
+          description: Setup complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/server.validate:
+    get:
+      operationId: server.validate
+      tags: [server]
+      summary: Validate server capabilities
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Validation results (docker, nixpacks, buildpacks, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/server.security:
+    get:
+      operationId: server.security
+      tags: [server]
+      summary: Run security audit (ufw, ssh, fail2ban)
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Security audit results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/server.setupMonitoring:
+    post:
+      operationId: server.setupMonitoring
+      tags: [server]
+      summary: Configure and deploy monitoring agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [serverId, metricsConfig]
+                  properties:
+                    serverId:
+                      type: string
+                    metricsConfig:
+                      $ref: "#/components/schemas/MetricsConfig"
+      responses:
+        "200":
+          description: Monitoring configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/server.getServerMetrics:
+    get:
+      operationId: server.getServerMetrics
+      tags: [server]
+      summary: Fetch server metrics (CPU, memory, disk, network)
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Metric snapshots
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/server.publicIp:
+    get:
+      operationId: server.publicIp
+      tags: [server]
+      summary: Get platform host public IP
+      responses:
+        "200":
+          description: IP string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # DOCKER
+  # ==================================================================
+  /api/trpc/docker.getContainers:
+    get:
+      operationId: docker.getContainers
+      tags: [docker]
+      summary: List all Docker containers
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Container list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/docker.restartContainer:
+    post:
+      operationId: docker.restartContainer
+      tags: [docker]
+      summary: Restart a container by ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [containerId]
+                  properties:
+                    containerId:
+                      type: string
+                    serverId:
+                      type: string
+      responses:
+        "200":
+          description: Container restarted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/docker.getConfig:
+    get:
+      operationId: docker.getConfig
+      tags: [docker]
+      summary: Get Docker inspect for a container
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Container config JSON
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # DATABASE SERVICES (common pattern)
+  # Each has: create, one, deploy, start, stop, reload, remove, update,
+  # saveEnvironment, saveExternalPort, changeStatus, move, rebuild
+  # ==================================================================
+  /api/trpc/postgres.create:
+    post:
+      operationId: postgres.create
+      tags: [postgres]
+      summary: Create a PostgreSQL service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  $ref: "#/components/schemas/CreateDatabaseInput"
+      responses:
+        "200":
+          description: Database created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/postgres.one:
+    get:
+      operationId: postgres.one
+      tags: [postgres]
+      summary: Get PostgreSQL details
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Database details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/mysql.create:
+    post:
+      operationId: mysql.create
+      tags: [mysql]
+      summary: Create a MySQL service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  $ref: "#/components/schemas/CreateDatabaseInput"
+      responses:
+        "200":
+          description: Database created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/mysql.one:
+    get:
+      operationId: mysql.one
+      tags: [mysql]
+      summary: Get MySQL details
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Database details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/redis.create:
+    post:
+      operationId: redis.create
+      tags: [redis]
+      summary: Create a Redis service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  $ref: "#/components/schemas/CreateDatabaseInput"
+      responses:
+        "200":
+          description: Redis created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/redis.one:
+    get:
+      operationId: redis.one
+      tags: [redis]
+      summary: Get Redis details
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Redis details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/mongo.create:
+    post:
+      operationId: mongo.create
+      tags: [mongo]
+      summary: Create a MongoDB service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  $ref: "#/components/schemas/CreateDatabaseInput"
+      responses:
+        "200":
+          description: MongoDB created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/mongo.one:
+    get:
+      operationId: mongo.one
+      tags: [mongo]
+      summary: Get MongoDB details
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: MongoDB details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/mariadb.create:
+    post:
+      operationId: mariadb.create
+      tags: [mariadb]
+      summary: Create a MariaDB service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  $ref: "#/components/schemas/CreateDatabaseInput"
+      responses:
+        "200":
+          description: MariaDB created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/mariadb.one:
+    get:
+      operationId: mariadb.one
+      tags: [mariadb]
+      summary: Get MariaDB details
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: MariaDB details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # USER
+  # ==================================================================
+  /api/trpc/user.get:
+    get:
+      operationId: user.get
+      tags: [user]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/user.all:
+    get:
+      operationId: user.all
+      tags: [user]
+      summary: List all users (admin only)
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/user.createApiKey:
+    post:
+      operationId: user.createApiKey
+      tags: [user]
+      summary: Create an API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [name]
+                  properties:
+                    name:
+                      type: string
+                    prefix:
+                      type: string
+                    expiresIn:
+                      type: integer
+                    rateLimitEnabled:
+                      type: boolean
+                    rateLimitTimeWindow:
+                      type: integer
+                    rateLimitMax:
+                      type: integer
+      responses:
+        "200":
+          description: API key (returned once)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/user.deleteApiKey:
+    post:
+      operationId: user.deleteApiKey
+      tags: [user]
+      summary: Delete an API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [apiKeyId]
+                  properties:
+                    apiKeyId:
+                      type: string
+      responses:
+        "200":
+          description: API key deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # ORGANIZATION
+  # ==================================================================
+  /api/trpc/organization.create:
+    post:
+      operationId: organization.create
+      tags: [organization]
+      summary: Create an organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [name]
+                  properties:
+                    name:
+                      type: string
+      responses:
+        "200":
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/organization.all:
+    get:
+      operationId: organization.all
+      tags: [organization]
+      summary: List organizations
+      responses:
+        "200":
+          description: Organization list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # SETTINGS
+  # ==================================================================
+  /api/trpc/settings.health:
+    get:
+      operationId: settings.health
+      tags: [settings]
+      summary: Platform health check (tRPC)
+      security: []
+      responses:
+        "200":
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/settings.isCloud:
+    get:
+      operationId: settings.isCloud
+      tags: [settings]
+      summary: Check if running in cloud mode
+      security: []
+      responses:
+        "200":
+          description: Boolean
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/settings.getHanzoVersion:
+    get:
+      operationId: settings.getHanzoVersion
+      tags: [settings]
+      summary: Get platform version
+      responses:
+        "200":
+          description: Version string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/settings.reloadTraefik:
+    post:
+      operationId: settings.reloadTraefik
+      tags: [settings]
+      summary: Reload Traefik configuration (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  properties:
+                    serverId:
+                      type: string
+      responses:
+        "200":
+          description: Traefik reloaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/settings.cleanAll:
+    post:
+      operationId: settings.cleanAll
+      tags: [settings]
+      summary: Full Docker cleanup (admin)
+      responses:
+        "200":
+          description: Cleanup done
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # SSH KEY
+  # ==================================================================
+  /api/trpc/sshKey.create:
+    post:
+      operationId: sshKey.create
+      tags: [ssh-key]
+      summary: Add an SSH key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [name, privateKey]
+                  properties:
+                    name:
+                      type: string
+                    description:
+                      type: string
+                    privateKey:
+                      type: string
+                    publicKey:
+                      type: string
+      responses:
+        "200":
+          description: SSH key created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/sshKey.all:
+    get:
+      operationId: sshKey.all
+      tags: [ssh-key]
+      summary: List all SSH keys
+      responses:
+        "200":
+          description: SSH key list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/sshKey.generate:
+    post:
+      operationId: sshKey.generate
+      tags: [ssh-key]
+      summary: Generate a new SSH key pair
+      responses:
+        "200":
+          description: Key pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/sshKey.remove:
+    post:
+      operationId: sshKey.remove
+      tags: [ssh-key]
+      summary: Remove an SSH key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [sshKeyId]
+                  properties:
+                    sshKeyId:
+                      type: string
+      responses:
+        "200":
+          description: SSH key removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # GIT PROVIDERS
+  # ==================================================================
+  /api/trpc/gitProvider.getAll:
+    get:
+      operationId: gitProvider.getAll
+      tags: [git-provider]
+      summary: List all git providers
+      responses:
+        "200":
+          description: Git provider list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/github.githubProviders:
+    get:
+      operationId: github.githubProviders
+      tags: [github]
+      summary: List GitHub installations
+      responses:
+        "200":
+          description: GitHub providers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/github.getGithubRepositories:
+    get:
+      operationId: github.getGithubRepositories
+      tags: [github]
+      summary: List repos from a GitHub installation
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Repository list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/github.getGithubBranches:
+    get:
+      operationId: github.getGithubBranches
+      tags: [github]
+      summary: List branches for a repository
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Branch list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # BACKUP, NOTIFICATION, CERTIFICATE, REGISTRY, etc.
+  # ==================================================================
+  /api/trpc/backup.create:
+    post:
+      operationId: backup.create
+      tags: [backup]
+      summary: Create a backup schedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  properties:
+                    schedule:
+                      type: string
+                    enabled:
+                      type: boolean
+                    destinationId:
+                      type: string
+                    postgresId:
+                      type: string
+                    mysqlId:
+                      type: string
+                    mariadbId:
+                      type: string
+                    mongoId:
+                      type: string
+      responses:
+        "200":
+          description: Backup created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/notification.all:
+    get:
+      operationId: notification.all
+      tags: [notification]
+      summary: List notification channels (admin)
+      responses:
+        "200":
+          description: Notification list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/certificates.all:
+    get:
+      operationId: certificates.all
+      tags: [certificate]
+      summary: List SSL certificates (admin)
+      responses:
+        "200":
+          description: Certificate list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/registry.all:
+    get:
+      operationId: registry.all
+      tags: [registry]
+      summary: List container registries
+      responses:
+        "200":
+          description: Registry list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/destination.all:
+    get:
+      operationId: destination.all
+      tags: [destination]
+      summary: List backup destinations
+      responses:
+        "200":
+          description: Destination list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/rollback.rollback:
+    post:
+      operationId: rollback.rollback
+      tags: [rollback]
+      summary: Rollback to a previous deployment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [deploymentId]
+                  properties:
+                    deploymentId:
+                      type: string
+      responses:
+        "200":
+          description: Rollback initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/billing.getPlans:
+    get:
+      operationId: billing.getPlans
+      tags: [billing]
+      summary: List subscription plans
+      responses:
+        "200":
+          description: Plan list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/billing.getBalance:
+    get:
+      operationId: billing.getBalance
+      tags: [billing]
+      summary: Get account balance
+      responses:
+        "200":
+          description: Balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/schedule.list:
+    get:
+      operationId: schedule.list
+      tags: [schedule]
+      summary: List scheduled tasks
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Schedule list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/schedule.create:
+    post:
+      operationId: schedule.create
+      tags: [schedule]
+      summary: Create a scheduled task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  required: [command, schedule]
+                  properties:
+                    command:
+                      type: string
+                    schedule:
+                      type: string
+                    enabled:
+                      type: boolean
+                    serverId:
+                      type: string
+      responses:
+        "200":
+          description: Schedule created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/cluster.getNodes:
+    get:
+      operationId: cluster.getNodes
+      tags: [cluster]
+      summary: List Docker Swarm nodes
+      parameters:
+        - $ref: "#/components/parameters/TRPCInput"
+      responses:
+        "200":
+          description: Node list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  /api/trpc/ai.suggest:
+    post:
+      operationId: ai.suggest
+      tags: [ai]
+      summary: Get AI deployment suggestions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  properties:
+                    prompt:
+                      type: string
+      responses:
+        "200":
+          description: AI suggestion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TRPCResult"
+
+  # ==================================================================
+  # DEPLOY WORKER (Hono)
+  # ==================================================================
+  /deploy:
+    post:
+      operationId: deployWorker.deploy
+      tags: [deploy-worker]
+      summary: Submit deployment job to worker queue
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeployJob"
+      responses:
+        "200":
+          description: Deployment queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  serverId:
+                    type: string
+        "403":
+          description: Invalid API key
+        "500":
+          description: Queue failure
+
+  /cancel-deployment:
+    post:
+      operationId: deployWorker.cancelDeployment
+      tags: [deploy-worker]
+      summary: Cancel an in-progress worker deployment
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelDeploymentJob"
+      responses:
+        "200":
+          description: Cancellation requested
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  applicationType:
+                    type: string
+        "403":
+          description: Invalid API key
+
+  /health:
+    get:
+      operationId: deployWorker.health
+      tags: [deploy-worker]
+      summary: Deploy worker health check
+      security: []
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  # ==================================================================
+  # WEBHOOK / REST ENDPOINTS
+  # ==================================================================
+  /api/deploy/{refreshToken}:
+    post:
+      operationId: webhook.deployApplication
+      tags: [deployment]
+      summary: Webhook to trigger application deployment
+      security: []
+      parameters:
+        - name: refreshToken
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deployment triggered
+        "401":
+          description: Invalid token
+
+  /api/deploy/compose/{refreshToken}:
+    post:
+      operationId: webhook.deployCompose
+      tags: [deployment]
+      summary: Webhook to trigger compose deployment
+      security: []
+      parameters:
+        - name: refreshToken
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deployment triggered
+        "401":
+          description: Invalid token
+
+  /api/deploy/github:
+    post:
+      operationId: webhook.github
+      tags: [deployment]
+      summary: GitHub webhook receiver for auto-deploy
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Webhook processed
+
+  /api/health:
+    get:
+      operationId: health
+      tags: [settings]
+      summary: Platform health (REST)
+      security: []
+      responses:
+        "200":
+          description: Healthy
+
+  /api/healthcheck:
+    get:
+      operationId: healthcheck
+      tags: [settings]
+      summary: Platform healthcheck (REST)
+      security: []
+      responses:
+        "200":
+          description: Healthy
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: API key from user settings or session token
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Deploy worker API key
+
+  parameters:
+    TRPCInput:
+      name: input
+      in: query
+      description: URL-encoded JSON input for tRPC queries
+      schema:
+        type: string
+
+  schemas:
+    TRPCResult:
+      type: object
+      properties:
+        result:
+          type: object
+          properties:
+            data:
+              type: object
+              properties:
+                json:
+                  description: Response payload (varies per endpoint)
+
+    CreateProjectInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        env:
+          type: string
+
+    UpdateProjectInput:
+      type: object
+      required: [projectId]
+      properties:
+        projectId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+
+    CreateApplicationInput:
+      type: object
+      required: [name, environmentId]
+      properties:
+        name:
+          type: string
+        appName:
+          type: string
+        environmentId:
+          type: string
+        serverId:
+          type: string
+        description:
+          type: string
+
+    UpdateApplicationInput:
+      type: object
+      required: [applicationId]
+      properties:
+        applicationId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        memoryReservation:
+          type: integer
+        memoryLimit:
+          type: integer
+        cpuReservation:
+          type: integer
+        cpuLimit:
+          type: integer
+        replicas:
+          type: integer
+        command:
+          type: string
+
+    CreateDomainInput:
+      type: object
+      required: [host, domainType]
+      properties:
+        host:
+          type: string
+        port:
+          type: integer
+        https:
+          type: boolean
+        path:
+          type: string
+        domainType:
+          type: string
+          enum: [application, compose]
+        applicationId:
+          type: string
+        composeId:
+          type: string
+        serviceName:
+          type: string
+        certificateType:
+          type: string
+          enum: [none, letsencrypt, custom]
+
+    CreateDatabaseInput:
+      type: object
+      required: [name, environmentId]
+      properties:
+        name:
+          type: string
+        appName:
+          type: string
+        environmentId:
+          type: string
+        serverId:
+          type: string
+        dockerImage:
+          type: string
+        databaseName:
+          type: string
+        databaseUser:
+          type: string
+        databasePassword:
+          type: string
+        databaseRootPassword:
+          type: string
+        description:
+          type: string
+
+    MetricsConfig:
+      type: object
+      required: [server, containers]
+      properties:
+        server:
+          type: object
+          properties:
+            refreshRate:
+              type: integer
+            retentionDays:
+              type: integer
+            port:
+              type: integer
+            token:
+              type: string
+            urlCallback:
+              type: string
+            cronJob:
+              type: string
+            thresholds:
+              type: object
+              properties:
+                cpu:
+                  type: integer
+                memory:
+                  type: integer
+        containers:
+          type: object
+          properties:
+            refreshRate:
+              type: integer
+            services:
+              type: object
+              properties:
+                include:
+                  type: array
+                  items:
+                    type: string
+                exclude:
+                  type: array
+                  items:
+                    type: string
+
+    DeployJob:
+      oneOf:
+        - type: object
+          required: [applicationId, applicationType, type, serverId]
+          properties:
+            applicationId:
+              type: string
+            titleLog:
+              type: string
+            descriptionLog:
+              type: string
+            server:
+              type: boolean
+            type:
+              type: string
+              enum: [deploy, redeploy]
+            applicationType:
+              type: string
+              const: application
+            serverId:
+              type: string
+        - type: object
+          required: [composeId, applicationType, type, serverId]
+          properties:
+            composeId:
+              type: string
+            titleLog:
+              type: string
+            descriptionLog:
+              type: string
+            server:
+              type: boolean
+            type:
+              type: string
+              enum: [deploy, redeploy]
+            applicationType:
+              type: string
+              const: compose
+            serverId:
+              type: string
+        - type: object
+          required: [applicationId, previewDeploymentId, applicationType, type, serverId]
+          properties:
+            applicationId:
+              type: string
+            previewDeploymentId:
+              type: string
+            titleLog:
+              type: string
+            descriptionLog:
+              type: string
+            server:
+              type: boolean
+            type:
+              type: string
+              enum: [deploy]
+            applicationType:
+              type: string
+              const: application-preview
+            serverId:
+              type: string
+      discriminator:
+        propertyName: applicationType
+
+    CancelDeploymentJob:
+      oneOf:
+        - type: object
+          required: [applicationId, applicationType]
+          properties:
+            applicationId:
+              type: string
+            applicationType:
+              type: string
+              const: application
+        - type: object
+          required: [composeId, applicationType]
+          properties:
+            composeId:
+              type: string
+            applicationType:
+              type: string
+              const: compose
+      discriminator:
+        propertyName: applicationType

@@ -1,0 +1,138 @@
+# Shared Authentication Schemas
+# These can be referenced by all service specs
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token obtained from Hanzo IAM.
+
+        To obtain a token:
+        1. Redirect user to authorization endpoint
+        2. Exchange authorization code for access token
+        3. Include token in Authorization header
+
+    oauth2:
+      type: oauth2
+      description: OAuth2 authentication via Hanzo IAM
+      flows:
+        authorizationCode:
+          authorizationUrl: https://iam.hanzo.ai/login/oauth/authorize
+          tokenUrl: https://iam.hanzo.ai/api/login/oauth/access_token
+          refreshUrl: https://iam.hanzo.ai/api/login/oauth/refresh_token
+          scopes:
+            openid: OpenID Connect identity
+            profile: User profile information
+            email: Email address
+            read: Read access to resources
+            write: Write access to resources
+            admin: Administrative access
+
+        clientCredentials:
+          tokenUrl: https://iam.hanzo.ai/api/login/oauth/access_token
+          scopes:
+            read: Read access to resources
+            write: Write access to resources
+            admin: Administrative access
+
+        password:
+          tokenUrl: https://iam.hanzo.ai/api/login/oauth/access_token
+          scopes:
+            openid: OpenID Connect identity
+            profile: User profile information
+            email: Email address
+
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key for service-to-service authentication.
+
+        Generate keys via the Hanzo Gateway /key/generate endpoint.
+
+  schemas:
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+        token_type:
+          type: string
+          enum: [Bearer]
+        expires_in:
+          type: integer
+          description: Token lifetime in seconds
+        refresh_token:
+          type: string
+          description: Refresh token for obtaining new access tokens
+        scope:
+          type: string
+          description: Space-separated list of granted scopes
+        id_token:
+          type: string
+          description: OpenID Connect ID token (JWT)
+
+    UserInfo:
+      type: object
+      description: OIDC UserInfo response
+      properties:
+        sub:
+          type: string
+          description: Subject identifier (user ID)
+        name:
+          type: string
+        given_name:
+          type: string
+        family_name:
+          type: string
+        preferred_username:
+          type: string
+        email:
+          type: string
+          format: email
+        email_verified:
+          type: boolean
+        phone_number:
+          type: string
+        phone_number_verified:
+          type: boolean
+        picture:
+          type: string
+          format: uri
+        updated_at:
+          type: integer
+          description: Unix timestamp
+
+    Web3AuthRequest:
+      type: object
+      description: Web3 wallet authentication request
+      required:
+        - address
+        - nonce
+        - signature
+      properties:
+        address:
+          type: string
+          description: Ethereum wallet address
+          pattern: "^0x[a-fA-F0-9]{40}$"
+        nonce:
+          type: string
+          description: Nonce obtained from /api/get-web3-nonce
+        createAt:
+          type: integer
+          description: Timestamp when signature was created
+        typedData:
+          type: string
+          description: The message that was signed
+        signature:
+          type: string
+          description: Wallet signature
+        walletType:
+          type: string
+          description: Type of wallet used
+          enum: [MetaMask, WalletConnect, Coinbase, Rainbow]

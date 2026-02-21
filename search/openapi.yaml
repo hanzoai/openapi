@@ -1,0 +1,2089 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Search API
+  description: |
+    Hanzo Search is a high-performance, typo-tolerant search engine (Meilisearch fork)
+    built in Rust with actix-web. It provides instant search, faceted filtering,
+    multi-index search, document management, and real-time indexing.
+
+    Key capabilities:
+    - Full-text search with typo tolerance and ranking
+    - Federated multi-index search
+    - Faceted filtering and facet search
+    - Similar document retrieval
+    - Chat completions (experimental)
+    - Document CRUD with batch processing
+    - Index settings management
+    - API key management
+    - Task queue with async processing
+    - Webhooks for event notifications
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://search.hanzo.ai
+    description: Production
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Search
+    description: Search documents within an index
+  - name: Multi-Search
+    description: Search across multiple indexes in a single request
+  - name: Documents
+    description: Add, update, delete, and browse documents
+  - name: Indexes
+    description: Create, update, delete, and list indexes
+  - name: Settings
+    description: Configure index settings (ranking, filtering, faceting, etc.)
+  - name: Tasks
+    description: Monitor async task processing
+  - name: Batches
+    description: Monitor batch processing
+  - name: Keys
+    description: Manage API keys
+  - name: Stats
+    description: Database and index statistics
+  - name: Health
+    description: Health check
+  - name: Version
+    description: Server version information
+  - name: Dumps
+    description: Create database dumps
+  - name: Snapshots
+    description: Create database snapshots
+  - name: Logs
+    description: Configure logging
+  - name: Experimental
+    description: Toggle experimental features at runtime
+  - name: Swap
+    description: Swap index identifiers
+  - name: Similar
+    description: Find similar documents
+  - name: Facet Search
+    description: Search within facet values
+  - name: Chats
+    description: Chat completions (experimental)
+  - name: Network
+    description: Network and federation configuration
+  - name: Export
+    description: Export index data
+  - name: Webhooks
+    description: Event webhook management
+
+paths:
+  # --- Health / Version / Stats ---
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Instance is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /version:
+    get:
+      operationId: getVersion
+      summary: Get server version
+      tags: [Version]
+      responses:
+        '200':
+          description: Version information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /stats:
+    get:
+      operationId: getStats
+      summary: Get global statistics
+      tags: [Stats]
+      responses:
+        '200':
+          description: Global stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stats'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # --- Indexes ---
+  /indexes:
+    get:
+      operationId: listIndexes
+      summary: List all indexes
+      tags: [Indexes]
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paginated list of indexes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedIndexes'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createIndex
+      summary: Create a new index
+      tags: [Indexes]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexCreateRequest'
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /indexes/{indexUid}:
+    parameters:
+      - $ref: '#/components/parameters/IndexUid'
+    get:
+      operationId: getIndex
+      summary: Get index information
+      tags: [Indexes]
+      responses:
+        '200':
+          description: Index details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexView'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      operationId: updateIndex
+      summary: Update index (primary key)
+      tags: [Indexes]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateIndexRequest'
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+    delete:
+      operationId: deleteIndex
+      summary: Delete an index
+      tags: [Indexes]
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+
+  /indexes/{indexUid}/stats:
+    parameters:
+      - $ref: '#/components/parameters/IndexUid'
+    get:
+      operationId: getIndexStats
+      summary: Get index statistics
+      tags: [Stats]
+      responses:
+        '200':
+          description: Index stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexStats'
+
+  # --- Search ---
+  /indexes/{indexUid}/search:
+    parameters:
+      - $ref: '#/components/parameters/IndexUid'
+    get:
+      operationId: searchGet
+      summary: Search documents (GET)
+      tags: [Search]
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search query
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: attributesToRetrieve
+          in: query
+          schema:
+            type: string
+          description: Comma-separated list of attributes to return
+        - name: attributesToHighlight
+          in: query
+          schema:
+            type: string
+        - name: attributesToCrop
+          in: query
+          schema:
+            type: string
+        - name: cropLength
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: filter
+          in: query
+          schema:
+            type: string
+          description: Filter expression
+        - name: sort
+          in: query
+          schema:
+            type: string
+          description: Comma-separated sort rules
+        - name: facets
+          in: query
+          schema:
+            type: string
+          description: Comma-separated facet attributes
+        - name: showMatchesPosition
+          in: query
+          schema:
+            type: boolean
+        - name: showRankingScore
+          in: query
+          schema:
+            type: boolean
+        - name: matchingStrategy
+          in: query
+          schema:
+            type: string
+            enum: [last, all, frequency]
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: searchPost
+      summary: Search documents (POST)
+      tags: [Search]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchQuery'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # --- Multi-Search ---
+  /multi-search:
+    post:
+      operationId: multiSearch
+      summary: Perform a multi-index search
+      description: |
+        Bundle multiple search queries in a single request. Supports both
+        independent per-index results and federated (merged) results.
+      tags: [Multi-Search]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FederatedSearch'
+      responses:
+        '200':
+          description: Search results (non-federated or federated)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/MultiSearchResults'
+                  - $ref: '#/components/schemas/FederatedSearchResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # --- Similar ---
+  /indexes/{indexUid}/similar:
+    parameters:
+      - $ref: '#/components/parameters/IndexUid'
+    post:
+      operationId: findSimilar
+      summary: Find similar documents
+      tags: [Similar]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimilarQuery'
+      responses:
+        '200':
+          description: Similar documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimilarResult'
+
+  # --- Facet Search ---
+  /indexes/{indexUid}/facet-search:
+    parameters:
+      - $ref: '#/components/parameters/IndexUid'
+    post:
+      operationId: facetSearch
+      summary: Search within facet values
+      tags: [Facet Search]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - facetName
+              properties:
+                facetName:
+                  type: string
+                facetQuery:
+                  type: string
+                q:
+                  type: string
+                filter:
+                  type: string
+                matchingStrategy:
+                  type: string
+                  enum: [last, all, frequency]
+      responses:
+        '200':
+          description: Facet values
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  facetHits:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        value:
+                          type: string
+                        count:
+                          type: integer
+                  facetQuery:
+                    type: string
+                  processingTimeMs:
+                    type: integer
+
+  # --- Documents ---
+  /indexes/{indexUid}/documents:
+    parameters:
+      - $ref: '#/components/parameters/IndexUid'
+    get:
+      operationId: getDocuments
+      summary: Browse documents
+      tags: [Documents]
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: fields
+          in: query
+          schema:
+            type: string
+          description: Comma-separated fields to return
+        - name: filter
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDocuments'
+    post:
+      operationId: addOrReplaceDocuments
+      summary: Add or replace documents
+      tags: [Documents]
+      parameters:
+        - name: primaryKey
+          in: query
+          schema:
+            type: string
+          description: Primary key field name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+          application/x-ndjson:
+            schema:
+              type: string
+          text/csv:
+            schema:
+              type: string
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+    put:
+      operationId: addOrUpdateDocuments
+      summary: Add or update documents (partial)
+      tags: [Documents]
+      parameters:
+        - name: primaryKey
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+          application/x-ndjson:
+            schema:
+              type: string
+          text/csv:
+            schema:
+              type: string
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+    delete:
+      operationId: deleteAllDocuments
+      summary: Delete all documents in the index
+      tags: [Documents]
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+
+  /indexes/{indexUid}/documents/{documentId}:
+    parameters:
+      - $ref: '#/components/parameters/IndexUid'
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getDocument
+      summary: Get a single document
+      tags: [Documents]
+      parameters:
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The document
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteDocument
+      summary: Delete a single document
+      tags: [Documents]
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+
+  /indexes/{indexUid}/documents/delete-batch:
+    parameters:
+      - $ref: '#/components/parameters/IndexUid'
+    post:
+      operationId: deleteDocumentsBatch
+      summary: Delete documents by IDs
+      tags: [Documents]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+
+  /indexes/{indexUid}/documents/delete:
+    parameters:
+      - $ref: '#/components/parameters/IndexUid'
+    post:
+      operationId: deleteDocumentsByFilter
+      summary: Delete documents by filter
+      tags: [Documents]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - filter
+              properties:
+                filter:
+                  description: Filter expression
+                  oneOf:
+                    - type: string
+                    - type: array
+                      items:
+                        type: string
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+
+  /indexes/{indexUid}/documents/edit:
+    parameters:
+      - $ref: '#/components/parameters/IndexUid'
+    post:
+      operationId: editDocumentsByFunction
+      summary: Edit documents using a function
+      tags: [Documents]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - function
+              properties:
+                filter:
+                  type: string
+                function:
+                  type: string
+                  description: JavaScript function body to transform documents
+                context:
+                  type: object
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+
+  # --- Settings ---
+  /indexes/{indexUid}/settings:
+    parameters:
+      - $ref: '#/components/parameters/IndexUid'
+    get:
+      operationId: getSettings
+      summary: Get all index settings
+      tags: [Settings]
+      responses:
+        '200':
+          description: Index settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+    patch:
+      operationId: updateSettings
+      summary: Update index settings
+      tags: [Settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Settings'
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+    delete:
+      operationId: resetSettings
+      summary: Reset all settings to defaults
+      tags: [Settings]
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+
+  # --- Tasks ---
+  /tasks:
+    get:
+      operationId: listTasks
+      summary: List all tasks
+      tags: [Tasks]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: from
+          in: query
+          schema:
+            type: integer
+          description: Task UID to start from
+        - name: uids
+          in: query
+          schema:
+            type: string
+          description: Comma-separated task UIDs
+        - name: statuses
+          in: query
+          schema:
+            type: string
+          description: Comma-separated statuses (enqueued, processing, succeeded, failed, canceled)
+        - name: types
+          in: query
+          schema:
+            type: string
+          description: Comma-separated task types
+        - name: indexUids
+          in: query
+          schema:
+            type: string
+          description: Comma-separated index UIDs
+      responses:
+        '200':
+          description: Paginated tasks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaskView'
+                  limit:
+                    type: integer
+                  from:
+                    type: integer
+                  next:
+                    type: integer
+                  total:
+                    type: integer
+    delete:
+      operationId: deleteTasks
+      summary: Delete completed tasks
+      tags: [Tasks]
+      parameters:
+        - name: uids
+          in: query
+          schema:
+            type: string
+        - name: statuses
+          in: query
+          schema:
+            type: string
+        - name: types
+          in: query
+          schema:
+            type: string
+        - name: indexUids
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Delete task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+
+  /tasks/{taskUid}:
+    parameters:
+      - name: taskUid
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: getTask
+      summary: Get task details
+      tags: [Tasks]
+      responses:
+        '200':
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskView'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tasks/cancel:
+    post:
+      operationId: cancelTasks
+      summary: Cancel enqueued or processing tasks
+      tags: [Tasks]
+      parameters:
+        - name: uids
+          in: query
+          schema:
+            type: string
+        - name: statuses
+          in: query
+          schema:
+            type: string
+        - name: types
+          in: query
+          schema:
+            type: string
+        - name: indexUids
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cancel task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+
+  # --- Batches ---
+  /batches:
+    get:
+      operationId: listBatches
+      summary: List task batches
+      tags: [Batches]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: from
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated batches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BatchView'
+                  limit:
+                    type: integer
+                  from:
+                    type: integer
+                  next:
+                    type: integer
+                  total:
+                    type: integer
+
+  /batches/{batchUid}:
+    parameters:
+      - name: batchUid
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: getBatch
+      summary: Get batch details
+      tags: [Batches]
+      responses:
+        '200':
+          description: Batch details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchView'
+
+  # --- API Keys ---
+  /keys:
+    get:
+      operationId: listKeys
+      summary: List API keys
+      tags: [Keys]
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paginated keys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedKeys'
+    post:
+      operationId: createKey
+      summary: Create an API key
+      tags: [Keys]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKey'
+      responses:
+        '201':
+          description: Key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeyView'
+
+  /keys/{keyOrUid}:
+    parameters:
+      - name: keyOrUid
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getKey
+      summary: Get an API key
+      tags: [Keys]
+      responses:
+        '200':
+          description: Key details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeyView'
+    patch:
+      operationId: updateKey
+      summary: Update an API key
+      tags: [Keys]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Key updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeyView'
+    delete:
+      operationId: deleteKey
+      summary: Delete an API key
+      tags: [Keys]
+      responses:
+        '204':
+          description: Key deleted
+
+  # --- Dumps ---
+  /dumps:
+    post:
+      operationId: createDump
+      summary: Create a database dump
+      tags: [Dumps]
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+
+  # --- Snapshots ---
+  /snapshots:
+    post:
+      operationId: createSnapshot
+      summary: Create a database snapshot
+      tags: [Snapshots]
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+
+  # --- Swap Indexes ---
+  /swap-indexes:
+    post:
+      operationId: swapIndexes
+      summary: Swap two index identifiers
+      tags: [Swap]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required:
+                  - indexes
+                properties:
+                  indexes:
+                    type: array
+                    items:
+                      type: string
+                    minItems: 2
+                    maxItems: 2
+      responses:
+        '202':
+          description: Task enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummarizedTaskView'
+
+  # --- Experimental Features ---
+  /experimental-features:
+    get:
+      operationId: getExperimentalFeatures
+      summary: Get runtime-togglable experimental features
+      tags: [Experimental]
+      responses:
+        '200':
+          description: Feature flags
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeTogglableFeatures'
+    patch:
+      operationId: updateExperimentalFeatures
+      summary: Toggle experimental features
+      tags: [Experimental]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuntimeTogglableFeatures'
+      responses:
+        '200':
+          description: Updated features
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeTogglableFeatures'
+
+  # --- Logs ---
+  /logs/stream:
+    post:
+      operationId: streamLogs
+      summary: Stream logs
+      tags: [Logs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - target
+                - mode
+              properties:
+                target:
+                  type: string
+                mode:
+                  type: string
+                  enum: [human, json, profile]
+      responses:
+        '200':
+          description: Log stream
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /logs/stderr:
+    get:
+      operationId: getStderrLogs
+      summary: Get stderr log configuration
+      tags: [Logs]
+      responses:
+        '200':
+          description: Current stderr log configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  target:
+                    type: string
+    put:
+      operationId: updateStderrLogs
+      summary: Update stderr log level
+      tags: [Logs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - target
+              properties:
+                target:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  target:
+                    type: string
+    delete:
+      operationId: resetStderrLogs
+      summary: Reset stderr log level to default
+      tags: [Logs]
+      responses:
+        '200':
+          description: Reset to default
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  target:
+                    type: string
+
+  # --- Metrics ---
+  /metrics:
+    get:
+      operationId: getMetrics
+      summary: Get Prometheus metrics
+      tags: [Stats]
+      responses:
+        '200':
+          description: Prometheus text metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  # --- Network ---
+  /network:
+    get:
+      operationId: getNetwork
+      summary: Get network/federation configuration
+      tags: [Network]
+      responses:
+        '200':
+          description: Network configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Network'
+    patch:
+      operationId: updateNetwork
+      summary: Update network configuration
+      tags: [Network]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Network'
+      responses:
+        '200':
+          description: Updated network config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Network'
+
+  # --- Export ---
+  /export:
+    post:
+      operationId: exportData
+      summary: Export index data
+      tags: [Export]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                indexes:
+                  type: array
+                  items:
+                    type: string
+                skipEmbeddings:
+                  type: boolean
+      responses:
+        '200':
+          description: Export stream
+          content:
+            application/x-ndjson:
+              schema:
+                type: string
+
+  # --- Webhooks ---
+  /webhooks:
+    get:
+      operationId: getWebhooks
+      summary: Get webhook configuration
+      tags: [Webhooks]
+      responses:
+        '200':
+          description: Webhook settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResults'
+    patch:
+      operationId: updateWebhooks
+      summary: Update webhook configuration
+      tags: [Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookSettings'
+      responses:
+        '200':
+          description: Updated webhook config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResults'
+    delete:
+      operationId: deleteWebhooks
+      summary: Delete all webhooks
+      tags: [Webhooks]
+      responses:
+        '200':
+          description: Webhooks deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResults'
+
+  # --- Chats ---
+  /chats:
+    get:
+      operationId: listChatWorkspaces
+      summary: List chat workspaces (experimental)
+      tags: [Chats]
+      responses:
+        '200':
+          description: Chat workspaces
+          content:
+            application/json:
+              schema:
+                type: object
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        API key passed as Bearer token. Use the master key or a key
+        created via the /keys endpoint.
+
+  parameters:
+    IndexUid:
+      name: indexUid
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^[a-zA-Z0-9_-]+$'
+      description: Unique index identifier
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authorization header
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ResponseError'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ResponseError'
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [available]
+
+    VersionResponse:
+      type: object
+      properties:
+        commitSha:
+          type: string
+        commitDate:
+          type: string
+        pkgVersion:
+          type: string
+
+    Stats:
+      type: object
+      properties:
+        databaseSize:
+          type: integer
+          format: int64
+        usedDatabaseSize:
+          type: integer
+          format: int64
+        lastUpdate:
+          type: string
+          format: date-time
+        indexes:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/IndexStats'
+
+    IndexStats:
+      type: object
+      properties:
+        numberOfDocuments:
+          type: integer
+        rawDocumentDbSize:
+          type: integer
+          format: int64
+        maxDocumentSize:
+          type: integer
+          format: int64
+        avgDocumentSize:
+          type: integer
+          format: int64
+        isIndexing:
+          type: boolean
+        fieldDistribution:
+          type: object
+          additionalProperties:
+            type: integer
+
+    IndexView:
+      type: object
+      properties:
+        uid:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        primaryKey:
+          type: string
+
+    PaginatedIndexes:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndexView'
+        offset:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+
+    IndexCreateRequest:
+      type: object
+      required:
+        - uid
+      properties:
+        uid:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]+$'
+        primaryKey:
+          type: string
+
+    UpdateIndexRequest:
+      type: object
+      properties:
+        primaryKey:
+          type: string
+
+    SearchQuery:
+      type: object
+      properties:
+        q:
+          type: string
+          description: Search query text
+        offset:
+          type: integer
+          default: 0
+        limit:
+          type: integer
+          default: 20
+        page:
+          type: integer
+        hitsPerPage:
+          type: integer
+        attributesToRetrieve:
+          type: array
+          items:
+            type: string
+        attributesToHighlight:
+          type: array
+          items:
+            type: string
+        attributesToCrop:
+          type: array
+          items:
+            type: string
+        cropLength:
+          type: integer
+          default: 10
+        cropMarker:
+          type: string
+          default: "..."
+        highlightPreTag:
+          type: string
+          default: "<em>"
+        highlightPostTag:
+          type: string
+          default: "</em>"
+        filter:
+          description: Filter expression (string or nested arrays)
+          oneOf:
+            - type: string
+            - type: array
+              items: {}
+        sort:
+          type: array
+          items:
+            type: string
+        facets:
+          type: array
+          items:
+            type: string
+        showMatchesPosition:
+          type: boolean
+        showRankingScore:
+          type: boolean
+        showRankingScoreDetails:
+          type: boolean
+        matchingStrategy:
+          type: string
+          enum: [last, all, frequency]
+        rankingScoreThreshold:
+          type: number
+        distinct:
+          type: string
+        vector:
+          type: array
+          items:
+            type: number
+        hybrid:
+          type: object
+          properties:
+            semanticRatio:
+              type: number
+            embedder:
+              type: string
+        retrieveVectors:
+          type: boolean
+        locales:
+          type: array
+          items:
+            type: string
+
+    SearchResult:
+      type: object
+      properties:
+        hits:
+          type: array
+          items:
+            type: object
+        offset:
+          type: integer
+        limit:
+          type: integer
+        estimatedTotalHits:
+          type: integer
+        totalHits:
+          type: integer
+        totalPages:
+          type: integer
+        page:
+          type: integer
+        hitsPerPage:
+          type: integer
+        processingTimeMs:
+          type: integer
+        query:
+          type: string
+        facetDistribution:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: integer
+        facetStats:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              min:
+                type: number
+              max:
+                type: number
+        semanticHitCount:
+          type: integer
+
+    FederatedSearch:
+      type: object
+      required:
+        - queries
+      properties:
+        queries:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchQueryWithIndex'
+        federation:
+          type: object
+          properties:
+            offset:
+              type: integer
+              default: 0
+            limit:
+              type: integer
+              default: 20
+            facetsByIndex:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+            mergeFacets:
+              type: object
+              properties:
+                maxValuesPerFacet:
+                  type: integer
+
+    SearchQueryWithIndex:
+      type: object
+      required:
+        - indexUid
+      properties:
+        indexUid:
+          type: string
+        q:
+          type: string
+        offset:
+          type: integer
+        limit:
+          type: integer
+        filter:
+          oneOf:
+            - type: string
+            - type: array
+              items: {}
+        sort:
+          type: array
+          items:
+            type: string
+        facets:
+          type: array
+          items:
+            type: string
+        attributesToRetrieve:
+          type: array
+          items:
+            type: string
+        showMatchesPosition:
+          type: boolean
+        showRankingScore:
+          type: boolean
+        matchingStrategy:
+          type: string
+          enum: [last, all, frequency]
+        federationOptions:
+          type: object
+          properties:
+            weight:
+              type: number
+
+    MultiSearchResults:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              indexUid:
+                type: string
+              hits:
+                type: array
+                items:
+                  type: object
+              query:
+                type: string
+              processingTimeMs:
+                type: integer
+              limit:
+                type: integer
+              offset:
+                type: integer
+              estimatedTotalHits:
+                type: integer
+
+    FederatedSearchResult:
+      type: object
+      properties:
+        hits:
+          type: array
+          items:
+            type: object
+        processingTimeMs:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        estimatedTotalHits:
+          type: integer
+        semanticHitCount:
+          type: integer
+        facetDistribution:
+          type: object
+        facetStats:
+          type: object
+
+    SimilarQuery:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          description: Document ID to find similar items for
+          oneOf:
+            - type: string
+            - type: integer
+        embedder:
+          type: string
+        attributesToRetrieve:
+          type: array
+          items:
+            type: string
+        offset:
+          type: integer
+          default: 0
+        limit:
+          type: integer
+          default: 20
+        filter:
+          oneOf:
+            - type: string
+            - type: array
+              items: {}
+        showRankingScore:
+          type: boolean
+        showRankingScoreDetails:
+          type: boolean
+        rankingScoreThreshold:
+          type: number
+        retrieveVectors:
+          type: boolean
+
+    SimilarResult:
+      type: object
+      properties:
+        hits:
+          type: array
+          items:
+            type: object
+        id:
+          oneOf:
+            - type: string
+            - type: integer
+        processingTimeMs:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        estimatedTotalHits:
+          type: integer
+
+    Settings:
+      type: object
+      properties:
+        displayedAttributes:
+          type: array
+          items:
+            type: string
+        searchableAttributes:
+          type: array
+          items:
+            type: string
+        filterableAttributes:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: object
+        sortableAttributes:
+          type: array
+          items:
+            type: string
+        rankingRules:
+          type: array
+          items:
+            type: string
+        stopWords:
+          type: array
+          items:
+            type: string
+        nonSeparatorTokens:
+          type: array
+          items:
+            type: string
+        separatorTokens:
+          type: array
+          items:
+            type: string
+        dictionary:
+          type: array
+          items:
+            type: string
+        synonyms:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        distinctAttribute:
+          type: string
+        proximityPrecision:
+          type: string
+          enum: [byWord, byAttribute]
+        typoTolerance:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            minWordSizeForTypos:
+              type: object
+              properties:
+                oneTypo:
+                  type: integer
+                twoTypos:
+                  type: integer
+            disableOnWords:
+              type: array
+              items:
+                type: string
+            disableOnAttributes:
+              type: array
+              items:
+                type: string
+        faceting:
+          type: object
+          properties:
+            maxValuesPerFacet:
+              type: integer
+            sortFacetValuesBy:
+              type: object
+              additionalProperties:
+                type: string
+                enum: [alpha, count]
+        pagination:
+          type: object
+          properties:
+            maxTotalHits:
+              type: integer
+        embedders:
+          type: object
+          additionalProperties:
+            type: object
+        searchCutoffMs:
+          type: integer
+        localizedAttributes:
+          type: array
+          items:
+            type: object
+            properties:
+              attributePatterns:
+                type: array
+                items:
+                  type: string
+              locales:
+                type: array
+                items:
+                  type: string
+        prefixSearch:
+          type: string
+          enum: [indexingTime, disabled]
+        facetSearch:
+          type: boolean
+
+    SummarizedTaskView:
+      type: object
+      properties:
+        taskUid:
+          type: integer
+        indexUid:
+          type: string
+        status:
+          type: string
+          enum: [enqueued, processing, succeeded, failed, canceled]
+        type:
+          type: string
+        enqueuedAt:
+          type: string
+          format: date-time
+
+    TaskView:
+      type: object
+      properties:
+        uid:
+          type: integer
+        indexUid:
+          type: string
+        status:
+          type: string
+          enum: [enqueued, processing, succeeded, failed, canceled]
+        type:
+          type: string
+        canceledBy:
+          type: integer
+        details:
+          type: object
+        error:
+          $ref: '#/components/schemas/ResponseError'
+        duration:
+          type: string
+        enqueuedAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+
+    BatchView:
+      type: object
+      properties:
+        uid:
+          type: integer
+        details:
+          type: object
+        stats:
+          type: object
+          properties:
+            totalNbTasks:
+              type: integer
+            status:
+              type: object
+              additionalProperties:
+                type: integer
+            types:
+              type: object
+              additionalProperties:
+                type: integer
+            indexUids:
+              type: object
+              additionalProperties:
+                type: integer
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        duration:
+          type: string
+        progress:
+          type: object
+
+    KeyView:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        key:
+          type: string
+        uid:
+          type: string
+          format: uuid
+        actions:
+          type: array
+          items:
+            type: string
+        indexes:
+          type: array
+          items:
+            type: string
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateApiKey:
+      type: object
+      required:
+        - actions
+        - indexes
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        uid:
+          type: string
+          format: uuid
+        actions:
+          type: array
+          items:
+            type: string
+          description: "Actions like search, documents.add, indexes.create, etc."
+        indexes:
+          type: array
+          items:
+            type: string
+          description: "Index UIDs this key can access (* for all)"
+        expiresAt:
+          type: string
+          format: date-time
+
+    PaginatedKeys:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/KeyView'
+        offset:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+
+    PaginatedDocuments:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+        offset:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+
+    RuntimeTogglableFeatures:
+      type: object
+      properties:
+        vectorStore:
+          type: boolean
+        metrics:
+          type: boolean
+        logsRoute:
+          type: boolean
+        editDocumentsByFunction:
+          type: boolean
+        containsFilter:
+          type: boolean
+        network:
+          type: boolean
+        chatCompletions:
+          type: boolean
+        multiModal:
+          type: boolean
+        exportPuffinReports:
+          type: boolean
+        getTaskDocumentsRoute:
+          type: boolean
+        compositeEmbedders:
+          type: boolean
+
+    Network:
+      type: object
+      properties:
+        self:
+          type: string
+          description: This instance's URL
+        remotes:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              url:
+                type: string
+              searchApiKey:
+                type: string
+
+    WebhookSettings:
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          url:
+            type: string
+            format: uri
+          authorization:
+            type: string
+          events:
+            type: array
+            items:
+              type: string
+
+    WebhookResults:
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          url:
+            type: string
+            format: uri
+          events:
+            type: array
+            items:
+              type: string
+
+    ResponseError:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+        type:
+          type: string
+          enum: [invalid_request, internal, auth, system]
+        link:
+          type: string
+          format: uri

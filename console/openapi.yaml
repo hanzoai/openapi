@@ -1,0 +1,2920 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Console API
+  description: |
+    Hanzo Console is an LLM engineering platform for observability, prompt management,
+    evaluations, and datasets. Based on Langfuse, it provides comprehensive tracing
+    and monitoring for AI applications.
+
+    ## Authentication
+
+    Authenticate with Basic Auth using project API keys:
+    - username: Hanzo Public Key
+    - password: Hanzo Secret Key
+
+    Organization-scoped API keys support org-level endpoints (projects, memberships).
+    Project-scoped API keys support project-level endpoints (traces, observations, scores, etc.).
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://console.hanzo.ai
+    description: Production
+
+security:
+  - bearerAuth: []
+  - basicAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer token authentication
+    basicAuth:
+      type: http
+      scheme: basic
+      description: |
+        Basic Auth with Hanzo Public Key as username and Secret Key as password.
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        error:
+          type: string
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalItems:
+          type: integer
+        totalPages:
+          type: integer
+
+    # --- Trace ---
+    Trace:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        name:
+          type: string
+        userId:
+          type: string
+        sessionId:
+          type: string
+        release:
+          type: string
+        version:
+          type: string
+        environment:
+          type: string
+        metadata:
+          type: object
+        input:
+          description: Input of the trace (any JSON)
+        output:
+          description: Output of the trace (any JSON)
+        tags:
+          type: array
+          items:
+            type: string
+        public:
+          type: boolean
+        bookmarked:
+          type: boolean
+        htmlPath:
+          type: string
+        latency:
+          type: number
+          description: Latency in seconds
+        totalCost:
+          type: number
+          description: Total cost in USD
+        observations:
+          type: array
+          items:
+            type: string
+            description: Observation IDs
+        scores:
+          type: array
+          items:
+            type: string
+            description: Score IDs
+
+    TraceWithFullDetails:
+      allOf:
+        - $ref: '#/components/schemas/Trace'
+        - type: object
+          properties:
+            observations:
+              type: array
+              items:
+                $ref: '#/components/schemas/Observation'
+            scores:
+              type: array
+              items:
+                $ref: '#/components/schemas/Score'
+
+    # --- Observation ---
+    Observation:
+      type: object
+      properties:
+        id:
+          type: string
+        traceId:
+          type: string
+        type:
+          type: string
+          enum: [GENERATION, SPAN, EVENT]
+        name:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        completionStartTime:
+          type: string
+          format: date-time
+        model:
+          type: string
+        modelParameters:
+          type: object
+        input:
+          description: Input (any JSON)
+        output:
+          description: Output (any JSON)
+        metadata:
+          type: object
+        level:
+          type: string
+          enum: [DEBUG, DEFAULT, WARNING, ERROR]
+        statusMessage:
+          type: string
+        parentObservationId:
+          type: string
+        version:
+          type: string
+        environment:
+          type: string
+        promptId:
+          type: string
+        promptName:
+          type: string
+        promptVersion:
+          type: integer
+        usage:
+          $ref: '#/components/schemas/Usage'
+        calculatedInputCost:
+          type: number
+        calculatedOutputCost:
+          type: number
+        calculatedTotalCost:
+          type: number
+        latency:
+          type: number
+          description: Latency in seconds
+        timeToFirstToken:
+          type: number
+          description: Time to first token in seconds
+
+    Usage:
+      type: object
+      properties:
+        input:
+          type: integer
+          description: Input token count
+        output:
+          type: integer
+          description: Output token count
+        total:
+          type: integer
+          description: Total token count
+        unit:
+          type: string
+          enum: [TOKENS, CHARACTERS, MILLISECONDS, SECONDS, IMAGES, REQUESTS]
+
+    # --- Score ---
+    Score:
+      type: object
+      properties:
+        id:
+          type: string
+        traceId:
+          type: string
+        observationId:
+          type: string
+        name:
+          type: string
+        value:
+          description: Numeric or string value
+        stringValue:
+          type: string
+        dataType:
+          type: string
+          enum: [NUMERIC, CATEGORICAL, BOOLEAN]
+        comment:
+          type: string
+        source:
+          type: string
+          enum: [API, EVAL, ANNOTATION]
+        environment:
+          type: string
+        configId:
+          type: string
+        queueId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateScoreRequest:
+      type: object
+      required: [name, value]
+      properties:
+        id:
+          type: string
+        traceId:
+          type: string
+        sessionId:
+          type: string
+        observationId:
+          type: string
+        datasetRunId:
+          type: string
+        name:
+          type: string
+        value:
+          description: Numeric for numeric/boolean scores, string for categorical
+        comment:
+          type: string
+        metadata:
+          type: object
+        environment:
+          type: string
+        queueId:
+          type: string
+        dataType:
+          type: string
+          enum: [NUMERIC, CATEGORICAL, BOOLEAN]
+        configId:
+          type: string
+
+    # --- Score Config ---
+    ScoreConfig:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        dataType:
+          type: string
+          enum: [NUMERIC, CATEGORICAL, BOOLEAN]
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              value:
+                type: number
+        minValue:
+          type: number
+        maxValue:
+          type: number
+        description:
+          type: string
+        isArchived:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # --- Session ---
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        projectId:
+          type: string
+        environment:
+          type: string
+
+    SessionWithTraces:
+      allOf:
+        - $ref: '#/components/schemas/Session'
+        - type: object
+          properties:
+            traces:
+              type: array
+              items:
+                $ref: '#/components/schemas/Trace'
+
+    # --- Dataset ---
+    Dataset:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        metadata:
+          type: object
+        projectId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DatasetItem:
+      type: object
+      properties:
+        id:
+          type: string
+        datasetId:
+          type: string
+        input:
+          description: Any JSON
+        expectedOutput:
+          description: Any JSON
+        metadata:
+          description: Any JSON
+        sourceTraceId:
+          type: string
+        sourceObservationId:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, ARCHIVED]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DatasetRun:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        metadata:
+          type: object
+        datasetId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DatasetRunItem:
+      type: object
+      properties:
+        id:
+          type: string
+        datasetRunId:
+          type: string
+        datasetItemId:
+          type: string
+        traceId:
+          type: string
+        observationId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateDatasetItemRequest:
+      type: object
+      required: [datasetName]
+      properties:
+        datasetName:
+          type: string
+        input: {}
+        expectedOutput: {}
+        metadata: {}
+        sourceTraceId:
+          type: string
+        sourceObservationId:
+          type: string
+        id:
+          type: string
+          description: Upsert key. Must be unique within the project.
+        status:
+          type: string
+          enum: [ACTIVE, ARCHIVED]
+
+    CreateDatasetRunItemRequest:
+      type: object
+      required: [datasetItemId, traceId, runName]
+      properties:
+        datasetItemId:
+          type: string
+        traceId:
+          type: string
+        observationId:
+          type: string
+        runName:
+          type: string
+        runDescription:
+          type: string
+        metadata:
+          type: object
+
+    # --- Prompt ---
+    Prompt:
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: integer
+        prompt:
+          description: Prompt content (string or chat messages array)
+        type:
+          type: string
+          enum: [text, chat]
+        config:
+          type: object
+        labels:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PromptMeta:
+      type: object
+      properties:
+        name:
+          type: string
+        versions:
+          type: array
+          items:
+            type: integer
+        labels:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        lastUpdatedAt:
+          type: string
+          format: date-time
+        lastConfig:
+          type: object
+
+    CreatePromptRequest:
+      type: object
+      required: [name, prompt, type]
+      properties:
+        name:
+          type: string
+        prompt:
+          description: Prompt content (string for text, array of messages for chat)
+        type:
+          type: string
+          enum: [text, chat]
+        config:
+          type: object
+        labels:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        commitMessage:
+          type: string
+
+    # --- Model ---
+    Model:
+      type: object
+      properties:
+        id:
+          type: string
+        modelName:
+          type: string
+        matchPattern:
+          type: string
+        startDate:
+          type: string
+          format: date-time
+        unit:
+          type: string
+          enum: [TOKENS, CHARACTERS, MILLISECONDS, SECONDS, IMAGES, REQUESTS]
+        inputPrice:
+          type: number
+        outputPrice:
+          type: number
+        totalPrice:
+          type: number
+        tokenizerId:
+          type: string
+        tokenizerConfig:
+          type: object
+        isHanzoManaged:
+          type: boolean
+
+    CreateModelRequest:
+      type: object
+      required: [modelName, matchPattern]
+      properties:
+        modelName:
+          type: string
+        matchPattern:
+          type: string
+        startDate:
+          type: string
+          format: date-time
+        unit:
+          type: string
+          enum: [TOKENS, CHARACTERS, MILLISECONDS, SECONDS, IMAGES, REQUESTS]
+        inputPrice:
+          type: number
+        outputPrice:
+          type: number
+        totalPrice:
+          type: number
+        tokenizerId:
+          type: string
+        tokenizerConfig:
+          type: object
+
+    # --- Project ---
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        organization:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        metadata:
+          type: object
+        retentionDays:
+          type: integer
+
+    # --- Annotation Queue ---
+    AnnotationQueue:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        scoreConfigIds:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AnnotationQueueItem:
+      type: object
+      properties:
+        id:
+          type: string
+        queueId:
+          type: string
+        objectType:
+          type: string
+          enum: [TRACE, OBSERVATION]
+        objectId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, SKIPPED]
+        completedAt:
+          type: string
+          format: date-time
+        assignedUserId:
+          type: string
+
+    # --- Comment ---
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        objectType:
+          type: string
+        objectId:
+          type: string
+        content:
+          type: string
+        authorUserId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # --- Media ---
+    MediaRecord:
+      type: object
+      properties:
+        mediaId:
+          type: string
+        contentType:
+          type: string
+        contentLength:
+          type: integer
+        uploadedAt:
+          type: string
+          format: date-time
+        url:
+          type: string
+        urlExpiry:
+          type: string
+
+    # --- Ingestion ---
+    IngestionEvent:
+      type: object
+      required: [id, type, timestamp, body]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - trace-create
+            - score-create
+            - span-create
+            - span-update
+            - generation-create
+            - generation-update
+            - event-create
+            - sdk-log
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+        body:
+          type: object
+
+    IngestionResponse:
+      type: object
+      properties:
+        successes:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              status:
+                type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              status:
+                type: integer
+              message:
+                type: string
+              error:
+                type: string
+
+    # --- Membership ---
+    Membership:
+      type: object
+      properties:
+        userId:
+          type: string
+        role:
+          type: string
+          enum: [OWNER, ADMIN, MEMBER, VIEWER]
+        email:
+          type: string
+        name:
+          type: string
+
+    # --- Health ---
+    HealthResponse:
+      type: object
+      properties:
+        version:
+          type: string
+        status:
+          type: string
+
+tags:
+  - name: Health
+    description: Service health checks
+  - name: Traces
+    description: Trace management and retrieval
+  - name: Observations
+    description: Observation (span, generation, event) retrieval
+  - name: Scores
+    description: Score creation and retrieval
+  - name: Score Configs
+    description: Score configuration management
+  - name: Sessions
+    description: Session management
+  - name: Datasets
+    description: Dataset management
+  - name: Dataset Items
+    description: Dataset item CRUD
+  - name: Dataset Run Items
+    description: Dataset run item creation
+  - name: Prompts
+    description: Prompt version management
+  - name: Models
+    description: Model definition and pricing
+  - name: Metrics
+    description: Aggregated metrics queries
+  - name: Projects
+    description: Project management
+  - name: Organizations
+    description: Organization management and memberships
+  - name: Annotation Queues
+    description: Annotation queue management
+  - name: Comments
+    description: Comment management
+  - name: Media
+    description: Media upload and retrieval
+  - name: Ingestion
+    description: Batch event ingestion (legacy)
+
+paths:
+  # ── Health ──────────────────────────────────────────────────
+  /api/public/health:
+    get:
+      operationId: getHealth
+      tags: [Health]
+      summary: Check health of API and database
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service unavailable
+
+  # ── Traces ──────────────────────────────────────────────────
+  /api/public/traces:
+    get:
+      operationId: listTraces
+      tags: [Traces]
+      summary: Get list of traces
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: sessionId
+          in: query
+          schema:
+            type: string
+        - name: fromTimestamp
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: toTimestamp
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: orderBy
+          in: query
+          schema:
+            type: string
+          description: 'Format: field.asc|desc (e.g., timestamp.desc)'
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: version
+          in: query
+          schema:
+            type: string
+        - name: release
+          in: query
+          schema:
+            type: string
+        - name: environment
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: filter
+          in: query
+          schema:
+            type: string
+          description: JSON array of filter conditions (overrides other filters when provided)
+      responses:
+        '200':
+          description: Paginated trace list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Trace'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+    delete:
+      operationId: deleteTraces
+      tags: [Traces]
+      summary: Delete multiple traces
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [traceIds]
+              properties:
+                traceIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Traces deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /api/public/traces/{traceId}:
+    get:
+      operationId: getTrace
+      tags: [Traces]
+      summary: Get a specific trace with full details
+      parameters:
+        - name: traceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Trace with observations and scores
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TraceWithFullDetails'
+    delete:
+      operationId: deleteTrace
+      tags: [Traces]
+      summary: Delete a specific trace
+      parameters:
+        - name: traceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Trace deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  # ── Observations ────────────────────────────────────────────
+  /api/public/observations:
+    get:
+      operationId: listObservations
+      tags: [Observations]
+      summary: Get a list of observations
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: traceId
+          in: query
+          schema:
+            type: string
+        - name: level
+          in: query
+          schema:
+            type: string
+            enum: [DEBUG, DEFAULT, WARNING, ERROR]
+        - name: parentObservationId
+          in: query
+          schema:
+            type: string
+        - name: environment
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: fromStartTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: toStartTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: version
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated observation list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Observation'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  /api/public/observations/{observationId}:
+    get:
+      operationId: getObservation
+      tags: [Observations]
+      summary: Get an observation by ID
+      parameters:
+        - name: observationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Observation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Observation'
+
+  /api/public/v2/observations:
+    get:
+      operationId: listObservationsV2
+      tags: [Observations]
+      summary: Get observations (v2 with cursor pagination)
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: traceId
+          in: query
+          schema:
+            type: string
+        - name: fromStartTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: toStartTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Paginated observation list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Observation'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  # ── Scores ──────────────────────────────────────────────────
+  /api/public/scores:
+    post:
+      operationId: createScore
+      tags: [Scores]
+      summary: Create a score
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScoreRequest'
+      responses:
+        '200':
+          description: Score created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+    get:
+      operationId: listScores
+      tags: [Scores]
+      summary: Get all scores
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: fromTimestamp
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: toTimestamp
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: source
+          in: query
+          schema:
+            type: string
+            enum: [API, EVAL, ANNOTATION]
+        - name: operator
+          in: query
+          schema:
+            type: string
+        - name: value
+          in: query
+          schema:
+            type: number
+        - name: scoreIds
+          in: query
+          schema:
+            type: string
+            description: Comma-separated score IDs
+        - name: configId
+          in: query
+          schema:
+            type: string
+        - name: dataType
+          in: query
+          schema:
+            type: string
+            enum: [NUMERIC, CATEGORICAL, BOOLEAN]
+        - name: environment
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Paginated score list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Score'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  /api/public/scores/{scoreId}:
+    get:
+      operationId: getScore
+      tags: [Scores]
+      summary: Get a score by ID
+      parameters:
+        - name: scoreId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Score details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Score'
+    delete:
+      operationId: deleteScore
+      tags: [Scores]
+      summary: Delete a score
+      parameters:
+        - name: scoreId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Score deleted
+
+  # ── Score Configs ───────────────────────────────────────────
+  /api/public/score-configs:
+    get:
+      operationId: listScoreConfigs
+      tags: [Score Configs]
+      summary: Get all score configs
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Score config list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScoreConfig'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+    post:
+      operationId: createScoreConfig
+      tags: [Score Configs]
+      summary: Create a score config
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, dataType]
+              properties:
+                name:
+                  type: string
+                dataType:
+                  type: string
+                  enum: [NUMERIC, CATEGORICAL, BOOLEAN]
+                categories:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      label:
+                        type: string
+                      value:
+                        type: number
+                minValue:
+                  type: number
+                maxValue:
+                  type: number
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Score config created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreConfig'
+
+  /api/public/score-configs/{configId}:
+    get:
+      operationId: getScoreConfig
+      tags: [Score Configs]
+      summary: Get a score config
+      parameters:
+        - name: configId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Score config details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreConfig'
+    patch:
+      operationId: updateScoreConfig
+      tags: [Score Configs]
+      summary: Update a score config
+      parameters:
+        - name: configId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isArchived:
+                  type: boolean
+                name:
+                  type: string
+                categories:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      label:
+                        type: string
+                      value:
+                        type: number
+                minValue:
+                  type: number
+                maxValue:
+                  type: number
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Score config updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreConfig'
+
+  # ── Sessions ────────────────────────────────────────────────
+  /api/public/sessions:
+    get:
+      operationId: listSessions
+      tags: [Sessions]
+      summary: Get sessions
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: fromTimestamp
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: toTimestamp
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: environment
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Paginated session list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Session'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  /api/public/sessions/{sessionId}:
+    get:
+      operationId: getSession
+      tags: [Sessions]
+      summary: Get a session with its traces
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session with traces
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionWithTraces'
+
+  # ── Datasets ────────────────────────────────────────────────
+  /api/public/v2/datasets:
+    get:
+      operationId: listDatasets
+      tags: [Datasets]
+      summary: Get all datasets
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated dataset list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Dataset'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+    post:
+      operationId: createDataset
+      tags: [Datasets]
+      summary: Create a dataset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                metadata:
+                  type: object
+      responses:
+        '200':
+          description: Created dataset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dataset'
+
+  /api/public/v2/datasets/{datasetName}:
+    get:
+      operationId: getDataset
+      tags: [Datasets]
+      summary: Get a dataset by name
+      parameters:
+        - name: datasetName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dataset details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dataset'
+
+  /api/public/datasets/{datasetName}/runs:
+    get:
+      operationId: listDatasetRuns
+      tags: [Datasets]
+      summary: Get dataset runs
+      parameters:
+        - name: datasetName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Dataset runs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DatasetRun'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  /api/public/datasets/{datasetName}/runs/{runName}:
+    get:
+      operationId: getDatasetRun
+      tags: [Datasets]
+      summary: Get a dataset run and its items
+      parameters:
+        - name: datasetName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: runName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dataset run with items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  datasetId:
+                    type: string
+                  datasetRunItems:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DatasetRunItem'
+    delete:
+      operationId: deleteDatasetRun
+      tags: [Datasets]
+      summary: Delete a dataset run and all its run items
+      parameters:
+        - name: datasetName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: runName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Run deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  # ── Dataset Items ───────────────────────────────────────────
+  /api/public/dataset-items:
+    get:
+      operationId: listDatasetItems
+      tags: [Dataset Items]
+      summary: Get dataset items
+      parameters:
+        - name: datasetName
+          in: query
+          schema:
+            type: string
+        - name: sourceTraceId
+          in: query
+          schema:
+            type: string
+        - name: sourceObservationId
+          in: query
+          schema:
+            type: string
+        - name: version
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: ISO 8601 timestamp. Returns state of dataset at this time.
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated dataset items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DatasetItem'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+    post:
+      operationId: createDatasetItem
+      tags: [Dataset Items]
+      summary: Create or upsert a dataset item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDatasetItemRequest'
+      responses:
+        '200':
+          description: Created dataset item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetItem'
+
+  /api/public/dataset-items/{id}:
+    get:
+      operationId: getDatasetItem
+      tags: [Dataset Items]
+      summary: Get a dataset item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dataset item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetItem'
+    delete:
+      operationId: deleteDatasetItem
+      tags: [Dataset Items]
+      summary: Delete a dataset item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Item deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  # ── Dataset Run Items ───────────────────────────────────────
+  /api/public/dataset-run-items:
+    post:
+      operationId: createDatasetRunItem
+      tags: [Dataset Run Items]
+      summary: Create a dataset run item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDatasetRunItemRequest'
+      responses:
+        '200':
+          description: Created run item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetRunItem'
+
+  # ── Prompts ─────────────────────────────────────────────────
+  /api/public/v2/prompts:
+    get:
+      operationId: listPrompts
+      tags: [Prompts]
+      summary: Get a list of prompt names with versions and labels
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: label
+          in: query
+          schema:
+            type: string
+        - name: tag
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: fromUpdatedAt
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: toUpdatedAt
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Prompt list with metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PromptMeta'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+    post:
+      operationId: createPrompt
+      tags: [Prompts]
+      summary: Create a new prompt version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePromptRequest'
+      responses:
+        '200':
+          description: Created prompt version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prompt'
+
+  /api/public/v2/prompts/{promptName}:
+    get:
+      operationId: getPrompt
+      tags: [Prompts]
+      summary: Get a prompt by name
+      parameters:
+        - name: promptName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: query
+          schema:
+            type: integer
+        - name: label
+          in: query
+          schema:
+            type: string
+          description: Defaults to "production" if no label or version is set
+      responses:
+        '200':
+          description: Prompt details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prompt'
+    delete:
+      operationId: deletePrompt
+      tags: [Prompts]
+      summary: Delete prompt versions
+      description: If neither version nor label is specified, all versions are deleted.
+      parameters:
+        - name: promptName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: label
+          in: query
+          schema:
+            type: string
+        - name: version
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Prompt deleted
+
+  /api/public/v2/prompts/{promptName}/versions/{promptVersion}:
+    get:
+      operationId: getPromptVersion
+      tags: [Prompts]
+      summary: Get a specific prompt version
+      parameters:
+        - name: promptName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: promptVersion
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Prompt version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prompt'
+
+  # ── Models ──────────────────────────────────────────────────
+  /api/public/models:
+    get:
+      operationId: listModels
+      tags: [Models]
+      summary: Get all models
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated model list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Model'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+    post:
+      operationId: createModel
+      tags: [Models]
+      summary: Create a model definition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateModelRequest'
+      responses:
+        '200':
+          description: Created model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Model'
+
+  /api/public/models/{id}:
+    get:
+      operationId: getModel
+      tags: [Models]
+      summary: Get a model by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Model'
+    delete:
+      operationId: deleteModel
+      tags: [Models]
+      summary: Delete a model
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model deleted
+
+  # ── Metrics ─────────────────────────────────────────────────
+  /api/public/metrics:
+    get:
+      operationId: getMetrics
+      tags: [Metrics]
+      summary: Get metrics from the project
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+          description: JSON string containing the query parameters (view, dimensions, metrics, filters, timeDimension, fromTimestamp, toTimestamp)
+      responses:
+        '200':
+          description: Metrics data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+
+  /api/public/metrics/daily:
+    get:
+      operationId: getDailyMetrics
+      tags: [Metrics]
+      summary: Get daily metrics
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: traceName
+          in: query
+          schema:
+            type: string
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: fromTimestamp
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: toTimestamp
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: environment
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Daily metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        countTraces:
+                          type: integer
+                        countObservations:
+                          type: integer
+                        totalCost:
+                          type: number
+                        usage:
+                          type: array
+                          items:
+                            type: object
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  /api/public/v2/metrics:
+    get:
+      operationId: getMetricsV2
+      tags: [Metrics]
+      summary: Get metrics (v2, better performance)
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+          description: JSON query string
+      responses:
+        '200':
+          description: Metrics data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+
+  # ── Projects ────────────────────────────────────────────────
+  /api/public/projects:
+    get:
+      operationId: getProject
+      tags: [Projects]
+      summary: Get project associated with API key
+      responses:
+        '200':
+          description: Project data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
+    post:
+      operationId: createProject
+      tags: [Projects]
+      summary: Create a new project (requires organization-scoped API key)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                metadata:
+                  type: object
+                retention:
+                  type: integer
+                  description: Days to retain data (0 or >= 3)
+      responses:
+        '200':
+          description: Created project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /api/public/projects/{projectId}:
+    get:
+      operationId: getProjectById
+      tags: [Projects]
+      summary: Get a project by ID
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+    put:
+      operationId: updateProject
+      tags: [Projects]
+      summary: Update a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                metadata:
+                  type: object
+                retention:
+                  type: integer
+      responses:
+        '200':
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+    delete:
+      operationId: deleteProject
+      tags: [Projects]
+      summary: Delete a project (async)
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Deletion accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
+  /api/public/projects/{projectId}/apiKeys:
+    get:
+      operationId: listProjectApiKeys
+      tags: [Projects]
+      summary: Get all API keys for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: API key list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apiKeys:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+                        expiresAt:
+                          type: string
+                          format: date-time
+                        lastUsedAt:
+                          type: string
+                          format: date-time
+                        note:
+                          type: string
+                        publicKey:
+                          type: string
+                        displaySecretKey:
+                          type: string
+    post:
+      operationId: createProjectApiKey
+      tags: [Projects]
+      summary: Create an API key for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+                publicKey:
+                  type: string
+                secretKey:
+                  type: string
+      responses:
+        '200':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  publicKey:
+                    type: string
+                  secretKey:
+                    type: string
+                  displaySecretKey:
+                    type: string
+
+  /api/public/projects/{projectId}/apiKeys/{apiKeyId}:
+    delete:
+      operationId: deleteProjectApiKey
+      tags: [Projects]
+      summary: Delete a project API key
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: apiKeyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: API key deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /api/public/projects/{projectId}/memberships:
+    get:
+      operationId: listProjectMemberships
+      tags: [Organizations]
+      summary: Get all memberships for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Memberships
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memberships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Membership'
+    put:
+      operationId: updateProjectMembership
+      tags: [Organizations]
+      summary: Create or update a project membership
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, role]
+              properties:
+                userId:
+                  type: string
+                role:
+                  type: string
+                  enum: [OWNER, ADMIN, MEMBER, VIEWER]
+      responses:
+        '200':
+          description: Membership updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Membership'
+    delete:
+      operationId: deleteProjectMembership
+      tags: [Organizations]
+      summary: Delete a project membership
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+      responses:
+        '200':
+          description: Membership deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  userId:
+                    type: string
+
+  # ── Organizations ───────────────────────────────────────────
+  /api/public/organizations/memberships:
+    get:
+      operationId: listOrganizationMemberships
+      tags: [Organizations]
+      summary: Get all memberships for the organization
+      responses:
+        '200':
+          description: Organization memberships
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memberships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Membership'
+    put:
+      operationId: updateOrganizationMembership
+      tags: [Organizations]
+      summary: Create or update an organization membership
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, role]
+              properties:
+                userId:
+                  type: string
+                role:
+                  type: string
+                  enum: [OWNER, ADMIN, MEMBER, VIEWER]
+      responses:
+        '200':
+          description: Membership updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Membership'
+    delete:
+      operationId: deleteOrganizationMembership
+      tags: [Organizations]
+      summary: Delete an organization membership
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+      responses:
+        '200':
+          description: Membership deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  userId:
+                    type: string
+
+  /api/public/organizations/projects:
+    get:
+      operationId: listOrganizationProjects
+      tags: [Organizations]
+      summary: Get all projects for the organization
+      responses:
+        '200':
+          description: Organization projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        metadata:
+                          type: object
+                        createdAt:
+                          type: string
+                          format: date-time
+                        updatedAt:
+                          type: string
+                          format: date-time
+
+  /api/public/organizations/apiKeys:
+    get:
+      operationId: listOrganizationApiKeys
+      tags: [Organizations]
+      summary: Get all API keys for the organization
+      responses:
+        '200':
+          description: Organization API keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apiKeys:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+                        expiresAt:
+                          type: string
+                          format: date-time
+                        lastUsedAt:
+                          type: string
+                          format: date-time
+                        note:
+                          type: string
+                        publicKey:
+                          type: string
+                        displaySecretKey:
+                          type: string
+
+  # ── Annotation Queues ───────────────────────────────────────
+  /api/public/annotation-queues:
+    get:
+      operationId: listAnnotationQueues
+      tags: [Annotation Queues]
+      summary: Get all annotation queues
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Annotation queues
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AnnotationQueue'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+    post:
+      operationId: createAnnotationQueue
+      tags: [Annotation Queues]
+      summary: Create an annotation queue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                scoreConfigIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Created queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnotationQueue'
+
+  /api/public/annotation-queues/{queueId}:
+    get:
+      operationId: getAnnotationQueue
+      tags: [Annotation Queues]
+      summary: Get an annotation queue
+      parameters:
+        - name: queueId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Annotation queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnotationQueue'
+
+  /api/public/annotation-queues/{queueId}/items:
+    get:
+      operationId: listAnnotationQueueItems
+      tags: [Annotation Queues]
+      summary: Get items for an annotation queue
+      parameters:
+        - name: queueId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, COMPLETED, SKIPPED]
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Queue items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AnnotationQueueItem'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  # ── Comments ────────────────────────────────────────────────
+  /api/public/comments:
+    get:
+      operationId: listComments
+      tags: [Comments]
+      summary: Get all comments
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: objectType
+          in: query
+          schema:
+            type: string
+          description: Filter by object type (trace, observation, session, prompt)
+        - name: objectId
+          in: query
+          schema:
+            type: string
+        - name: authorUserId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Comments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+    post:
+      operationId: createComment
+      tags: [Comments]
+      summary: Create a comment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, objectType, objectId, content]
+              properties:
+                projectId:
+                  type: string
+                objectType:
+                  type: string
+                objectId:
+                  type: string
+                content:
+                  type: string
+                  maxLength: 5000
+                authorUserId:
+                  type: string
+      responses:
+        '200':
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+
+  /api/public/comments/{commentId}:
+    get:
+      operationId: getComment
+      tags: [Comments]
+      summary: Get a comment by ID
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Comment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+
+  # ── Media ───────────────────────────────────────────────────
+  /api/public/media:
+    post:
+      operationId: getMediaUploadUrl
+      tags: [Media]
+      summary: Get a presigned upload URL for a media record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [traceId, contentType, contentLength, sha256Hash, field]
+              properties:
+                traceId:
+                  type: string
+                observationId:
+                  type: string
+                contentType:
+                  type: string
+                contentLength:
+                  type: integer
+                sha256Hash:
+                  type: string
+                field:
+                  type: string
+                  description: 'Trace/observation field: input, output, or metadata'
+      responses:
+        '200':
+          description: Upload URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  uploadUrl:
+                    type: string
+                  mediaId:
+                    type: string
+
+  /api/public/media/{mediaId}:
+    get:
+      operationId: getMedia
+      tags: [Media]
+      summary: Get a media record
+      parameters:
+        - name: mediaId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Media record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaRecord'
+    patch:
+      operationId: patchMedia
+      tags: [Media]
+      summary: Patch a media record (update upload status)
+      parameters:
+        - name: mediaId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [uploadedAt, uploadHttpStatus]
+              properties:
+                uploadedAt:
+                  type: string
+                  format: date-time
+                uploadHttpStatus:
+                  type: integer
+                uploadHttpError:
+                  type: string
+                uploadTimeMs:
+                  type: integer
+      responses:
+        '204':
+          description: Media record patched
+
+  # ── Ingestion (Legacy) ─────────────────────────────────────
+  /api/public/ingestion:
+    post:
+      operationId: batchIngest
+      tags: [Ingestion]
+      summary: Batch ingest tracing events (legacy)
+      deprecated: true
+      description: Use the OpenTelemetry endpoint at /api/public/otel/v1/traces instead.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [batch]
+              properties:
+                batch:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/IngestionEvent'
+                metadata:
+                  type: object
+      responses:
+        '207':
+          description: Multi-status response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionResponse'
+
+  # ── OpenTelemetry ───────────────────────────────────────────
+  /api/public/otel/v1/traces:
+    post:
+      operationId: ingestOtelTraces
+      tags: [Ingestion]
+      summary: Ingest OpenTelemetry traces
+      description: OTLP/HTTP endpoint for trace ingestion (protobuf or JSON)
+      requestBody:
+        required: true
+        content:
+          application/x-protobuf:
+            schema:
+              type: string
+              format: binary
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Traces ingested
+
+  /api/public/otel/v1/metrics:
+    post:
+      operationId: ingestOtelMetrics
+      tags: [Ingestion]
+      summary: Ingest OpenTelemetry metrics
+      requestBody:
+        required: true
+        content:
+          application/x-protobuf:
+            schema:
+              type: string
+              format: binary
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Metrics ingested
