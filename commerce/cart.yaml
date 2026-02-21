@@ -1,0 +1,313 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Cart API
+  description: ""
+host: api.hanzo.ai
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.ai/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  /cart:
+    post:
+      operationId: createCart
+      description: Creates a new Cart
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Cart'
+      responses:
+        '201':
+          description: ''
+          schema:
+            $ref: '#/definitions/Cart'
+
+    get:
+      operationId: retrieveAllCarts
+      description: >
+        Gets a list of all available carts.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/CartArray'
+
+  '/cart/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    patch:
+      operationId: updateCart
+      description: >
+        Replaces a cart piecemeal. Parameters not passed are not updated.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Cart'
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Cart'
+
+    get:
+      operationId: getCart
+      description: >
+        Retrieves a specified cart
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Cart'
+
+    delete:
+      operationId: deleteCart
+      description: >
+        Permanently deletes a specified cart. Cannot be undone.
+      produces:
+        - text/html
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: ''
+          schema:
+            type: object
+            properties: {}
+          examples:
+            application/json: null
+
+    put:
+      operationId: replaceCart
+      description: >
+        Wholly replaces a given cart. Parameters not passed are blanked.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Cart'
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Cart'
+
+  '/cart/{id}/set':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    post:
+      operationId: setCart
+      description: >
+        Sets a given quantity of a given product or variant to a cart.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Cart'
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Cart'
+
+  '/cart/{id}/discard':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: discardCart
+      description: >
+        Marks a cart as discarded.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Cart'
+
+definitions:
+  Cart:
+    title: Cart
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      createdAt:
+        type: string
+        description: The time this Cart was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this Cart was last updated. Conforms to RFC3339.
+      userId:
+        type: string
+        description: The user ID that this Cart belings to.
+      email:
+        type: string
+        description: The email of the user (or someone else, if no user ID exists)
+      orderId:
+        type: string
+        description: The associated order ID (if one's created)
+      currency:
+        type: string
+        description: >
+          The three-digit identifier for the currency the payment
+          was made in. USD = United States Dollar, JPY = Japanese Yen, etc.
+      lineTotal:
+        type: integer
+        format: int64
+        description: >
+          Sum of line item amounts. Represented in the least significant
+          unit in the associated currency (so cent for USD, which has partial Dollars, but Yen
+          for JPY, which has no concept of partial Yen.)
+      discount:
+        type: integer
+        format: int64
+        description: >
+          Sum of any discounts applied. Represented in the least significant
+          unit in the associated currency (so cent for USD, which has partial Dollars, but Yen
+          for JPY, which has no concept of partial Yen.)
+      subtotal:
+        type: integer
+        format: int64
+        description: >
+          Line item totals, less discounts. Represented in the least significant
+          unit in the associated currency (so cent for USD, which has partial Dollars, but Yen
+          for JPY, which has no concept of partial Yen.)
+      shipping:
+        type: integer
+        format: int64
+        description: >
+          Shipping costs applied. Represented in the least significant
+          unit in the associated currency (so cent for USD, which has partial Dollars, but Yen
+          for JPY, which has no concept of partial Yen.)
+      tax:
+        type: integer
+        format: int64
+        description: >
+          Sales tax applied. Represented in the least significant
+          unit in the associated currency (so cent for USD, which has partial Dollars, but Yen
+          for JPY, which has no concept of partial Yen.)
+      total:
+        type: integer
+        format: int64
+        description: >
+          Subtotal + shipping + taxes + adjustments. Represented in the least significant
+          unit in the associated currency (so cent for USD, which has partial Dollars, but Yen
+          for JPY, which has no concept of partial Yen.)
+      company:
+        type: string
+        description: The company name associated with this cart.
+      billingAddress:
+        type: object
+        description: The location the charges are billed to.
+      shippingAddress:
+        type: object
+        description: The location any items are to be shipped to.
+      items:
+        type: array
+        description: Individual line items for the cart.
+        items:
+          type: object
+      coupons:
+        type: array
+        description: Individual coupons applied to the cart.
+        items:
+          type: object
+      gift:
+        type: boolean
+        description: Denotes whether or not the cart is for a gift purchase.
+      giftMessage:
+        type: string
+        description: The message to be used on a gift.
+      giftEmail:
+        type: string
+        description: The email to be used with a gift.
+
+  CartArray:
+    title: CartArray
+    description: An array of carts
+    type: array
+    items:
+      $ref: '#/definitions/Cart'

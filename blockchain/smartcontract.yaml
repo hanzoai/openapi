@@ -1,0 +1,217 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Smart Contract API
+  description: >
+    A Smart Contract represents a programmatic contract deployed to a blockchain.
+host: api.hanzo.ai
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.ai/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  '/smartcontract/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: deleteSmartContract
+      description: >
+        Completely deletes the associated Smart Contract on Hanzo's servers.
+        Cannot be undone. Does NOT delete a deployed Smart Contract from
+        the block chain!!
+      produces:
+        - text/html
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: 'Everything is OK.'
+          schema:
+            type: object
+            properties: {}
+          examples:
+            application/json: null
+
+    get:
+      operationId: getSmartContract
+      description: >
+        Returns a specified smart contract.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/SmartContract'
+
+    patch:
+      operationId: updateSmartContract
+      description: >
+        Updates the specified Smart Contract object piecemeal. Any fields not
+        included are not updated.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/SmartContract'
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/SmartContract'
+
+    put:
+      operationId: replaceSmartContract
+      description: >
+        Wholly replaces the specified Smart Contract object in-place. Any fields not
+        included will be blanked.
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/SmartContract'
+
+  /smartcontract:
+    post:
+      operationId: createSmartContract
+      description: >
+        Creates a new Smart Contract on Hanzo's servers. Does not automatically deploy it.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/SmartContract'
+      responses:
+        '201':
+          description: 'Everything is OK. New smartcontract created.'
+          schema:
+            $ref: '#/definitions/SmartContract'
+
+    get:
+      operationId: retrieveSmartContract
+      description: Returns a list of all available smart contracts.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/SmartContractArray'
+
+  '/smartcontract/{id}/deploy':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: deploySmartContract
+      description: >
+        Deploys a smart contract to its associated block chain. Cannot be undone.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              amount:
+                type: integer
+            example:
+              id: 0WizkeyjF2HwmEKFD1gJ
+              amount: 2400
+        - name: Accept
+          in: header
+          type: string
+        - name: Content-Type
+          in: header
+          type: string
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+              $ref: '#/definitions/SmartContract'
+
+definitions:
+  SmartContract:
+    title: SmartContract
+    type: object
+    properties:
+      createdAt:
+        type: string
+        description: The time this object was created. Conforms to RFCE3339.
+      updatedAt:
+        type: string
+        description: The time this object was last updated. Conforms to RFCE3339.
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      name:
+        type: string
+        description: The human-friendly name for this smart contract instance.
+      template:
+        type: string
+        description: >
+          An identifier for the smart contract template being used.
+      body:
+        type: string
+        description: >
+          Extra data required for the template to function. This is processed on a
+          template by template basis, based upon the requirements.
+      live:
+        type: boolean
+        description: Whether or not the smart contract is live on the block chain.
+      address:
+        type: string
+        description: The smart contract's address (null if not live).
+
+  SmartContractArray:
+    title: SmartContractArray
+    description: An array of SmartContracts
+    type: array
+    items:
+      $ref: '#/definitions/SmartContract'

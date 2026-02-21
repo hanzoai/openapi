@@ -1,0 +1,90 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Transaction API
+  description: >
+    A Transaction represents money moving to satisfy a payment or refund.
+host: api.hanzo.ai
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.ai/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  '/transaction/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: getTransaction
+      description: >
+        Returns a specific Transaction.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Transaction'
+
+definitions:
+  Transaction:
+    title: Transaction
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      createdAt:
+        type: string
+        description: The time this Transaction was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this Transaction was last updated. Conforms to RFC3339.
+      userId:
+        type: string
+        description: The ID for the user that initiated this transaction.
+      type:
+        type: string
+        description: The general type of transaction.
+      currency:
+        type: string
+        description: >
+          The type of money used on the transaction. USD for United States
+          Dollar, JPY for Japanese yen, etc. Conforms to ISO 4217 codes.
+      amount:
+        type: integer
+        format: int64
+        description: >
+          The quantity of money involved in the Transaction. Represented in
+          the least significant denomination possible in the given currency - so
+          cents in USD, yen in JPY, etc.
+      test:
+        type: boolean
+        description: Whether or not this transaction is a test.
+      notes:
+        type: string
+        description: Supplementary text regarding the transaction.
+      tags:
+        type: string
+        description: A collection of meta-identifiers for the transaction.
+      sourceId:
+        type: string
+      sourceKind:
+        type: string

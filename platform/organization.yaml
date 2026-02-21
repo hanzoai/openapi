@@ -1,0 +1,272 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Organization API
+  description: >
+    A Organization represents a business. Generally speaking, there's only
+    one of these per Hanzo account, representing the business subscribing
+    to Hanzo.
+host: api.hanzo.ai
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.ai/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  '/organization/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+
+    get:
+      operationId: getOrganization
+      description: >
+        Returns the details of specified organization.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Organization'
+
+    patch:
+      operationId: updateOrganization
+      description: >
+        Updates the settings of a given organization. Any fields not included
+        are not updated.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Organization'
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/Organization'
+
+    put:
+      operationId: replaceOrganization
+      description: >
+        Replaces the settings of a given Organization. Any fields omitted will
+        be null or zeroed.
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/Organization'
+
+  /organization:
+    post:
+      operationId: createOrganization
+      description: >
+        Creates a new Organization.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Organization'
+      responses:
+        '201':
+          description: 'New organization created.'
+          schema:
+            $ref: '#/definitions/Organization'
+
+    get:
+      operationId: listOrganizations
+      description: Returns a list of all available organizations.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/OrganizationArray'
+
+  '/organization/{id}/integrations':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: listOrganizationIntegrations
+      description: Returns a list of an organization's integrations.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: 'OK'
+          schema:
+            $ref: '#/definitions/IntegrationArray'
+    post:
+      operationId: createOrganizationIntegrations
+      description: Creates or replaces a list of an organization's integrations.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: 'OK'
+          schema:
+            $ref: '#/definitions/IntegrationArray'
+  '/organization/{id}/integrations/{integrationId}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      - name: integrationId
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: deleteOrganizationIntegration
+      description: Deletes a specific integration.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: 'OK'
+          schema:
+            $ref: '#/definitions/IntegrationArray'
+
+definitions:
+  Organization:
+    title: Organization
+    type: object
+    properties:
+      createdAt:
+        type: string
+        description: The time this object was created. Conforms to RFCE3339.
+      updatedAt:
+        type: string
+        description: The time this object was last updated. Conforms to RFCE3339.
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      name:
+        type: string
+        description: The business name.
+      owners:
+        type: array
+        description: An array of strings denoting the owners by user id.
+        items:
+          type: string
+      admins:
+        type: array
+        description: An array of strings denoting the admins by user id.
+        items:
+          type: string
+      moderators:
+        type: array
+        description: An array of strings denoting the moderators by user id.
+        items:
+          type: string
+      enabled:
+        type: boolean
+        description: Whether or not the organization is active.
+      billingEmail:
+        type: string
+        description: The email used for billing.
+      phone:
+        type: string
+        description: The phone number for the business.
+      address:
+        type: string
+        description: The address for the business.
+      website:
+        type: string
+        description: The website for the business.
+      country:
+        type: string
+        description: The business's host country.
+
+  Integration:
+    title: Integration
+    type: object
+    properties:
+      createdAt:
+        type: string
+        description: The time this object was created. Conforms to RFCE3339.
+      updatedAt:
+        type: string
+        description: The time this object was last updated. Conforms to RFCE3339.
+      id:
+        type: string
+        description: The hanzo-assigned ID of this integration.
+      enabled:
+        type: boolean
+        description: Whether or not this integration is enabled.
+      show:
+        type: boolean
+        description: Whether or not this integration should be shown.
+      type:
+        type: string
+        description: >
+          The general classification of an integration. One of
+          'analytics-custom', 'analytics-facebook-pixel',
+          'analytics-facebook-conversions', 'analytics-google-adwords',
+          'analytics-google-analytics', 'analytics-heap', 'analytics-sentry',
+          'bitcoin', 'ethereum', 'mailchimp', 'mandrill', 'netlify', 'reamaze',
+          'recaptcha', 'salesforce', 'shipwire', 'stripe'
+
+  IntegrationArray:
+    title: IntegrationArray
+    description: An array of Integrations
+    type: array
+    items:
+      $ref: '#/definitions/Integration'
+
+  OrganizationArray:
+    title: OrganizationArray
+    description: An array of Organizations
+    type: array
+    items:
+      $ref: '#/definitions/Organization'
