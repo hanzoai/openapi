@@ -1,0 +1,2408 @@
+openapi: 3.1.0
+info:
+  title: Hanzo ZT API
+  description: |
+    Hanzo ZT provides programmable zero-trust networking for AI infrastructure.
+    Build secure overlay networks with identity-based access control, no
+    inbound firewall ports required.
+
+    Based on OpenZiti with Hanzo extensions for:
+    - Identity-based microsegmentation
+    - Service mesh with mTLS everywhere
+    - Posture checks (OS, MFA, process, domain)
+    - Edge router fabric with smart routing
+    - Session management and audit
+    - Integration with Hanzo IAM for identity provisioning
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://zt.hanzo.ai
+    description: Production
+  - url: https://api.hanzo.ai/v1/zt
+    description: Gateway Proxy
+
+tags:
+  - name: Networks
+    description: Overlay network management
+  - name: Identities
+    description: Identity enrollment and management
+  - name: Services
+    description: Service definition and hosting
+  - name: Service Policies
+    description: Bind/Dial access policies
+  - name: Edge Router Policies
+    description: Identity-to-router assignment
+  - name: Service Edge Router Policies
+    description: Service-to-router assignment
+  - name: Edge Routers
+    description: Edge router management
+  - name: Sessions
+    description: Active session management
+  - name: Terminators
+    description: Service terminator management
+  - name: Posture Checks
+    description: Endpoint posture verification
+  - name: Current Identity
+    description: Authenticated identity operations
+  - name: Health
+    description: Service health
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HANZO_API_KEY
+      description: Hanzo API Key (Bearer hk-...)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            requestId:
+              type: string
+
+    Meta:
+      type: object
+      properties:
+        filterableFields:
+          type: array
+          items:
+            type: string
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+            offset:
+              type: integer
+            totalCount:
+              type: integer
+
+    EntityRef:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        _links:
+          type: object
+          properties:
+            self:
+              type: object
+              properties:
+                href:
+                  type: string
+                  format: uri
+
+    # Networks
+    Network:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, provisioning, disabled]
+        controller_url:
+          type: string
+          format: uri
+        identity_count:
+          type: integer
+        service_count:
+          type: integer
+        router_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NetworkCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+
+    # Identities
+    Identity:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+              enum: [Default, Router, Service]
+        isDefaultAdmin:
+          type: boolean
+        isAdmin:
+          type: boolean
+        disabled:
+          type: boolean
+        enrollment:
+          type: object
+          properties:
+            ott:
+              type: object
+              properties:
+                id:
+                  type: string
+                token:
+                  type: string
+                jwt:
+                  type: string
+                expiresAt:
+                  type: string
+                  format: date-time
+                issuedAt:
+                  type: string
+                  format: date-time
+            updb:
+              type: object
+              properties:
+                id:
+                  type: string
+                token:
+                  type: string
+        roleAttributes:
+          type: array
+          items:
+            type: string
+        hasApiSession:
+          type: boolean
+        hasEdgeRouterConnection:
+          type: boolean
+        sdkInfo:
+          type: object
+          properties:
+            appId:
+              type: string
+            appVersion:
+              type: string
+            type:
+              type: string
+            version:
+              type: string
+        envInfo:
+          type: object
+          properties:
+            arch:
+              type: string
+            os:
+              type: string
+            osRelease:
+              type: string
+            osVersion:
+              type: string
+            domain:
+              type: string
+            hostname:
+              type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    IdentityCreate:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [Default, Router, Service]
+        isAdmin:
+          type: boolean
+          default: false
+        enrollment:
+          type: object
+          properties:
+            ott:
+              type: boolean
+              default: true
+            updb:
+              type: string
+              description: Username for UPDB enrollment
+        roleAttributes:
+          type: array
+          items:
+            type: string
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+
+    Enrollment:
+      type: object
+      properties:
+        id:
+          type: string
+        method:
+          type: string
+          enum: [ott, ottca, updb, ca]
+        identity:
+          $ref: '#/components/schemas/EntityRef'
+        token:
+          type: string
+        jwt:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    # Services
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        encryptionRequired:
+          type: boolean
+        terminatorStrategy:
+          type: string
+          enum: [smartrouting, weighted, random, ha]
+        roleAttributes:
+          type: array
+          items:
+            type: string
+        permissions:
+          type: array
+          items:
+            type: string
+            enum: [Bind, Dial]
+        configs:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ServiceCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        encryptionRequired:
+          type: boolean
+          default: true
+        terminatorStrategy:
+          type: string
+          enum: [smartrouting, weighted, random, ha]
+          default: smartrouting
+        roleAttributes:
+          type: array
+          items:
+            type: string
+        configs:
+          type: array
+          items:
+            type: string
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+
+    Terminator:
+      type: object
+      properties:
+        id:
+          type: string
+        service:
+          $ref: '#/components/schemas/EntityRef'
+        router:
+          $ref: '#/components/schemas/EntityRef'
+        binding:
+          type: string
+          enum: [edge, transport, edge_transport, tunnel]
+        address:
+          type: string
+          description: "Protocol:host:port (e.g. tcp:10.0.0.1:8080)"
+        identity:
+          type: string
+        cost:
+          type: integer
+        precedence:
+          type: string
+          enum: [default, required, failed]
+        dynamicCost:
+          type: object
+          properties:
+            cost:
+              type: integer
+            precedence:
+              type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TerminatorCreate:
+      type: object
+      required:
+        - service
+        - router
+        - binding
+        - address
+      properties:
+        service:
+          type: string
+          description: Service ID
+        router:
+          type: string
+          description: Router ID
+        binding:
+          type: string
+          enum: [edge, transport, edge_transport, tunnel]
+        address:
+          type: string
+        identity:
+          type: string
+        cost:
+          type: integer
+          default: 0
+        precedence:
+          type: string
+          enum: [default, required, failed]
+          default: default
+
+    # Policies
+    ServicePolicy:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [Bind, Dial]
+        semantic:
+          type: string
+          enum: [AllOf, AnyOf]
+        serviceRoles:
+          type: array
+          items:
+            type: string
+          description: "Service role selectors (#role or @id)"
+        identityRoles:
+          type: array
+          items:
+            type: string
+          description: "Identity role selectors (#role or @id)"
+        postureCheckRoles:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ServicePolicyCreate:
+      type: object
+      required:
+        - name
+        - type
+        - serviceRoles
+        - identityRoles
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [Bind, Dial]
+        semantic:
+          type: string
+          enum: [AllOf, AnyOf]
+          default: AnyOf
+        serviceRoles:
+          type: array
+          items:
+            type: string
+        identityRoles:
+          type: array
+          items:
+            type: string
+        postureCheckRoles:
+          type: array
+          items:
+            type: string
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+
+    EdgeRouterPolicy:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        semantic:
+          type: string
+          enum: [AllOf, AnyOf]
+        edgeRouterRoles:
+          type: array
+          items:
+            type: string
+        identityRoles:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    EdgeRouterPolicyCreate:
+      type: object
+      required:
+        - name
+        - edgeRouterRoles
+        - identityRoles
+      properties:
+        name:
+          type: string
+        semantic:
+          type: string
+          enum: [AllOf, AnyOf]
+          default: AnyOf
+        edgeRouterRoles:
+          type: array
+          items:
+            type: string
+        identityRoles:
+          type: array
+          items:
+            type: string
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+
+    ServiceEdgeRouterPolicy:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        semantic:
+          type: string
+          enum: [AllOf, AnyOf]
+        edgeRouterRoles:
+          type: array
+          items:
+            type: string
+        serviceRoles:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ServiceEdgeRouterPolicyCreate:
+      type: object
+      required:
+        - name
+        - edgeRouterRoles
+        - serviceRoles
+      properties:
+        name:
+          type: string
+        semantic:
+          type: string
+          enum: [AllOf, AnyOf]
+          default: AnyOf
+        edgeRouterRoles:
+          type: array
+          items:
+            type: string
+        serviceRoles:
+          type: array
+          items:
+            type: string
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+
+    # Edge Routers
+    EdgeRouter:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        isOnline:
+          type: boolean
+        isVerified:
+          type: boolean
+        hostname:
+          type: string
+        roleAttributes:
+          type: array
+          items:
+            type: string
+        fingerprint:
+          type: string
+        versionInfo:
+          type: object
+          properties:
+            version:
+              type: string
+            revision:
+              type: string
+            buildDate:
+              type: string
+            os:
+              type: string
+            arch:
+              type: string
+        isTunnelerEnabled:
+          type: boolean
+        cost:
+          type: integer
+        noTraversal:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    EdgeRouterCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        roleAttributes:
+          type: array
+          items:
+            type: string
+        isTunnelerEnabled:
+          type: boolean
+          default: true
+        cost:
+          type: integer
+          default: 0
+        noTraversal:
+          type: boolean
+          default: false
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+
+    # Sessions
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+        token:
+          type: string
+        type:
+          type: string
+          enum: [Dial, Bind]
+        identity:
+          $ref: '#/components/schemas/EntityRef'
+        service:
+          $ref: '#/components/schemas/EntityRef'
+        edgeRouters:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              hostname:
+                type: string
+              urls:
+                type: object
+                additionalProperties:
+                  type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    # Posture Checks
+    PostureCheck:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [OS, MAC, MFA, DOMAIN, PROCESS]
+        roleAttributes:
+          type: array
+          items:
+            type: string
+        data:
+          type: object
+          description: Type-specific posture check configuration
+          properties:
+            operatingSystems:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum: [Windows, Linux, macOS, Android, iOS]
+                  versions:
+                    type: array
+                    items:
+                      type: string
+            macAddresses:
+              type: array
+              items:
+                type: string
+            timeoutSeconds:
+              type: integer
+              description: MFA timeout in seconds
+            promptOnWake:
+              type: boolean
+            promptOnUnlock:
+              type: boolean
+            domains:
+              type: array
+              items:
+                type: string
+            process:
+              type: object
+              properties:
+                osType:
+                  type: string
+                path:
+                  type: string
+                hashes:
+                  type: array
+                  items:
+                    type: string
+                signerFingerprints:
+                  type: array
+                  items:
+                    type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PostureCheckCreate:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [OS, MAC, MFA, DOMAIN, PROCESS]
+        roleAttributes:
+          type: array
+          items:
+            type: string
+        data:
+          type: object
+          properties:
+            operatingSystems:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  versions:
+                    type: array
+                    items:
+                      type: string
+            macAddresses:
+              type: array
+              items:
+                type: string
+            timeoutSeconds:
+              type: integer
+            promptOnWake:
+              type: boolean
+            promptOnUnlock:
+              type: boolean
+            domains:
+              type: array
+              items:
+                type: string
+            process:
+              type: object
+              properties:
+                osType:
+                  type: string
+                path:
+                  type: string
+                hashes:
+                  type: array
+                  items:
+                    type: string
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+
+    # Current Identity
+    CurrentIdentity:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        isAdmin:
+          type: boolean
+        isDefaultAdmin:
+          type: boolean
+        roleAttributes:
+          type: array
+          items:
+            type: string
+        sdkInfo:
+          type: object
+        envInfo:
+          type: object
+
+    Authenticator:
+      type: object
+      properties:
+        id:
+          type: string
+        method:
+          type: string
+          enum: [cert, updb, ext-jwt]
+        identityId:
+          type: string
+        fingerprint:
+          type: string
+          description: Certificate fingerprint (for cert method)
+        username:
+          type: string
+          description: Username (for updb method)
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  # Health
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  healthy:
+                    type: boolean
+
+  # Networks
+  /networks:
+    get:
+      tags:
+        - Networks
+      summary: List overlay networks
+      operationId: listNetworks
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of networks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Network'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+
+    post:
+      tags:
+        - Networks
+      summary: Create overlay network
+      operationId: createNetwork
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetworkCreate'
+      responses:
+        '201':
+          description: Network created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Network'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /networks/{id}:
+    get:
+      tags:
+        - Networks
+      summary: Get network
+      operationId: getNetwork
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Network details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Network'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Networks
+      summary: Update network
+      operationId: updateNetwork
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                status:
+                  type: string
+                  enum: [active, disabled]
+      responses:
+        '200':
+          description: Network updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Network'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Networks
+      summary: Delete network
+      operationId: deleteNetwork
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Network deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Identities
+  /identities:
+    get:
+      tags:
+        - Identities
+      summary: List identities
+      operationId: listIdentities
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+          description: ZT filter expression
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: name
+      responses:
+        '200':
+          description: List of identities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Identity'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+
+    post:
+      tags:
+        - Identities
+      summary: Create identity
+      operationId: createIdentity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentityCreate'
+      responses:
+        '201':
+          description: Identity created (enrollment JWT in response)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Identity'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /identities/{id}:
+    get:
+      tags:
+        - Identities
+      summary: Get identity
+      operationId: getIdentity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Identity details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Identity'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Identities
+      summary: Update identity
+      operationId: updateIdentity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                isAdmin:
+                  type: boolean
+                roleAttributes:
+                  type: array
+                  items:
+                    type: string
+                tags:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        '200':
+          description: Identity updated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Identities
+      summary: Delete identity
+      operationId: deleteIdentity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Identity deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /identities/{id}/enrollments:
+    get:
+      tags:
+        - Identities
+      summary: List enrollments
+      operationId: listIdentityEnrollments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Identity enrollments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Enrollment'
+
+    post:
+      tags:
+        - Identities
+      summary: Create enrollment
+      operationId: createIdentityEnrollment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                method:
+                  type: string
+                  enum: [ott, ottca, updb]
+                  default: ott
+                expiresAt:
+                  type: string
+                  format: date-time
+                username:
+                  type: string
+                  description: Required for updb method
+      responses:
+        '201':
+          description: Enrollment created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Enrollment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /identities/{id}/disable:
+    post:
+      tags:
+        - Identities
+      summary: Disable identity
+      operationId: disableIdentity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Identity disabled
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /identities/{id}/enable:
+    post:
+      tags:
+        - Identities
+      summary: Enable identity
+      operationId: enableIdentity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Identity enabled
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Services
+  /services:
+    get:
+      tags:
+        - Services
+      summary: List services
+      operationId: listServices
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Service'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+
+    post:
+      tags:
+        - Services
+      summary: Create service
+      operationId: createService
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceCreate'
+      responses:
+        '201':
+          description: Service created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Service'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /services/{id}:
+    get:
+      tags:
+        - Services
+      summary: Get service
+      operationId: getService
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Service'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Services
+      summary: Update service
+      operationId: updateService
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceCreate'
+      responses:
+        '200':
+          description: Service updated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Services
+      summary: Delete service
+      operationId: deleteService
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /services/{id}/terminators:
+    get:
+      tags:
+        - Services
+      summary: List service terminators
+      operationId: listServiceTerminators
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service terminators
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Terminator'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+
+  # Service Policies
+  /service-policies:
+    get:
+      tags:
+        - Service Policies
+      summary: List service policies
+      operationId: listServicePolicies
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of service policies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServicePolicy'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+
+    post:
+      tags:
+        - Service Policies
+      summary: Create service policy
+      operationId: createServicePolicy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServicePolicyCreate'
+      responses:
+        '201':
+          description: Service policy created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ServicePolicy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /service-policies/{id}:
+    get:
+      tags:
+        - Service Policies
+      summary: Get service policy
+      operationId: getServicePolicy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service policy details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ServicePolicy'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Service Policies
+      summary: Update service policy
+      operationId: updateServicePolicy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServicePolicyCreate'
+      responses:
+        '200':
+          description: Service policy updated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Service Policies
+      summary: Delete service policy
+      operationId: deleteServicePolicy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service policy deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /service-policies/{id}/identities:
+    get:
+      tags:
+        - Service Policies
+      summary: List affected identities
+      operationId: listServicePolicyIdentities
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Identities affected by this policy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EntityRef'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+
+  /service-policies/{id}/services:
+    get:
+      tags:
+        - Service Policies
+      summary: List affected services
+      operationId: listServicePolicyServices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Services affected by this policy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EntityRef'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+
+  # Edge Router Policies
+  /edge-router-policies:
+    get:
+      tags:
+        - Edge Router Policies
+      summary: List edge router policies
+      operationId: listEdgeRouterPolicies
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of edge router policies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EdgeRouterPolicy'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+
+    post:
+      tags:
+        - Edge Router Policies
+      summary: Create edge router policy
+      operationId: createEdgeRouterPolicy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EdgeRouterPolicyCreate'
+      responses:
+        '201':
+          description: Edge router policy created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/EdgeRouterPolicy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /edge-router-policies/{id}:
+    get:
+      tags:
+        - Edge Router Policies
+      summary: Get edge router policy
+      operationId: getEdgeRouterPolicy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Edge router policy details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/EdgeRouterPolicy'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Edge Router Policies
+      summary: Update edge router policy
+      operationId: updateEdgeRouterPolicy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EdgeRouterPolicyCreate'
+      responses:
+        '200':
+          description: Edge router policy updated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Edge Router Policies
+      summary: Delete edge router policy
+      operationId: deleteEdgeRouterPolicy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Edge router policy deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Service Edge Router Policies
+  /service-edge-router-policies:
+    get:
+      tags:
+        - Service Edge Router Policies
+      summary: List service edge router policies
+      operationId: listServiceEdgeRouterPolicies
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of service edge router policies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceEdgeRouterPolicy'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+
+    post:
+      tags:
+        - Service Edge Router Policies
+      summary: Create service edge router policy
+      operationId: createServiceEdgeRouterPolicy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceEdgeRouterPolicyCreate'
+      responses:
+        '201':
+          description: Service edge router policy created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ServiceEdgeRouterPolicy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /service-edge-router-policies/{id}:
+    get:
+      tags:
+        - Service Edge Router Policies
+      summary: Get service edge router policy
+      operationId: getServiceEdgeRouterPolicy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service edge router policy details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ServiceEdgeRouterPolicy'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Service Edge Router Policies
+      summary: Update service edge router policy
+      operationId: updateServiceEdgeRouterPolicy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceEdgeRouterPolicyCreate'
+      responses:
+        '200':
+          description: Service edge router policy updated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Service Edge Router Policies
+      summary: Delete service edge router policy
+      operationId: deleteServiceEdgeRouterPolicy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service edge router policy deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Edge Routers
+  /edge-routers:
+    get:
+      tags:
+        - Edge Routers
+      summary: List edge routers
+      operationId: listEdgeRouters
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of edge routers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EdgeRouter'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+
+    post:
+      tags:
+        - Edge Routers
+      summary: Create edge router
+      operationId: createEdgeRouter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EdgeRouterCreate'
+      responses:
+        '201':
+          description: Edge router created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/EdgeRouter'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /edge-routers/{id}:
+    get:
+      tags:
+        - Edge Routers
+      summary: Get edge router
+      operationId: getEdgeRouter
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Edge router details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/EdgeRouter'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Edge Routers
+      summary: Update edge router
+      operationId: updateEdgeRouter
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EdgeRouterCreate'
+      responses:
+        '200':
+          description: Edge router updated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Edge Routers
+      summary: Delete edge router
+      operationId: deleteEdgeRouter
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Edge router deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /edge-routers/{id}/re-enroll:
+    post:
+      tags:
+        - Edge Routers
+      summary: Re-enroll edge router
+      operationId: reEnrollEdgeRouter
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Edge router re-enrollment initiated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Sessions
+  /sessions:
+    get:
+      tags:
+        - Sessions
+      summary: List sessions
+      operationId: listSessions
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of active sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Session'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+
+  /sessions/{id}:
+    get:
+      tags:
+        - Sessions
+      summary: Get session
+      operationId: getSession
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Session'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Sessions
+      summary: Delete session
+      operationId: deleteSession
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session terminated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Terminators
+  /terminators:
+    get:
+      tags:
+        - Terminators
+      summary: List terminators
+      operationId: listTerminators
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of terminators
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Terminator'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+
+    post:
+      tags:
+        - Terminators
+      summary: Create terminator
+      operationId: createTerminator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TerminatorCreate'
+      responses:
+        '201':
+          description: Terminator created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Terminator'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /terminators/{id}:
+    get:
+      tags:
+        - Terminators
+      summary: Get terminator
+      operationId: getTerminator
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Terminator details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Terminator'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Terminators
+      summary: Update terminator
+      operationId: updateTerminator
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cost:
+                  type: integer
+                precedence:
+                  type: string
+                  enum: [default, required, failed]
+      responses:
+        '200':
+          description: Terminator updated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Terminators
+      summary: Delete terminator
+      operationId: deleteTerminator
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Terminator deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Posture Checks
+  /posture-checks:
+    get:
+      tags:
+        - Posture Checks
+      summary: List posture checks
+      operationId: listPostureChecks
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of posture checks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PostureCheck'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+
+    post:
+      tags:
+        - Posture Checks
+      summary: Create posture check
+      operationId: createPostureCheck
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostureCheckCreate'
+      responses:
+        '201':
+          description: Posture check created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PostureCheck'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /posture-checks/{id}:
+    get:
+      tags:
+        - Posture Checks
+      summary: Get posture check
+      operationId: getPostureCheck
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Posture check details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PostureCheck'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Posture Checks
+      summary: Update posture check
+      operationId: updatePostureCheck
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostureCheckCreate'
+      responses:
+        '200':
+          description: Posture check updated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Posture Checks
+      summary: Delete posture check
+      operationId: deletePostureCheck
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Posture check deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Current Identity
+  /current-identity:
+    get:
+      tags:
+        - Current Identity
+      summary: Get authenticated identity
+      operationId: getCurrentIdentity
+      responses:
+        '200':
+          description: Current identity details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CurrentIdentity'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /current-identity/authenticators:
+    get:
+      tags:
+        - Current Identity
+      summary: List authenticators
+      operationId: listCurrentIdentityAuthenticators
+      responses:
+        '200':
+          description: List of authenticators for current identity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Authenticator'

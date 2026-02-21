@@ -4,17 +4,17 @@ info:
   description: |
     Unified API for the Hanzo AI Platform, providing access to all backend services.
 
-    ## Services
+    ## Services (24 total)
 
-    ### Core
+    ### Core (6)
     - **IAM** (`hanzo.id`): Identity and Access Management (OAuth2, OIDC, SAML, Web3)
     - **Commerce** (`commerce.hanzo.ai`): Billing, payments, invoicing, orders, subscriptions
     - **Cloud** (`api.cloud.hanzo.ai`): AI model API, 86+ models, usage tracking
-    - **Gateway** (`api.hanzo.ai`): Unified API gateway, LLM proxy, rate limiting
+    - **Gateway** (`api.hanzo.ai`): Unified API gateway, LLM proxy, rate limiting, CDN, edge routing
     - **Console** (`console.hanzo.ai`): Observability, traces, scores, prompt management
     - **KMS** (`kms.hanzo.ai`): Secrets management, encryption, audit
 
-    ### Application
+    ### Application (6)
     - **Chat** (`hanzo.chat`): AI chat, conversations, messages, file uploads
     - **Flow** (`flow.hanzo.ai`): Visual workflow builder, automations
     - **Auto** (`auto.hanzo.ai`): Workflow automation, scheduling, triggers
@@ -22,12 +22,22 @@ info:
     - **Bot** (`app.hanzo.bot`): Bot framework, skills, plugins
     - **Search** (`search.hanzo.ai`): AI-powered search, generative UI
 
-    ### Infrastructure
-    - **Platform** (`platform.hanzo.ai`): PaaS, deployments, containers
+    ### Infrastructure (9)
+    - **PaaS** (`paas.hanzo.ai`): K8s-native GitOps deployments, cluster management
+    - **Platform** (`platform.hanzo.ai`): Local dev PaaS, Docker-based deployments
     - **Visor** (`vm.hanzo.ai`): VM management, cloud instances
     - **Operative** (`operative.hanzo.ai`): Computer use, browser automation
     - **Vector** (`vector.hanzo.ai`): Vector database, collections, search
     - **Nexus** (`nexus.hanzo.ai`): Knowledge base, RAG, embeddings
+    - **Registry** (`registry.hanzo.ai`): Container registry (Harbor) — @hanzocr
+    - **DB** (`db.hanzo.ai`): Serverless Postgres with instant branching (Neon) — @hanzodb
+    - **Edge** (`edge.hanzo.ai`): Edge functions, Deno-based serverless — @hanzofn
+
+    ### Operations (3)
+    - **Engine** (`engine.hanzo.ai`): GPU scheduling, ML pipelines, model serving — @hanzoml
+    - **O11y** (`o11y.hanzo.ai`): Observability — logs, metrics, traces, alerts — @hanzoo11y
+    - **DNS** (`dns.hanzo.ai`): DNS management, zones, records — @hanzodns
+    - **ZT** (`zt.hanzo.ai`): Zero-trust networking, overlay mesh — @hanzozt
 
     ## Authentication
 
@@ -48,7 +58,38 @@ info:
     | Staging | https://api.staging.hanzo.ai |
     | Sandbox | https://api.sandbox.hanzo.ai |
 
-  version: 2.0.0
+    ## Gateway Route Table
+
+    All 24 services accessible via `api.hanzo.ai`:
+
+    | Route | Service | Direct URL |
+    |-------|---------|------------|
+    | `/v1/chat/completions` | Cloud | api.cloud.hanzo.ai |
+    | `/v1/models` | Cloud | api.cloud.hanzo.ai |
+    | `/v1/billing/*` | Commerce | commerce.hanzo.ai |
+    | `/v1/auth/*` | IAM | hanzo.id |
+    | `/v1/analytics/*` | Analytics | analytics.hanzo.ai |
+    | `/v1/search/*` | Search | search.hanzo.ai |
+    | `/v1/flow/*` | Flow | flow.hanzo.ai |
+    | `/v1/bot/*` | Bot | app.hanzo.bot |
+    | `/v1/kms/*` | KMS | kms.hanzo.ai |
+    | `/v1/vm/*` | Visor | vm.hanzo.ai |
+    | `/v1/paas/*` | PaaS | paas.hanzo.ai |
+    | `/v1/platform/*` | Platform | platform.hanzo.ai |
+    | `/v1/console/*` | Console | console.hanzo.ai |
+    | `/v1/operative/*` | Operative | operative.hanzo.ai |
+    | `/v1/vector/*` | Vector | vector.hanzo.ai |
+    | `/v1/nexus/*` | Nexus | nexus.hanzo.ai |
+    | `/v1/registry/*` | Registry | registry.hanzo.ai |
+    | `/v1/db/*` | DB | db.hanzo.ai |
+    | `/v1/edge/*` | Edge | edge.hanzo.ai |
+    | `/v1/engine/*` | Engine | engine.hanzo.ai |
+    | `/v1/o11y/*` | O11y | o11y.hanzo.ai |
+    | `/v1/dns/*` | DNS | dns.hanzo.ai |
+    | `/v1/zt/*` | ZT | zt.hanzo.ai |
+    | `/v1/chat/*` | Chat | hanzo.chat |
+
+  version: 4.0.0
   contact:
     name: Hanzo AI
     url: https://hanzo.ai
@@ -210,6 +251,92 @@ tags:
     description: Knowledge base articles
   - name: Embeddings
     description: Text embeddings and RAG
+
+  # PaaS
+  - name: Clusters
+    description: K8s cluster management and provisioning
+  - name: Environments
+    description: Environment configuration and management
+  - name: Fleet
+    description: Multi-cluster fleet management
+
+  # Registry
+  - name: Registry Projects
+    description: Container registry projects
+  - name: Repositories
+    description: Container image repositories
+  - name: Artifacts
+    description: Container image artifacts and tags
+  - name: Vulnerability Scans
+    description: Container image vulnerability scanning
+
+  # DB
+  - name: DB Projects
+    description: Serverless Postgres projects
+  - name: Branches
+    description: Instant database branching
+  - name: DB Endpoints
+    description: Autoscaling compute endpoints
+  - name: Databases
+    description: Database management within projects
+  - name: DB Roles
+    description: Database role management
+
+  # Edge
+  - name: Functions
+    description: Edge function management and deployment
+  - name: Function Versions
+    description: Edge function version management
+  - name: Function Secrets
+    description: Edge function secrets
+
+  # O11y
+  - name: Logs
+    description: Log aggregation and LogQL queries (Loki)
+  - name: Metrics
+    description: PromQL metrics queries and series
+  - name: Distributed Traces
+    description: Distributed trace search and analysis
+  - name: Dashboards
+    description: Observability dashboards
+  - name: Alert Rules
+    description: Alert rules and notification channels
+
+  # DNS
+  - name: Zones
+    description: DNS zone management
+  - name: DNS Records
+    description: DNS record management (A/AAAA/CNAME/MX/TXT/SRV)
+  - name: DNSSEC
+    description: DNSSEC configuration
+
+  # Engine
+  - name: GPU Clusters
+    description: GPU cluster registration and management
+  - name: Training Jobs
+    description: ML training and inference job submission
+  - name: Ray
+    description: RayCluster lifecycle and scaling
+  - name: ML Pipelines
+    description: ML pipeline definitions and runs
+  - name: GPUs
+    description: GPU inventory and allocations
+  - name: Model Serving
+    description: Model serving endpoints with autoscaling
+
+  # ZT
+  - name: Networks
+    description: Zero-trust overlay networks
+  - name: Identities
+    description: Identity enrollment and management
+  - name: ZT Services
+    description: Zero-trust service definitions
+  - name: Service Policies
+    description: Service access policies
+  - name: Edge Routers
+    description: Edge router management
+  - name: Posture Checks
+    description: Device posture verification
 
 security:
   - hanzoApiKey: []
