@@ -1,0 +1,198 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Coupon API
+  description: >
+    A Coupon represents a special offer attached to a code or certificate
+    that is redeemable in your store. This API supports everything from
+    flat and percentage discounts, free shipping vouchers, and even
+    one-time or limited redemption offers.
+host: api.hanzo.ai
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.ai/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  /coupon:
+    get:
+      operationId: ReturnAllCoupons
+      description: >
+        Returns all available coupons.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/CouponArray'
+
+    post:
+      operationId: CreateCoupon
+      description: >
+        Creates a new coupon.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Coupon'
+      responses:
+        '201':
+          description: 'Everything is OK - new coupon created.'
+          schema:
+            $ref: '#/definitions/Coupon'
+
+  '/coupon/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+
+    put:
+      operationId: replaceCoupon
+      description: >
+        Wholly replaces the requested coupon. Any fields not provided are blanked.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Coupon'
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Coupon'
+
+    patch:
+      operationId: updateCoupon
+      description: >
+        Replaces the requested coupon piecemeal. Any fields not provided are not changed.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Coupon'
+      responses:
+        '200':
+          description: 'Everything is OK'
+          schema:
+            $ref: '#/definitions/Coupon'
+
+    delete:
+      operationId: deleteCoupon
+      description: >
+        Deletes the specified coupon. Cannot be undone.
+      responses:
+        '204':
+          description: 'Everything is OK.'
+          schema:
+            type: object
+            properties: {}
+
+    get:
+      operationId: getCoupon
+      description: >
+        Returns the specified coupon.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Coupon'
+
+definitions:
+  Coupon:
+    title: Coupon
+    type: object
+    properties:
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      createdAt:
+        type: string
+        description: The time this Coupon was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this Coupon was last updated. Conforms to RFC3339.
+      name:
+        type: string
+        description: The human-friendly identifier for the coupon.
+      type:
+        type: string
+        description: The general class of Coupon, such as a discount, free shipping, etc.
+      code:
+        type: string
+        description: The unique key, preferably human friendly, that users will enter
+          to use the coupon on your store.
+      startDate:
+        type: string
+        description: The time the Coupon becomes valid. Conforms to RFC3339.
+      endDate:
+        type: string
+        description: The time the Coupon stops being valid. Conforms to RFC3339.
+      filter:
+        type: string
+      once:
+        type: boolean
+        description: A switch indicating whether this is a one-use coupon or not.
+      productId:
+        type: string
+        description: The hanzo-provided unique product ID that this coupon applies to.
+      enabled:
+        type: boolean
+        description: Whether or not the coupon is active.
+      amount:
+        type: integer
+        format: int64
+        description: The monetary value the coupon is good for. Represented in least
+          valuable denomination available (so cents for USD, yen for JPY, etc)
+      used:
+        type: integer
+        format: int64
+        description: How many times the coupon has been redeemed.
+
+  CouponArray:
+    title: CouponArray
+    description: An array of Coupons
+    type: array
+    items:
+      $ref: '#/definitions/Coupon'

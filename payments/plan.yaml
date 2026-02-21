@@ -1,0 +1,226 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Plan API
+  description: >
+    A Plan represents a base price, cycle, and currency for a subscription.
+host: api.hanzo.ai
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.ai/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  '/plan/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: deletePlan
+      description: >
+        Completely deletes the associated Plan.  Cannot be undone.
+      produces:
+        - text/html
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: 'Everything is OK.'
+          schema:
+            type: object
+            properties: {}
+          examples:
+            application/json: null
+
+    get:
+      operationId: getPlan
+      description: >
+        Returns a specified plan.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Plan'
+
+    patch:
+      operationId: updatePlan
+      description: >
+        Updates the specified Plan object piecemeal. Any fields not
+        included are not updated.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Plan'
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/Plan'
+
+    put:
+      operationId: replacePlan
+      description: >
+        Wholly replaces the specified Plan object in-place. Any fields not
+        included will be blanked.
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/Plan'
+
+  /plan:
+    post:
+      operationId: createPlan
+      description: >
+        Creates a new Plan.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Plan'
+      responses:
+        '201':
+          description: 'Everything is OK. New plan created.'
+          schema:
+            $ref: '#/definitions/Plan'
+
+    get:
+      operationId: retrievePlan
+      description: Returns a list of all available plans.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/PlanArray'
+
+  '/plan/{id}/refund':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    post:
+      operationId: createPlanRefund
+      description: >
+        Issues a refund for the amount (specified in the POST body) to
+        the plan specified by the given ID.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              amount:
+                type: integer
+            example:
+              id: 0WizkeyjF2HwmEKFD1gJ
+              amount: 2400
+        - name: Accept
+          in: header
+          type: string
+        - name: Content-Type
+          in: header
+          type: string
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+              $ref: '#/definitions/Plan'
+
+definitions:
+  Plan:
+    title: Plan
+    type: object
+    properties:
+      createdAt:
+        type: string
+        description: The time this object was created. Conforms to RFCE3339.
+      updatedAt:
+        type: string
+        description: The time this object was last updated. Conforms to RFCE3339.
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      account:
+        type: object
+      currency:
+        type: string
+        description: >
+          The three-digit identifier for the currency the plan
+          was made in. USD = United States Dollar, JPY = Japanese Yen, etc.
+      amount:
+        type: integer
+        format: int64
+        description: >
+          The specific quantity of money to be charged. Represented in the least significant
+          unit in the associated currency (so cent for USD, which has partial Dollars, but Yen
+          for JPY, which has no concept of partial Yen.)
+      billingScheme:
+        type: string
+        description: Describes how to interpret the price per period.
+      interval:
+        type: string
+        description: The unit used in determining the lapse between billing cycles.
+      intervalCount:
+        type: integer
+        description: >
+          The number of units making up a billing cycle - e.g., 30, combining
+          with the interval of 'days' to make 30 days.
+      live:
+        type: boolean
+        description: Whether or not the paymnet is a live one (false implies it's a test)
+
+  PlanArray:
+    title: PlanArray
+    description: An array of Plans
+    type: array
+    items:
+      $ref: '#/definitions/Plan'

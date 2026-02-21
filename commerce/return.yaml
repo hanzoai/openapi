@@ -1,0 +1,434 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Return API
+  description: >
+    An Return represents a confirmed request for goods or services.
+    These are generally what a business wants a lot of to make money.
+host: api.hanzo.ai
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.ai/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+
+paths:
+  '/return/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: deleteReturn
+      description: >
+        Completely deletes the associated Return.  Cannot be undone.
+      produces:
+        - text/html
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '204':
+          description: 'Everything is OK.'
+          schema:
+            type: object
+            properties: {}
+          examples:
+            application/json: null
+
+    get:
+      operationId: getReturn
+      description: >
+        Returns a specified return.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Return'
+
+    patch:
+      operationId: updateReturn
+      description: >
+        Updates the specified Return object piecemeal. Any fields not
+        included are not updated.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Return'
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/Return'
+
+    put:
+      operationId: replaceReturn
+      description: >
+        Wholly replaces the specified Return object in-place. Any fields not
+        included will be blanked.
+      responses:
+        '200':
+          description: 'Everything is OK.'
+          schema:
+            $ref: '#/definitions/Return'
+
+  /return:
+    post:
+      operationId: createReturn
+      description: >
+        Creates a new Return.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Return'
+      responses:
+        '201':
+          description: 'Everything is OK. New return created.'
+          schema:
+            $ref: '#/definitions/Return'
+
+    get:
+      operationId: retrieveReturn
+      description: Returns a list of all available returns.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/ReturnArray'
+
+definitions:
+  Return:
+    title: Return
+    description: An Return model
+    type: object
+    properties:
+      createdAt:
+        type: string
+        description: The time this object was created. Conforms to RFCE3339.
+      updatedAt:
+        type: string
+        description: The time this object was last updated. Conforms to RFCE3339.
+      id:
+        type: string
+        description: The hanzo-assigned guid to identify this item.
+      storeId:
+        type: string
+        description: The ID of the store affected by this return.
+      userId:
+        type: string
+        description: The ID of the user that initiated this return.
+      orderId:
+        type: string
+        description: The ID of the order affected by this return.
+      externalId:
+        type: string
+        description: The ID of the external resource affected by this return.
+      shipping:
+        type: integer
+        format: int64
+        description: >
+          A monetary measure of shipping charges. Represented in the least
+          significant measure of the store's set currency (so cents for USD, yen for
+          JPY, etc).
+      tax:
+        type: integer
+        format: int64
+        description: >
+          A monetary measure of all taxes assessed on the return.
+          Represented in the least significant measure of the store's set
+          currency (so cents for USD, yen for JPY, etc).
+      subtotal:
+        type: integer
+        format: int64
+        description: >
+          A monetary measure of the return's line items, without any
+          extra charges such as shipping or tax.  Represented in the least
+          significant measure of the store's set  currency (so cents for
+          USD, yen for JPY, etc).
+      total:
+        type: integer
+        format: int64
+        description: >
+          A monetary measure of the return's grand total, including
+          extra charges such as shipping or tax.  Represented in the least
+          significant measure of the store's set  currency (so cents for
+          USD, yen for JPY, etc).
+      items:
+        $ref: '#/definitions/LineItemArray'
+      fulfillment:
+        type: object
+        description: Details on delivery of the return.
+      cancelled:
+        type: boolean
+        description: Whether or not the return has been cancelled.
+      shipped:
+        type: boolean
+        description: Whether or not the return has been shipped.
+      test:
+        type: boolean
+        description: Whether or not the return is a test.
+
+  Fulfillment:
+    title: Fulfillment
+    description: Shipping and filling information for an order or return.
+    type: object
+    properties:
+      type:
+        type: string
+        description: >
+          The shipping integration used for this shipment. One of: 'shipwire',
+          'shipstation', 'manual'.
+      status:
+        type: string
+        description: >
+          The current state of the shipment. One of: 'pending', 'processed', 'cancelled',
+          'completed', 'delivered', 'returned', 'submitted', 'held', 'tracked'.
+      service:
+        type: string
+        description: The specific service used to move the item.
+      carrier:
+        type: string
+        description: The courier used to move the item.
+      pricing:
+        type: integer
+        description: The price levied to move the item.
+      pricingEstimate:
+        type: integer
+        description: The price esitmated to move the item.
+      createdAt:
+        type: string
+        description: The time this fulfillment request was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this fulfillment request was last updated. Conforms to RFC3339.
+      submittedAt:
+        type: string
+        description: The time this fulfillment request was submitted. Conforms to RFC3339.
+      processedAt:
+        type: string
+        description: The time this fulfillment request was processed. Conforms to RFC3339.
+      completedAt:
+        type: string
+        description: The time this fulfillment request was completed. Conforms to RFC3339.
+      expectedAt:
+        type: string
+        description: The time this fulfillment request was expected. Conforms to RFC3339.
+      cancelledAt:
+        type: string
+        description: The time this fulfillment request was cancelled. Conforms to RFC3339.
+      returnedAt:
+        type: string
+        description: The time this fulfillment request was cancelled. Conforms to RFC3339.
+      expectedSubmittedAt:
+        type: string
+        description: The time this fulfillment request is expected to be submitted. Conforms to RFC3339.
+      expectedCompletedAt:
+        type: string
+        description: The time this fulfillment request is expected to be completed. Conforms to RFC3339.
+      warehouseId:
+        type: string
+        description: An external identifier for the warehouse involved in the shipment.
+      warehouseRegion:
+        type: string
+        description: The geographic region the warehouse is located.
+      holds:
+        $ref: '#/definitions/HoldArray'
+      trackings:
+        $ref: '#/definitions/TrackingArray'
+
+  Hold:
+    title: Hold
+    description: A hold on a shipment.
+    type: object
+    properties:
+      type:
+        type: string
+        description: The external descriptor for the nature of the hold.
+      description:
+        type: string
+        description: The long form verbiage of the nature of the hold.
+      externalId:
+        type: string
+        description: The external ID that uniquely identifies the hold.
+      appliedAt:
+        type: string
+        description: The time the hold was applied. Conforms to RFC3339.
+
+  Tracking:
+    title: Tracking
+    description: An entry in the shipment's tracking history.
+    type: object
+    properties:
+      number:
+        type: string
+        description: The tracking number assigned by the courier.
+      externalId:
+        type: string
+        description: The external unique identifier for this tracking entry.
+      createdAt:
+        type: string
+        description: The time this entry was created. Conforms to RFC3339.
+      carrier:
+        type: string
+        description: The courier responsible for the tracking entry.
+      summary:
+        type: string
+        description: A brief description of the tracking entry's data.
+      summaryAt:
+        type: string
+        description: When the summary was submitted.
+      labelCreatedAt:
+        type: string
+        description: When the shipping label was created.
+      firstScanRegion:
+        type: string
+        description: What region first scan occurred in.
+      firstScanPostalCode:
+        type: string
+        description: The postal code the first scan occurred in.
+      firstScanAt:
+        type: string
+        description: The time the first scan occurred
+      deliveryCity:
+        type: string
+        description: The intended delivery city.
+      deliveryRegion:
+        type: string
+        description: The intended deivery region.
+      deliveryPostalCode:
+        type: string
+        description: The intended delivery postal code.
+      deliveryCountry:
+        type: string
+        description: The intended delivery country.
+      deliveredAt:
+        type: string
+        description: The time the delivery actually occurred.
+
+  LineItem:
+    title: LineItem
+    description: A specific line on a receipt.
+    type: object
+    properties:
+      collectionId:
+        type: string
+        description: A specific collection used on this line item.
+      productId:
+        type: string
+        description: A specific product's ID, as used on this line item.
+      productName:
+        type: string
+        description: A specific product's name, as used on this line item.
+      productSlug:
+        type: string
+        description: A specific product's slug, as used on this line item.
+      productSKU:
+        type: string
+        description: A specific product's SKU, as used on this line item.
+      variantId:
+        type: string
+        description: A specific variant's ID, as used on this line item.
+      variantName:
+        type: string
+        description: A specific variant's name, as used on this line item.
+      variantSlug:
+        type: string
+        description: A specific variant's slug, as used on this line item.
+      variantSKU:
+        type: string
+        description: A specific variant's SKU, as used on this line item.
+      price:
+        type: integer
+        description: >
+          How much this particular line costs, in terms of the currency
+          used by the parent return/order/whatever.
+      weight:
+        type: number
+        description: >
+          How much this line item weighs, in the unit provided on this same
+          line item.
+      weightUnit:
+        type: string
+        description: >
+          The unit of weight used by this line item. One of: 'Pound',
+          'Ounce', 'Kilogram', 'Gram'
+      taxable:
+        type: boolean
+        description: Whether or not taxes appy to this line item.
+      free:
+        type: boolean
+        description: >
+          Whether or not item should be considered free (after
+          discounts, coupons, etc).
+      addedBy:
+        type: string
+        description: The non-user party which added this item (coupon, etc).
+
+  LineItemArray:
+    title: LineItemArray
+    description: An array of Line Items
+    type: array
+    items:
+      $ref: '#/definitions/LineItem'
+
+  ReturnArray:
+    title: ReturnArray
+    description: An array of Returns
+    type: array
+    items:
+      $ref: '#/definitions/Return'
+
+  HoldArray:
+    title: HoldArray
+    description: An array of Holds
+    type: array
+    items:
+      $ref: '#/definitions/Hold'
+
+  TrackingArray:
+    title: TrackingArray
+    description: An array of Tracking entries
+    type: array
+    items:
+      $ref: '#/definitions/Tracking'
