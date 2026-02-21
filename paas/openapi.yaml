@@ -1,0 +1,1573 @@
+openapi: 3.1.0
+info:
+  title: Hanzo PaaS API
+  description: |
+    Production PaaS for Hanzo Platform — K8s-native GitOps deployments,
+    per-org DOKS cluster management, and fleet operations.
+
+    Based on Agnost with Hanzo extensions for:
+    - Per-organization isolated DOKS clusters
+    - Fleet management across multiple clusters
+    - KMS-managed secrets (kms.hanzo.ai)
+    - Unified IAM via hanzo.id
+    - Nixpacks-based build system
+    - Tekton CI/CD pipelines
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://paas.hanzo.ai
+    description: Production
+  - url: https://api.hanzo.ai/v1/paas
+    description: Gateway Proxy
+
+tags:
+  - name: Cluster
+    description: Cluster setup, info, and management
+  - name: DOKS
+    description: DigitalOcean Kubernetes cluster provisioning and fleet management
+  - name: Auth
+    description: Authentication and session management
+  - name: Organizations
+    description: Organization management
+  - name: Projects
+    description: Project management (grouping of environments)
+  - name: Environments
+    description: Environment lifecycle within projects
+  - name: Containers
+    description: Container/application lifecycle (build, deploy, scale)
+  - name: Domains
+    description: Domain and routing configuration
+  - name: Storage
+    description: Object storage management
+  - name: Registry
+    description: Container registry configuration
+  - name: Git
+    description: Git provider integration
+  - name: Logs
+    description: Container and build logs
+  - name: Telemetry
+    description: Resource usage and metrics
+  - name: System
+    description: System configuration
+  - name: Health
+    description: Service health checks
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HANZO_API_KEY
+      description: Hanzo API Key (Bearer hk-...)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+
+    Cluster:
+      type: object
+      properties:
+        _id:
+          type: string
+        clusterAccesssToken:
+          type: string
+        masterToken:
+          type: string
+        slug:
+          type: string
+        release:
+          type: string
+        domains:
+          type: array
+          items:
+            type: string
+        ips:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    DOKSCluster:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        region:
+          type: string
+        version:
+          type: string
+        status:
+          type: string
+          enum: [provisioning, running, degraded, error, deleted]
+        node_count:
+          type: integer
+        node_pools:
+          type: array
+          items:
+            $ref: '#/components/schemas/NodePool'
+        ha:
+          type: boolean
+        endpoint:
+          type: string
+          format: uri
+        created_at:
+          type: string
+          format: date-time
+
+    NodePool:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        size:
+          type: string
+          description: Droplet size slug (e.g. s-4vcpu-8gb)
+        count:
+          type: integer
+        auto_scale:
+          type: boolean
+        min_nodes:
+          type: integer
+        max_nodes:
+          type: integer
+        nodes:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              status:
+                type: string
+
+    Organization:
+      type: object
+      properties:
+        _id:
+          type: string
+        iid:
+          type: string
+        ownerUserId:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        doks:
+          type: object
+          properties:
+            clusterId:
+              type: string
+            clusterName:
+              type: string
+            region:
+              type: string
+            status:
+              type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Project:
+      type: object
+      properties:
+        _id:
+          type: string
+        iid:
+          type: string
+        orgId:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        team:
+          type: array
+          items:
+            type: object
+            properties:
+              userId:
+                type: string
+              role:
+                type: string
+                enum: [Admin, Developer, Viewer]
+        environments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Environment'
+        createdAt:
+          type: string
+          format: date-time
+
+    Environment:
+      type: object
+      properties:
+        _id:
+          type: string
+        iid:
+          type: string
+        orgId:
+          type: string
+        projectId:
+          type: string
+        name:
+          type: string
+        version:
+          type: object
+          properties:
+            name:
+              type: string
+            params:
+              type: object
+        readOnly:
+          type: boolean
+        suspended:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    Container:
+      type: object
+      properties:
+        _id:
+          type: string
+        iid:
+          type: string
+        orgId:
+          type: string
+        projectId:
+          type: string
+        envId:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [deployment, statefulset, cronjob, knativeservice]
+        status:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [OK, Error, Updating, Creating]
+            availableReplicas:
+              type: integer
+            readyReplicas:
+              type: integer
+        template:
+          type: string
+          description: Template slug (e.g. nodejs, python, go, rust)
+        repo:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [github, gitlab, bitbucket]
+            url:
+              type: string
+            branch:
+              type: string
+            connected:
+              type: boolean
+        networking:
+          type: object
+          properties:
+            containerPort:
+              type: integer
+            ingress:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                type:
+                  type: string
+                  enum: [path, subdomain]
+        createdAt:
+          type: string
+          format: date-time
+
+    Domain:
+      type: object
+      properties:
+        _id:
+          type: string
+        domain:
+          type: string
+        containerId:
+          type: string
+        ssl:
+          type: boolean
+        verified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    FleetOverview:
+      type: object
+      properties:
+        clusters:
+          type: array
+          items:
+            type: object
+            properties:
+              orgId:
+                type: string
+              orgName:
+                type: string
+              clusterId:
+                type: string
+              clusterName:
+                type: string
+              region:
+                type: string
+              status:
+                type: string
+              nodeCount:
+                type: integer
+              ha:
+                type: boolean
+              monthlyCost:
+                type: number
+        totalClusters:
+          type: integer
+        totalNodes:
+          type: integer
+        totalMonthlyCost:
+          type: number
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  # Health
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  version:
+                    type: string
+
+  # Cluster Setup
+  /v1/cluster/setup-status:
+    get:
+      tags:
+        - Cluster
+      summary: Check cluster setup status
+      operationId: getSetupStatus
+      security: []
+      responses:
+        '200':
+          description: Setup status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+
+  /v1/cluster/info:
+    get:
+      tags:
+        - Cluster
+      summary: Get cluster info
+      operationId: getClusterInfo
+      responses:
+        '200':
+          description: Cluster information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cluster'
+
+  /v1/cluster/domains:
+    get:
+      tags:
+        - Cluster
+      summary: List cluster domains
+      operationId: listClusterDomains
+      responses:
+        '200':
+          description: Cluster domains
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+    post:
+      tags:
+        - Cluster
+      summary: Add cluster domain
+      operationId: addClusterDomain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - domain
+              properties:
+                domain:
+                  type: string
+      responses:
+        '200':
+          description: Domain added
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /v1/cluster/domains/{domain}:
+    delete:
+      tags:
+        - Cluster
+      summary: Remove cluster domain
+      operationId: removeClusterDomain
+      parameters:
+        - name: domain
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Domain removed
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # DOKS Fleet Management
+  /v1/cluster/doks/fleet:
+    get:
+      tags:
+        - DOKS
+      summary: Fleet overview (all org clusters)
+      operationId: getDOKSFleet
+      responses:
+        '200':
+          description: Fleet overview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FleetOverview'
+
+  /v1/cluster/doks/options:
+    get:
+      tags:
+        - DOKS
+      summary: Available regions and node sizes
+      operationId: getDOKSOptions
+      responses:
+        '200':
+          description: Available options
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  regions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        slug:
+                          type: string
+                        name:
+                          type: string
+                        available:
+                          type: boolean
+                  sizes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        slug:
+                          type: string
+                        description:
+                          type: string
+                        vcpus:
+                          type: integer
+                        memory:
+                          type: integer
+                        disk:
+                          type: integer
+                        price_monthly:
+                          type: number
+                  versions:
+                    type: array
+                    items:
+                      type: string
+
+  /v1/cluster/doks/pricing/{sizeSlug}:
+    get:
+      tags:
+        - DOKS
+      summary: Get droplet pricing
+      operationId: getDOKSPricing
+      parameters:
+        - name: sizeSlug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pricing info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  slug:
+                    type: string
+                  price_monthly:
+                    type: number
+                  price_hourly:
+                    type: number
+
+  /v1/cluster/doks/provision:
+    post:
+      tags:
+        - DOKS
+      summary: Provision new DOKS cluster for org
+      operationId: provisionDOKS
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - orgId
+                - name
+                - region
+                - version
+                - nodePool
+              properties:
+                orgId:
+                  type: string
+                name:
+                  type: string
+                region:
+                  type: string
+                version:
+                  type: string
+                ha:
+                  type: boolean
+                  default: false
+                nodePool:
+                  type: object
+                  required:
+                    - name
+                    - size
+                    - count
+                  properties:
+                    name:
+                      type: string
+                    size:
+                      type: string
+                    count:
+                      type: integer
+                    auto_scale:
+                      type: boolean
+                    min_nodes:
+                      type: integer
+                    max_nodes:
+                      type: integer
+      responses:
+        '201':
+          description: Cluster provisioning started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DOKSCluster'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /v1/cluster/doks/{orgId}/status:
+    get:
+      tags:
+        - DOKS
+      summary: Get cluster status (polls DO API)
+      operationId: getDOKSStatus
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cluster status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DOKSCluster'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/cluster/doks/{orgId}/kubeconfig:
+    get:
+      tags:
+        - DOKS
+      summary: Download kubeconfig
+      operationId: getDOKSKubeconfig
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Kubeconfig YAML
+          content:
+            application/yaml:
+              schema:
+                type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/cluster/doks/{orgId}/node-pools:
+    get:
+      tags:
+        - DOKS
+      summary: List node pools
+      operationId: listDOKSNodePools
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Node pools
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NodePool'
+    post:
+      tags:
+        - DOKS
+      summary: Add node pool
+      operationId: addDOKSNodePool
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodePool'
+      responses:
+        '201':
+          description: Node pool added
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /v1/cluster/doks/{orgId}/node-pools/{poolId}:
+    put:
+      tags:
+        - DOKS
+      summary: Update node pool
+      operationId: updateDOKSNodePool
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: poolId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                count:
+                  type: integer
+                auto_scale:
+                  type: boolean
+                min_nodes:
+                  type: integer
+                max_nodes:
+                  type: integer
+      responses:
+        '200':
+          description: Node pool updated
+    delete:
+      tags:
+        - DOKS
+      summary: Delete node pool
+      operationId: deleteDOKSNodePool
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: poolId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Node pool deleted
+
+  /v1/cluster/doks/{orgId}/upgrade-ha:
+    post:
+      tags:
+        - DOKS
+      summary: Upgrade to HA control plane
+      operationId: upgradeDOKSHA
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: HA upgrade initiated
+
+  /v1/cluster/doks/{orgId}:
+    delete:
+      tags:
+        - DOKS
+      summary: Destroy DOKS cluster
+      operationId: destroyDOKS
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: confirm
+          in: query
+          required: true
+          schema:
+            type: boolean
+          description: Must be true to confirm destruction
+      responses:
+        '200':
+          description: Cluster destruction initiated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # Auth
+  /v1/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login via IAM
+      operationId: login
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider:
+                  type: string
+                  enum: [hanzo, github, gitlab, bitbucket]
+                code:
+                  type: string
+                redirect_uri:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  user:
+                    type: object
+
+  /v1/auth/me:
+    get:
+      tags:
+        - Auth
+      summary: Get current user
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # Organizations
+  /v1/org:
+    get:
+      tags:
+        - Organizations
+      summary: List organizations
+      operationId: listOrganizations
+      responses:
+        '200':
+          description: List of organizations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+    post:
+      tags:
+        - Organizations
+      summary: Create organization
+      operationId: createOrganization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                color:
+                  type: string
+      responses:
+        '201':
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+
+  /v1/org/{orgId}:
+    get:
+      tags:
+        - Organizations
+      summary: Get organization
+      operationId: getOrganization
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Organization details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+    put:
+      tags:
+        - Organizations
+      summary: Update organization
+      operationId: updateOrganization
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                color:
+                  type: string
+      responses:
+        '200':
+          description: Organization updated
+    delete:
+      tags:
+        - Organizations
+      summary: Delete organization
+      operationId: deleteOrganization
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Organization deleted
+
+  # Projects
+  /v1/org/{orgId}/project:
+    get:
+      tags:
+        - Projects
+      summary: List projects
+      operationId: listProjects
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+    post:
+      tags:
+        - Projects
+      summary: Create project
+      operationId: createProject
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                color:
+                  type: string
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /v1/org/{orgId}/project/{projectId}:
+    get:
+      tags:
+        - Projects
+      summary: Get project
+      operationId: getProject
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+    put:
+      tags:
+        - Projects
+      summary: Update project
+      operationId: updateProject
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                color:
+                  type: string
+      responses:
+        '200':
+          description: Project updated
+    delete:
+      tags:
+        - Projects
+      summary: Delete project
+      operationId: deleteProject
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project deleted
+
+  # Environments
+  /v1/org/{orgId}/project/{projectId}/env:
+    get:
+      tags:
+        - Environments
+      summary: List environments
+      operationId: listEnvironments
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of environments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Environment'
+    post:
+      tags:
+        - Environments
+      summary: Create environment
+      operationId: createEnvironment
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Environment created
+
+  /v1/org/{orgId}/project/{projectId}/env/{envId}:
+    get:
+      tags:
+        - Environments
+      summary: Get environment
+      operationId: getEnvironment
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: envId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Environment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Environment'
+    delete:
+      tags:
+        - Environments
+      summary: Delete environment
+      operationId: deleteEnvironment
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: envId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Environment deleted
+
+  # Containers
+  /v1/org/{orgId}/project/{projectId}/env/{envId}/containers:
+    get:
+      tags:
+        - Containers
+      summary: List containers
+      operationId: listContainers
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: envId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of containers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Container'
+    post:
+      tags:
+        - Containers
+      summary: Create container
+      operationId: createContainer
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: envId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - type
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                  enum: [deployment, statefulset, cronjob, knativeservice]
+                template:
+                  type: string
+                  description: Template slug (nodejs, python, go, rust, etc.)
+                repo:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum: [github, gitlab, bitbucket]
+                    url:
+                      type: string
+                    branch:
+                      type: string
+      responses:
+        '201':
+          description: Container created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Container'
+
+  /v1/org/{orgId}/project/{projectId}/env/{envId}/containers/{containerId}:
+    get:
+      tags:
+        - Containers
+      summary: Get container
+      operationId: getContainer
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: envId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Container'
+    put:
+      tags:
+        - Containers
+      summary: Update container
+      operationId: updateContainer
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: envId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Container updated
+    delete:
+      tags:
+        - Containers
+      summary: Delete container
+      operationId: deleteContainer
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: envId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container deleted
+
+  /v1/org/{orgId}/project/{projectId}/env/{envId}/containers/{containerId}/deploy:
+    post:
+      tags:
+        - Containers
+      summary: Trigger deployment (Nixpacks build + deploy)
+      operationId: deployContainer
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: envId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deployment triggered
+
+  /v1/org/{orgId}/project/{projectId}/env/{envId}/containers/{containerId}/pods:
+    get:
+      tags:
+        - Containers
+      summary: List container pods
+      operationId: listContainerPods
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: envId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pod list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    status:
+                      type: string
+                    ready:
+                      type: boolean
+                    restarts:
+                      type: integer
+                    age:
+                      type: string
+
+  /v1/org/{orgId}/project/{projectId}/env/{envId}/containers/{containerId}/logs:
+    get:
+      tags:
+        - Logs
+      summary: Get container logs
+      operationId: getContainerLogs
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: envId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: containerId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tail
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: follow
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Container logs
+          content:
+            text/plain:
+              schema:
+                type: string
+            text/event-stream:
+              schema:
+                type: string
+
+  # System
+  /v1/system/templates:
+    get:
+      tags:
+        - System
+      summary: List available templates
+      operationId: listTemplates
+      security: []
+      responses:
+        '200':
+          description: Available deployment templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    slug:
+                      type: string
+                    name:
+                      type: string
+                    category:
+                      type: string
+                    description:
+                      type: string
+                    icon:
+                      type: string

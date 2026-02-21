@@ -1,0 +1,1494 @@
+openapi: 3.1.0
+info:
+  title: Hanzo DB API
+  description: |
+    Hanzo DB provides serverless PostgreSQL with instant branching, autoscaling
+    compute, and point-in-time restore.
+
+    Based on Neon with Hanzo extensions for:
+    - Instant database branching for development and CI/CD
+    - Autoscaling compute endpoints (scale to zero)
+    - Point-in-time restore from WAL history
+    - Connection pooling with PgBouncer
+    - Usage-based billing (compute CU-hours, storage GB-hours, data transfer)
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://db.hanzo.ai
+    description: Production
+  - url: https://api.hanzo.ai/v1/db
+    description: Gateway Proxy
+
+tags:
+  - name: Projects
+    description: Database project management
+  - name: Branches
+    description: Instant database branching
+  - name: Endpoints
+    description: Compute endpoints with autoscaling
+  - name: Databases
+    description: Database management within branches
+  - name: Roles
+    description: Database role and credential management
+  - name: Operations
+    description: Async operation tracking
+  - name: Consumption
+    description: Usage metrics and billing
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HANZO_API_KEY
+      description: Hanzo API Key (Bearer hk-...)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        platform_id:
+          type: string
+        region_id:
+          type: string
+        pg_version:
+          type: integer
+          description: PostgreSQL major version
+        store_passwords:
+          type: boolean
+        active_time_seconds:
+          type: integer
+          format: int64
+        compute_time_seconds:
+          type: integer
+          format: int64
+        data_storage_bytes_hour:
+          type: integer
+          format: int64
+        data_transfer_bytes:
+          type: integer
+          format: int64
+        branch_logical_size_limit:
+          type: integer
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ProjectCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        region_id:
+          type: string
+          default: us-east-1
+        pg_version:
+          type: integer
+          default: 16
+        store_passwords:
+          type: boolean
+          default: true
+        default_endpoint_settings:
+          $ref: '#/components/schemas/EndpointSettings'
+
+    Branch:
+      type: object
+      properties:
+        id:
+          type: string
+        project_id:
+          type: string
+        parent_id:
+          type: string
+          description: Parent branch ID (null for root)
+        parent_lsn:
+          type: string
+          description: LSN at which branch was forked
+        parent_timestamp:
+          type: string
+          format: date-time
+          description: Timestamp at which branch was forked
+        name:
+          type: string
+        current_state:
+          type: string
+          enum: [init, ready, deleting]
+        logical_size:
+          type: integer
+          format: int64
+        primary:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    BranchCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        parent_id:
+          type: string
+          description: Branch to fork from (defaults to primary branch)
+        parent_lsn:
+          type: string
+          description: Fork at specific LSN
+        parent_timestamp:
+          type: string
+          format: date-time
+          description: Fork at specific point in time
+
+    Endpoint:
+      type: object
+      properties:
+        id:
+          type: string
+        host:
+          type: string
+        project_id:
+          type: string
+        branch_id:
+          type: string
+        region_id:
+          type: string
+        type:
+          type: string
+          enum: [read_write, read_only]
+        current_state:
+          type: string
+          enum: [init, active, idle, suspended]
+        settings:
+          $ref: '#/components/schemas/EndpointSettings'
+        pooler_enabled:
+          type: boolean
+        pooler_mode:
+          type: string
+          enum: [transaction, session]
+        last_active:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    EndpointCreate:
+      type: object
+      required:
+        - branch_id
+        - type
+      properties:
+        branch_id:
+          type: string
+        type:
+          type: string
+          enum: [read_write, read_only]
+        settings:
+          $ref: '#/components/schemas/EndpointSettings'
+        pooler_enabled:
+          type: boolean
+          default: true
+        pooler_mode:
+          type: string
+          enum: [transaction, session]
+          default: transaction
+
+    EndpointSettings:
+      type: object
+      properties:
+        autoscaling_limit_min_cu:
+          type: number
+          description: Minimum compute units (0.25 CU = 0.25 vCPU, 1 GB RAM)
+          default: 0.25
+        autoscaling_limit_max_cu:
+          type: number
+          description: Maximum compute units
+          default: 4
+        suspend_timeout_seconds:
+          type: integer
+          description: Seconds of inactivity before suspending (0 = never)
+          default: 300
+        pg_settings:
+          type: object
+          additionalProperties:
+            type: string
+          description: PostgreSQL configuration overrides
+
+    Database:
+      type: object
+      properties:
+        id:
+          type: integer
+        branch_id:
+          type: string
+        name:
+          type: string
+        owner_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DatabaseCreate:
+      type: object
+      required:
+        - name
+        - owner_name
+      properties:
+        name:
+          type: string
+        owner_name:
+          type: string
+          description: Role name that owns this database
+
+    Role:
+      type: object
+      properties:
+        branch_id:
+          type: string
+        name:
+          type: string
+        password:
+          type: string
+          description: Only returned on creation or password reset
+        protected:
+          type: boolean
+          description: Whether this is a system role
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    RoleCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+
+    Operation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+        branch_id:
+          type: string
+        endpoint_id:
+          type: string
+        action:
+          type: string
+          enum:
+            - create_project
+            - create_branch
+            - delete_branch
+            - create_endpoint
+            - start_compute
+            - suspend_compute
+            - delete_endpoint
+            - apply_config
+            - check_availability
+            - create_timeline
+            - tenant_migrate
+        status:
+          type: string
+          enum: [scheduling, running, finished, failed, cancelling, cancelled, skipping]
+        failures_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ConnectionUri:
+      type: object
+      properties:
+        connection_uri:
+          type: string
+          description: PostgreSQL connection string
+        connection_parameters:
+          type: object
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            database:
+              type: string
+            role:
+              type: string
+            password:
+              type: string
+            pooler_host:
+              type: string
+
+    ConsumptionPeriod:
+      type: object
+      properties:
+        period_id:
+          type: string
+        period_start:
+          type: string
+          format: date-time
+        period_end:
+          type: string
+          format: date-time
+        active_time_seconds:
+          type: integer
+          format: int64
+        compute_time_seconds:
+          type: integer
+          format: int64
+        data_storage_bytes_hour:
+          type: integer
+          format: int64
+        written_data_bytes:
+          type: integer
+          format: int64
+        data_transfer_bytes:
+          type: integer
+          format: int64
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  # Projects
+  /projects:
+    get:
+      tags:
+        - Projects
+      summary: List projects
+      operationId: listProjects
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
+                  pagination:
+                    type: object
+                    properties:
+                      cursor:
+                        type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Projects
+      summary: Create project
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project
+              properties:
+                project:
+                  $ref: '#/components/schemas/ProjectCreate'
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    $ref: '#/components/schemas/Project'
+                  connection_uris:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConnectionUri'
+                  branch:
+                    $ref: '#/components/schemas/Branch'
+                  endpoints:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Endpoint'
+                  databases:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Database'
+                  roles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Role'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /projects/{id}:
+    get:
+      tags:
+        - Projects
+      summary: Get project
+      operationId: getProject
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    $ref: '#/components/schemas/Project'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Projects
+      summary: Update project
+      operationId: updateProject
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project
+              properties:
+                project:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    default_endpoint_settings:
+                      $ref: '#/components/schemas/EndpointSettings'
+      responses:
+        '200':
+          description: Project updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    $ref: '#/components/schemas/Project'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Projects
+      summary: Delete project
+      operationId: deleteProject
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    $ref: '#/components/schemas/Project'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Branches
+  /projects/{id}/branches:
+    get:
+      tags:
+        - Branches
+      summary: List branches
+      operationId: listBranches
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of branches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  branches:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Branch'
+
+    post:
+      tags:
+        - Branches
+      summary: Create branch
+      operationId: createBranch
+      description: |
+        Creates an instant copy-on-write branch from the parent branch.
+        Branching is near-instant regardless of database size.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                branch:
+                  $ref: '#/components/schemas/BranchCreate'
+                endpoints:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/EndpointCreate'
+      responses:
+        '201':
+          description: Branch created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  branch:
+                    $ref: '#/components/schemas/Branch'
+                  endpoints:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Endpoint'
+                  operations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Operation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /projects/{id}/branches/{branch_id}:
+    get:
+      tags:
+        - Branches
+      summary: Get branch
+      operationId: getBranch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: branch_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Branch details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  branch:
+                    $ref: '#/components/schemas/Branch'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Branches
+      summary: Delete branch
+      operationId: deleteBranch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: branch_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Branch deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  branch:
+                    $ref: '#/components/schemas/Branch'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{id}/branches/{branch_id}/restore:
+    post:
+      tags:
+        - Branches
+      summary: Point-in-time restore
+      operationId: restoreBranch
+      description: |
+        Restore a branch to a specific point in time or LSN.
+        Uses WAL history for precise recovery.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: branch_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                source_branch_id:
+                  type: string
+                source_lsn:
+                  type: string
+                  description: Restore to this LSN
+                source_timestamp:
+                  type: string
+                  format: date-time
+                  description: Restore to this point in time
+                preserve_under_name:
+                  type: string
+                  description: Preserve current state under this name before restoring
+      responses:
+        '200':
+          description: Branch restored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  branch:
+                    $ref: '#/components/schemas/Branch'
+                  operations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Operation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # Endpoints
+  /projects/{id}/endpoints:
+    get:
+      tags:
+        - Endpoints
+      summary: List compute endpoints
+      operationId: listEndpoints
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of endpoints
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  endpoints:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Endpoint'
+
+    post:
+      tags:
+        - Endpoints
+      summary: Create compute endpoint
+      operationId: createEndpoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - endpoint
+              properties:
+                endpoint:
+                  $ref: '#/components/schemas/EndpointCreate'
+      responses:
+        '201':
+          description: Endpoint created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  endpoint:
+                    $ref: '#/components/schemas/Endpoint'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /projects/{id}/endpoints/{endpoint_id}:
+    get:
+      tags:
+        - Endpoints
+      summary: Get compute endpoint
+      operationId: getEndpoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: endpoint_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Endpoint details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  endpoint:
+                    $ref: '#/components/schemas/Endpoint'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Endpoints
+      summary: Update compute endpoint
+      operationId: updateEndpoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: endpoint_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - endpoint
+              properties:
+                endpoint:
+                  type: object
+                  properties:
+                    branch_id:
+                      type: string
+                    settings:
+                      $ref: '#/components/schemas/EndpointSettings'
+                    pooler_enabled:
+                      type: boolean
+                    pooler_mode:
+                      type: string
+      responses:
+        '200':
+          description: Endpoint updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  endpoint:
+                    $ref: '#/components/schemas/Endpoint'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Endpoints
+      summary: Delete compute endpoint
+      operationId: deleteEndpoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: endpoint_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Endpoint deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  endpoint:
+                    $ref: '#/components/schemas/Endpoint'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{id}/endpoints/{endpoint_id}/start:
+    post:
+      tags:
+        - Endpoints
+      summary: Start compute endpoint
+      operationId: startEndpoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: endpoint_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Endpoint started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  endpoint:
+                    $ref: '#/components/schemas/Endpoint'
+
+  /projects/{id}/endpoints/{endpoint_id}/suspend:
+    post:
+      tags:
+        - Endpoints
+      summary: Suspend compute endpoint
+      operationId: suspendEndpoint
+      description: Suspends the endpoint to save compute costs. It will resume on next connection.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: endpoint_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Endpoint suspended
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  endpoint:
+                    $ref: '#/components/schemas/Endpoint'
+
+  # Databases
+  /projects/{id}/databases:
+    get:
+      tags:
+        - Databases
+      summary: List databases
+      operationId: listDatabases
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: branch_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of databases
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  databases:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Database'
+
+    post:
+      tags:
+        - Databases
+      summary: Create database
+      operationId: createDatabase
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - database
+              properties:
+                database:
+                  $ref: '#/components/schemas/DatabaseCreate'
+      responses:
+        '201':
+          description: Database created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  database:
+                    $ref: '#/components/schemas/Database'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /projects/{id}/databases/{name}:
+    get:
+      tags:
+        - Databases
+      summary: Get database
+      operationId: getDatabase
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: branch_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Database details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  database:
+                    $ref: '#/components/schemas/Database'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Databases
+      summary: Update database
+      operationId: updateDatabase
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - database
+              properties:
+                database:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    owner_name:
+                      type: string
+      responses:
+        '200':
+          description: Database updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  database:
+                    $ref: '#/components/schemas/Database'
+
+    delete:
+      tags:
+        - Databases
+      summary: Delete database
+      operationId: deleteDatabase
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: branch_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Database deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  database:
+                    $ref: '#/components/schemas/Database'
+
+  # Roles
+  /projects/{id}/roles:
+    get:
+      tags:
+        - Roles
+      summary: List roles
+      operationId: listRoles
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: branch_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of roles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Role'
+
+    post:
+      tags:
+        - Roles
+      summary: Create role
+      operationId: createRole
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - role
+              properties:
+                role:
+                  $ref: '#/components/schemas/RoleCreate'
+      responses:
+        '201':
+          description: Role created (password returned once)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role:
+                    $ref: '#/components/schemas/Role'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /projects/{id}/roles/{name}:
+    get:
+      tags:
+        - Roles
+      summary: Get role
+      operationId: getRole
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: branch_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Role details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role:
+                    $ref: '#/components/schemas/Role'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Roles
+      summary: Delete role
+      operationId: deleteRole
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: branch_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Role deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role:
+                    $ref: '#/components/schemas/Role'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{id}/roles/{name}/reset_password:
+    post:
+      tags:
+        - Roles
+      summary: Reset role password
+      operationId: resetRolePassword
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: branch_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Password reset (new password returned once)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role:
+                    $ref: '#/components/schemas/Role'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Operations
+  /projects/{id}/operations:
+    get:
+      tags:
+        - Operations
+      summary: List operations
+      operationId: listOperations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: List of operations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Operation'
+                  pagination:
+                    type: object
+                    properties:
+                      cursor:
+                        type: string
+
+  # Connection URI
+  /projects/{id}/connection_uri:
+    get:
+      tags:
+        - Projects
+      summary: Get connection URI
+      operationId: getConnectionUri
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: branch_id
+          in: query
+          schema:
+            type: string
+        - name: endpoint_id
+          in: query
+          schema:
+            type: string
+        - name: database_name
+          in: query
+          schema:
+            type: string
+            default: neondb
+        - name: role_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: pooled
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Connection URI
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionUri'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Consumption
+  /consumption:
+    get:
+      tags:
+        - Consumption
+      summary: Get usage metrics
+      operationId: getConsumption
+      description: |
+        Returns compute, storage, and data transfer usage metrics.
+        Used for billing calculations.
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: project_id
+          in: query
+          schema:
+            type: string
+          description: Filter by project (omit for all projects)
+        - name: granularity
+          in: query
+          schema:
+            type: string
+            enum: [hourly, daily, monthly]
+            default: hourly
+      responses:
+        '200':
+          description: Consumption metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  periods:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConsumptionPeriod'
+        '400':
+          $ref: '#/components/responses/BadRequest'
