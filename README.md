@@ -38,10 +38,10 @@ Unified OpenAPI specifications for ALL Hanzo services. Single `HANZO_API_KEY` fo
 | **Operative** | 1.0.0 | `operative/openapi.yaml` | `operative.hanzo.ai` | @hanzoai | Computer use, browser automation |
 | **Vector** | 1.0.0 | `vector/openapi.yaml` | `vector.hanzo.ai` | @hanzoai | Vector database, collections, search |
 | **Nexus** | 1.70.0 | `nexus/openapi.yaml` | `nexus.hanzo.ai` | @hanzoai | Knowledge base, RAG, embeddings |
-| **Registry** | 1.0.0 | `registry/openapi.yaml` | `registry.hanzo.ai` | @hanzocr | Container registry (Harbor) |
-| **DB** | 1.0.0 | `db/openapi.yaml` | `db.hanzo.ai` | @hanzosql | Serverless Postgres, instant branching (Neon) |
+| **Registry** | 1.0.0 | `registry/openapi.yaml` | `registry.hanzo.ai` | @hanzocr | Container registry |
+| **DB** | 1.0.0 | `db/openapi.yaml` | `db.hanzo.ai` | @hanzosql | Serverless Postgres, instant branching |
 | **Edge** | 1.0.0 | `edge/openapi.yaml` | `edge.hanzo.ai` | @hanzofn | Edge functions, Deno-based serverless |
-| **KV** | 1.0.0 | `kv/openapi.yaml` | `kv.hanzo.ai` | @hanzokv | Key-value store, caching (Valkey) |
+| **KV** | 1.0.0 | `kv/openapi.yaml` | `kv.hanzo.ai` | @hanzokv | Key-value store, caching |
 | **MQ** | 1.0.0 | `mq/openapi.yaml` | `mq.hanzo.ai` | @hanzomsg | Message queue, pub/sub, streams (NATS) |
 
 ### Operations
@@ -235,7 +235,7 @@ All core cloud services are deployed and managed via **Hanzo PaaS** (`paas.hanzo
 
 | Package | Service | Description |
 |---------|---------|-------------|
-| `@hanzo/kv` | KV | Key-value store client (Valkey) |
+| `@hanzo/kv` | KV | Key-value store client |
 | `@hanzo/mq` | MQ | Message queue client (NATS) |
 | `@hanzo/pubsub` | MQ | Pub/sub client (NATS JetStream) |
 
