@@ -4,7 +4,7 @@ info:
   description: |
     Unified API for the Hanzo AI Platform, providing access to all backend services.
 
-    ## Services (24 total)
+    ## Services (26 total)
 
     ### Core (6)
     - **IAM** (`hanzo.id`): Identity and Access Management (OAuth2, OIDC, SAML, Web3)
@@ -22,7 +22,7 @@ info:
     - **Bot** (`app.hanzo.bot`): Bot framework, skills, plugins
     - **Search** (`search.hanzo.ai`): AI-powered search, generative UI
 
-    ### Infrastructure (9)
+    ### Infrastructure (10)
     - **PaaS** (`paas.hanzo.ai`): K8s-native GitOps deployments, cluster management
     - **Platform** (`platform.hanzo.ai`): Local dev PaaS, Docker-based deployments
     - **Visor** (`vm.hanzo.ai`): VM management, cloud instances
@@ -32,13 +32,42 @@ info:
     - **Registry** (`registry.hanzo.ai`): Container registry (Harbor) — @hanzocr
     - **DB** (`db.hanzo.ai`): Serverless Postgres with instant branching (Neon) — @hanzosql
     - **Edge** (`edge.hanzo.ai`): Edge functions, Deno-based serverless — @hanzofn
-    - **KV** (`kv.hanzo.ai`): Key-value store, caching, pub/sub (Valkey) — @hanzokv
+    - **KV** (`kv.hanzo.ai`): Key-value store, caching (Valkey) — @hanzokv
+    - **MQ** (`mq.hanzo.ai`): Message queue, pub/sub, streams (NATS) — @hanzomsg
 
     ### Operations (4)
     - **Engine** (`engine.hanzo.ai`): GPU scheduling, ML pipelines, model serving — @hanzo-ml
     - **O11y** (`o11y.hanzo.ai`): Observability — logs, metrics, traces, alerts — @hanzoo11y
     - **DNS** (`dns.hanzo.ai`): DNS management, zones, records — @hanzodns
     - **ZT** (`zt.hanzo.ai`): Zero-trust networking, overlay mesh — @hanzozt
+
+    ## Platform Architecture
+
+    ### Multi-Tenancy
+    All services are multi-tenant. Resources are scoped by `org_id` derived from the
+    authenticated IAM token. Tenant isolation is enforced at every layer — API gateway,
+    service, and database.
+
+    ### Unified Authentication (Hanzo IAM)
+    Every service authenticates via Hanzo IAM (`hanzo.id`). No service has its own login
+    system in production. Local development may use standalone auth, but all production
+    deployments go through IAM with OAuth2/OIDC.
+
+    ### Secrets Management (Hanzo KMS)
+    All secrets, credentials, TLS certificates, and connection strings are managed via
+    Hanzo KMS (`kms.hanzo.ai`). Services never store secrets in environment variables
+    or config files in production — the KMS Operator syncs secrets into K8s.
+
+    ### ZAP Protocol
+    All services implement the ZAP (Zero-knowledge Attestation Protocol) for end-to-end
+    verifiable data integrity. ZAP provides cryptographic attestation from database writes
+    through API responses, enabling trustless verification of all platform operations.
+    See github.com/hanzoai/zap for the protocol specification.
+
+    ### PaaS-Managed Deployment
+    All core cloud services are deployed and managed via Hanzo PaaS (`paas.hanzo.ai`).
+    Services run on per-org DOKS clusters with fleet management, automated scaling,
+    and GitOps-driven continuous deployment.
 
     ## Authentication
 
@@ -89,6 +118,7 @@ info:
     | `/v1/dns/*` | DNS | dns.hanzo.ai |
     | `/v1/zt/*` | ZT | zt.hanzo.ai |
     | `/v1/kv/*` | KV | kv.hanzo.ai |
+    | `/v1/mq/*` | MQ | mq.hanzo.ai |
     | `/v1/chat/*` | Chat | hanzo.chat |
 
   version: 4.0.0
@@ -299,6 +329,22 @@ tags:
     description: Edge function version management
   - name: Function Secrets
     description: Edge function secrets
+
+  # MQ
+  - name: MQ Publish
+    description: Publish messages and request/reply patterns
+  - name: MQ Subscribe
+    description: Subscribe to subjects via SSE
+  - name: MQ Streams
+    description: JetStream durable message streams
+  - name: MQ Consumers
+    description: JetStream durable consumers
+  - name: MQ KeyValue
+    description: NATS distributed key-value buckets
+  - name: MQ ObjectStore
+    description: NATS large object storage
+  - name: MQ Accounts
+    description: Multi-tenant account management
 
   # O11y
   - name: Logs
