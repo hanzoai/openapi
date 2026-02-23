@@ -1,0 +1,828 @@
+openapi: 3.1.0
+info:
+  title: Hanzo S3 API
+  description: |
+    Hanzo S3 provides S3-compatible object storage for AI infrastructure.
+    Compatible with all AWS S3 SDKs (boto3, @aws-sdk/client-s3, aws-sdk-go).
+
+    Features:
+    - Full S3 API compatibility
+    - Object versioning and lifecycle management
+    - Erasure coding with configurable redundancy
+    - Server-side encryption (SSE-S3 and SSE-KMS)
+    - Bucket policies and IAM integration
+    - Event notifications on object mutations
+    - OIDC SSO via hanzo.id for console access
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://s3.hanzo.ai
+    description: S3 API
+  - url: https://api.hanzo.ai/v1/s3
+    description: Gateway Proxy
+
+tags:
+  - name: Buckets
+    description: Bucket management
+  - name: Objects
+    description: Object CRUD operations
+  - name: Versioning
+    description: Object versioning
+  - name: Lifecycle
+    description: Lifecycle management rules
+  - name: Policies
+    description: Bucket access policies
+  - name: Encryption
+    description: Server-side encryption configuration
+  - name: Events
+    description: Event notification configuration
+  - name: Admin
+    description: Administrative operations
+  - name: Health
+    description: Service health
+
+security:
+  - s3Auth: []
+
+components:
+  securitySchemes:
+    s3Auth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        AWS Signature Version 4 authentication.
+        Use your Hanzo S3 access key and secret key.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HANZO_API_KEY
+      description: Hanzo API Key (Bearer hk-...)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        Code:
+          type: string
+        Message:
+          type: string
+        Resource:
+          type: string
+        RequestId:
+          type: string
+
+    Bucket:
+      type: object
+      properties:
+        name:
+          type: string
+          example: my-models
+        creation_date:
+          type: string
+          format: date-time
+        size:
+          type: integer
+          description: Total size in bytes
+        objects:
+          type: integer
+          description: Number of objects
+
+    ObjectInfo:
+      type: object
+      properties:
+        key:
+          type: string
+          example: v1/model.safetensors
+        size:
+          type: integer
+        etag:
+          type: string
+        content_type:
+          type: string
+        last_modified:
+          type: string
+          format: date-time
+        version_id:
+          type: string
+        storage_class:
+          type: string
+          enum: [STANDARD, REDUCED_REDUNDANCY, GLACIER]
+
+    BucketPolicy:
+      type: object
+      properties:
+        Version:
+          type: string
+          example: "2012-10-17"
+        Statement:
+          type: array
+          items:
+            type: object
+            properties:
+              Sid:
+                type: string
+              Effect:
+                type: string
+                enum: [Allow, Deny]
+              Principal:
+                type: string
+              Action:
+                type: array
+                items:
+                  type: string
+              Resource:
+                type: array
+                items:
+                  type: string
+              Condition:
+                type: object
+
+    LifecycleRule:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [Enabled, Disabled]
+        prefix:
+          type: string
+        expiration:
+          type: object
+          properties:
+            days:
+              type: integer
+            date:
+              type: string
+              format: date
+        transition:
+          type: object
+          properties:
+            days:
+              type: integer
+            storage_class:
+              type: string
+
+    VersioningConfig:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Enabled, Suspended]
+
+    EncryptionConfig:
+      type: object
+      properties:
+        sse_algorithm:
+          type: string
+          enum: [AES256, aws:kms]
+        kms_master_key_id:
+          type: string
+          description: KMS key ID for SSE-KMS
+
+    EventConfig:
+      type: object
+      properties:
+        id:
+          type: string
+        events:
+          type: array
+          items:
+            type: string
+            enum: [s3:ObjectCreated:*, s3:ObjectRemoved:*, s3:ObjectAccessed:*]
+        filter:
+          type: object
+          properties:
+            prefix:
+              type: string
+            suffix:
+              type: string
+        destination:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [webhook, pubsub, mq]
+            url:
+              type: string
+
+    ServiceAccount:
+      type: object
+      properties:
+        access_key:
+          type: string
+        secret_key:
+          type: string
+        policy:
+          $ref: '#/components/schemas/BucketPolicy'
+        status:
+          type: string
+          enum: [enabled, disabled]
+        created_at:
+          type: string
+          format: date-time
+
+    UsageInfo:
+      type: object
+      properties:
+        total_size:
+          type: integer
+          description: Total storage in bytes
+        total_objects:
+          type: integer
+        buckets:
+          type: integer
+
+paths:
+  /:
+    get:
+      operationId: listBuckets
+      summary: List all buckets
+      description: Returns a list of all buckets owned by the authenticated user.
+      tags: [Buckets]
+      responses:
+        '200':
+          description: Bucket list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  buckets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bucket'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /{bucket}:
+    put:
+      operationId: createBucket
+      summary: Create a bucket
+      tags: [Buckets]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+          example: my-models
+      responses:
+        '200':
+          description: Bucket created
+        '409':
+          description: Bucket already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      operationId: listObjectsV2
+      summary: List objects in bucket
+      tags: [Objects]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: prefix
+          in: query
+          schema:
+            type: string
+          description: Filter by key prefix
+        - name: delimiter
+          in: query
+          schema:
+            type: string
+          description: Grouping delimiter (e.g. /)
+        - name: max-keys
+          in: query
+          schema:
+            type: integer
+            default: 1000
+        - name: continuation-token
+          in: query
+          schema:
+            type: string
+          description: Pagination token from previous response
+      responses:
+        '200':
+          description: Object listing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  prefix:
+                    type: string
+                  contents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ObjectInfo'
+                  common_prefixes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        prefix:
+                          type: string
+                  is_truncated:
+                    type: boolean
+                  next_continuation_token:
+                    type: string
+    delete:
+      operationId: deleteBucket
+      summary: Delete a bucket
+      description: Bucket must be empty before deletion.
+      tags: [Buckets]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Bucket deleted
+        '409':
+          description: Bucket not empty
+
+  /{bucket}/{key}:
+    put:
+      operationId: putObject
+      summary: Upload an object
+      tags: [Objects]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+            default: application/octet-stream
+        - name: x-amz-server-side-encryption
+          in: header
+          schema:
+            type: string
+            enum: [AES256, aws:kms]
+          description: Server-side encryption algorithm
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Object stored
+          headers:
+            ETag:
+              schema:
+                type: string
+            x-amz-version-id:
+              schema:
+                type: string
+    get:
+      operationId: getObject
+      summary: Download an object
+      tags: [Objects]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versionId
+          in: query
+          schema:
+            type: string
+          description: Specific version to retrieve
+        - name: Range
+          in: header
+          schema:
+            type: string
+          description: Byte range (e.g. bytes=0-1023)
+      responses:
+        '200':
+          description: Object data
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Length:
+              schema:
+                type: integer
+            Content-Type:
+              schema:
+                type: string
+            ETag:
+              schema:
+                type: string
+            Last-Modified:
+              schema:
+                type: string
+        '206':
+          description: Partial content (range request)
+        '404':
+          description: Object not found
+    head:
+      operationId: headObject
+      summary: Get object metadata
+      tags: [Objects]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object metadata
+          headers:
+            Content-Length:
+              schema:
+                type: integer
+            Content-Type:
+              schema:
+                type: string
+            ETag:
+              schema:
+                type: string
+            Last-Modified:
+              schema:
+                type: string
+            x-amz-version-id:
+              schema:
+                type: string
+        '404':
+          description: Object not found
+    delete:
+      operationId: deleteObject
+      summary: Delete an object
+      tags: [Objects]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versionId
+          in: query
+          schema:
+            type: string
+          description: Specific version to delete
+      responses:
+        '204':
+          description: Object deleted
+        '404':
+          description: Object not found
+
+  /{bucket}?versioning:
+    get:
+      operationId: getBucketVersioning
+      summary: Get versioning status
+      tags: [Versioning]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Versioning configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersioningConfig'
+    put:
+      operationId: putBucketVersioning
+      summary: Set versioning status
+      tags: [Versioning]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersioningConfig'
+      responses:
+        '200':
+          description: Versioning updated
+
+  /{bucket}?lifecycle:
+    get:
+      operationId: getBucketLifecycle
+      summary: Get lifecycle rules
+      tags: [Lifecycle]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lifecycle configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LifecycleRule'
+    put:
+      operationId: putBucketLifecycle
+      summary: Set lifecycle rules
+      tags: [Lifecycle]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rules:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/LifecycleRule'
+      responses:
+        '200':
+          description: Lifecycle updated
+
+  /{bucket}?policy:
+    get:
+      operationId: getBucketPolicy
+      summary: Get bucket policy
+      tags: [Policies]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bucket policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BucketPolicy'
+    put:
+      operationId: putBucketPolicy
+      summary: Set bucket policy
+      tags: [Policies]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BucketPolicy'
+      responses:
+        '200':
+          description: Policy set
+
+  /{bucket}?encryption:
+    get:
+      operationId: getBucketEncryption
+      summary: Get encryption configuration
+      tags: [Encryption]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Encryption config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncryptionConfig'
+    put:
+      operationId: putBucketEncryption
+      summary: Set encryption configuration
+      tags: [Encryption]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncryptionConfig'
+      responses:
+        '200':
+          description: Encryption configured
+
+  /{bucket}?notification:
+    get:
+      operationId: getBucketNotification
+      summary: Get event notification config
+      tags: [Events]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notification config
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configurations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EventConfig'
+    put:
+      operationId: putBucketNotification
+      summary: Set event notification config
+      tags: [Events]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                configurations:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/EventConfig'
+      responses:
+        '200':
+          description: Notifications configured
+
+  /admin/info:
+    get:
+      operationId: adminInfo
+      summary: Server information
+      description: Returns server version, storage capacity, and cluster status.
+      tags: [Admin]
+      responses:
+        '200':
+          description: Server info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                  region:
+                    type: string
+                  sqsARN:
+                    type: array
+                    items:
+                      type: string
+
+  /admin/usage:
+    get:
+      operationId: adminUsage
+      summary: Storage usage
+      description: Returns aggregate storage usage across all buckets.
+      tags: [Admin]
+      responses:
+        '200':
+          description: Usage info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageInfo'
+
+  /admin/service-accounts:
+    get:
+      operationId: listServiceAccounts
+      summary: List service accounts
+      tags: [Admin]
+      responses:
+        '200':
+          description: Service account list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accounts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceAccount'
+    post:
+      operationId: createServiceAccount
+      summary: Create a service account
+      description: Create a service account with specific bucket access policies.
+      tags: [Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                access_key:
+                  type: string
+                secret_key:
+                  type: string
+                policy:
+                  $ref: '#/components/schemas/BucketPolicy'
+      responses:
+        '200':
+          description: Service account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceAccount'
+
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  version:
+                    type: string

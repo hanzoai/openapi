@@ -1,0 +1,1095 @@
+openapi: 3.1.0
+info:
+  title: Hanzo PubSub API
+  description: |
+    Hanzo PubSub provides high-performance publish/subscribe messaging with
+    persistent streaming (JetStream), distributed key-value store, and object
+    storage.
+
+    Features:
+    - Subject-based publish/subscribe with wildcard subscriptions
+    - Request/reply with automatic inbox routing
+    - JetStream persistent streaming with at-least-once and exactly-once delivery
+    - Distributed key-value store with watch, history, and TTL
+    - Object store for large blobs with chunked upload
+    - Multi-tenant account isolation
+    - WebSocket transport for browser clients
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://pubsub.hanzo.ai:8222
+    description: Monitoring API
+  - url: https://api.hanzo.ai/v1/pubsub
+    description: Gateway Proxy
+
+tags:
+  - name: Publish
+    description: Publish messages to subjects
+  - name: Subscribe
+    description: Subscribe to subjects via SSE/WebSocket
+  - name: Request-Reply
+    description: Synchronous request/reply messaging
+  - name: Streams
+    description: JetStream stream management
+  - name: Consumers
+    description: JetStream consumer management
+  - name: Key-Value
+    description: Distributed key-value store operations
+  - name: Object Store
+    description: Large object storage operations
+  - name: Monitoring
+    description: Server monitoring and metrics
+  - name: Health
+    description: Service health
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HANZO_API_KEY
+      description: Hanzo API Key (Bearer hk-...)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: integer
+
+    Message:
+      type: object
+      properties:
+        subject:
+          type: string
+          description: Message subject (e.g. orders.created)
+        data:
+          type: string
+          description: Base64-encoded message payload
+        headers:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Optional message headers
+
+    PublishRequest:
+      type: object
+      required:
+        - subject
+        - data
+      properties:
+        subject:
+          type: string
+          description: Subject to publish to (e.g. orders.created)
+          example: orders.created
+        data:
+          type: string
+          description: Message payload (string or base64-encoded binary)
+          example: '{"id":"order-123","total":59.99}'
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Optional message headers
+        reply:
+          type: string
+          description: Reply-to subject for request/reply pattern
+
+    PublishResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        stream:
+          type: string
+          description: JetStream stream name (if subject is captured)
+        seq:
+          type: integer
+          description: JetStream sequence number
+        duplicate:
+          type: boolean
+          description: Whether message was a duplicate (dedup by Msg-Id header)
+
+    StreamConfig:
+      type: object
+      required:
+        - name
+        - subjects
+      properties:
+        name:
+          type: string
+          description: Unique stream name
+          example: ORDERS
+        subjects:
+          type: array
+          items:
+            type: string
+          description: Subjects captured by this stream
+          example: ["orders.>"]
+        storage:
+          type: string
+          enum: [file, memory]
+          default: file
+          description: Storage backend
+        replicas:
+          type: integer
+          enum: [1, 3, 5]
+          default: 1
+          description: Replication factor
+        retention:
+          type: string
+          enum: [limits, interest, workqueue]
+          default: limits
+        max_msgs:
+          type: integer
+          description: Maximum messages to retain
+          default: -1
+        max_bytes:
+          type: integer
+          description: Maximum bytes to retain
+          default: -1
+        max_age:
+          type: integer
+          description: Maximum age in nanoseconds (0 = unlimited)
+          default: 0
+        discard:
+          type: string
+          enum: [old, new]
+          default: old
+          description: Discard policy when limits are reached
+
+    StreamInfo:
+      type: object
+      properties:
+        config:
+          $ref: '#/components/schemas/StreamConfig'
+        state:
+          type: object
+          properties:
+            messages:
+              type: integer
+            bytes:
+              type: integer
+            first_seq:
+              type: integer
+            last_seq:
+              type: integer
+            consumer_count:
+              type: integer
+        created:
+          type: string
+          format: date-time
+
+    ConsumerConfig:
+      type: object
+      required:
+        - durable_name
+      properties:
+        durable_name:
+          type: string
+          description: Durable consumer name
+          example: order-processor
+        deliver_policy:
+          type: string
+          enum: [all, last, new, by_start_sequence, by_start_time, last_per_subject]
+          default: all
+        ack_policy:
+          type: string
+          enum: [explicit, none, all]
+          default: explicit
+        filter_subject:
+          type: string
+          description: Subject filter for this consumer
+        max_deliver:
+          type: integer
+          description: Maximum delivery attempts per message
+          default: -1
+        ack_wait:
+          type: integer
+          description: Ack wait timeout in nanoseconds
+          default: 30000000000
+
+    ConsumerInfo:
+      type: object
+      properties:
+        config:
+          $ref: '#/components/schemas/ConsumerConfig'
+        delivered:
+          type: object
+          properties:
+            consumer_seq:
+              type: integer
+            stream_seq:
+              type: integer
+        ack_floor:
+          type: object
+          properties:
+            consumer_seq:
+              type: integer
+            stream_seq:
+              type: integer
+        num_pending:
+          type: integer
+        num_redelivered:
+          type: integer
+
+    KVEntry:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+          description: Base64-encoded value
+        revision:
+          type: integer
+        created:
+          type: string
+          format: date-time
+        operation:
+          type: string
+          enum: [PUT, DEL, PURGE]
+
+    KVBucketConfig:
+      type: object
+      required:
+        - bucket
+      properties:
+        bucket:
+          type: string
+          description: Bucket name
+          example: SESSIONS
+        history:
+          type: integer
+          default: 1
+          description: Number of historical values per key
+        ttl:
+          type: integer
+          description: Default TTL in nanoseconds (0 = no expiry)
+          default: 0
+        replicas:
+          type: integer
+          enum: [1, 3, 5]
+          default: 1
+        max_value_size:
+          type: integer
+          default: -1
+          description: Maximum value size in bytes
+
+    ObjectMeta:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Object name/path
+        description:
+          type: string
+        size:
+          type: integer
+        chunks:
+          type: integer
+        digest:
+          type: string
+          description: SHA-256 digest
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        modified:
+          type: string
+          format: date-time
+
+    ServerVarz:
+      type: object
+      properties:
+        server_id:
+          type: string
+        server_name:
+          type: string
+        version:
+          type: string
+        uptime:
+          type: string
+        mem:
+          type: integer
+        cores:
+          type: integer
+        connections:
+          type: integer
+        subscriptions:
+          type: integer
+        slow_consumers:
+          type: integer
+        in_msgs:
+          type: integer
+        out_msgs:
+          type: integer
+        in_bytes:
+          type: integer
+        out_bytes:
+          type: integer
+
+    ConnInfo:
+      type: object
+      properties:
+        cid:
+          type: integer
+        ip:
+          type: string
+        port:
+          type: integer
+        name:
+          type: string
+        lang:
+          type: string
+        version:
+          type: string
+        subscriptions:
+          type: integer
+        in_msgs:
+          type: integer
+        out_msgs:
+          type: integer
+
+    JetStreamInfo:
+      type: object
+      properties:
+        memory:
+          type: integer
+        storage:
+          type: integer
+        streams:
+          type: integer
+        consumers:
+          type: integer
+        api:
+          type: object
+          properties:
+            total:
+              type: integer
+            errors:
+              type: integer
+
+paths:
+  /publish:
+    post:
+      operationId: publishMessage
+      summary: Publish a message
+      description: Publish a message to a subject. If the subject is captured by a JetStream stream, the message is durably stored.
+      tags: [Publish]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishRequest'
+            examples:
+              basic:
+                summary: Basic publish
+                value:
+                  subject: orders.created
+                  data: '{"id":"order-123","total":59.99}'
+              withHeaders:
+                summary: Publish with dedup header
+                value:
+                  subject: orders.created
+                  data: '{"id":"order-123"}'
+                  headers:
+                    Msg-Id: order-123
+      responses:
+        '200':
+          description: Message published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /subscribe:
+    get:
+      operationId: subscribe
+      summary: Subscribe to a subject (SSE)
+      description: |
+        Subscribe to messages on a subject using Server-Sent Events.
+        Supports wildcard subscriptions (`>` for multi-level, `*` for single-level).
+      tags: [Subscribe]
+      parameters:
+        - name: subject
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Subject to subscribe to (supports wildcards)
+          example: orders.>
+        - name: queue
+          in: query
+          schema:
+            type: string
+          description: Queue group name for load-balanced delivery
+      responses:
+        '200':
+          description: SSE stream of messages
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '401':
+          description: Unauthorized
+
+  /request:
+    post:
+      operationId: requestReply
+      summary: Request/reply
+      description: Send a request and wait for a reply with timeout.
+      tags: [Request-Reply]
+      parameters:
+        - name: timeout
+          in: query
+          schema:
+            type: integer
+            default: 5000
+          description: Timeout in milliseconds
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishRequest'
+      responses:
+        '200':
+          description: Reply received
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '408':
+          description: Request timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /jetstream/streams:
+    get:
+      operationId: listStreams
+      summary: List streams
+      description: List all JetStream streams.
+      tags: [Streams]
+      responses:
+        '200':
+          description: Stream list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  streams:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StreamInfo'
+                  total:
+                    type: integer
+    post:
+      operationId: createStream
+      summary: Create a stream
+      description: Create a new JetStream stream for persistent message storage.
+      tags: [Streams]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StreamConfig'
+            examples:
+              orders:
+                summary: Orders stream
+                value:
+                  name: ORDERS
+                  subjects: ["orders.>"]
+                  storage: file
+                  replicas: 3
+                  retention: limits
+                  max_age: 86400000000000
+      responses:
+        '200':
+          description: Stream created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamInfo'
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /jetstream/streams/{stream}:
+    get:
+      operationId: getStream
+      summary: Get stream info
+      tags: [Streams]
+      parameters:
+        - name: stream
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stream info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamInfo'
+        '404':
+          description: Stream not found
+    put:
+      operationId: updateStream
+      summary: Update stream config
+      tags: [Streams]
+      parameters:
+        - name: stream
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StreamConfig'
+      responses:
+        '200':
+          description: Stream updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamInfo'
+    delete:
+      operationId: deleteStream
+      summary: Delete a stream
+      tags: [Streams]
+      parameters:
+        - name: stream
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stream deleted
+        '404':
+          description: Stream not found
+
+  /jetstream/streams/{stream}/consumers:
+    get:
+      operationId: listConsumers
+      summary: List consumers
+      tags: [Consumers]
+      parameters:
+        - name: stream
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Consumer list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  consumers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConsumerInfo'
+                  total:
+                    type: integer
+    post:
+      operationId: createConsumer
+      summary: Create a consumer
+      description: Create a durable or ephemeral consumer on a stream.
+      tags: [Consumers]
+      parameters:
+        - name: stream
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsumerConfig'
+            examples:
+              durable:
+                summary: Durable consumer
+                value:
+                  durable_name: order-processor
+                  ack_policy: explicit
+                  filter_subject: orders.created
+      responses:
+        '200':
+          description: Consumer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsumerInfo'
+
+  /jetstream/streams/{stream}/consumers/{consumer}:
+    get:
+      operationId: getConsumer
+      summary: Get consumer info
+      tags: [Consumers]
+      parameters:
+        - name: stream
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: consumer
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Consumer info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsumerInfo'
+    delete:
+      operationId: deleteConsumer
+      summary: Delete a consumer
+      tags: [Consumers]
+      parameters:
+        - name: stream
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: consumer
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Consumer deleted
+
+  /kv/{bucket}:
+    post:
+      operationId: createKVBucket
+      summary: Create a KV bucket
+      tags: [Key-Value]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KVBucketConfig'
+      responses:
+        '200':
+          description: Bucket created
+    delete:
+      operationId: deleteKVBucket
+      summary: Delete a KV bucket
+      tags: [Key-Value]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bucket deleted
+
+  /kv/{bucket}/{key}:
+    get:
+      operationId: kvGet
+      summary: Get a value
+      tags: [Key-Value]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: revision
+          in: query
+          schema:
+            type: integer
+          description: Specific revision to retrieve
+      responses:
+        '200':
+          description: Value found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KVEntry'
+        '404':
+          description: Key not found
+    put:
+      operationId: kvPut
+      summary: Set a value
+      tags: [Key-Value]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Value stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  revision:
+                    type: integer
+    delete:
+      operationId: kvDelete
+      summary: Delete a key
+      tags: [Key-Value]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Key deleted
+        '404':
+          description: Key not found
+
+  /kv/{bucket}/{key}/history:
+    get:
+      operationId: kvHistory
+      summary: Get key history
+      tags: [Key-Value]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Key history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KVEntry'
+
+  /objects/{bucket}:
+    get:
+      operationId: listObjects
+      summary: List objects in a bucket
+      tags: [Object Store]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  objects:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ObjectMeta'
+
+  /objects/{bucket}/{name}:
+    get:
+      operationId: getObject
+      summary: Download an object
+      tags: [Object Store]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object data
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Object not found
+    put:
+      operationId: putObject
+      summary: Upload an object
+      description: Upload a large object with automatic chunking and SHA-256 integrity.
+      tags: [Object Store]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: description
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Object stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectMeta'
+    delete:
+      operationId: deleteObject
+      summary: Delete an object
+      tags: [Object Store]
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object deleted
+
+  /varz:
+    get:
+      operationId: getVarz
+      summary: Server statistics
+      description: General server information including uptime, connections, message rates.
+      tags: [Monitoring]
+      security: []
+      responses:
+        '200':
+          description: Server stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerVarz'
+
+  /connz:
+    get:
+      operationId: getConnz
+      summary: Connection details
+      description: Active client connection information.
+      tags: [Monitoring]
+      security: []
+      parameters:
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [cid, start, subs, pending, msgs_to, msgs_from, bytes_to, bytes_from, last, idle, uptime, stop, reason]
+          description: Sort connections by field
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 1024
+      responses:
+        '200':
+          description: Connection info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  num_connections:
+                    type: integer
+                  connections:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConnInfo'
+
+  /jsz:
+    get:
+      operationId: getJsz
+      summary: JetStream info
+      description: JetStream account and usage information.
+      tags: [Monitoring]
+      security: []
+      responses:
+        '200':
+          description: JetStream info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JetStreamInfo'
+
+  /routez:
+    get:
+      operationId: getRoutez
+      summary: Cluster routes
+      description: Cluster route connection information.
+      tags: [Monitoring]
+      security: []
+      responses:
+        '200':
+          description: Route info
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /gatewayz:
+    get:
+      operationId: getGatewayz
+      summary: Gateway status
+      description: Super-cluster gateway connection status.
+      tags: [Monitoring]
+      security: []
+      responses:
+        '200':
+          description: Gateway info
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /leafz:
+    get:
+      operationId: getLeafz
+      summary: Leaf node info
+      description: Leaf node connection details.
+      tags: [Monitoring]
+      security: []
+      responses:
+        '200':
+          description: Leaf node info
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /subsz:
+    get:
+      operationId: getSubsz
+      summary: Subscription info
+      description: Subscription routing tree information.
+      tags: [Monitoring]
+      security: []
+      responses:
+        '200':
+          description: Subscription info
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /healthz:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      description: Returns 200 when the server is ready to accept connections.
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+        '503':
+          description: Server is not ready
