@@ -1,0 +1,864 @@
+openapi: 3.1.0
+info:
+  title: Hanzo ML API
+  description: |
+    Hanzo ML provides end-to-end MLOps pipeline management including
+    Kubeflow-based workflows, experiment tracking, model registry,
+    and deployment to Hanzo Cloud.
+
+    Features:
+    - Kubeflow pipeline orchestration
+    - Experiment tracking with metrics and artifacts
+    - Model registry with versioning and promotion
+    - A/B testing and canary deployments
+    - Direct deployment to Hanzo Cloud
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://ml.hanzo.ai
+    description: Production
+  - url: https://api.hanzo.ai/v1/ml
+    description: Gateway Proxy
+
+tags:
+  - name: Pipelines
+    description: Training pipeline management
+  - name: Experiments
+    description: Experiment tracking
+  - name: Models
+    description: Model registry
+  - name: Deployments
+    description: Model deployment
+  - name: Health
+    description: Service health
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HANZO_API_KEY
+      description: Hanzo API Key (Bearer hk-...)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: integer
+
+    Pipeline:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: hanzo-finetune
+        description:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, succeeded, failed, cancelled]
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/PipelineStep'
+        parameters:
+          type: object
+          additionalProperties:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+
+    PipelineStep:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, succeeded, failed, skipped]
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        logs_url:
+          type: string
+          format: uri
+
+    PipelineRun:
+      type: object
+      properties:
+        id:
+          type: string
+        pipeline_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, succeeded, failed, cancelled]
+        parameters:
+          type: object
+          additionalProperties:
+            type: string
+        metrics:
+          type: object
+          additionalProperties:
+            type: number
+        artifacts:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              uri:
+                type: string
+                format: uri
+              size:
+                type: integer
+        created_at:
+          type: string
+          format: date-time
+        duration_seconds:
+          type: integer
+
+    Experiment:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: llm-finetune
+        description:
+          type: string
+        runs:
+          type: integer
+        best_run_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    ExperimentRun:
+      type: object
+      properties:
+        id:
+          type: string
+        experiment_id:
+          type: string
+        status:
+          type: string
+          enum: [running, completed, failed]
+        params:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            base_model: Llama-3.1-8B
+            learning_rate: "2e-5"
+            epochs: "3"
+        metrics:
+          type: object
+          additionalProperties:
+            type: number
+          example:
+            loss: 0.234
+            accuracy: 0.912
+        artifacts:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              uri:
+                type: string
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+
+    Model:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: my-finetune
+        version:
+          type: string
+          example: v3
+        stage:
+          type: string
+          enum: [dev, staging, canary, production]
+        description:
+          type: string
+        source_run_id:
+          type: string
+          description: Experiment run that produced this model
+        artifacts:
+          type: object
+          properties:
+            weights:
+              type: string
+              format: uri
+            tokenizer:
+              type: string
+              format: uri
+            config:
+              type: string
+              format: uri
+        metrics:
+          type: object
+          additionalProperties:
+            type: number
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Deployment:
+      type: object
+      properties:
+        id:
+          type: string
+        model_id:
+          type: string
+        model_version:
+          type: string
+        runtime:
+          type: string
+          enum: [vllm, triton, onnx, custom]
+        gpu:
+          type: string
+          enum: [a100, h100, l40s, t4]
+        replicas:
+          type: integer
+        environment:
+          type: string
+          enum: [dev, staging, production]
+        endpoint:
+          type: string
+          format: uri
+        status:
+          type: string
+          enum: [deploying, active, failed, stopped]
+        created_at:
+          type: string
+          format: date-time
+
+paths:
+  /pipelines:
+    get:
+      operationId: listPipelines
+      summary: List pipelines
+      tags: [Pipelines]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, succeeded, failed, cancelled]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Pipeline list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pipelines:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Pipeline'
+                  total:
+                    type: integer
+    post:
+      operationId: createPipeline
+      summary: Create a pipeline
+      description: Create and optionally start a training pipeline.
+      tags: [Pipelines]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                parameters:
+                  type: object
+                  additionalProperties:
+                    type: string
+                auto_start:
+                  type: boolean
+                  default: false
+            examples:
+              finetune:
+                summary: Fine-tuning pipeline
+                value:
+                  name: hanzo-finetune
+                  parameters:
+                    base_model: meta-llama/Llama-3.1-8B
+                    dataset: s3://hanzo-data/training/v2
+                    epochs: "3"
+                    learning_rate: "2e-5"
+                  auto_start: true
+      responses:
+        '201':
+          description: Pipeline created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pipeline'
+
+  /pipelines/{pipeline_id}:
+    get:
+      operationId: getPipeline
+      summary: Get pipeline details
+      tags: [Pipelines]
+      parameters:
+        - name: pipeline_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pipeline details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pipeline'
+
+  /pipelines/{pipeline_id}/runs:
+    get:
+      operationId: listPipelineRuns
+      summary: List pipeline runs
+      tags: [Pipelines]
+      parameters:
+        - name: pipeline_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Run list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PipelineRun'
+    post:
+      operationId: startPipelineRun
+      summary: Start a pipeline run
+      tags: [Pipelines]
+      parameters:
+        - name: pipeline_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  description: Override pipeline parameters for this run
+      responses:
+        '201':
+          description: Run started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineRun'
+
+  /experiments:
+    get:
+      operationId: listExperiments
+      summary: List experiments
+      tags: [Experiments]
+      responses:
+        '200':
+          description: Experiment list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  experiments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Experiment'
+    post:
+      operationId: createExperiment
+      summary: Create an experiment
+      tags: [Experiments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Experiment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Experiment'
+
+  /experiments/{experiment_id}/runs:
+    get:
+      operationId: listExperimentRuns
+      summary: List experiment runs
+      tags: [Experiments]
+      parameters:
+        - name: experiment_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Run list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExperimentRun'
+    post:
+      operationId: startExperimentRun
+      summary: Start an experiment run
+      tags: [Experiments]
+      parameters:
+        - name: experiment_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                params:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        '201':
+          description: Run started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentRun'
+
+  /experiments/{experiment_id}/runs/{run_id}/metrics:
+    get:
+      operationId: getRunMetrics
+      summary: Get run metrics
+      tags: [Experiments]
+      parameters:
+        - name: experiment_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Run metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metrics:
+                    type: object
+                    additionalProperties:
+                      type: number
+    post:
+      operationId: logMetrics
+      summary: Log metrics
+      description: Log metrics for a running experiment.
+      tags: [Experiments]
+      parameters:
+        - name: experiment_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: number
+              example:
+                loss: 0.234
+                accuracy: 0.912
+                epoch: 3
+      responses:
+        '200':
+          description: Metrics logged
+
+  /models:
+    get:
+      operationId: listModels
+      summary: List models
+      tags: [Models]
+      parameters:
+        - name: stage
+          in: query
+          schema:
+            type: string
+            enum: [dev, staging, canary, production]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  models:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Model'
+    post:
+      operationId: registerModel
+      summary: Register a model
+      tags: [Models]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - version
+              properties:
+                name:
+                  type: string
+                version:
+                  type: string
+                description:
+                  type: string
+                source_run_id:
+                  type: string
+                artifacts:
+                  type: object
+                  properties:
+                    weights:
+                      type: string
+                      format: uri
+                    tokenizer:
+                      type: string
+                      format: uri
+                    config:
+                      type: string
+                      format: uri
+                metrics:
+                  type: object
+                  additionalProperties:
+                    type: number
+                tags:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        '201':
+          description: Model registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Model'
+
+  /models/{model_id}:
+    get:
+      operationId: getModel
+      summary: Get model details
+      tags: [Models]
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Model'
+
+  /models/{model_id}/promote:
+    post:
+      operationId: promoteModel
+      summary: Promote a model
+      description: Promote a model to the next deployment stage.
+      tags: [Models]
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - stage
+              properties:
+                stage:
+                  type: string
+                  enum: [staging, canary, production]
+      responses:
+        '200':
+          description: Model promoted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Model'
+
+  /models/{model_id}/rollback:
+    post:
+      operationId: rollbackModel
+      summary: Rollback a model
+      description: Rollback to a previous model version.
+      tags: [Models]
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - version
+              properties:
+                version:
+                  type: string
+      responses:
+        '200':
+          description: Model rolled back
+
+  /deploy:
+    post:
+      operationId: deployModel
+      summary: Deploy a model
+      description: Deploy a model from the registry to Hanzo Cloud.
+      tags: [Deployments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - model_id
+              properties:
+                model_id:
+                  type: string
+                model_version:
+                  type: string
+                runtime:
+                  type: string
+                  enum: [vllm, triton, onnx, custom]
+                  default: vllm
+                gpu:
+                  type: string
+                  enum: [a100, h100, l40s, t4]
+                  default: a100
+                replicas:
+                  type: integer
+                  default: 1
+                environment:
+                  type: string
+                  enum: [dev, staging, production]
+                  default: dev
+            examples:
+              deploy:
+                summary: Deploy to production
+                value:
+                  model_id: my-finetune
+                  model_version: v3
+                  runtime: vllm
+                  gpu: a100
+                  replicas: 2
+                  environment: production
+      responses:
+        '201':
+          description: Deployment started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deployment'
+
+  /deployments:
+    get:
+      operationId: listDeployments
+      summary: List deployments
+      tags: [Deployments]
+      parameters:
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum: [dev, staging, production]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [deploying, active, failed, stopped]
+      responses:
+        '200':
+          description: Deployment list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deployments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Deployment'
+
+  /deployments/{deployment_id}:
+    get:
+      operationId: getDeployment
+      summary: Get deployment details
+      tags: [Deployments]
+      parameters:
+        - name: deployment_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deployment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deployment'
+    delete:
+      operationId: stopDeployment
+      summary: Stop a deployment
+      tags: [Deployments]
+      parameters:
+        - name: deployment_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deployment stopped
+
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  version:
+                    type: string

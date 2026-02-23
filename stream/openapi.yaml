@@ -1,0 +1,635 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Stream API
+  description: |
+    Hanzo Stream is a Kafka-compatible streaming gateway built on Hanzo PubSub.
+    Standard Kafka clients connect on `:9092`; the gateway translates Kafka API
+    calls into PubSub JetStream operations. This REST API provides management
+    and monitoring capabilities.
+
+    Features:
+    - Native Kafka wire protocol compatibility (port 9092)
+    - Stateless gateway -- all state lives in Hanzo PubSub
+    - Topic management with configurable partition counts
+    - Consumer group coordination with offset tracking
+    - GZIP, Snappy, LZ4, ZSTD compression
+    - Horizontal scaling behind load balancer
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://stream.hanzo.ai
+    description: Production (REST management API)
+  - url: https://api.hanzo.ai/v1/stream
+    description: Gateway Proxy
+
+tags:
+  - name: Topics
+    description: Topic management
+  - name: Messages
+    description: Produce and consume messages via REST
+  - name: Consumer Groups
+    description: Consumer group management
+  - name: Brokers
+    description: Broker configuration and metadata
+  - name: Health
+    description: Service health
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HANZO_API_KEY
+      description: Hanzo API Key (Bearer hk-...)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: integer
+
+    Topic:
+      type: object
+      properties:
+        name:
+          type: string
+          example: events
+        partitions:
+          type: integer
+          example: 3
+        replication_factor:
+          type: integer
+          example: 1
+        config:
+          type: object
+          properties:
+            retention_ms:
+              type: integer
+              description: Message retention in milliseconds
+              default: -1
+            cleanup_policy:
+              type: string
+              enum: [delete, compact]
+              default: delete
+            compression_type:
+              type: string
+              enum: [none, gzip, snappy, lz4, zstd]
+              default: none
+        created_at:
+          type: string
+          format: date-time
+
+    TopicMetadata:
+      type: object
+      properties:
+        name:
+          type: string
+        partitions:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              leader:
+                type: integer
+              replicas:
+                type: array
+                items:
+                  type: integer
+              isr:
+                type: array
+                items:
+                  type: integer
+              earliest_offset:
+                type: integer
+              latest_offset:
+                type: integer
+
+    ProduceRequest:
+      type: object
+      required:
+        - records
+      properties:
+        records:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+                description: Optional partition key
+              value:
+                type: string
+                description: Message value
+              headers:
+                type: object
+                additionalProperties:
+                  type: string
+              partition:
+                type: integer
+                description: Target partition (optional, auto-assigned if omitted)
+
+    ProduceResponse:
+      type: object
+      properties:
+        offsets:
+          type: array
+          items:
+            type: object
+            properties:
+              partition:
+                type: integer
+              offset:
+                type: integer
+              timestamp:
+                type: string
+                format: date-time
+
+    ConsumeRecord:
+      type: object
+      properties:
+        topic:
+          type: string
+        partition:
+          type: integer
+        offset:
+          type: integer
+        key:
+          type: string
+        value:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+
+    ConsumerGroup:
+      type: object
+      properties:
+        group_id:
+          type: string
+        state:
+          type: string
+          enum: [Stable, PreparingRebalance, CompletingRebalance, Empty, Dead]
+        members:
+          type: integer
+        offsets:
+          type: array
+          items:
+            type: object
+            properties:
+              topic:
+                type: string
+              partition:
+                type: integer
+              committed_offset:
+                type: integer
+              lag:
+                type: integer
+
+    OffsetCommit:
+      type: object
+      properties:
+        topic:
+          type: string
+        partition:
+          type: integer
+        offset:
+          type: integer
+        metadata:
+          type: string
+
+    BrokerInfo:
+      type: object
+      properties:
+        node_id:
+          type: integer
+        host:
+          type: string
+        port:
+          type: integer
+        version:
+          type: string
+        pubsub_url:
+          type: string
+          description: Connected PubSub server URL
+        uptime:
+          type: string
+        topics:
+          type: integer
+        config:
+          type: object
+          properties:
+            replicas:
+              type: integer
+            storage:
+              type: string
+              enum: [file, memory]
+
+paths:
+  /topics:
+    get:
+      operationId: listTopics
+      summary: List topics
+      description: List all Kafka topics managed by Hanzo Stream.
+      tags: [Topics]
+      responses:
+        '200':
+          description: Topic list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  topics:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Topic'
+                  total:
+                    type: integer
+    post:
+      operationId: createTopic
+      summary: Create a topic
+      description: |
+        Create a new Kafka topic. Under the hood, this creates one PubSub
+        JetStream stream per partition.
+      tags: [Topics]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Topic name
+                  example: events
+                partitions:
+                  type: integer
+                  default: 1
+                  description: Number of partitions
+                replication_factor:
+                  type: integer
+                  default: 1
+                  description: Replication factor for underlying PubSub streams
+                config:
+                  type: object
+                  properties:
+                    retention_ms:
+                      type: integer
+                    cleanup_policy:
+                      type: string
+                      enum: [delete, compact]
+                    compression_type:
+                      type: string
+                      enum: [none, gzip, snappy, lz4, zstd]
+            examples:
+              basic:
+                summary: Basic topic
+                value:
+                  name: events
+                  partitions: 3
+                  replication_factor: 1
+      responses:
+        '201':
+          description: Topic created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Topic'
+        '409':
+          description: Topic already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /topics/{topic}:
+    get:
+      operationId: getTopicMetadata
+      summary: Get topic metadata
+      description: Returns topic configuration and partition details.
+      tags: [Topics]
+      parameters:
+        - name: topic
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Topic metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicMetadata'
+        '404':
+          description: Topic not found
+    delete:
+      operationId: deleteTopic
+      summary: Delete a topic
+      description: Delete a topic and all associated JetStream streams.
+      tags: [Topics]
+      parameters:
+        - name: topic
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Topic deleted
+        '404':
+          description: Topic not found
+
+  /topics/{topic}/messages:
+    post:
+      operationId: produceMessages
+      summary: Produce messages
+      description: |
+        Produce one or more messages to a topic via REST API.
+        For high throughput, use the Kafka wire protocol on port 9092.
+      tags: [Messages]
+      parameters:
+        - name: topic
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProduceRequest'
+            examples:
+              single:
+                summary: Single message
+                value:
+                  records:
+                    - value: '{"event":"user.signup","user_id":"usr_123"}'
+              keyed:
+                summary: Keyed message
+                value:
+                  records:
+                    - key: usr_123
+                      value: '{"event":"user.signup"}'
+                      partition: 0
+      responses:
+        '200':
+          description: Messages produced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProduceResponse'
+        '404':
+          description: Topic not found
+    get:
+      operationId: consumeMessages
+      summary: Consume messages
+      description: |
+        Consume messages from a topic partition via REST API.
+        For persistent consumption, use the Kafka wire protocol with consumer groups.
+      tags: [Messages]
+      parameters:
+        - name: topic
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: partition
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Partition to consume from
+        - name: offset
+          in: query
+          schema:
+            type: string
+            default: latest
+          description: Starting offset (earliest, latest, or numeric offset)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+          description: Maximum records to return
+        - name: timeout
+          in: query
+          schema:
+            type: integer
+            default: 5000
+          description: Long-poll timeout in milliseconds
+      responses:
+        '200':
+          description: Messages consumed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  records:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConsumeRecord'
+                  next_offset:
+                    type: integer
+
+  /groups:
+    get:
+      operationId: listConsumerGroups
+      summary: List consumer groups
+      tags: [Consumer Groups]
+      responses:
+        '200':
+          description: Consumer group list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConsumerGroup'
+
+  /groups/{group_id}:
+    get:
+      operationId: getConsumerGroup
+      summary: Get consumer group details
+      description: Returns consumer group state, members, and committed offsets with lag.
+      tags: [Consumer Groups]
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Consumer group details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsumerGroup'
+        '404':
+          description: Group not found
+    delete:
+      operationId: deleteConsumerGroup
+      summary: Delete a consumer group
+      tags: [Consumer Groups]
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Group deleted
+
+  /groups/{group_id}/offsets:
+    get:
+      operationId: getGroupOffsets
+      summary: Get committed offsets
+      tags: [Consumer Groups]
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: topic
+          in: query
+          schema:
+            type: string
+          description: Filter by topic
+      responses:
+        '200':
+          description: Committed offsets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  offsets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OffsetCommit'
+    put:
+      operationId: commitOffsets
+      summary: Commit offsets
+      description: Manually commit offsets for a consumer group.
+      tags: [Consumer Groups]
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                offsets:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/OffsetCommit'
+      responses:
+        '200':
+          description: Offsets committed
+
+  /brokers:
+    get:
+      operationId: listBrokers
+      summary: List broker instances
+      description: Returns metadata for all Hanzo Stream broker instances.
+      tags: [Brokers]
+      responses:
+        '200':
+          description: Broker list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  brokers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BrokerInfo'
+
+  /brokers/config:
+    get:
+      operationId: getBrokerConfig
+      summary: Get broker configuration
+      tags: [Brokers]
+      responses:
+        '200':
+          description: Broker configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  node_id:
+                    type: integer
+                  host:
+                    type: string
+                  port:
+                    type: integer
+                  pubsub_url:
+                    type: string
+                  replicas:
+                    type: integer
+                  storage:
+                    type: string
+
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  version:
+                    type: string
+                  pubsub_connected:
+                    type: boolean
+                  topics:
+                    type: integer
+        '503':
+          description: Service is unhealthy

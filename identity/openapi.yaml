@@ -1,0 +1,607 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Identity API
+  description: |
+    Hanzo Identity provides user profiles, organization directories, and
+    identity resolution services. It complements IAM (authentication/authorization)
+    by managing identity data and relationships.
+
+    Features:
+    - Unified user and service account profiles
+    - Organization and team directory management
+    - Cross-provider identity linking and resolution
+    - SCIM and LDAP sync for external identity providers
+    - Full identity change history and audit trail
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://identity.hanzo.ai
+    description: Production
+  - url: https://api.hanzo.ai/v1/identity
+    description: Gateway Proxy
+
+tags:
+  - name: Profiles
+    description: User and service account profiles
+  - name: Directories
+    description: Organization and team directories
+  - name: Identity Resolution
+    description: Cross-provider identity linking
+  - name: SCIM
+    description: SCIM provisioning for external IdPs
+  - name: Health
+    description: Service health
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HANZO_API_KEY
+      description: Hanzo API Key (Bearer hk-...)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: integer
+
+    Profile:
+      type: object
+      properties:
+        id:
+          type: string
+          example: usr_a1b2c3d4
+        type:
+          type: string
+          enum: [user, service_account, bot]
+        name:
+          type: string
+          example: Ada Lovelace
+        email:
+          type: string
+          format: email
+        avatar:
+          type: string
+          format: uri
+        organization:
+          type: string
+          example: hanzo
+        teams:
+          type: array
+          items:
+            type: string
+          example: ["engineering", "research"]
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            title: Principal Engineer
+            timezone: America/Los_Angeles
+        linked_identities:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinkedIdentity'
+        status:
+          type: string
+          enum: [active, suspended, deactivated]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    LinkedIdentity:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum: [github, google, microsoft, gitlab, slack, ldap, saml, custom]
+          example: github
+        external_id:
+          type: string
+          example: ada-lovelace
+        email:
+          type: string
+          format: email
+        linked_at:
+          type: string
+          format: date-time
+
+    Team:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: engineering
+        organization:
+          type: string
+        description:
+          type: string
+        members:
+          type: integer
+        parent_team:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    Directory:
+      type: object
+      properties:
+        organization:
+          type: string
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/Team'
+        member_count:
+          type: integer
+
+    IdentityChange:
+      type: object
+      properties:
+        id:
+          type: string
+        profile_id:
+          type: string
+        action:
+          type: string
+          enum: [created, updated, linked, unlinked, suspended, reactivated]
+        field:
+          type: string
+        old_value:
+          type: string
+        new_value:
+          type: string
+        actor:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+paths:
+  /profiles:
+    get:
+      operationId: listProfiles
+      summary: List profiles
+      description: List all profiles in an organization, with optional filtering.
+      tags: [Profiles]
+      parameters:
+        - name: organization
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Organization to list profiles for
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [user, service_account, bot]
+          description: Filter by profile type
+        - name: team
+          in: query
+          schema:
+            type: string
+          description: Filter by team membership
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, suspended, deactivated]
+          description: Filter by status
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name or email
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Profile list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profiles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Profile'
+                  total:
+                    type: integer
+                  next_cursor:
+                    type: string
+                    nullable: true
+
+  /profiles/{profile_id}:
+    get:
+      operationId: getProfile
+      summary: Get a profile
+      tags: [Profiles]
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '404':
+          description: Profile not found
+    put:
+      operationId: updateProfile
+      summary: Update a profile
+      tags: [Profiles]
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                avatar:
+                  type: string
+                  format: uri
+                metadata:
+                  type: object
+                  additionalProperties:
+                    type: string
+                teams:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+
+  /profiles/{profile_id}/history:
+    get:
+      operationId: getProfileHistory
+      summary: Get profile change history
+      tags: [Profiles]
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Change history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  changes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IdentityChange'
+
+  /profiles/{profile_id}/identities:
+    get:
+      operationId: listLinkedIdentities
+      summary: List linked identities
+      tags: [Identity Resolution]
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Linked identities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identities:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LinkedIdentity'
+    post:
+      operationId: linkIdentity
+      summary: Link an external identity
+      tags: [Identity Resolution]
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider
+                - external_id
+              properties:
+                provider:
+                  type: string
+                  enum: [github, google, microsoft, gitlab, slack, ldap, saml, custom]
+                external_id:
+                  type: string
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Identity linked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkedIdentity'
+        '409':
+          description: Identity already linked to another profile
+
+  /profiles/{profile_id}/identities/{provider}:
+    delete:
+      operationId: unlinkIdentity
+      summary: Unlink an external identity
+      tags: [Identity Resolution]
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Identity unlinked
+
+  /resolve:
+    get:
+      operationId: resolveIdentity
+      summary: Resolve identity across providers
+      description: Find a Hanzo profile by external provider identity.
+      tags: [Identity Resolution]
+      parameters:
+        - name: provider
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: external_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Resolved profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '404':
+          description: No profile found for this identity
+
+  /directories/{organization}:
+    get:
+      operationId: getDirectory
+      summary: Get organization directory
+      tags: [Directories]
+      parameters:
+        - name: organization
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Organization directory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Directory'
+
+  /directories/{organization}/teams:
+    get:
+      operationId: listTeams
+      summary: List teams
+      tags: [Directories]
+      parameters:
+        - name: organization
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Team list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  teams:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Team'
+    post:
+      operationId: createTeam
+      summary: Create a team
+      tags: [Directories]
+      parameters:
+        - name: organization
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                parent_team:
+                  type: string
+      responses:
+        '201':
+          description: Team created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+
+  /directories/{organization}/teams/{team}:
+    get:
+      operationId: getTeamMembers
+      summary: Get team members
+      tags: [Directories]
+      parameters:
+        - name: organization
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: team
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Team members
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  team:
+                    $ref: '#/components/schemas/Team'
+                  members:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Profile'
+
+  /scim/v2/Users:
+    get:
+      operationId: scimListUsers
+      summary: SCIM list users
+      description: SCIM 2.0 compliant user listing for external IdP provisioning.
+      tags: [SCIM]
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+          description: SCIM filter expression
+        - name: count
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: startIndex
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: SCIM user list
+          content:
+            application/scim+json:
+              schema:
+                type: object
+    post:
+      operationId: scimCreateUser
+      summary: SCIM create user
+      description: Provision a user via SCIM 2.0.
+      tags: [SCIM]
+      requestBody:
+        required: true
+        content:
+          application/scim+json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: User provisioned
+
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  version:
+                    type: string
