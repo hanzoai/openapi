@@ -138,8 +138,8 @@ Get your API key at [hanzo.id](https://hanzo.id) or [console.hanzo.ai](https://c
 | Method | Use Case | How |
 |--------|----------|-----|
 | **API Key** | Server-to-server, scripts | `Authorization: Bearer hk-...` |
-| **OAuth2 + PKCE** | User-facing apps | `hanzo.id/login/oauth/authorize` |
-| **Client Credentials** | Service-to-service | `POST hanzo.id/api/login/oauth/access_token` |
+| **OAuth2 + PKCE** | User-facing apps | `hanzo.id/oauth/authorize` |
+| **Client Credentials** | Service-to-service | `POST hanzo.id/oauth/token` |
 | **JWT** | After OAuth login | `Authorization: Bearer eyJ...` |
 
 ---
