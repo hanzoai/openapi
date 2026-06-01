@@ -1,17 +1,26 @@
 openapi: 3.1.0
 info:
   title: Hanzo ML API
-  description: |
-    Hanzo ML provides end-to-end MLOps pipeline management including
+  description: 'Hanzo ML provides end-to-end MLOps pipeline management including
+
     Kubeflow-based workflows, experiment tracking, model registry,
+
     and deployment to Hanzo Cloud.
 
+
     Features:
+
     - Kubeflow pipeline orchestration
+
     - Experiment tracking with metrics and artifacts
+
     - Model registry with versioning and promotion
+
     - A/B testing and canary deployments
+
     - Direct deployment to Hanzo Cloud
+
+    '
   version: 1.0.0
   contact:
     name: Hanzo AI
@@ -19,28 +28,24 @@ info:
     email: support@hanzo.ai
   license:
     name: Proprietary
-
 servers:
-  - url: https://ml.hanzo.ai
-    description: Production
-  - url: https://api.hanzo.ai/v1/ml
-    description: Gateway Proxy
-
+- url: https://ml.hanzo.ai
+  description: ML Production
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway (via api.hanzo.ai/v1/ml/*)
 tags:
-  - name: Pipelines
-    description: Training pipeline management
-  - name: Experiments
-    description: Experiment tracking
-  - name: Models
-    description: Model registry
-  - name: Deployments
-    description: Model deployment
-  - name: Health
-    description: Service health
-
+- name: Pipelines
+  description: Training pipeline management
+- name: Experiments
+  description: Experiment tracking
+- name: Models
+  description: Model registry
+- name: Deployments
+  description: Model deployment
+- name: Health
+  description: Service health
 security:
-  - bearerAuth: []
-
+- BearerAuth: []
 components:
   securitySchemes:
     bearerAuth:
@@ -48,7 +53,12 @@ components:
       scheme: bearer
       bearerFormat: HANZO_API_KEY
       description: Hanzo API Key (Bearer hk-...)
-
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
+        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
     Error:
       type: object
@@ -57,7 +67,6 @@ components:
           type: string
         code:
           type: integer
-
     Pipeline:
       type: object
       properties:
@@ -70,7 +79,12 @@ components:
           type: string
         status:
           type: string
-          enum: [pending, running, succeeded, failed, cancelled]
+          enum:
+          - pending
+          - running
+          - succeeded
+          - failed
+          - cancelled
         steps:
           type: array
           items:
@@ -88,7 +102,6 @@ components:
         completed_at:
           type: string
           format: date-time
-
     PipelineStep:
       type: object
       properties:
@@ -96,7 +109,12 @@ components:
           type: string
         status:
           type: string
-          enum: [pending, running, succeeded, failed, skipped]
+          enum:
+          - pending
+          - running
+          - succeeded
+          - failed
+          - skipped
         started_at:
           type: string
           format: date-time
@@ -106,7 +124,6 @@ components:
         logs_url:
           type: string
           format: uri
-
     PipelineRun:
       type: object
       properties:
@@ -116,7 +133,12 @@ components:
           type: string
         status:
           type: string
-          enum: [pending, running, succeeded, failed, cancelled]
+          enum:
+          - pending
+          - running
+          - succeeded
+          - failed
+          - cancelled
         parameters:
           type: object
           additionalProperties:
@@ -142,7 +164,6 @@ components:
           format: date-time
         duration_seconds:
           type: integer
-
     Experiment:
       type: object
       properties:
@@ -160,7 +181,6 @@ components:
         created_at:
           type: string
           format: date-time
-
     ExperimentRun:
       type: object
       properties:
@@ -170,15 +190,18 @@ components:
           type: string
         status:
           type: string
-          enum: [running, completed, failed]
+          enum:
+          - running
+          - completed
+          - failed
         params:
           type: object
           additionalProperties:
             type: string
           example:
             base_model: Llama-3.1-8B
-            learning_rate: "2e-5"
-            epochs: "3"
+            learning_rate: 2e-5
+            epochs: '3'
         metrics:
           type: object
           additionalProperties:
@@ -201,7 +224,6 @@ components:
         completed_at:
           type: string
           format: date-time
-
     Model:
       type: object
       properties:
@@ -215,7 +237,11 @@ components:
           example: v3
         stage:
           type: string
-          enum: [dev, staging, canary, production]
+          enum:
+          - dev
+          - staging
+          - canary
+          - production
         description:
           type: string
         source_run_id:
@@ -244,7 +270,6 @@ components:
         created_at:
           type: string
           format: date-time
-
     Deployment:
       type: object
       properties:
@@ -256,42 +281,62 @@ components:
           type: string
         runtime:
           type: string
-          enum: [vllm, triton, onnx, custom]
+          enum:
+          - vllm
+          - triton
+          - onnx
+          - custom
         gpu:
           type: string
-          enum: [a100, h100, l40s, t4]
+          enum:
+          - a100
+          - h100
+          - l40s
+          - t4
         replicas:
           type: integer
         environment:
           type: string
-          enum: [dev, staging, production]
+          enum:
+          - dev
+          - staging
+          - production
         endpoint:
           type: string
           format: uri
         status:
           type: string
-          enum: [deploying, active, failed, stopped]
+          enum:
+          - deploying
+          - active
+          - failed
+          - stopped
         created_at:
           type: string
           format: date-time
-
 paths:
-  /pipelines:
+  /v1/ml/pipelines:
     get:
       operationId: listPipelines
       summary: List pipelines
-      tags: [Pipelines]
+      tags:
+      - Pipelines
       parameters:
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [pending, running, succeeded, failed, cancelled]
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - pending
+          - running
+          - succeeded
+          - failed
+          - cancelled
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 50
       responses:
         '200':
           description: Pipeline list
@@ -310,7 +355,8 @@ paths:
       operationId: createPipeline
       summary: Create a pipeline
       description: Create and optionally start a training pipeline.
-      tags: [Pipelines]
+      tags:
+      - Pipelines
       requestBody:
         required: true
         content:
@@ -318,7 +364,7 @@ paths:
             schema:
               type: object
               required:
-                - name
+              - name
               properties:
                 name:
                   type: string
@@ -339,8 +385,8 @@ paths:
                   parameters:
                     base_model: meta-llama/Llama-3.1-8B
                     dataset: s3://hanzo-data/training/v2
-                    epochs: "3"
-                    learning_rate: "2e-5"
+                    epochs: '3'
+                    learning_rate: 2e-5
                   auto_start: true
       responses:
         '201':
@@ -349,18 +395,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Pipeline'
-
-  /pipelines/{pipeline_id}:
+  /v1/ml/pipelines/{pipeline_id}:
     get:
       operationId: getPipeline
       summary: Get pipeline details
-      tags: [Pipelines]
+      tags:
+      - Pipelines
       parameters:
-        - name: pipeline_id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: pipeline_id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Pipeline details
@@ -368,18 +414,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Pipeline'
-
-  /pipelines/{pipeline_id}/runs:
+  /v1/ml/pipelines/{pipeline_id}/runs:
     get:
       operationId: listPipelineRuns
       summary: List pipeline runs
-      tags: [Pipelines]
+      tags:
+      - Pipelines
       parameters:
-        - name: pipeline_id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: pipeline_id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Run list
@@ -395,13 +441,14 @@ paths:
     post:
       operationId: startPipelineRun
       summary: Start a pipeline run
-      tags: [Pipelines]
+      tags:
+      - Pipelines
       parameters:
-        - name: pipeline_id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: pipeline_id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         content:
           application/json:
@@ -420,12 +467,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PipelineRun'
-
-  /experiments:
+  /v1/ml/experiments:
     get:
       operationId: listExperiments
       summary: List experiments
-      tags: [Experiments]
+      tags:
+      - Experiments
       responses:
         '200':
           description: Experiment list
@@ -441,7 +488,8 @@ paths:
     post:
       operationId: createExperiment
       summary: Create an experiment
-      tags: [Experiments]
+      tags:
+      - Experiments
       requestBody:
         required: true
         content:
@@ -449,7 +497,7 @@ paths:
             schema:
               type: object
               required:
-                - name
+              - name
               properties:
                 name:
                   type: string
@@ -462,18 +510,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Experiment'
-
-  /experiments/{experiment_id}/runs:
+  /v1/ml/experiments/{experiment_id}/runs:
     get:
       operationId: listExperimentRuns
       summary: List experiment runs
-      tags: [Experiments]
+      tags:
+      - Experiments
       parameters:
-        - name: experiment_id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: experiment_id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Run list
@@ -489,13 +537,14 @@ paths:
     post:
       operationId: startExperimentRun
       summary: Start an experiment run
-      tags: [Experiments]
+      tags:
+      - Experiments
       parameters:
-        - name: experiment_id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: experiment_id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -514,23 +563,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExperimentRun'
-
-  /experiments/{experiment_id}/runs/{run_id}/metrics:
+  /v1/ml/experiments/{experiment_id}/runs/{run_id}/metrics:
     get:
       operationId: getRunMetrics
       summary: Get run metrics
-      tags: [Experiments]
+      tags:
+      - Experiments
       parameters:
-        - name: experiment_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: run_id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: experiment_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Run metrics
@@ -547,18 +596,19 @@ paths:
       operationId: logMetrics
       summary: Log metrics
       description: Log metrics for a running experiment.
-      tags: [Experiments]
+      tags:
+      - Experiments
       parameters:
-        - name: experiment_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: run_id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: experiment_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -574,22 +624,26 @@ paths:
       responses:
         '200':
           description: Metrics logged
-
-  /models:
+  /v1/ml/models:
     get:
       operationId: listModels
       summary: List models
-      tags: [Models]
+      tags:
+      - Models
       parameters:
-        - name: stage
-          in: query
-          schema:
-            type: string
-            enum: [dev, staging, canary, production]
-        - name: search
-          in: query
-          schema:
-            type: string
+      - name: stage
+        in: query
+        schema:
+          type: string
+          enum:
+          - dev
+          - staging
+          - canary
+          - production
+      - name: search
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Model list
@@ -605,7 +659,8 @@ paths:
     post:
       operationId: registerModel
       summary: Register a model
-      tags: [Models]
+      tags:
+      - Models
       requestBody:
         required: true
         content:
@@ -613,8 +668,8 @@ paths:
             schema:
               type: object
               required:
-                - name
-                - version
+              - name
+              - version
               properties:
                 name:
                   type: string
@@ -651,18 +706,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Model'
-
-  /models/{model_id}:
+  /v1/ml/models/{model_id}:
     get:
       operationId: getModel
       summary: Get model details
-      tags: [Models]
+      tags:
+      - Models
       parameters:
-        - name: model_id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: model_id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Model details
@@ -670,19 +725,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Model'
-
-  /models/{model_id}/promote:
+  /v1/ml/models/{model_id}/promote:
     post:
       operationId: promoteModel
       summary: Promote a model
       description: Promote a model to the next deployment stage.
-      tags: [Models]
+      tags:
+      - Models
       parameters:
-        - name: model_id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: model_id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -690,11 +745,14 @@ paths:
             schema:
               type: object
               required:
-                - stage
+              - stage
               properties:
                 stage:
                   type: string
-                  enum: [staging, canary, production]
+                  enum:
+                  - staging
+                  - canary
+                  - production
       responses:
         '200':
           description: Model promoted
@@ -702,19 +760,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Model'
-
-  /models/{model_id}/rollback:
+  /v1/ml/models/{model_id}/rollback:
     post:
       operationId: rollbackModel
       summary: Rollback a model
       description: Rollback to a previous model version.
-      tags: [Models]
+      tags:
+      - Models
       parameters:
-        - name: model_id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: model_id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -722,20 +780,20 @@ paths:
             schema:
               type: object
               required:
-                - version
+              - version
               properties:
                 version:
                   type: string
       responses:
         '200':
           description: Model rolled back
-
-  /deploy:
+  /v1/ml/deploy:
     post:
       operationId: deployModel
       summary: Deploy a model
       description: Deploy a model from the registry to Hanzo Cloud.
-      tags: [Deployments]
+      tags:
+      - Deployments
       requestBody:
         required: true
         content:
@@ -743,7 +801,7 @@ paths:
             schema:
               type: object
               required:
-                - model_id
+              - model_id
               properties:
                 model_id:
                   type: string
@@ -751,18 +809,29 @@ paths:
                   type: string
                 runtime:
                   type: string
-                  enum: [vllm, triton, onnx, custom]
+                  enum:
+                  - vllm
+                  - triton
+                  - onnx
+                  - custom
                   default: vllm
                 gpu:
                   type: string
-                  enum: [a100, h100, l40s, t4]
+                  enum:
+                  - a100
+                  - h100
+                  - l40s
+                  - t4
                   default: a100
                 replicas:
                   type: integer
                   default: 1
                 environment:
                   type: string
-                  enum: [dev, staging, production]
+                  enum:
+                  - dev
+                  - staging
+                  - production
                   default: dev
             examples:
               deploy:
@@ -781,23 +850,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Deployment'
-
-  /deployments:
+  /v1/ml/deployments:
     get:
       operationId: listDeployments
       summary: List deployments
-      tags: [Deployments]
+      tags:
+      - Deployments
       parameters:
-        - name: environment
-          in: query
-          schema:
-            type: string
-            enum: [dev, staging, production]
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [deploying, active, failed, stopped]
+      - name: environment
+        in: query
+        schema:
+          type: string
+          enum:
+          - dev
+          - staging
+          - production
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - deploying
+          - active
+          - failed
+          - stopped
       responses:
         '200':
           description: Deployment list
@@ -810,18 +886,18 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Deployment'
-
-  /deployments/{deployment_id}:
+  /v1/ml/deployments/{deployment_id}:
     get:
       operationId: getDeployment
       summary: Get deployment details
-      tags: [Deployments]
+      tags:
+      - Deployments
       parameters:
-        - name: deployment_id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: deployment_id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Deployment details
@@ -832,22 +908,23 @@ paths:
     delete:
       operationId: stopDeployment
       summary: Stop a deployment
-      tags: [Deployments]
+      tags:
+      - Deployments
       parameters:
-        - name: deployment_id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: deployment_id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Deployment stopped
-
   /health:
     get:
       operationId: healthCheck
       summary: Health check
-      tags: [Health]
+      tags:
+      - Health
       security: []
       responses:
         '200':
@@ -859,6 +936,7 @@ paths:
                 properties:
                   status:
                     type: string
-                    enum: [ok]
+                    enum:
+                    - ok
                   version:
                     type: string
