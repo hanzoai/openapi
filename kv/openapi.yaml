@@ -1,17 +1,26 @@
 openapi: 3.1.0
 info:
   title: Hanzo KV API
-  description: |
-    Hanzo KV provides a managed key-value store with caching, pub/sub messaging,
+  description: 'Hanzo KV provides a managed key-value store with caching, pub/sub messaging,
+
     and stream processing.
 
+
     Features:
+
     - Multi-tenant namespace isolation
+
     - REST API over the wire protocol
+
     - Managed clusters with automatic failover
+
     - Per-key TTL and eviction policies
+
     - Pub/sub channels with WebSocket support
+
     - Append-only streams for event sourcing
+
+    '
   version: 1.0.0
   contact:
     name: Hanzo AI
@@ -19,38 +28,34 @@ info:
     email: support@hanzo.ai
   license:
     name: Proprietary
-
 servers:
-  - url: https://kv.hanzo.ai
-    description: Production
-  - url: https://api.hanzo.ai/v1/kv
-    description: Gateway Proxy
-
+- url: https://kv.hanzo.ai
+  description: KV Production
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway (via api.hanzo.ai/v1/kv/*)
 tags:
-  - name: Keys
-    description: Key-value CRUD operations
-  - name: Hash
-    description: Hash (field-value map) operations
-  - name: List
-    description: List (ordered collection) operations
-  - name: Set
-    description: Set (unique collection) operations
-  - name: Sorted Set
-    description: Sorted set (scored unique collection) operations
-  - name: Pub/Sub
-    description: Publish/subscribe messaging
-  - name: Streams
-    description: Append-only log streams
-  - name: Namespaces
-    description: Namespace (tenant) management
-  - name: Clusters
-    description: Managed KV cluster lifecycle
-  - name: Health
-    description: Service health
-
+- name: Keys
+  description: Key-value CRUD operations
+- name: Hash
+  description: Hash (field-value map) operations
+- name: List
+  description: List (ordered collection) operations
+- name: Set
+  description: Set (unique collection) operations
+- name: Sorted Set
+  description: Sorted set (scored unique collection) operations
+- name: Pub/Sub
+  description: Publish/subscribe messaging
+- name: Streams
+  description: Append-only log streams
+- name: Namespaces
+  description: Namespace (tenant) management
+- name: Clusters
+  description: Managed KV cluster lifecycle
+- name: Health
+  description: Service health
 security:
-  - bearerAuth: []
-
+- BearerAuth: []
 components:
   securitySchemes:
     bearerAuth:
@@ -58,7 +63,12 @@ components:
       scheme: bearer
       bearerFormat: HANZO_API_KEY
       description: Hanzo API Key (Bearer hk-...)
-
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
+        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
     Error:
       type: object
@@ -67,7 +77,6 @@ components:
           type: string
         code:
           type: integer
-
     KeyValue:
       type: object
       properties:
@@ -77,14 +86,19 @@ components:
           type: string
         type:
           type: string
-          enum: [string, hash, list, set, zset, stream]
+          enum:
+          - string
+          - hash
+          - list
+          - set
+          - zset
+          - stream
         ttl:
           type: integer
           description: Time-to-live in seconds (-1 for no expiry)
         size:
           type: integer
           description: Size in bytes
-
     Namespace:
       type: object
       properties:
@@ -101,11 +115,18 @@ components:
           type: integer
         eviction_policy:
           type: string
-          enum: [noeviction, allkeys-lru, allkeys-lfu, volatile-lru, volatile-lfu, allkeys-random, volatile-random, volatile-ttl]
+          enum:
+          - noeviction
+          - allkeys-lru
+          - allkeys-lfu
+          - volatile-lru
+          - volatile-lfu
+          - allkeys-random
+          - volatile-random
+          - volatile-ttl
         created_at:
           type: string
           format: date-time
-
     Cluster:
       type: object
       properties:
@@ -116,13 +137,21 @@ components:
           type: string
         status:
           type: string
-          enum: [provisioning, running, degraded, stopped, deleted]
+          enum:
+          - provisioning
+          - running
+          - degraded
+          - stopped
+          - deleted
         version:
           type: string
           description: Server version
         mode:
           type: string
-          enum: [standalone, sentinel, cluster]
+          enum:
+          - standalone
+          - sentinel
+          - cluster
         nodes:
           type: array
           items:
@@ -132,14 +161,19 @@ components:
                 type: string
               role:
                 type: string
-                enum: [primary, replica]
+                enum:
+                - primary
+                - replica
               host:
                 type: string
               port:
                 type: integer
               status:
                 type: string
-                enum: [online, offline, syncing]
+                enum:
+                - online
+                - offline
+                - syncing
               memory_used_mb:
                 type: number
               memory_max_mb:
@@ -156,21 +190,23 @@ components:
         created_at:
           type: string
           format: date-time
-
     ClusterCreate:
       type: object
       required:
-        - name
+      - name
       properties:
         name:
           type: string
         mode:
           type: string
-          enum: [standalone, sentinel, cluster]
+          enum:
+          - standalone
+          - sentinel
+          - cluster
           default: standalone
         version:
           type: string
-          default: "8.0"
+          default: '8.0'
         max_memory_mb:
           type: integer
           default: 256
@@ -182,9 +218,14 @@ components:
           default: true
         eviction_policy:
           type: string
-          enum: [noeviction, allkeys-lru, allkeys-lfu, volatile-lru, volatile-lfu, allkeys-random]
+          enum:
+          - noeviction
+          - allkeys-lru
+          - allkeys-lfu
+          - volatile-lru
+          - volatile-lfu
+          - allkeys-random
           default: allkeys-lru
-
     StreamEntry:
       type: object
       properties:
@@ -195,7 +236,6 @@ components:
           type: object
           additionalProperties:
             type: string
-
     PubSubMessage:
       type: object
       properties:
@@ -206,7 +246,6 @@ components:
         timestamp:
           type: string
           format: date-time
-
   responses:
     BadRequest:
       description: Bad Request
@@ -232,13 +271,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-
 paths:
-  # Health
   /health:
     get:
       tags:
-        - Health
+      - Health
       summary: Health check
       operationId: healthCheck
       security: []
@@ -252,23 +289,26 @@ paths:
                 properties:
                   status:
                     type: string
-                    enum: [healthy]
+                    enum:
+                    - healthy
                   version:
                     type: string
-
-  # Clusters
-  /clusters:
+  /v1/kv/clusters:
     get:
       tags:
-        - Clusters
+      - Clusters
       summary: List KV clusters
       operationId: listClusters
       parameters:
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [provisioning, running, degraded, stopped]
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - provisioning
+          - running
+          - degraded
+          - stopped
       responses:
         '200':
           description: List of clusters
@@ -285,7 +325,7 @@ paths:
                     type: integer
     post:
       tags:
-        - Clusters
+      - Clusters
       summary: Create KV cluster
       operationId: createCluster
       requestBody:
@@ -303,20 +343,19 @@ paths:
                 $ref: '#/components/schemas/Cluster'
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /clusters/{id}:
+  /v1/kv/clusters/{id}:
     get:
       tags:
-        - Clusters
+      - Clusters
       summary: Get cluster
       operationId: getCluster
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Cluster details
@@ -328,16 +367,16 @@ paths:
           $ref: '#/components/responses/NotFound'
     put:
       tags:
-        - Clusters
+      - Clusters
       summary: Update cluster
       operationId: updateCluster
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       requestBody:
         required: true
         content:
@@ -360,16 +399,16 @@ paths:
                 $ref: '#/components/schemas/Cluster'
     delete:
       tags:
-        - Clusters
+      - Clusters
       summary: Delete cluster
       operationId: deleteCluster
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Cluster deleted
@@ -377,20 +416,19 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /clusters/{id}/stats:
+  /v1/kv/clusters/{id}/stats:
     get:
       tags:
-        - Clusters
+      - Clusters
       summary: Get cluster stats
       operationId: getClusterStats
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Cluster statistics
@@ -424,12 +462,10 @@ paths:
                     type: integer
                   evicted_keys:
                     type: integer
-
-  # Namespaces
-  /namespaces:
+  /v1/kv/namespaces:
     get:
       tags:
-        - Namespaces
+      - Namespaces
       summary: List namespaces
       operationId: listNamespaces
       responses:
@@ -443,7 +479,7 @@ paths:
                   $ref: '#/components/schemas/Namespace'
     post:
       tags:
-        - Namespaces
+      - Namespaces
       summary: Create namespace
       operationId: createNamespace
       requestBody:
@@ -453,7 +489,7 @@ paths:
             schema:
               type: object
               required:
-                - name
+              - name
               properties:
                 name:
                   type: string
@@ -470,19 +506,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Namespace'
-
-  /namespaces/{name}:
+  /v1/kv/namespaces/{name}:
     get:
       tags:
-        - Namespaces
+      - Namespaces
       summary: Get namespace
       operationId: getNamespace
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Namespace details
@@ -492,15 +527,15 @@ paths:
                 $ref: '#/components/schemas/Namespace'
     delete:
       tags:
-        - Namespaces
+      - Namespaces
       summary: Delete namespace and all keys
       operationId: deleteNamespace
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Namespace deleted
@@ -508,40 +543,44 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # Key-Value Operations
-  /keys:
+  /v1/kv/keys:
     get:
       tags:
-        - Keys
+      - Keys
       summary: Scan keys
       operationId: scanKeys
       parameters:
-        - name: pattern
-          in: query
-          schema:
-            type: string
-            default: "*"
-          description: Glob-style pattern (e.g. user:*, session:*)
-        - name: type
-          in: query
-          schema:
-            type: string
-            enum: [string, hash, list, set, zset, stream]
-        - name: cursor
-          in: query
-          schema:
-            type: string
-            default: "0"
-        - name: count
-          in: query
-          schema:
-            type: integer
-            default: 100
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: pattern
+        in: query
+        schema:
+          type: string
+          default: '*'
+        description: Glob-style pattern (e.g. user:*, session:*)
+      - name: type
+        in: query
+        schema:
+          type: string
+          enum:
+          - string
+          - hash
+          - list
+          - set
+          - zset
+          - stream
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          default: '0'
+      - name: count
+        in: query
+        schema:
+          type: integer
+          default: 100
+      - name: namespace
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Key scan results
@@ -557,23 +596,22 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/KeyValue'
-
-  /keys/{key}:
+  /v1/kv/keys/{key}:
     get:
       tags:
-        - Keys
+      - Keys
       summary: Get key value
       operationId: getKey
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: namespace
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Key value
@@ -585,19 +623,19 @@ paths:
           $ref: '#/components/responses/NotFound'
     put:
       tags:
-        - Keys
+      - Keys
       summary: Set key value
       operationId: setKey
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: namespace
+        in: query
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -605,7 +643,7 @@ paths:
             schema:
               type: object
               required:
-                - value
+              - value
               properties:
                 value:
                   type: string
@@ -627,19 +665,19 @@ paths:
                 $ref: '#/components/schemas/KeyValue'
     delete:
       tags:
-        - Keys
+      - Keys
       summary: Delete key
       operationId: deleteKey
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: namespace
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Key deleted
@@ -650,23 +688,22 @@ paths:
                 properties:
                   deleted:
                     type: boolean
-
-  /keys/{key}/ttl:
+  /v1/kv/keys/{key}/ttl:
     put:
       tags:
-        - Keys
+      - Keys
       summary: Set key TTL
       operationId: setKeyTTL
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: namespace
+        in: query
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -674,7 +711,7 @@ paths:
             schema:
               type: object
               required:
-                - ttl
+              - ttl
               properties:
                 ttl:
                   type: integer
@@ -686,23 +723,22 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /keys/{key}/incr:
+  /v1/kv/keys/{key}/incr:
     post:
       tags:
-        - Keys
+      - Keys
       summary: Increment numeric key
       operationId: incrKey
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: namespace
+        in: query
+        schema:
+          type: string
       requestBody:
         content:
           application/json:
@@ -722,12 +758,10 @@ paths:
                 properties:
                   value:
                     type: number
-
-  # Batch operations
-  /batch:
+  /v1/kv/batch:
     post:
       tags:
-        - Keys
+      - Keys
       summary: Batch get/set/delete
       operationId: batchOperation
       requestBody:
@@ -744,12 +778,15 @@ paths:
                   items:
                     type: object
                     required:
-                      - op
-                      - key
+                    - op
+                    - key
                     properties:
                       op:
                         type: string
-                        enum: [get, set, delete]
+                        enum:
+                        - get
+                        - set
+                        - delete
                       key:
                         type: string
                       value:
@@ -775,24 +812,22 @@ paths:
                           type: string
                         ok:
                           type: boolean
-
-  # Hash Operations
-  /hash/{key}:
+  /v1/kv/hash/{key}:
     get:
       tags:
-        - Hash
+      - Hash
       summary: Get all hash fields
       operationId: hashGetAll
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: namespace
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Hash fields and values
@@ -804,19 +839,19 @@ paths:
                   type: string
     put:
       tags:
-        - Hash
+      - Hash
       summary: Set hash fields
       operationId: hashSet
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: namespace
+        in: query
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -832,28 +867,27 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /hash/{key}/{field}:
+  /v1/kv/hash/{key}/{field}:
     get:
       tags:
-        - Hash
+      - Hash
       summary: Get hash field
       operationId: hashGetField
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: field
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: field
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: namespace
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Field value
@@ -866,24 +900,24 @@ paths:
                     type: string
     delete:
       tags:
-        - Hash
+      - Hash
       summary: Delete hash field
       operationId: hashDeleteField
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: field
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: field
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: namespace
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Field deleted
@@ -891,34 +925,32 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # List Operations
-  /list/{key}:
+  /v1/kv/list/{key}:
     get:
       tags:
-        - List
+      - List
       summary: Get list range
       operationId: listRange
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: start
-          in: query
-          schema:
-            type: integer
-            default: 0
-        - name: stop
-          in: query
-          schema:
-            type: integer
-            default: -1
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: start
+        in: query
+        schema:
+          type: integer
+          default: 0
+      - name: stop
+        in: query
+        schema:
+          type: integer
+          default: -1
+      - name: namespace
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: List elements
@@ -933,23 +965,22 @@ paths:
                       type: string
                   length:
                     type: integer
-
-  /list/{key}/push:
+  /v1/kv/list/{key}/push:
     post:
       tags:
-        - List
+      - List
       summary: Push to list
       operationId: listPush
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: namespace
+        in: query
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -957,7 +988,7 @@ paths:
             schema:
               type: object
               required:
-                - values
+              - values
               properties:
                 values:
                   type: array
@@ -965,7 +996,9 @@ paths:
                     type: string
                 direction:
                   type: string
-                  enum: [left, right]
+                  enum:
+                  - left
+                  - right
                   default: right
       responses:
         '200':
@@ -977,23 +1010,22 @@ paths:
                 properties:
                   length:
                     type: integer
-
-  /list/{key}/pop:
+  /v1/kv/list/{key}/pop:
     post:
       tags:
-        - List
+      - List
       summary: Pop from list
       operationId: listPop
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: namespace
+        in: query
+        schema:
+          type: string
       requestBody:
         content:
           application/json:
@@ -1002,7 +1034,9 @@ paths:
               properties:
                 direction:
                   type: string
-                  enum: [left, right]
+                  enum:
+                  - left
+                  - right
                   default: left
                 count:
                   type: integer
@@ -1019,12 +1053,10 @@ paths:
                     type: array
                     items:
                       type: string
-
-  # Pub/Sub
-  /pubsub/publish:
+  /v1/kv/pubsub/publish:
     post:
       tags:
-        - Pub/Sub
+      - Pub/Sub
       summary: Publish message to channel
       operationId: publish
       requestBody:
@@ -1034,8 +1066,8 @@ paths:
             schema:
               type: object
               required:
-                - channel
-                - message
+              - channel
+              - message
               properties:
                 channel:
                   type: string
@@ -1051,27 +1083,26 @@ paths:
                 properties:
                   receivers:
                     type: integer
-
-  /pubsub/subscribe:
+  /v1/kv/pubsub/subscribe:
     get:
       tags:
-        - Pub/Sub
+      - Pub/Sub
       summary: Subscribe to channels (SSE)
       operationId: subscribe
       parameters:
-        - name: channels
-          in: query
-          required: true
-          schema:
-            type: array
-            items:
-              type: string
-          description: Channels to subscribe to
-        - name: pattern
-          in: query
-          schema:
+      - name: channels
+        in: query
+        required: true
+        schema:
+          type: array
+          items:
             type: string
-          description: Pattern to subscribe to (e.g. user:*)
+        description: Channels to subscribe to
+      - name: pattern
+        in: query
+        schema:
+          type: string
+        description: Pattern to subscribe to (e.g. user:*)
       responses:
         '200':
           description: SSE stream of messages
@@ -1079,19 +1110,18 @@ paths:
             text/event-stream:
               schema:
                 type: string
-
-  /pubsub/channels:
+  /v1/kv/pubsub/channels:
     get:
       tags:
-        - Pub/Sub
+      - Pub/Sub
       summary: List active channels
       operationId: listChannels
       parameters:
-        - name: pattern
-          in: query
-          schema:
-            type: string
-            default: "*"
+      - name: pattern
+        in: query
+        schema:
+          type: string
+          default: '*'
       responses:
         '200':
           description: Active channels
@@ -1109,41 +1139,39 @@ paths:
                           type: string
                         subscribers:
                           type: integer
-
-  # Streams
-  /streams/{key}:
+  /v1/kv/streams/{key}:
     get:
       tags:
-        - Streams
+      - Streams
       summary: Read stream entries
       operationId: streamRead
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: start
-          in: query
-          schema:
-            type: string
-            default: "-"
-          description: Start ID (- for beginning)
-        - name: end
-          in: query
-          schema:
-            type: string
-            default: "+"
-          description: End ID (+ for latest)
-        - name: count
-          in: query
-          schema:
-            type: integer
-            default: 100
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: start
+        in: query
+        schema:
+          type: string
+          default: '-'
+        description: Start ID (- for beginning)
+      - name: end
+        in: query
+        schema:
+          type: string
+          default: +
+        description: End ID (+ for latest)
+      - name: count
+        in: query
+        schema:
+          type: integer
+          default: 100
+      - name: namespace
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Stream entries
@@ -1158,23 +1186,22 @@ paths:
                       $ref: '#/components/schemas/StreamEntry'
                   length:
                     type: integer
-
-  /streams/{key}/add:
+  /v1/kv/streams/{key}/add:
     post:
       tags:
-        - Streams
+      - Streams
       summary: Add entry to stream
       operationId: streamAdd
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: namespace
+        in: query
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -1182,7 +1209,7 @@ paths:
             schema:
               type: object
               required:
-                - fields
+              - fields
               properties:
                 id:
                   type: string
@@ -1205,23 +1232,22 @@ paths:
                   id:
                     type: string
                     description: Generated entry ID
-
-  /streams/{key}/info:
+  /v1/kv/streams/{key}/info:
     get:
       tags:
-        - Streams
+      - Streams
       summary: Get stream info
       operationId: streamInfo
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: namespace
-          in: query
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: namespace
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Stream info
