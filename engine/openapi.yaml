@@ -1,17 +1,26 @@
 openapi: 3.1.0
 info:
   title: Hanzo Engine API
-  description: |
-    Hanzo Engine provides GPU cluster management, ML job orchestration,
+  description: 'Hanzo Engine provides GPU cluster management, ML job orchestration,
+
     model serving, and pipeline execution.
 
+
     Components:
+
     - **Clusters**: GPU cluster registration and node management
+
     - **Jobs**: Training and inference job submission with GPU scheduling
+
     - **Ray**: Distributed cluster lifecycle and autoscaling
+
     - **Pipelines**: ML pipeline orchestration
+
     - **GPUs**: GPU inventory and allocation tracking
+
     - **Serve**: Model serving endpoint management with autoscaling
+
+    '
   version: 1.0.0
   contact:
     name: Hanzo AI
@@ -19,30 +28,26 @@ info:
     email: support@hanzo.ai
   license:
     name: Proprietary
-
 servers:
-  - url: https://engine.hanzo.ai
-    description: Production
-  - url: https://api.hanzo.ai/v1/engine
-    description: Gateway Proxy
-
+- url: https://engine.hanzo.ai
+  description: Engine Production
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway (via api.hanzo.ai/v1/engine/*)
 tags:
-  - name: Clusters
-    description: GPU cluster registration and management
-  - name: Jobs
-    description: Training and inference job orchestration
-  - name: Ray
-    description: Ray cluster management
-  - name: Pipelines
-    description: ML pipeline execution
-  - name: GPUs
-    description: GPU inventory and allocation
-  - name: Serve
-    description: Model serving endpoints
-
+- name: Clusters
+  description: GPU cluster registration and management
+- name: Jobs
+  description: Training and inference job orchestration
+- name: Ray
+  description: Ray cluster management
+- name: Pipelines
+  description: ML pipeline execution
+- name: GPUs
+  description: GPU inventory and allocation
+- name: Serve
+  description: Model serving endpoints
 security:
-  - bearerAuth: []
-
+- BearerAuth: []
 components:
   securitySchemes:
     bearerAuth:
@@ -50,7 +55,12 @@ components:
       scheme: bearer
       bearerFormat: HANZO_API_KEY
       description: Hanzo API Key (Bearer hk-...)
-
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
+        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
     Error:
       type: object
@@ -59,8 +69,6 @@ components:
           type: string
         message:
           type: string
-
-    # Clusters
     Cluster:
       type: object
       properties:
@@ -71,10 +79,20 @@ components:
           type: string
         status:
           type: string
-          enum: [online, offline, degraded, provisioning]
+          enum:
+          - online
+          - offline
+          - degraded
+          - provisioning
         provider:
           type: string
-          enum: [bare_metal, aws, gcp, azure, lambda, coreweave]
+          enum:
+          - bare_metal
+          - aws
+          - gcp
+          - azure
+          - lambda
+          - coreweave
         region:
           type: string
         node_count:
@@ -95,18 +113,23 @@ components:
         updated_at:
           type: string
           format: date-time
-
     ClusterCreate:
       type: object
       required:
-        - name
-        - provider
+      - name
+      - provider
       properties:
         name:
           type: string
         provider:
           type: string
-          enum: [bare_metal, aws, gcp, azure, lambda, coreweave]
+          enum:
+          - bare_metal
+          - aws
+          - gcp
+          - azure
+          - lambda
+          - coreweave
         region:
           type: string
         kubeconfig:
@@ -116,7 +139,6 @@ components:
           type: object
           additionalProperties:
             type: string
-
     ClusterNode:
       type: object
       properties:
@@ -126,7 +148,11 @@ components:
           type: string
         status:
           type: string
-          enum: [ready, not_ready, cordoned, draining]
+          enum:
+          - ready
+          - not_ready
+          - cordoned
+          - draining
         gpus:
           type: array
           items:
@@ -141,7 +167,6 @@ components:
           type: object
           additionalProperties:
             type: string
-
     GPUDevice:
       type: object
       properties:
@@ -162,9 +187,10 @@ components:
           type: number
         status:
           type: string
-          enum: [idle, allocated, error]
-
-    # Jobs
+          enum:
+          - idle
+          - allocated
+          - error
     Job:
       type: object
       properties:
@@ -175,10 +201,20 @@ components:
           type: string
         type:
           type: string
-          enum: [training, inference, fine_tune, evaluation]
+          enum:
+          - training
+          - inference
+          - fine_tune
+          - evaluation
         status:
           type: string
-          enum: [pending, scheduling, running, succeeded, failed, cancelled]
+          enum:
+          - pending
+          - scheduling
+          - running
+          - succeeded
+          - failed
+          - cancelled
         cluster_id:
           type: string
           format: uuid
@@ -214,20 +250,23 @@ components:
         created_at:
           type: string
           format: date-time
-
     JobCreate:
       type: object
       required:
-        - name
-        - type
-        - image
-        - resources
+      - name
+      - type
+      - image
+      - resources
       properties:
         name:
           type: string
         type:
           type: string
-          enum: [training, inference, fine_tune, evaluation]
+          enum:
+          - training
+          - inference
+          - fine_tune
+          - evaluation
         cluster_id:
           type: string
           format: uuid
@@ -252,11 +291,10 @@ components:
           default: 0
         timeout_seconds:
           type: integer
-
     JobResources:
       type: object
       required:
-        - gpu_count
+      - gpu_count
       properties:
         gpu_count:
           type: integer
@@ -273,7 +311,6 @@ components:
           description: Shared memory (/dev/shm) size
         storage_gb:
           type: integer
-
     JobMetrics:
       type: object
       properties:
@@ -290,8 +327,6 @@ components:
           type: integer
         step:
           type: integer
-
-    # Ray
     RayCluster:
       type: object
       properties:
@@ -301,7 +336,12 @@ components:
           type: string
         status:
           type: string
-          enum: [creating, running, suspended, failed, deleting]
+          enum:
+          - creating
+          - running
+          - suspended
+          - failed
+          - deleting
         head:
           type: object
           properties:
@@ -313,7 +353,10 @@ components:
               type: integer
             status:
               type: string
-              enum: [running, pending, failed]
+              enum:
+              - running
+              - pending
+              - failed
         workers:
           type: array
           items:
@@ -337,7 +380,10 @@ components:
                 type: string
               status:
                 type: string
-                enum: [running, pending, failed]
+                enum:
+                - running
+                - pending
+                - failed
         ray_version:
           type: string
         dashboard_url:
@@ -346,11 +392,10 @@ components:
         created_at:
           type: string
           format: date-time
-
     RayClusterCreate:
       type: object
       required:
-        - name
+      - name
       properties:
         name:
           type: string
@@ -359,7 +404,7 @@ components:
           default: default
         ray_version:
           type: string
-          default: "2.9.0"
+          default: 2.9.0
         head:
           type: object
           properties:
@@ -377,8 +422,8 @@ components:
           items:
             type: object
             required:
-              - group_name
-              - replicas
+            - group_name
+            - replicas
             properties:
               group_name:
                 type: string
@@ -399,19 +444,18 @@ components:
                 default: 1
               gpu_type:
                 type: string
-
     RayClusterScale:
       type: object
       required:
-        - workers
+      - workers
       properties:
         workers:
           type: array
           items:
             type: object
             required:
-              - group_name
-              - replicas
+            - group_name
+            - replicas
             properties:
               group_name:
                 type: string
@@ -421,8 +465,6 @@ components:
                 type: integer
               max_replicas:
                 type: integer
-
-    # Pipelines
     Pipeline:
       type: object
       properties:
@@ -452,12 +494,11 @@ components:
         updated_at:
           type: string
           format: date-time
-
     PipelineCreate:
       type: object
       required:
-        - name
-        - spec
+      - name
+      - spec
       properties:
         name:
           type: string
@@ -478,7 +519,6 @@ components:
                 type: string
               default:
                 type: string
-
     PipelineRun:
       type: object
       properties:
@@ -492,7 +532,13 @@ components:
           type: string
         status:
           type: string
-          enum: [pending, running, succeeded, failed, cancelled, skipped]
+          enum:
+          - pending
+          - running
+          - succeeded
+          - failed
+          - cancelled
+          - skipped
         parameters:
           type: object
           additionalProperties:
@@ -518,7 +564,6 @@ components:
         created_at:
           type: string
           format: date-time
-
     PipelineRunCreate:
       type: object
       properties:
@@ -528,8 +573,6 @@ components:
           type: object
           additionalProperties:
             type: string
-
-    # GPU Inventory
     GPUType:
       type: object
       properties:
@@ -540,7 +583,11 @@ components:
           type: integer
         architecture:
           type: string
-          enum: [Ampere, Hopper, Ada_Lovelace, Blackwell]
+          enum:
+          - Ampere
+          - Hopper
+          - Ada_Lovelace
+          - Blackwell
         fp16_tflops:
           type: number
         bf16_tflops:
@@ -549,12 +596,14 @@ components:
           type: number
         interconnect:
           type: string
-          enum: [PCIe, NVLink, NVSwitch]
+          enum:
+          - PCIe
+          - NVLink
+          - NVSwitch
         total_count:
           type: integer
         available_count:
           type: integer
-
     GPUAllocation:
       type: object
       properties:
@@ -581,8 +630,6 @@ components:
                 type: string
               node_id:
                 type: string
-
-    # Serve
     ServingEndpoint:
       type: object
       properties:
@@ -593,7 +640,12 @@ components:
           description: Model identifier or path
         status:
           type: string
-          enum: [provisioning, running, scaling, failed, stopped]
+          enum:
+          - provisioning
+          - running
+          - scaling
+          - failed
+          - stopped
         replicas:
           type: integer
         min_replicas:
@@ -606,7 +658,11 @@ components:
           type: integer
         framework:
           type: string
-          enum: [vllm, tgi, triton, custom]
+          enum:
+          - vllm
+          - tgi
+          - triton
+          - custom
         url:
           type: string
           format: uri
@@ -617,12 +673,11 @@ components:
         updated_at:
           type: string
           format: date-time
-
     ServingEndpointCreate:
       type: object
       required:
-        - name
-        - model
+      - name
+      - model
       properties:
         name:
           type: string
@@ -630,7 +685,11 @@ components:
           type: string
         framework:
           type: string
-          enum: [vllm, tgi, triton, custom]
+          enum:
+          - vllm
+          - tgi
+          - triton
+          - custom
           default: vllm
         gpu_type:
           type: string
@@ -655,7 +714,6 @@ components:
           type: integer
         max_concurrent_requests:
           type: integer
-
     ServingMetrics:
       type: object
       properties:
@@ -683,7 +741,6 @@ components:
           type: number
         gpu_memory_used_mb:
           type: integer
-
   responses:
     BadRequest:
       description: Bad Request
@@ -715,35 +772,37 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-
 paths:
-  # Clusters
-  /clusters:
+  /v1/engine/clusters:
     get:
       tags:
-        - Clusters
+      - Clusters
       summary: List GPU clusters
       operationId: listClusters
       parameters:
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [online, offline, degraded, provisioning]
-        - name: provider
-          in: query
-          schema:
-            type: string
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: page_size
-          in: query
-          schema:
-            type: integer
-            default: 20
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - online
+          - offline
+          - degraded
+          - provisioning
+      - name: provider
+        in: query
+        schema:
+          type: string
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 20
       responses:
         '200':
           description: List of clusters
@@ -760,10 +819,9 @@ paths:
                     type: integer
         '401':
           $ref: '#/components/responses/Unauthorized'
-
     post:
       tags:
-        - Clusters
+      - Clusters
       summary: Register GPU cluster
       operationId: registerCluster
       requestBody:
@@ -781,20 +839,19 @@ paths:
                 $ref: '#/components/schemas/Cluster'
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /clusters/{id}:
+  /v1/engine/clusters/{id}:
     get:
       tags:
-        - Clusters
+      - Clusters
       summary: Get cluster
       operationId: getCluster
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Cluster details
@@ -804,19 +861,18 @@ paths:
                 $ref: '#/components/schemas/Cluster'
         '404':
           $ref: '#/components/responses/NotFound'
-
     put:
       tags:
-        - Clusters
+      - Clusters
       summary: Update cluster
       operationId: updateCluster
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       requestBody:
         required: true
         content:
@@ -841,19 +897,18 @@ paths:
                 $ref: '#/components/schemas/Cluster'
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       tags:
-        - Clusters
+      - Clusters
       summary: Deregister cluster
       operationId: deleteCluster
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Cluster deregistered
@@ -863,20 +918,19 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /clusters/{id}/nodes:
+  /v1/engine/clusters/{id}/nodes:
     get:
       tags:
-        - Clusters
+      - Clusters
       summary: List cluster nodes
       operationId: listClusterNodes
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Cluster nodes with GPU status
@@ -891,40 +945,48 @@ paths:
                       $ref: '#/components/schemas/ClusterNode'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # Jobs
-  /jobs:
+  /v1/engine/jobs:
     get:
       tags:
-        - Jobs
+      - Jobs
       summary: List jobs
       operationId: listJobs
       parameters:
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [pending, scheduling, running, succeeded, failed, cancelled]
-        - name: type
-          in: query
-          schema:
-            type: string
-            enum: [training, inference, fine_tune, evaluation]
-        - name: cluster_id
-          in: query
-          schema:
-            type: string
-            format: uuid
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: page_size
-          in: query
-          schema:
-            type: integer
-            default: 20
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - pending
+          - scheduling
+          - running
+          - succeeded
+          - failed
+          - cancelled
+      - name: type
+        in: query
+        schema:
+          type: string
+          enum:
+          - training
+          - inference
+          - fine_tune
+          - evaluation
+      - name: cluster_id
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 20
       responses:
         '200':
           description: List of jobs
@@ -939,10 +1001,9 @@ paths:
                       $ref: '#/components/schemas/Job'
                   total:
                     type: integer
-
     post:
       tags:
-        - Jobs
+      - Jobs
       summary: Submit job
       operationId: submitJob
       requestBody:
@@ -960,20 +1021,19 @@ paths:
                 $ref: '#/components/schemas/Job'
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /jobs/{id}:
+  /v1/engine/jobs/{id}:
     get:
       tags:
-        - Jobs
+      - Jobs
       summary: Get job
       operationId: getJob
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Job details
@@ -983,20 +1043,19 @@ paths:
                 $ref: '#/components/schemas/Job'
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       tags:
-        - Jobs
+      - Jobs
       summary: Delete job
       operationId: deleteJob
       description: Deletes a completed or cancelled job and its artifacts.
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Job deleted
@@ -1006,20 +1065,19 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /jobs/{id}/cancel:
+  /v1/engine/jobs/{id}/cancel:
     post:
       tags:
-        - Jobs
+      - Jobs
       summary: Cancel job
       operationId: cancelJob
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Job cancelled
@@ -1029,33 +1087,32 @@ paths:
                 $ref: '#/components/schemas/Job'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /jobs/{id}/logs:
+  /v1/engine/jobs/{id}/logs:
     get:
       tags:
-        - Jobs
+      - Jobs
       summary: Get job logs
       operationId: getJobLogs
       description: Returns job logs. Use Accept text/event-stream for streaming.
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: tail
-          in: query
-          schema:
-            type: integer
-            default: 100
-          description: Number of lines from the end
-        - name: follow
-          in: query
-          schema:
-            type: boolean
-            default: false
-          description: Stream logs in real time
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: tail
+        in: query
+        schema:
+          type: integer
+          default: 100
+        description: Number of lines from the end
+      - name: follow
+        in: query
+        schema:
+          type: boolean
+          default: false
+        description: Stream logs in real time
       responses:
         '200':
           description: Job logs
@@ -1068,20 +1125,19 @@ paths:
                 type: string
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /jobs/{id}/metrics:
+  /v1/engine/jobs/{id}/metrics:
     get:
       tags:
-        - Jobs
+      - Jobs
       summary: Get job metrics
       operationId: getJobMetrics
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Job GPU and training metrics
@@ -1091,24 +1147,27 @@ paths:
                 $ref: '#/components/schemas/JobMetrics'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # Ray Clusters
-  /ray/clusters:
+  /v1/engine/ray/clusters:
     get:
       tags:
-        - Ray
+      - Ray
       summary: List Ray clusters
       operationId: listRayClusters
       parameters:
-        - name: namespace
-          in: query
-          schema:
-            type: string
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [creating, running, suspended, failed, deleting]
+      - name: namespace
+        in: query
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - creating
+          - running
+          - suspended
+          - failed
+          - deleting
       responses:
         '200':
           description: List of Ray clusters
@@ -1121,10 +1180,9 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/RayCluster'
-
     post:
       tags:
-        - Ray
+      - Ray
       summary: Create Ray cluster
       operationId: createRayCluster
       requestBody:
@@ -1142,19 +1200,18 @@ paths:
                 $ref: '#/components/schemas/RayCluster'
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /ray/clusters/{name}:
+  /v1/engine/ray/clusters/{name}:
     get:
       tags:
-        - Ray
+      - Ray
       summary: Get Ray cluster
       operationId: getRayCluster
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Ray cluster details
@@ -1164,18 +1221,17 @@ paths:
                 $ref: '#/components/schemas/RayCluster'
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       tags:
-        - Ray
+      - Ray
       summary: Delete Ray cluster
       operationId: deleteRayCluster
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Ray cluster deleted
@@ -1185,19 +1241,18 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /ray/clusters/{name}/scale:
+  /v1/engine/ray/clusters/{name}/scale:
     put:
       tags:
-        - Ray
+      - Ray
       summary: Scale Ray workers
       operationId: scaleRayCluster
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -1215,19 +1270,18 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /ray/clusters/{name}/dashboard:
+  /v1/engine/ray/clusters/{name}/dashboard:
     get:
       tags:
-        - Ray
+      - Ray
       summary: Get Ray dashboard URL
       operationId: getRayDashboard
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Dashboard URL
@@ -1241,19 +1295,18 @@ paths:
                     format: uri
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /ray/clusters/{name}/status:
+  /v1/engine/ray/clusters/{name}/status:
     get:
       tags:
-        - Ray
+      - Ray
       summary: Get Ray cluster status
       operationId: getRayClusterStatus
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Head and worker node status
@@ -1263,25 +1316,23 @@ paths:
                 $ref: '#/components/schemas/RayCluster'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # Pipelines
-  /pipelines:
+  /v1/engine/pipelines:
     get:
       tags:
-        - Pipelines
+      - Pipelines
       summary: List ML pipelines
       operationId: listPipelines
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: page_size
-          in: query
-          schema:
-            type: integer
-            default: 20
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 20
       responses:
         '200':
           description: List of pipelines
@@ -1296,10 +1347,9 @@ paths:
                       $ref: '#/components/schemas/Pipeline'
                   total:
                     type: integer
-
     post:
       tags:
-        - Pipelines
+      - Pipelines
       summary: Create ML pipeline
       operationId: createPipeline
       requestBody:
@@ -1317,20 +1367,19 @@ paths:
                 $ref: '#/components/schemas/Pipeline'
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /pipelines/{id}:
+  /v1/engine/pipelines/{id}:
     get:
       tags:
-        - Pipelines
+      - Pipelines
       summary: Get pipeline
       operationId: getPipeline
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Pipeline details
@@ -1340,19 +1389,18 @@ paths:
                 $ref: '#/components/schemas/Pipeline'
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       tags:
-        - Pipelines
+      - Pipelines
       summary: Delete pipeline
       operationId: deletePipeline
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Pipeline deleted
@@ -1362,35 +1410,39 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /pipelines/{id}/runs:
+  /v1/engine/pipelines/{id}/runs:
     get:
       tags:
-        - Pipelines
+      - Pipelines
       summary: List pipeline runs
       operationId: listPipelineRuns
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [pending, running, succeeded, failed, cancelled]
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: page_size
-          in: query
-          schema:
-            type: integer
-            default: 20
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - pending
+          - running
+          - succeeded
+          - failed
+          - cancelled
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 20
       responses:
         '200':
           description: List of pipeline runs
@@ -1405,19 +1457,18 @@ paths:
                       $ref: '#/components/schemas/PipelineRun'
                   total:
                     type: integer
-
     post:
       tags:
-        - Pipelines
+      - Pipelines
       summary: Create pipeline run
       operationId: createPipelineRun
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       requestBody:
         content:
           application/json:
@@ -1432,26 +1483,25 @@ paths:
                 $ref: '#/components/schemas/PipelineRun'
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /pipelines/{id}/runs/{run_id}:
+  /v1/engine/pipelines/{id}/runs/{run_id}:
     get:
       tags:
-        - Pipelines
+      - Pipelines
       summary: Get pipeline run
       operationId: getPipelineRun
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: run_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Pipeline run status and artifacts
@@ -1461,12 +1511,10 @@ paths:
                 $ref: '#/components/schemas/PipelineRun'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # GPUs
-  /gpus:
+  /v1/engine/gpus:
     get:
       tags:
-        - GPUs
+      - GPUs
       summary: List available GPU types
       operationId: listGPUTypes
       responses:
@@ -1481,23 +1529,22 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/GPUType'
-
-  /gpus/allocations:
+  /v1/engine/gpus/allocations:
     get:
       tags:
-        - GPUs
+      - GPUs
       summary: Get GPU allocations
       operationId: getGPUAllocations
       parameters:
-        - name: gpu_type
-          in: query
-          schema:
-            type: string
-        - name: cluster_id
-          in: query
-          schema:
-            type: string
-            format: uuid
+      - name: gpu_type
+        in: query
+        schema:
+          type: string
+      - name: cluster_id
+        in: query
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Current GPU allocations
@@ -1510,30 +1557,33 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/GPUAllocation'
-
-  # Serve
-  /serve/endpoints:
+  /v1/engine/serve/endpoints:
     get:
       tags:
-        - Serve
+      - Serve
       summary: List serving endpoints
       operationId: listServingEndpoints
       parameters:
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [provisioning, running, scaling, failed, stopped]
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: page_size
-          in: query
-          schema:
-            type: integer
-            default: 20
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - provisioning
+          - running
+          - scaling
+          - failed
+          - stopped
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 20
       responses:
         '200':
           description: List of serving endpoints
@@ -1548,10 +1598,9 @@ paths:
                       $ref: '#/components/schemas/ServingEndpoint'
                   total:
                     type: integer
-
     post:
       tags:
-        - Serve
+      - Serve
       summary: Create serving endpoint
       operationId: createServingEndpoint
       requestBody:
@@ -1569,19 +1618,18 @@ paths:
                 $ref: '#/components/schemas/ServingEndpoint'
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /serve/endpoints/{name}:
+  /v1/engine/serve/endpoints/{name}:
     get:
       tags:
-        - Serve
+      - Serve
       summary: Get serving endpoint
       operationId: getServingEndpoint
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Serving endpoint details
@@ -1591,18 +1639,17 @@ paths:
                 $ref: '#/components/schemas/ServingEndpoint'
         '404':
           $ref: '#/components/responses/NotFound'
-
     put:
       tags:
-        - Serve
+      - Serve
       summary: Update serving endpoint
       operationId: updateServingEndpoint
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -1635,18 +1682,17 @@ paths:
                 $ref: '#/components/schemas/ServingEndpoint'
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       tags:
-        - Serve
+      - Serve
       summary: Delete serving endpoint
       operationId: deleteServingEndpoint
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Serving endpoint deleted
@@ -1656,35 +1702,37 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /serve/endpoints/{name}/metrics:
+  /v1/engine/serve/endpoints/{name}/metrics:
     get:
       tags:
-        - Serve
+      - Serve
       summary: Get serving endpoint metrics
       operationId: getServingMetrics
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: from
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: to
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: granularity
-          in: query
-          schema:
-            type: string
-            enum: [minute, hour, day]
-            default: hour
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: from
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: granularity
+        in: query
+        schema:
+          type: string
+          enum:
+          - minute
+          - hour
+          - day
+          default: hour
       responses:
         '200':
           description: Serving metrics
