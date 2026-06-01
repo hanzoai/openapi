@@ -2,13 +2,18 @@ openapi: 3.1.0
 info:
   title: Hanzo Pricing API
   version: 1.0.0
-  description: |
-    Unified pricing API for the Hanzo AI platform. Serves real-time pricing
+  description: 'Unified pricing API for the Hanzo AI platform. Serves real-time pricing
+
     for AI models (376+), cloud VM plans, GPU tiers, subscription plans,
+
     tools, and infrastructure.
 
+
     All prices are dynamically synced from upstream providers every 6 hours.
+
     Zero egress fees on all plans.
+
+    '
   contact:
     name: Hanzo AI
     url: https://hanzo.ai
@@ -16,339 +21,324 @@ info:
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
-
 servers:
-  - url: https://pricing.hanzo.ai
-    description: Production
-
+- url: https://pricing.hanzo.ai
+  description: Pricing Production
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway (via api.hanzo.ai/v1/pricing/*)
 tags:
-  - name: Health
-    description: Service health and status
-  - name: Models
-    description: AI model pricing and listings
-  - name: Cloud
-    description: Cloud VM plans, regions, and storage
-  - name: Subscriptions
-    description: Platform subscription plans
-  - name: Infrastructure
-    description: Compute tiers, GPU pricing, and tools
-  - name: Policy
-    description: Pricing policy and revenue sharing
-
+- name: Health
+  description: Service health and status
+- name: Models
+  description: AI model pricing and listings
+- name: Cloud
+  description: Cloud VM plans, regions, and storage
+- name: Subscriptions
+  description: Platform subscription plans
+- name: Infrastructure
+  description: Compute tiers, GPU pricing, and tools
+- name: Policy
+  description: Pricing policy and revenue sharing
 paths:
   /health:
     get:
       operationId: getHealth
       summary: Health check
       description: Returns service health, last sync time, and model counts.
-      tags: [Health]
+      tags:
+      - Health
       responses:
-        "200":
+        '200':
           description: Service is healthy
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthResponse"
-
+                $ref: '#/components/schemas/HealthResponse'
   /v1/pricing:
     get:
       operationId: getFullPricing
       summary: Full pricing data
-      description: |
-        Returns the complete pricing dataset including all AI models,
+      description: 'Returns the complete pricing dataset including all AI models,
+
         tools, infrastructure, and cloud plans. Large response (~500KB).
-      tags: [Models, Cloud, Infrastructure]
+
+        '
+      tags:
+      - Models
+      - Cloud
+      - Infrastructure
       responses:
-        "200":
+        '200':
           description: Full pricing data
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FullPricingResponse"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
-  /v1/models:
+                $ref: '#/components/schemas/FullPricingResponse'
+        '503':
+          $ref: '#/components/responses/NotReady'
+  /v1/pricing/models:
     get:
       operationId: listModels
       summary: List all AI models (OpenAI-compatible)
-      description: |
-        Returns all available AI models in an OpenAI-compatible format.
+      description: 'Returns all available AI models in an OpenAI-compatible format.
+
         Includes 32 Zen (Hanzo first-party) models and 344+ third-party
+
         models from providers like OpenAI, Anthropic, Google, Meta, etc.
-      tags: [Models]
+
+        '
+      tags:
+      - Models
       responses:
-        "200":
+        '200':
           description: Model list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ModelListResponse"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
-  /v1/pricing/models:
-    get:
-      operationId: listPricingModels
-      summary: All models with pricing
-      description: |
-        Returns a flat list of all models with full pricing details.
-        Each model includes input/output token costs, context window,
-        and provider information.
-      tags: [Models]
-      responses:
-        "200":
-          description: Models with pricing
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PricingModelsResponse"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
+                $ref: '#/components/schemas/ModelListResponse'
+        '503':
+          $ref: '#/components/responses/NotReady'
   /v1/pricing/model/{name}:
     get:
       operationId: getModel
       summary: Single model lookup
-      description: |
-        Look up a single model by name or ID. Case-insensitive matching.
+      description: 'Look up a single model by name or ID. Case-insensitive matching.
+
         Returns full model details including pricing, specs, and features.
-      tags: [Models]
+
+        '
+      tags:
+      - Models
       parameters:
-        - name: name
-          in: path
-          required: true
-          description: Model name or ID (case-insensitive)
-          schema:
-            type: string
-          examples:
-            zen4:
-              value: zen4
-            gpt4o:
-              value: openai/gpt-4o
+      - name: name
+        in: path
+        required: true
+        description: Model name or ID (case-insensitive)
+        schema:
+          type: string
+        examples:
+          zen4:
+            value: zen4
+          gpt4o:
+            value: openai/gpt-4o
       responses:
-        "200":
+        '200':
           description: Model found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Model"
-        "404":
+                $ref: '#/components/schemas/Model'
+        '404':
           description: Model not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
+                $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/NotReady'
   /v1/pricing/free:
     get:
       operationId: listFreeModels
       summary: Free models only
       description: Returns models with zero cost (free tier eligible).
-      tags: [Models]
+      tags:
+      - Models
       responses:
-        "200":
+        '200':
           description: Free models
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PricingModelsResponse"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
+                $ref: '#/components/schemas/PricingModelsResponse'
+        '503':
+          $ref: '#/components/responses/NotReady'
   /v1/pricing/featured:
     get:
       operationId: listFeaturedModels
       summary: Featured third-party models
       description: Returns curated featured models from third-party providers.
-      tags: [Models]
+      tags:
+      - Models
       responses:
-        "200":
+        '200':
           description: Featured models
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PricingModelsResponse"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
+                $ref: '#/components/schemas/PricingModelsResponse'
+        '503':
+          $ref: '#/components/responses/NotReady'
   /v1/pricing/summary:
     get:
       operationId: getPricingSummary
       summary: Model counts and provider breakdown
-      description: |
-        Returns aggregate statistics: model counts by category,
+      description: 'Returns aggregate statistics: model counts by category,
+
         number of providers, and provider breakdown.
-      tags: [Models]
+
+        '
+      tags:
+      - Models
       responses:
-        "200":
+        '200':
           description: Pricing summary
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SummaryResponse"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
+                $ref: '#/components/schemas/SummaryResponse'
+        '503':
+          $ref: '#/components/responses/NotReady'
   /v1/pricing/providers:
     get:
       operationId: listProviders
       summary: Provider breakdown
       description: Returns all model providers with counts.
-      tags: [Models]
+      tags:
+      - Models
       responses:
-        "200":
+        '200':
           description: Provider list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProvidersResponse"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
-  /v1/plans:
+                $ref: '#/components/schemas/ProvidersResponse'
+        '503':
+          $ref: '#/components/responses/NotReady'
+  /v1/pricing/plans:
     get:
       operationId: listPlans
       summary: Subscription plans
-      description: |
-        Returns platform subscription plans (Developer, Pro, Team, Enterprise).
+      description: 'Returns platform subscription plans (Developer, Pro, Team, Enterprise).
+
         Alias for /v1/pricing/subscriptions.
-      tags: [Subscriptions]
+
+        '
+      tags:
+      - Subscriptions
       responses:
-        "200":
+        '200':
           description: Subscription plans
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SubscriptionPlansResponse"
-
+                $ref: '#/components/schemas/SubscriptionPlansResponse'
   /v1/pricing/subscriptions:
     get:
       operationId: listSubscriptions
       summary: Subscription plans
-      description: |
-        Returns platform subscription plans with pricing, features,
+      description: 'Returns platform subscription plans with pricing, features,
+
         rate limits, and revenue sharing details.
-      tags: [Subscriptions]
+
+        '
+      tags:
+      - Subscriptions
       responses:
-        "200":
+        '200':
           description: Subscription plans
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SubscriptionPlansResponse"
-
-  /v1/cloud:
+                $ref: '#/components/schemas/SubscriptionPlansResponse'
+  /v1/pricing/cloud:
     get:
       operationId: getCloud
       summary: Cloud VM plans, regions, and storage
-      description: |
-        Returns all cloud infrastructure pricing: VM plans, available
+      description: 'Returns all cloud infrastructure pricing: VM plans, available
+
         deployment regions, and block storage rates.
-      tags: [Cloud]
+
+        '
+      tags:
+      - Cloud
       responses:
-        "200":
+        '200':
           description: Cloud pricing
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CloudResponse"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
-  /v1/pricing/cloud:
-    get:
-      operationId: getCloudPricing
-      summary: Cloud infrastructure pricing
-      description: Full cloud pricing including plans, regions, and block storage.
-      tags: [Cloud]
-      responses:
-        "200":
-          description: Cloud pricing
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CloudResponse"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
+                $ref: '#/components/schemas/CloudResponse'
+        '503':
+          $ref: '#/components/responses/NotReady'
   /v1/pricing/cloud/plans:
     get:
       operationId: listCloudPlans
       summary: Cloud VM plans
-      description: |
-        Returns available cloud VM plans with specs and pricing.
+      description: 'Returns available cloud VM plans with specs and pricing.
+
         Plans range from $5/mo (Starter) to $3,999/mo (Ultra).
+
         All prices include zero egress fees.
-      tags: [Cloud]
+
+        '
+      tags:
+      - Cloud
       responses:
-        "200":
+        '200':
           description: Cloud plans
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CloudPlansResponse"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
+                $ref: '#/components/schemas/CloudPlansResponse'
+        '503':
+          $ref: '#/components/responses/NotReady'
   /v1/pricing/cloud/regions:
     get:
       operationId: listCloudRegions
       summary: Available cloud regions
       description: Returns deployment regions with availability status.
-      tags: [Cloud]
+      tags:
+      - Cloud
       responses:
-        "200":
+        '200':
           description: Cloud regions
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CloudRegionsResponse"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
+                $ref: '#/components/schemas/CloudRegionsResponse'
+        '503':
+          $ref: '#/components/responses/NotReady'
   /v1/pricing/cloud/storage:
     get:
       operationId: getStoragePricing
       summary: Block storage pricing
       description: Returns per-GB/month pricing for block storage volumes.
-      tags: [Cloud]
+      tags:
+      - Cloud
       responses:
-        "200":
+        '200':
           description: Storage pricing
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BlockStoragePricing"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
+                $ref: '#/components/schemas/BlockStoragePricing'
+        '503':
+          $ref: '#/components/responses/NotReady'
   /v1/pricing/compute:
     get:
       operationId: getComputePricing
       summary: Compute tiers
       description: Returns infrastructure compute tier pricing with DO-backed sizes.
-      tags: [Infrastructure]
+      tags:
+      - Infrastructure
       responses:
-        "200":
+        '200':
           description: Compute pricing
           content:
             application/json:
               schema:
                 type: object
-        "503":
-          $ref: "#/components/responses/NotReady"
-
+        '503':
+          $ref: '#/components/responses/NotReady'
   /v1/pricing/compute/presets:
     get:
       operationId: getComputePresets
       summary: Curated compute presets
       description: Returns curated compute presets for the launch page.
-      tags: [Infrastructure]
+      tags:
+      - Infrastructure
       responses:
-        "200":
+        '200':
           description: Compute presets
           content:
             application/json:
@@ -359,53 +349,57 @@ paths:
                     type: array
                     items:
                       type: object
-        "503":
-          $ref: "#/components/responses/NotReady"
-
-  /v1/gpu:
+        '503':
+          $ref: '#/components/responses/NotReady'
+  /v1/pricing/gpu:
     get:
       operationId: listGpuTiers
       summary: GPU tier pricing
-      description: |
-        Returns available GPU tiers with VRAM specs and hourly pricing.
+      description: 'Returns available GPU tiers with VRAM specs and hourly pricing.
+
         Currently offers H100 GPU configurations.
-      tags: [Infrastructure]
+
+        '
+      tags:
+      - Infrastructure
       responses:
-        "200":
+        '200':
           description: GPU tiers
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GpuTiersResponse"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
-  /v1/tools:
+                $ref: '#/components/schemas/GpuTiersResponse'
+        '503':
+          $ref: '#/components/responses/NotReady'
+  /v1/pricing/tools:
     get:
       operationId: listTools
       summary: Tool pricing
-      description: |
-        Returns pricing for platform tools (Web Search, Code Interpreter,
+      description: 'Returns pricing for platform tools (Web Search, Code Interpreter,
+
         File Analysis, Image Generation, etc.).
-      tags: [Infrastructure]
+
+        '
+      tags:
+      - Infrastructure
       responses:
-        "200":
+        '200':
           description: Tool pricing
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ToolsResponse"
-        "503":
-          $ref: "#/components/responses/NotReady"
-
+                $ref: '#/components/schemas/ToolsResponse'
+        '503':
+          $ref: '#/components/responses/NotReady'
   /v1/pricing/blockchain:
     get:
       operationId: listBlockchainPlans
       summary: Blockchain / RPC plans
       description: Returns blockchain node and RPC access plans.
-      tags: [Subscriptions]
+      tags:
+      - Subscriptions
       responses:
-        "200":
+        '200':
           description: Blockchain plans
           content:
             application/json:
@@ -416,35 +410,39 @@ paths:
                     type: array
                     items:
                       type: object
-
   /v1/pricing/policy:
     get:
       operationId: getPricingPolicy
       summary: Pricing policy and revenue sharing
-      description: |
-        Returns the transparent pricing policy including markup rates,
+      description: 'Returns the transparent pricing policy including markup rates,
+
         revenue sharing percentages, and free tier details.
-      tags: [Policy]
+
+        '
+      tags:
+      - Policy
       responses:
-        "200":
+        '200':
           description: Pricing policy
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PricingPolicy"
-
-  /v1/sync:
+                $ref: '#/components/schemas/PricingPolicy'
+  /v1/pricing/sync:
     post:
       operationId: triggerSync
       summary: Trigger manual sync
-      description: |
-        Manually triggers a pricing data sync from upstream providers.
+      description: 'Manually triggers a pricing data sync from upstream providers.
+
         Requires API key authentication.
-      tags: [Health]
+
+        '
+      tags:
+      - Health
       security:
-        - bearerAuth: []
+      - bearerAuth: []
       responses:
-        "200":
+        '200':
           description: Sync completed
           content:
             application/json:
@@ -458,45 +456,48 @@ paths:
                     type: string
                     format: date-time
                   summary:
-                    $ref: "#/components/schemas/Summary"
-        "401":
+                    $ref: '#/components/schemas/Summary'
+        '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "500":
+                $ref: '#/components/schemas/Error'
+        '500':
           description: Sync failed
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       description: API key for admin operations (sync trigger)
-
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
+        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   responses:
     NotReady:
       description: Pricing data not yet available (initial sync in progress)
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Error"
-
+            $ref: '#/components/schemas/Error'
   schemas:
     Error:
       type: object
-      required: [error]
+      required:
+      - error
       properties:
         error:
           type: string
         message:
           type: string
-
     HealthResponse:
       type: object
       properties:
@@ -508,8 +509,7 @@ components:
           format: date-time
           nullable: true
         models:
-          $ref: "#/components/schemas/Summary"
-
+          $ref: '#/components/schemas/Summary'
     Summary:
       type: object
       properties:
@@ -537,7 +537,6 @@ components:
         cloudRegions:
           type: integer
           example: 4
-
     ModelPricing:
       type: object
       properties:
@@ -557,19 +556,17 @@ components:
           type: number
           nullable: true
           description: Cost per 1M cache write tokens (USD)
-
     ModelSpecs:
       type: object
       properties:
         params:
           type: string
           description: Parameter count
-          example: "744B (40B active)"
+          example: 744B (40B active)
         arch:
           type: string
           description: Architecture type
           example: MoE
-
     Model:
       type: object
       properties:
@@ -580,7 +577,7 @@ components:
         fullName:
           type: string
           description: Human-readable name
-          example: "Zen4 \u2014 Flagship"
+          example: Zen4 — Flagship
         description:
           type: string
         features:
@@ -595,15 +592,18 @@ components:
           description: Context window in tokens
           example: 202000
         specs:
-          $ref: "#/components/schemas/ModelSpecs"
+          $ref: '#/components/schemas/ModelSpecs'
         pricing:
-          $ref: "#/components/schemas/ModelPricing"
+          $ref: '#/components/schemas/ModelPricing'
         provider:
           type: string
           example: Hanzo
         category:
           type: string
-          enum: [zen, featured, third-party]
+          enum:
+          - zen
+          - featured
+          - third-party
         id:
           type: string
           description: Provider model ID (third-party models)
@@ -615,7 +615,6 @@ components:
           type: string
           description: Non-token pricing unit (minute, image, step)
           nullable: true
-
     ModelListResponse:
       type: object
       description: OpenAI-compatible model list
@@ -627,16 +626,15 @@ components:
           type: array
           items:
             allOf:
-              - $ref: "#/components/schemas/Model"
-              - type: object
-                properties:
-                  object:
-                    type: string
-                    example: model
-                  owned_by:
-                    type: string
-                    example: hanzo
-
+            - $ref: '#/components/schemas/Model'
+            - type: object
+              properties:
+                object:
+                  type: string
+                  example: model
+                owned_by:
+                  type: string
+                  example: hanzo
     PricingModelsResponse:
       type: object
       properties:
@@ -648,8 +646,7 @@ components:
         models:
           type: array
           items:
-            $ref: "#/components/schemas/Model"
-
+            $ref: '#/components/schemas/Model'
     SummaryResponse:
       type: object
       properties:
@@ -664,7 +661,6 @@ components:
           type: integer
         providers:
           type: object
-
     ProvidersResponse:
       type: object
       properties:
@@ -676,7 +672,6 @@ components:
           additionalProperties:
             type: integer
           description: Map of provider name to model count
-
     CloudPlan:
       type: object
       properties:
@@ -717,15 +712,13 @@ components:
           type: array
           items:
             type: string
-
     CloudPlansResponse:
       type: object
       properties:
         plans:
           type: array
           items:
-            $ref: "#/components/schemas/CloudPlan"
-
+            $ref: '#/components/schemas/CloudPlan'
     CloudRegion:
       type: object
       properties:
@@ -737,18 +730,16 @@ components:
           example: US East
         location:
           type: string
-          example: "Ashburn, VA"
+          example: Ashburn, VA
         available:
           type: boolean
-
     CloudRegionsResponse:
       type: object
       properties:
         regions:
           type: array
           items:
-            $ref: "#/components/schemas/CloudRegion"
-
+            $ref: '#/components/schemas/CloudRegion'
     BlockStoragePricing:
       type: object
       properties:
@@ -767,21 +758,19 @@ components:
             pricePerGBPerMonth:
               type: number
               example: 0.05
-
     CloudResponse:
       type: object
       properties:
         plans:
           type: array
           items:
-            $ref: "#/components/schemas/CloudPlan"
+            $ref: '#/components/schemas/CloudPlan'
         regions:
           type: array
           items:
-            $ref: "#/components/schemas/CloudRegion"
+            $ref: '#/components/schemas/CloudRegion'
         blockStorage:
-          $ref: "#/components/schemas/BlockStoragePricing"
-
+          $ref: '#/components/schemas/BlockStoragePricing'
     SubscriptionPlan:
       type: object
       properties:
@@ -801,7 +790,11 @@ components:
           nullable: true
         category:
           type: string
-          enum: [personal, professional, business, enterprise]
+          enum:
+          - personal
+          - professional
+          - business
+          - enterprise
         features:
           type: array
           items:
@@ -822,15 +815,13 @@ components:
               type: number
             description:
               type: string
-
     SubscriptionPlansResponse:
       type: object
       properties:
         plans:
           type: array
           items:
-            $ref: "#/components/schemas/SubscriptionPlan"
-
+            $ref: '#/components/schemas/SubscriptionPlan'
     GpuTier:
       type: object
       properties:
@@ -847,15 +838,13 @@ components:
           type: number
           description: Price per hour (USD)
           example: 3.48
-
     GpuTiersResponse:
       type: object
       properties:
         tiers:
           type: array
           items:
-            $ref: "#/components/schemas/GpuTier"
-
+            $ref: '#/components/schemas/GpuTier'
     Tool:
       type: object
       properties:
@@ -868,15 +857,13 @@ components:
         price:
           type: number
           example: 0.005
-
     ToolsResponse:
       type: object
       properties:
         tools:
           type: array
           items:
-            $ref: "#/components/schemas/Tool"
-
+            $ref: '#/components/schemas/Tool'
     PricingPolicy:
       type: object
       properties:
@@ -903,7 +890,6 @@ components:
               type: number
             rateLimit:
               type: string
-
     FullPricingResponse:
       type: object
       properties:
@@ -911,19 +897,19 @@ components:
           type: string
           format: date-time
         summary:
-          $ref: "#/components/schemas/Summary"
+          $ref: '#/components/schemas/Summary'
         hanzoModels:
           type: array
           items:
-            $ref: "#/components/schemas/Model"
+            $ref: '#/components/schemas/Model'
         thirdPartyModels:
           type: array
           items:
-            $ref: "#/components/schemas/Model"
+            $ref: '#/components/schemas/Model'
         freeModels:
           type: array
           items:
-            $ref: "#/components/schemas/Model"
+            $ref: '#/components/schemas/Model'
         providers:
           type: object
           additionalProperties:
@@ -931,7 +917,7 @@ components:
         tools:
           type: array
           items:
-            $ref: "#/components/schemas/Tool"
+            $ref: '#/components/schemas/Tool'
         infrastructure:
           type: object
           properties:
@@ -940,6 +926,8 @@ components:
             gpu:
               type: array
               items:
-                $ref: "#/components/schemas/GpuTier"
+                $ref: '#/components/schemas/GpuTier'
         cloud:
-          $ref: "#/components/schemas/CloudResponse"
+          $ref: '#/components/schemas/CloudResponse'
+security:
+- BearerAuth: []
