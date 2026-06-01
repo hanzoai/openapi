@@ -1,18 +1,28 @@
 openapi: 3.1.0
 info:
   title: Hanzo S3 API
-  description: |
-    Hanzo S3 provides S3-compatible object storage for AI infrastructure.
+  description: 'Hanzo S3 provides S3-compatible object storage for AI infrastructure.
+
     Compatible with all AWS S3 SDKs (boto3, @aws-sdk/client-s3, aws-sdk-go).
 
+
     Features:
+
     - Full S3 API compatibility
+
     - Object versioning and lifecycle management
+
     - Erasure coding with configurable redundancy
+
     - Server-side encryption (SSE-S3 and SSE-KMS)
+
     - Bucket policies and IAM integration
+
     - Event notifications on object mutations
+
     - OIDC SSO via hanzo.id for console access
+
+    '
   version: 1.0.0
   contact:
     name: Hanzo AI
@@ -20,51 +30,54 @@ info:
     email: support@hanzo.ai
   license:
     name: Proprietary
-
 servers:
-  - url: https://s3.hanzo.ai
-    description: S3 API
-  - url: https://api.hanzo.ai/v1/s3
-    description: Gateway Proxy
-
+- url: https://s3.hanzo.ai
+  description: S3 Production
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway (via api.hanzo.ai/v1/s3/*)
 tags:
-  - name: Buckets
-    description: Bucket management
-  - name: Objects
-    description: Object CRUD operations
-  - name: Versioning
-    description: Object versioning
-  - name: Lifecycle
-    description: Lifecycle management rules
-  - name: Policies
-    description: Bucket access policies
-  - name: Encryption
-    description: Server-side encryption configuration
-  - name: Events
-    description: Event notification configuration
-  - name: Admin
-    description: Administrative operations
-  - name: Health
-    description: Service health
-
+- name: Buckets
+  description: Bucket management
+- name: Objects
+  description: Object CRUD operations
+- name: Versioning
+  description: Object versioning
+- name: Lifecycle
+  description: Lifecycle management rules
+- name: Policies
+  description: Bucket access policies
+- name: Encryption
+  description: Server-side encryption configuration
+- name: Events
+  description: Event notification configuration
+- name: Admin
+  description: Administrative operations
+- name: Health
+  description: Service health
 security:
-  - s3Auth: []
-
+- BearerAuth: []
 components:
   securitySchemes:
     s3Auth:
       type: apiKey
       in: header
       name: Authorization
-      description: |
-        AWS Signature Version 4 authentication.
+      description: 'AWS Signature Version 4 authentication.
+
         Use your Hanzo S3 access key and secret key.
+
+        '
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: HANZO_API_KEY
       description: Hanzo API Key (Bearer hk-...)
-
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
+        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
     Error:
       type: object
@@ -77,7 +90,6 @@ components:
           type: string
         RequestId:
           type: string
-
     Bucket:
       type: object
       properties:
@@ -93,7 +105,6 @@ components:
         objects:
           type: integer
           description: Number of objects
-
     ObjectInfo:
       type: object
       properties:
@@ -113,14 +124,16 @@ components:
           type: string
         storage_class:
           type: string
-          enum: [STANDARD, REDUCED_REDUNDANCY, GLACIER]
-
+          enum:
+          - STANDARD
+          - REDUCED_REDUNDANCY
+          - GLACIER
     BucketPolicy:
       type: object
       properties:
         Version:
           type: string
-          example: "2012-10-17"
+          example: '2012-10-17'
         Statement:
           type: array
           items:
@@ -130,7 +143,9 @@ components:
                 type: string
               Effect:
                 type: string
-                enum: [Allow, Deny]
+                enum:
+                - Allow
+                - Deny
               Principal:
                 type: string
               Action:
@@ -143,7 +158,6 @@ components:
                   type: string
               Condition:
                 type: object
-
     LifecycleRule:
       type: object
       properties:
@@ -151,7 +165,9 @@ components:
           type: string
         status:
           type: string
-          enum: [Enabled, Disabled]
+          enum:
+          - Enabled
+          - Disabled
         prefix:
           type: string
         expiration:
@@ -169,24 +185,25 @@ components:
               type: integer
             storage_class:
               type: string
-
     VersioningConfig:
       type: object
       properties:
         status:
           type: string
-          enum: [Enabled, Suspended]
-
+          enum:
+          - Enabled
+          - Suspended
     EncryptionConfig:
       type: object
       properties:
         sse_algorithm:
           type: string
-          enum: [AES256, aws:kms]
+          enum:
+          - AES256
+          - aws:kms
         kms_master_key_id:
           type: string
           description: KMS key ID for SSE-KMS
-
     EventConfig:
       type: object
       properties:
@@ -196,7 +213,10 @@ components:
           type: array
           items:
             type: string
-            enum: [s3:ObjectCreated:*, s3:ObjectRemoved:*, s3:ObjectAccessed:*]
+            enum:
+            - s3:ObjectCreated:*
+            - s3:ObjectRemoved:*
+            - s3:ObjectAccessed:*
         filter:
           type: object
           properties:
@@ -209,10 +229,12 @@ components:
           properties:
             type:
               type: string
-              enum: [webhook, pubsub, mq]
+              enum:
+              - webhook
+              - pubsub
+              - mq
             url:
               type: string
-
     ServiceAccount:
       type: object
       properties:
@@ -224,11 +246,12 @@ components:
           $ref: '#/components/schemas/BucketPolicy'
         status:
           type: string
-          enum: [enabled, disabled]
+          enum:
+          - enabled
+          - disabled
         created_at:
           type: string
           format: date-time
-
     UsageInfo:
       type: object
       properties:
@@ -239,14 +262,14 @@ components:
           type: integer
         buckets:
           type: integer
-
 paths:
-  /:
+  /v1/s3/:
     get:
       operationId: listBuckets
       summary: List all buckets
       description: Returns a list of all buckets owned by the authenticated user.
-      tags: [Buckets]
+      tags:
+      - Buckets
       responses:
         '200':
           description: Bucket list
@@ -265,19 +288,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  /{bucket}:
+  /v1/s3/{bucket}:
     put:
       operationId: createBucket
       summary: Create a bucket
-      tags: [Buckets]
+      tags:
+      - Buckets
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
-          example: my-models
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
+        example: my-models
       responses:
         '200':
           description: Bucket created
@@ -290,33 +313,34 @@ paths:
     get:
       operationId: listObjectsV2
       summary: List objects in bucket
-      tags: [Objects]
+      tags:
+      - Objects
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: prefix
-          in: query
-          schema:
-            type: string
-          description: Filter by key prefix
-        - name: delimiter
-          in: query
-          schema:
-            type: string
-          description: Grouping delimiter (e.g. /)
-        - name: max-keys
-          in: query
-          schema:
-            type: integer
-            default: 1000
-        - name: continuation-token
-          in: query
-          schema:
-            type: string
-          description: Pagination token from previous response
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: prefix
+        in: query
+        schema:
+          type: string
+        description: Filter by key prefix
+      - name: delimiter
+        in: query
+        schema:
+          type: string
+        description: Grouping delimiter (e.g. /)
+      - name: max-keys
+        in: query
+        schema:
+          type: integer
+          default: 1000
+      - name: continuation-token
+        in: query
+        schema:
+          type: string
+        description: Pagination token from previous response
       responses:
         '200':
           description: Object listing
@@ -348,46 +372,49 @@ paths:
       operationId: deleteBucket
       summary: Delete a bucket
       description: Bucket must be empty before deletion.
-      tags: [Buckets]
+      tags:
+      - Buckets
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Bucket deleted
         '409':
           description: Bucket not empty
-
-  /{bucket}/{key}:
+  /v1/s3/{bucket}/{key}:
     put:
       operationId: putObject
       summary: Upload an object
-      tags: [Objects]
+      tags:
+      - Objects
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: Content-Type
-          in: header
-          schema:
-            type: string
-            default: application/octet-stream
-        - name: x-amz-server-side-encryption
-          in: header
-          schema:
-            type: string
-            enum: [AES256, aws:kms]
-          description: Server-side encryption algorithm
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: Content-Type
+        in: header
+        schema:
+          type: string
+          default: application/octet-stream
+      - name: x-amz-server-side-encryption
+        in: header
+        schema:
+          type: string
+          enum:
+          - AES256
+          - aws:kms
+        description: Server-side encryption algorithm
       requestBody:
         required: true
         content:
@@ -408,28 +435,29 @@ paths:
     get:
       operationId: getObject
       summary: Download an object
-      tags: [Objects]
+      tags:
+      - Objects
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: versionId
-          in: query
-          schema:
-            type: string
-          description: Specific version to retrieve
-        - name: Range
-          in: header
-          schema:
-            type: string
-          description: Byte range (e.g. bytes=0-1023)
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: versionId
+        in: query
+        schema:
+          type: string
+        description: Specific version to retrieve
+      - name: Range
+        in: header
+        schema:
+          type: string
+        description: Byte range (e.g. bytes=0-1023)
       responses:
         '200':
           description: Object data
@@ -458,18 +486,19 @@ paths:
     head:
       operationId: headObject
       summary: Get object metadata
-      tags: [Objects]
+      tags:
+      - Objects
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Object metadata
@@ -494,40 +523,41 @@ paths:
     delete:
       operationId: deleteObject
       summary: Delete an object
-      tags: [Objects]
+      tags:
+      - Objects
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: versionId
-          in: query
-          schema:
-            type: string
-          description: Specific version to delete
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: versionId
+        in: query
+        schema:
+          type: string
+        description: Specific version to delete
       responses:
         '204':
           description: Object deleted
         '404':
           description: Object not found
-
-  /{bucket}?versioning:
+  /v1/s3/{bucket}?versioning:
     get:
       operationId: getBucketVersioning
       summary: Get versioning status
-      tags: [Versioning]
+      tags:
+      - Versioning
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Versioning configuration
@@ -538,13 +568,14 @@ paths:
     put:
       operationId: putBucketVersioning
       summary: Set versioning status
-      tags: [Versioning]
+      tags:
+      - Versioning
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -554,18 +585,18 @@ paths:
       responses:
         '200':
           description: Versioning updated
-
-  /{bucket}?lifecycle:
+  /v1/s3/{bucket}?lifecycle:
     get:
       operationId: getBucketLifecycle
       summary: Get lifecycle rules
-      tags: [Lifecycle]
+      tags:
+      - Lifecycle
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Lifecycle configuration
@@ -581,13 +612,14 @@ paths:
     put:
       operationId: putBucketLifecycle
       summary: Set lifecycle rules
-      tags: [Lifecycle]
+      tags:
+      - Lifecycle
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -602,18 +634,18 @@ paths:
       responses:
         '200':
           description: Lifecycle updated
-
-  /{bucket}?policy:
+  /v1/s3/{bucket}?policy:
     get:
       operationId: getBucketPolicy
       summary: Get bucket policy
-      tags: [Policies]
+      tags:
+      - Policies
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Bucket policy
@@ -624,13 +656,14 @@ paths:
     put:
       operationId: putBucketPolicy
       summary: Set bucket policy
-      tags: [Policies]
+      tags:
+      - Policies
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -640,18 +673,18 @@ paths:
       responses:
         '200':
           description: Policy set
-
-  /{bucket}?encryption:
+  /v1/s3/{bucket}?encryption:
     get:
       operationId: getBucketEncryption
       summary: Get encryption configuration
-      tags: [Encryption]
+      tags:
+      - Encryption
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Encryption config
@@ -662,13 +695,14 @@ paths:
     put:
       operationId: putBucketEncryption
       summary: Set encryption configuration
-      tags: [Encryption]
+      tags:
+      - Encryption
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -678,18 +712,18 @@ paths:
       responses:
         '200':
           description: Encryption configured
-
-  /{bucket}?notification:
+  /v1/s3/{bucket}?notification:
     get:
       operationId: getBucketNotification
       summary: Get event notification config
-      tags: [Events]
+      tags:
+      - Events
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Notification config
@@ -705,13 +739,14 @@ paths:
     put:
       operationId: putBucketNotification
       summary: Set event notification config
-      tags: [Events]
+      tags:
+      - Events
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -726,13 +761,13 @@ paths:
       responses:
         '200':
           description: Notifications configured
-
-  /admin/info:
+  /v1/s3/admin/info:
     get:
       operationId: adminInfo
       summary: Server information
       description: Returns server version, storage capacity, and cluster status.
-      tags: [Admin]
+      tags:
+      - Admin
       responses:
         '200':
           description: Server info
@@ -749,13 +784,13 @@ paths:
                     type: array
                     items:
                       type: string
-
-  /admin/usage:
+  /v1/s3/admin/usage:
     get:
       operationId: adminUsage
       summary: Storage usage
       description: Returns aggregate storage usage across all buckets.
-      tags: [Admin]
+      tags:
+      - Admin
       responses:
         '200':
           description: Usage info
@@ -763,12 +798,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UsageInfo'
-
-  /admin/service-accounts:
+  /v1/s3/admin/service-accounts:
     get:
       operationId: listServiceAccounts
       summary: List service accounts
-      tags: [Admin]
+      tags:
+      - Admin
       responses:
         '200':
           description: Service account list
@@ -785,7 +820,8 @@ paths:
       operationId: createServiceAccount
       summary: Create a service account
       description: Create a service account with specific bucket access policies.
-      tags: [Admin]
+      tags:
+      - Admin
       requestBody:
         required: true
         content:
@@ -806,12 +842,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ServiceAccount'
-
   /health:
     get:
       operationId: healthCheck
       summary: Health check
-      tags: [Health]
+      tags:
+      - Health
       security: []
       responses:
         '200':
@@ -823,6 +859,7 @@ paths:
                 properties:
                   status:
                     type: string
-                    enum: [ok]
+                    enum:
+                    - ok
                   version:
                     type: string
