@@ -1,127 +1,24 @@
 openapi: 3.1.0
 info:
-  title: Hanzo AI Platform API
+  title: Hanzo Cloud
+  version: 1.0.0
+  summary: Discovery index for the Hanzo Cloud API surface.
   description: |
-    Unified API for the Hanzo AI Platform, providing access to all backend services.
+    Hanzo Cloud is the unified API surface for the Hanzo AI Platform. Every
+    service is reachable through a single gateway at `api.hanzo.ai` with a
+    single bearer token issued by Hanzo IAM (`https://hanzo.id`).
 
-    ## Services (26 total)
+    This document is the discovery index. Each service has its own complete
+    OpenAPI 3.1 specification under `openapi/<service>/openapi.yaml`. There
+    are no cross-file `$ref` links between service specs — each is
+    self-contained.
 
-    ### Core (6)
-    - **IAM** (`hanzo.id`): Identity and Access Management (OAuth2, OIDC, SAML, Web3)
-    - **Commerce** (`commerce.hanzo.ai`): Billing, payments, invoicing, orders, subscriptions
-    - **Cloud** (`api.cloud.hanzo.ai`): AI model API, 86+ models, usage tracking
-    - **Gateway** (`api.hanzo.ai`): Unified API gateway, LLM proxy, rate limiting, CDN, edge routing
-    - **Console** (`console.hanzo.ai`): Observability, traces, scores, prompt management
-    - **KMS** (`kms.hanzo.ai`): Secrets management, encryption, audit
+    Authentication: Bearer JWT issued by Hanzo IAM. OIDC discovery is at
+    `https://hanzo.id/.well-known/openid-configuration`.
 
-    ### Application (6)
-    - **Chat** (`hanzo.chat`): AI chat, conversations, messages, file uploads
-    - **Flow** (`flow.hanzo.ai`): Visual workflow builder, automations
-    - **Auto** (`auto.hanzo.ai`): Workflow automation, scheduling, triggers
-    - **Analytics** (`analytics.hanzo.ai`): Web analytics, events, sessions, reports
-    - **Bot** (`app.hanzo.bot`): Bot framework, skills, plugins
-    - **Search** (`search.hanzo.ai`): AI-powered search, generative UI
-
-    ### Infrastructure (10)
-    - **PaaS** (`paas.hanzo.ai`): K8s-native GitOps deployments, cluster management
-    - **Platform** (`platform.hanzo.ai`): Local dev PaaS, Docker-based deployments
-    - **Visor** (`vm.hanzo.ai`): VM management, cloud instances
-    - **Operative** (`operative.hanzo.ai`): Computer use, browser automation
-    - **Vector** (`vector.hanzo.ai`): Vector database, collections, search
-    - **Nexus** (`nexus.hanzo.ai`): Knowledge base, RAG, embeddings
-    - **Registry** (`registry.hanzo.ai`): Container registry — @hanzocr
-    - **DB** (`db.hanzo.ai`): Serverless Postgres with instant branching — @hanzosql
-    - **Edge** (`edge.hanzo.ai`): Edge functions, Deno-based serverless — @hanzofn
-    - **KV** (`kv.hanzo.ai`): Key-value store, caching — @hanzokv
-    - **MQ** (`mq.hanzo.ai`): Message queue, pub/sub, streams (NATS) — @hanzomsg
-
-    ### Operations (4)
-    - **Engine** (`engine.hanzo.ai`): GPU scheduling, ML pipelines, model serving — @hanzo-ml
-    - **O11y** (`o11y.hanzo.ai`): Observability — logs, metrics, traces, alerts — @hanzoo11y
-    - **DNS** (`dns.hanzo.ai`): DNS management, zones, records — @hanzodns
-    - **ZT** (`zt.hanzo.ai`): Zero-trust networking, overlay mesh — @hanzozt
-
-    ## Platform Architecture
-
-    ### Multi-Tenancy
-    All services are multi-tenant. Resources are scoped by `org_id` derived from the
-    authenticated IAM token. Tenant isolation is enforced at every layer — API gateway,
-    service, and database.
-
-    ### Unified Authentication (Hanzo IAM)
-    Every service authenticates via Hanzo IAM (`hanzo.id`). No service has its own login
-    system in production. Local development may use standalone auth, but all production
-    deployments go through IAM with OAuth2/OIDC.
-
-    ### Secrets Management (Hanzo KMS)
-    All secrets, credentials, TLS certificates, and connection strings are managed via
-    Hanzo KMS (`kms.hanzo.ai`). Services never store secrets in environment variables
-    or config files in production — the KMS Operator syncs secrets into K8s.
-
-    ### ZAP Protocol
-    All services implement the ZAP (Zero-knowledge Attestation Protocol) for end-to-end
-    verifiable data integrity. ZAP provides cryptographic attestation from database writes
-    through API responses, enabling trustless verification of all platform operations.
-    See github.com/hanzoai/zap for the protocol specification.
-
-    ### PaaS-Managed Deployment
-    All core cloud services are deployed and managed via Hanzo PaaS (`paas.hanzo.ai`).
-    Services run on per-org DOKS clusters with fleet management, automated scaling,
-    and GitOps-driven continuous deployment.
-
-    ## Authentication
-
-    All APIs use a single `HANZO_API_KEY`. Include it in the Authorization header:
-
-    ```
-    Authorization: Bearer <HANZO_API_KEY>
-    ```
-
-    API keys are managed via Hanzo IAM at hanzo.id. A single key grants access
-    to all services based on your account permissions.
-
-    ## Base URLs
-
-    | Environment | Base URL |
-    |-------------|----------|
-    | Production | https://api.hanzo.ai |
-    | Staging | https://api.staging.hanzo.ai |
-    | Sandbox | https://api.sandbox.hanzo.ai |
-
-    ## Gateway Route Table
-
-    All 24 services accessible via `api.hanzo.ai`:
-
-    | Route | Service | Direct URL |
-    |-------|---------|------------|
-    | `/v1/chat/completions` | Cloud | api.cloud.hanzo.ai |
-    | `/v1/models` | Cloud | api.cloud.hanzo.ai |
-    | `/v1/billing/*` | Commerce | commerce.hanzo.ai |
-    | `/v1/auth/*` | IAM | hanzo.id |
-    | `/v1/analytics/*` | Analytics | analytics.hanzo.ai |
-    | `/v1/search/*` | Search | search.hanzo.ai |
-    | `/v1/flow/*` | Flow | flow.hanzo.ai |
-    | `/v1/bot/*` | Bot | app.hanzo.bot |
-    | `/v1/kms/*` | KMS | kms.hanzo.ai |
-    | `/v1/vm/*` | Visor | vm.hanzo.ai |
-    | `/v1/paas/*` | PaaS | paas.hanzo.ai |
-    | `/v1/platform/*` | Platform | platform.hanzo.ai |
-    | `/v1/console/*` | Console | console.hanzo.ai |
-    | `/v1/operative/*` | Operative | operative.hanzo.ai |
-    | `/v1/vector/*` | Vector | vector.hanzo.ai |
-    | `/v1/nexus/*` | Nexus | nexus.hanzo.ai |
-    | `/v1/registry/*` | Registry | registry.hanzo.ai |
-    | `/v1/db/*` | DB | db.hanzo.ai |
-    | `/v1/edge/*` | Edge | edge.hanzo.ai |
-    | `/v1/engine/*` | Engine | engine.hanzo.ai |
-    | `/v1/o11y/*` | O11y | o11y.hanzo.ai |
-    | `/v1/dns/*` | DNS | dns.hanzo.ai |
-    | `/v1/zt/*` | ZT | zt.hanzo.ai |
-    | `/v1/kv/*` | KV | kv.hanzo.ai |
-    | `/v1/mq/*` | MQ | mq.hanzo.ai |
-    | `/v1/chat/*` | Chat | hanzo.chat |
-
-  version: 4.0.0
+    Routing: every service is exposed at `https://api.hanzo.ai/v1/<service>/*`
+    in addition to its own subdomain. Every Hanzo route lives under `/v1/<service>/`.
+    No legacy prefixes exist anywhere in the Hanzo HTTP contract.
   contact:
     name: Hanzo AI
     url: https://hanzo.ai
@@ -129,1074 +26,125 @@ info:
   license:
     name: Proprietary
     url: https://hanzo.ai/terms
-  x-logo:
-    url: https://hanzo.ai/logo.png
-    altText: Hanzo AI
-
 servers:
-  - url: https://api.hanzo.ai
-    description: Production
-  - url: https://api.staging.hanzo.ai
-    description: Staging
-  - url: https://api.sandbox.hanzo.ai
-    description: Sandbox
-  - url: http://localhost:8080
-    description: Local Development
-
-tags:
-  # IAM
-  - name: Auth
-    description: Authentication, OAuth2, OIDC token management
-  - name: Users
-    description: User management
-  - name: Organizations
-    description: Organization management
-  - name: Applications
-    description: OAuth application management
-  - name: Providers
-    description: Identity providers (OAuth, SAML, Web3, LDAP)
-  - name: Sessions
-    description: Session management
-  - name: MFA
-    description: Multi-factor authentication
-
-  # Commerce / Billing
-  - name: Billing
-    description: Balance, credits, usage recording, deposits
-  - name: Orders
-    description: Order CRUD and management
-  - name: Cart
-    description: Shopping cart operations
-  - name: Checkout
-    description: Payment authorization and capture
-  - name: Products
-    description: Product catalog management
-  - name: Subscriptions
-    description: Subscription management
-  - name: Transactions
-    description: Financial transactions
-  - name: Invoices
-    description: Invoice generation and management
-
-  # Cloud / AI
-  - name: Models
-    description: AI model listing, routing, and inference
-  - name: Chat Completions
-    description: OpenAI-compatible chat completions API
-  - name: AI Apps
-    description: AI application management
-  - name: AI Files
-    description: File storage and management for AI
-
-  # Gateway
-  - name: LLM Proxy
-    description: LLM model proxy and routing
-  - name: API Keys
-    description: API key management
-  - name: Usage
-    description: Usage and spend tracking
-  - name: Rate Limits
-    description: Rate limiting configuration
-
-  # Console / Observability
-  - name: Traces
-    description: LLM trace recording and querying
-  - name: Observations
-    description: Span and event observations
-  - name: Scores
-    description: Quality scores and evaluations
-  - name: Datasets
-    description: Dataset management for evaluation
-  - name: Prompts
-    description: Prompt versioning and management
-
-  # Chat
-  - name: Conversations
-    description: Chat conversations
-  - name: Messages
-    description: Chat messages
-  - name: Presets
-    description: Chat presets and configurations
-
-  # Flow / Auto
-  - name: Flows
-    description: Visual workflow definitions
-  - name: Pieces
-    description: Workflow building blocks (integrations)
-  - name: Connections
-    description: Service connections for workflows
-  - name: Triggers
-    description: Workflow triggers
-  - name: Runs
-    description: Workflow execution runs
-
-  # Analytics
-  - name: Websites
-    description: Website tracking configuration
-  - name: Events
-    description: Analytics event tracking
-  - name: Pageviews
-    description: Pageview analytics
-  - name: Stats
-    description: Statistics and reports
-
-  # Bot
-  - name: Bots
-    description: Bot configuration and management
-  - name: Skills
-    description: Bot skills (743 available)
-  - name: Plugins
-    description: Bot plugins
-  - name: Webhooks
-    description: Bot webhook endpoints
-
-  # Search
-  - name: Search
-    description: AI-powered search queries
-  - name: Sources
-    description: Search source management
-
-  # Infrastructure
-  - name: Secrets
-    description: KMS secret management
-  - name: Projects
-    description: KMS/Platform project management
-  - name: Deployments
-    description: PaaS deployments
-  - name: Domains
-    description: Domain management
-  - name: Containers
-    description: Container management
-  - name: VMs
-    description: Virtual machine management
-  - name: Tasks
-    description: Computer use tasks (Operative)
-
-  # Data
-  - name: Collections
-    description: Vector collections
-  - name: Points
-    description: Vector points and search
-  - name: Snapshots
-    description: Collection snapshots
-  - name: Articles
-    description: Knowledge base articles
-  - name: Embeddings
-    description: Text embeddings and RAG
-
-  # PaaS
-  - name: Clusters
-    description: K8s cluster management and provisioning
-  - name: Environments
-    description: Environment configuration and management
-  - name: Fleet
-    description: Multi-cluster fleet management
-
-  # Registry
-  - name: Registry Projects
-    description: Container registry projects
-  - name: Repositories
-    description: Container image repositories
-  - name: Artifacts
-    description: Container image artifacts and tags
-  - name: Vulnerability Scans
-    description: Container image vulnerability scanning
-
-  # DB
-  - name: DB Projects
-    description: Serverless Postgres projects
-  - name: Branches
-    description: Instant database branching
-  - name: DB Endpoints
-    description: Autoscaling compute endpoints
-  - name: Databases
-    description: Database management within projects
-  - name: DB Roles
-    description: Database role management
-
-  # KV
-  - name: KV Keys
-    description: Key-value operations (get, set, delete, scan)
-  - name: KV Pub/Sub
-    description: Publish/subscribe messaging
-  - name: KV Streams
-    description: Append-only log streams
-
-  # Edge
-  - name: Functions
-    description: Edge function management and deployment
-  - name: Function Versions
-    description: Edge function version management
-  - name: Function Secrets
-    description: Edge function secrets
-
-  # MQ
-  - name: MQ Publish
-    description: Publish messages and request/reply patterns
-  - name: MQ Subscribe
-    description: Subscribe to subjects via SSE
-  - name: MQ Streams
-    description: JetStream durable message streams
-  - name: MQ Consumers
-    description: JetStream durable consumers
-  - name: MQ KeyValue
-    description: NATS distributed key-value buckets
-  - name: MQ ObjectStore
-    description: NATS large object storage
-  - name: MQ Accounts
-    description: Multi-tenant account management
-
-  # O11y
-  - name: Logs
-    description: Log aggregation and LogQL queries (Loki)
-  - name: Metrics
-    description: PromQL metrics queries and series
-  - name: Distributed Traces
-    description: Distributed trace search and analysis
-  - name: Dashboards
-    description: Observability dashboards
-  - name: Alert Rules
-    description: Alert rules and notification channels
-
-  # DNS
-  - name: Zones
-    description: DNS zone management
-  - name: DNS Records
-    description: DNS record management (A/AAAA/CNAME/MX/TXT/SRV)
-  - name: DNSSEC
-    description: DNSSEC configuration
-
-  # Engine
-  - name: GPU Clusters
-    description: GPU cluster registration and management
-  - name: Training Jobs
-    description: ML training and inference job submission
-  - name: Ray
-    description: RayCluster lifecycle and scaling
-  - name: ML Pipelines
-    description: ML pipeline definitions and runs
-  - name: GPUs
-    description: GPU inventory and allocations
-  - name: Model Serving
-    description: Model serving endpoints with autoscaling
-
-  # ZT
-  - name: Networks
-    description: Zero-trust overlay networks
-  - name: Identities
-    description: Identity enrollment and management
-  - name: ZT Services
-    description: Zero-trust service definitions
-  - name: Service Policies
-    description: Service access policies
-  - name: Edge Routers
-    description: Edge router management
-  - name: Posture Checks
-    description: Device posture verification
-
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
 security:
-  - hanzoApiKey: []
-  - bearerAuth: []
-  - oauth2: []
-
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: JWT access token from Hanzo IAM
-
-    oauth2:
-      type: oauth2
-      description: OAuth2 authentication via Hanzo IAM
-      flows:
-        authorizationCode:
-          authorizationUrl: https://iam.hanzo.ai/oauth/authorize
-          tokenUrl: https://iam.hanzo.ai/oauth/token
-          refreshUrl: https://iam.hanzo.ai/oauth/token
-          scopes:
-            openid: OpenID Connect
-            profile: User profile
-            email: Email address
-            read: Read access
-            write: Write access
-            admin: Admin access
-
-        clientCredentials:
-          tokenUrl: https://iam.hanzo.ai/oauth/token
-          scopes:
-            read: Read access
-            write: Write access
-            admin: Admin access
-
-    hanzoApiKey:
-      type: http
-      scheme: bearer
-      bearerFormat: HANZO_API_KEY
-      description: |
-        Hanzo API Key — a single key for all Hanzo services.
-        Obtain from hanzo.id or console.hanzo.ai.
-        Format: `Bearer hk-...` or `Bearer sk-hanzo-...`
-
-    apiKey:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: API key for service-to-service auth (deprecated, use hanzoApiKey)
-
-  schemas:
-    # Common Schemas
-    Error:
-      type: object
-      required:
-        - status
-        - msg
-      properties:
-        status:
-          type: string
-          enum: [error]
-        msg:
-          type: string
-          description: Error message
-        code:
-          type: integer
-          description: Error code
-        data:
-          type: object
-          description: Additional error details
-
-    Success:
-      type: object
-      required:
-        - status
-      properties:
-        status:
-          type: string
-          enum: [ok]
-        msg:
-          type: string
-        data:
-          description: Response data
-
-    Pagination:
-      type: object
-      properties:
-        page:
-          type: integer
-          minimum: 1
-          default: 1
-        pageSize:
-          type: integer
-          minimum: 1
-          maximum: 100
-          default: 20
-        total:
-          type: integer
-          description: Total number of items
-
-    # User Schema
-    User:
-      type: object
-      properties:
-        id:
-          type: string
-        owner:
-          type: string
-        name:
-          type: string
-        displayName:
-          type: string
-        email:
-          type: string
-          format: email
-        phone:
-          type: string
-        avatar:
-          type: string
-          format: uri
-        type:
-          type: string
-          enum: [normal-user, admin]
-        createdTime:
-          type: string
-          format: date-time
-        updatedTime:
-          type: string
-          format: date-time
-
-    # Organization Schema
-    Organization:
-      type: object
-      properties:
-        owner:
-          type: string
-        name:
-          type: string
-        displayName:
-          type: string
-        websiteUrl:
-          type: string
-          format: uri
-        favicon:
-          type: string
-          format: uri
-        passwordType:
-          type: string
-        createdTime:
-          type: string
-          format: date-time
-
-    # Application Schema
-    Application:
-      type: object
-      properties:
-        owner:
-          type: string
-        name:
-          type: string
-        displayName:
-          type: string
-        logo:
-          type: string
-          format: uri
-        homepageUrl:
-          type: string
-          format: uri
-        organization:
-          type: string
-        clientId:
-          type: string
-        clientSecret:
-          type: string
-        redirectUris:
-          type: array
-          items:
-            type: string
-            format: uri
-        grantTypes:
-          type: array
-          items:
-            type: string
-            enum: [authorization_code, refresh_token, client_credentials, password]
-        createdTime:
-          type: string
-          format: date-time
-
-    # Token Schema
-    Token:
-      type: object
-      properties:
-        access_token:
-          type: string
-        token_type:
-          type: string
-          enum: [Bearer]
-        expires_in:
-          type: integer
-        refresh_token:
-          type: string
-        scope:
-          type: string
-        id_token:
-          type: string
-
-  responses:
-    BadRequest:
-      description: Bad Request
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
-    Unauthorized:
-      description: Unauthorized
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
-    Forbidden:
-      description: Forbidden
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
-    NotFound:
-      description: Not Found
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
-    InternalError:
-      description: Internal Server Error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
+- BearerAuth: []
+tags:
+- name: Discovery
+  description: Index of Hanzo services and routing.
+- name: Health
+  description: Liveness checks.
+- name: OIDC
+  description: OpenID Connect discovery.
 paths:
-  # Health Check
-  /health:
+  /v1/discovery:
     get:
       tags:
-        - Health
-      summary: Health check
-      operationId: healthCheck
+      - Discovery
+      summary: List Hanzo services
+      operationId: listServices
       security: []
       responses:
         '200':
-          description: Service is healthy
+          description: List of services with subdomain, gateway route, and spec URL.
           content:
             application/json:
               schema:
                 type: object
+                required: [services]
+                properties:
+                  services:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Service'
+              example:
+                services:
+                - name: cloud
+                  subdomain: https://api.hanzo.ai
+                  gateway_route: /v1/chat/completions
+                  spec: https://raw.githubusercontent.com/hanzoai/openapi/main/cloud/openapi.yaml
+                - name: iam
+                  subdomain: https://hanzo.id
+                  gateway_route: /v1/iam
+                  spec: https://raw.githubusercontent.com/hanzoai/openapi/main/iam/openapi.yaml
+  /v1/health:
+    get:
+      tags:
+      - Health
+      summary: Gateway health check
+      operationId: gatewayHealth
+      security: []
+      responses:
+        '200':
+          description: Gateway is healthy.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
                 properties:
                   status:
                     type: string
                     enum: [ok]
                   version:
                     type: string
-
-  # OIDC Discovery
+              example:
+                status: ok
+                version: 1.0.0
   /.well-known/openid-configuration:
     get:
       tags:
-        - Auth
-      summary: OpenID Connect Discovery
-      operationId: getOidcDiscovery
+      - OIDC
+      summary: OIDC discovery (proxied from hanzo.id)
+      operationId: oidcDiscovery
       security: []
       responses:
         '200':
-          description: OIDC configuration
+          description: OIDC configuration document.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  issuer:
-                    type: string
-                    format: uri
-                  authorization_endpoint:
-                    type: string
-                    format: uri
-                  token_endpoint:
-                    type: string
-                    format: uri
-                  userinfo_endpoint:
-                    type: string
-                    format: uri
-                  jwks_uri:
-                    type: string
-                    format: uri
-
-  # OAuth2 Token
-  /oauth/token:
-    post:
-      tags:
-        - Auth
-      summary: OAuth2 Token Exchange
-      operationId: getAccessToken
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              required:
-                - grant_type
-                - client_id
-              properties:
-                grant_type:
-                  type: string
-                  enum: [authorization_code, refresh_token, client_credentials, password]
-                client_id:
-                  type: string
-                client_secret:
-                  type: string
-                code:
-                  type: string
-                redirect_uri:
-                  type: string
-                  format: uri
-                refresh_token:
-                  type: string
-                username:
-                  type: string
-                password:
-                  type: string
-      responses:
-        '200':
-          description: Token response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Token'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  # User Info
-  /api/userinfo:
-    get:
-      tags:
-        - Users
-      summary: Get current user info
-      operationId: getUserInfo
-      responses:
-        '200':
-          description: User information
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  # Login
-  /api/login:
-    post:
-      tags:
-        - Auth
-      summary: Login with various methods
-      operationId: login
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - type
-                - organization
-                - application
-              properties:
-                type:
-                  type: string
-                  enum: [code, token]
-                signinMethod:
-                  type: string
-                  enum: [Password, Web3-Onboard, SAML, OAuth]
-                organization:
-                  type: string
-                application:
-                  type: string
-                username:
-                  type: string
-                password:
-                  type: string
-                code:
-                  type: string
-                  description: Web3 auth token or OAuth code
-                provider:
-                  type: string
-                redirectUri:
-                  type: string
-                  format: uri
-      responses:
-        '200':
-          description: Login successful
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/Success'
-                  - type: object
-                    properties:
-                      data:
-                        type: string
-                        description: Authorization code or token
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  # Web3 Nonce (for wallet login)
-  /api/get-web3-nonce:
-    get:
-      tags:
-        - Auth
-      summary: Get nonce for Web3 wallet authentication
-      operationId: getWeb3Nonce
-      security: []
-      parameters:
-        - name: address
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Ethereum wallet address
-      responses:
-        '200':
-          description: Nonce for signing
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/Success'
-                  - type: object
-                    properties:
-                      data:
-                        type: string
-                        description: Nonce to sign
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  # Organizations
-  /api/get-organizations:
-    get:
-      tags:
-        - Organizations
-      summary: List organizations
-      operationId: getOrganizations
-      parameters:
-        - name: owner
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: List of organizations
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/Success'
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/Organization'
-
-  # Applications
-  /api/get-applications:
-    get:
-      tags:
-        - Applications
-      summary: List applications
-      operationId: getApplications
-      parameters:
-        - name: owner
-          in: query
-          schema:
-            type: string
-        - name: organization
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: List of applications
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/Success'
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/Application'
-
-  # Users
-  /api/get-users:
-    get:
-      tags:
-        - Users
-      summary: List users
-      operationId: getUsers
-      parameters:
-        - name: owner
-          in: query
-          schema:
-            type: string
-        - name: pageSize
-          in: query
-          schema:
-            type: integer
-            default: 20
-        - name: p
-          in: query
-          schema:
-            type: integer
-            default: 1
-          description: Page number
-      responses:
-        '200':
-          description: List of users
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/Success'
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/User'
-
-  /api/get-user:
-    get:
-      tags:
-        - Users
-      summary: Get user by ID
-      operationId: getUser
-      parameters:
-        - name: id
-          in: query
-          required: true
-          schema:
-            type: string
-          description: User ID in format owner/name
-      responses:
-        '200':
-          description: User details
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/Success'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/User'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /api/add-user:
-    post:
-      tags:
-        - Users
-      summary: Create a new user
-      operationId: addUser
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/User'
-      responses:
-        '200':
-          description: User created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /api/update-user:
-    post:
-      tags:
-        - Users
-      summary: Update user
-      operationId: updateUser
-      parameters:
-        - name: id
-          in: query
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/User'
-      responses:
-        '200':
-          description: User updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /api/delete-user:
-    post:
-      tags:
-        - Users
-      summary: Delete user
-      operationId: deleteUser
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/User'
-      responses:
-        '200':
-          description: User deleted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  # Providers
-  /api/get-providers:
-    get:
-      tags:
-        - Providers
-      summary: List identity providers
-      operationId: getProviders
-      parameters:
-        - name: owner
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: List of providers
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/Success'
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            owner:
-                              type: string
-                            name:
-                              type: string
-                            displayName:
-                              type: string
-                            type:
-                              type: string
-                              enum: [OAuth, SAML, Web3, LDAP, Email, SMS]
-                            category:
-                              type: string
-                            clientId:
-                              type: string
-
-  # Sessions
-  /api/get-sessions:
-    get:
-      tags:
-        - Sessions
-      summary: List user sessions
-      operationId: getSessions
-      parameters:
-        - name: owner
-          in: query
-          schema:
-            type: string
-        - name: pageSize
-          in: query
-          schema:
-            type: integer
-        - name: p
-          in: query
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: List of sessions
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
-
-  /api/delete-session:
-    post:
-      tags:
-        - Sessions
-      summary: Delete/revoke a session
-      operationId: deleteSession
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                owner:
-                  type: string
-                name:
-                  type: string
-      responses:
-        '200':
-          description: Session deleted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
-
-  # Signup
-  /api/signup:
-    post:
-      tags:
-        - Auth
-      summary: Register new user
-      operationId: signup
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - organization
-                - application
-                - username
-              properties:
-                organization:
-                  type: string
-                application:
-                  type: string
-                username:
-                  type: string
-                name:
-                  type: string
-                password:
-                  type: string
-                email:
-                  type: string
-                  format: email
-                phone:
-                  type: string
-                code:
-                  type: string
-                  description: Invitation code
-      responses:
-        '200':
-          description: User registered
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  # Logout
-  /api/logout:
-    post:
-      tags:
-        - Auth
-      summary: Logout current session
-      operationId: logout
-      responses:
-        '200':
-          description: Logged out
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
+                  issuer: { type: string, format: uri }
+                  authorization_endpoint: { type: string, format: uri }
+                  token_endpoint: { type: string, format: uri }
+                  userinfo_endpoint: { type: string, format: uri }
+                  jwks_uri: { type: string, format: uri }
+              example:
+                issuer: https://hanzo.id
+                authorization_endpoint: https://hanzo.id/oauth/authorize
+                token_endpoint: https://hanzo.id/oauth/token
+                userinfo_endpoint: https://hanzo.id/oauth/userinfo
+                jwks_uri: https://hanzo.id/.well-known/jwks
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery:
+        https://hanzo.id/.well-known/openid-configuration. Obtain via
+        /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.
+  schemas:
+    Service:
+      type: object
+      required: [name, subdomain, gateway_route, spec]
+      properties:
+        name:
+          type: string
+          description: Service slug.
+        subdomain:
+          type: string
+          format: uri
+          description: Service's own canonical hostname.
+        gateway_route:
+          type: string
+          description: Path prefix served through api.hanzo.ai.
+        spec:
+          type: string
+          format: uri
+          description: URL of the service's OpenAPI 3.1 spec.
