@@ -10,51 +10,50 @@ info:
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
-
 servers:
-  - url: https://analytics.hanzo.ai
-    description: Production
-
+- url: https://analytics.hanzo.ai
+  description: Analytics Production
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway (via api.hanzo.ai/v1/analytics/*)
 tags:
-  - name: Auth
-    description: Authentication and session management
-  - name: Websites
-    description: Website CRUD and data retrieval
-  - name: Events
-    description: Event collection and querying
-  - name: Sessions
-    description: Session tracking and analytics
-  - name: Pageviews
-    description: Pageview statistics
-  - name: Stats
-    description: Aggregate website statistics
-  - name: Reports
-    description: Report creation, management, and execution
-  - name: Teams
-    description: Team management and membership
-  - name: Users
-    description: User management
-  - name: Admin
-    description: Admin-only endpoints
-  - name: Me
-    description: Current user endpoints
-  - name: Share
-    description: Public share links
-  - name: Realtime
-    description: Realtime visitor data
-  - name: Collect
-    description: Data collection (tracker)
-
+- name: Auth
+  description: Authentication and session management
+- name: Websites
+  description: Website CRUD and data retrieval
+- name: Events
+  description: Event collection and querying
+- name: Sessions
+  description: Session tracking and analytics
+- name: Pageviews
+  description: Pageview statistics
+- name: Stats
+  description: Aggregate website statistics
+- name: Reports
+  description: Report creation, management, and execution
+- name: Teams
+  description: Team management and membership
+- name: Users
+  description: User management
+- name: Admin
+  description: Admin-only endpoints
+- name: Me
+  description: Current user endpoints
+- name: Share
+  description: Public share links
+- name: Realtime
+  description: Realtime visitor data
+- name: Collect
+  description: Data collection (tracker)
 security:
-  - BearerAuth: []
-
+- BearerAuth: []
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
+        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   parameters:
     websiteId:
       name: websiteId
@@ -146,8 +145,13 @@ components:
       in: query
       schema:
         type: string
-        enum: [minute, hour, day, week, month, year]
-
+        enum:
+        - minute
+        - hour
+        - day
+        - week
+        - month
+        - year
   schemas:
     User:
       type: object
@@ -159,7 +163,10 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, user, view-only]
+          enum:
+          - admin
+          - user
+          - view-only
         logoUrl:
           type: string
           nullable: true
@@ -177,7 +184,6 @@ components:
           type: string
           format: date-time
           nullable: true
-
     Website:
       type: object
       properties:
@@ -219,7 +225,6 @@ components:
           type: string
           format: date-time
           nullable: true
-
     Session:
       type: object
       properties:
@@ -259,7 +264,6 @@ components:
         createdAt:
           type: string
           format: date-time
-
     Team:
       type: object
       properties:
@@ -285,7 +289,6 @@ components:
           type: string
           format: date-time
           nullable: true
-
     TeamUser:
       type: object
       properties:
@@ -300,7 +303,11 @@ components:
           format: uuid
         role:
           type: string
-          enum: [team-member, team-view-only, team-manager, team-owner]
+          enum:
+          - team-member
+          - team-view-only
+          - team-manager
+          - team-owner
         createdAt:
           type: string
           format: date-time
@@ -310,7 +317,6 @@ components:
           nullable: true
         user:
           $ref: '#/components/schemas/User'
-
     Report:
       type: object
       properties:
@@ -325,7 +331,15 @@ components:
           format: uuid
         type:
           type: string
-          enum: [funnel, insights, retention, utm, goals, journey, revenue, attribution]
+          enum:
+          - funnel
+          - insights
+          - retention
+          - utm
+          - goals
+          - journey
+          - revenue
+          - attribution
         name:
           type: string
         description:
@@ -339,7 +353,6 @@ components:
           type: string
           format: date-time
           nullable: true
-
     Metric:
       type: object
       properties:
@@ -347,7 +360,6 @@ components:
           type: string
         y:
           type: number
-
     StatValue:
       type: object
       properties:
@@ -355,7 +367,6 @@ components:
           type: number
         prev:
           type: number
-
     PageviewSeries:
       type: object
       properties:
@@ -363,7 +374,6 @@ components:
           type: string
         y:
           type: number
-
     PaginatedResponse:
       type: object
       properties:
@@ -376,10 +386,11 @@ components:
           type: integer
         pageSize:
           type: integer
-
     DateRange:
       type: object
-      required: [startDate, endDate]
+      required:
+      - startDate
+      - endDate
       properties:
         startDate:
           type: string
@@ -395,17 +406,17 @@ components:
           type: string
         value:
           type: string
-
     ReportParams:
       type: object
-      required: [websiteId, dateRange]
+      required:
+      - websiteId
+      - dateRange
       properties:
         websiteId:
           type: string
           format: uuid
         dateRange:
           $ref: '#/components/schemas/DateRange'
-
     FilterParams:
       type: object
       description: Optional filter parameters for narrowing query results
@@ -438,17 +449,21 @@ components:
           type: string
         event:
           type: string
-
     SendPayload:
       type: object
-      required: [type, payload]
+      required:
+      - type
+      - payload
       properties:
         type:
           type: string
-          enum: [event, identify]
+          enum:
+          - event
+          - identify
         payload:
           type: object
-          required: [website]
+          required:
+          - website
           properties:
             website:
               type: string
@@ -487,19 +502,17 @@ components:
             id:
               type: string
               description: Distinct user identifier
-
     Error:
       type: object
       properties:
         error:
           type: string
-
 paths:
-  # ---------- Auth ----------
-  /api/auth/login:
+  /v1/analytics/auth/login:
     post:
       operationId: login
-      tags: [Auth]
+      tags:
+      - Auth
       summary: Log in with username and password
       security: []
       requestBody:
@@ -508,7 +521,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [username, password]
+              required:
+              - username
+              - password
               properties:
                 username:
                   type: string
@@ -541,11 +556,11 @@ paths:
                         type: boolean
         '401':
           description: Incorrect username or password
-
-  /api/auth/logout:
+  /v1/analytics/auth/logout:
     post:
       operationId: logout
-      tags: [Auth]
+      tags:
+      - Auth
       summary: Log out and invalidate token
       responses:
         '200':
@@ -554,11 +569,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /api/auth/verify:
+  /v1/analytics/auth/verify:
     post:
       operationId: verifyAuth
-      tags: [Auth]
+      tags:
+      - Auth
       summary: Verify current auth token
       responses:
         '200':
@@ -569,11 +584,11 @@ paths:
                 $ref: '#/components/schemas/User'
         '401':
           description: Invalid token
-
-  /api/auth/sso:
+  /v1/analytics/auth/sso:
     post:
       operationId: ssoAuth
-      tags: [Auth]
+      tags:
+      - Auth
       summary: Exchange SSO credentials for a session token
       responses:
         '200':
@@ -587,12 +602,11 @@ paths:
                     $ref: '#/components/schemas/User'
                   token:
                     type: string
-
-  # ---------- Collect ----------
-  /api/send:
+  /v1/analytics/send:
     post:
       operationId: send
-      tags: [Collect]
+      tags:
+      - Collect
       summary: Send a single event or identify payload
       security: []
       requestBody:
@@ -618,11 +632,11 @@ paths:
                   visitId:
                     type: string
                     format: uuid
-
-  /api/batch:
+  /v1/analytics/batch:
     post:
       operationId: batch
-      tags: [Collect]
+      tags:
+      - Collect
       summary: Send a batch of events
       security: []
       requestBody:
@@ -656,11 +670,11 @@ paths:
                           type: integer
                         response:
                           type: object
-
-  /api/heartbeat:
+  /v1/analytics/heartbeat:
     get:
       operationId: heartbeat
-      tags: [Auth]
+      tags:
+      - Auth
       summary: Health check
       security: []
       responses:
@@ -673,12 +687,11 @@ paths:
                 properties:
                   ok:
                     type: boolean
-
-  # ---------- Me ----------
-  /api/me:
+  /v1/analytics/me:
     get:
       operationId: getMe
-      tags: [Me]
+      tags:
+      - Me
       summary: Get current authenticated user info
       responses:
         '200':
@@ -690,11 +703,11 @@ paths:
                 properties:
                   user:
                     $ref: '#/components/schemas/User'
-
-  /api/me/password:
+  /v1/analytics/me/password:
     post:
       operationId: changeMyPassword
-      tags: [Me]
+      tags:
+      - Me
       summary: Change current user password
       requestBody:
         required: true
@@ -702,7 +715,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [currentPassword, newPassword]
+              required:
+              - currentPassword
+              - newPassword
               properties:
                 currentPassword:
                   type: string
@@ -718,17 +733,17 @@ paths:
                 $ref: '#/components/schemas/User'
         '400':
           description: Current password is incorrect
-
-  /api/me/teams:
+  /v1/analytics/me/teams:
     get:
       operationId: getMyTeams
-      tags: [Me]
+      tags:
+      - Me
       summary: List teams for the current user
       parameters:
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/pageSize'
-        - $ref: '#/components/parameters/orderBy'
-        - $ref: '#/components/parameters/search'
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/orderBy'
+      - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: Paginated list of teams
@@ -738,17 +753,17 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Team'
-
-  /api/me/websites:
+  /v1/analytics/me/websites:
     get:
       operationId: getMyWebsites
-      tags: [Me]
+      tags:
+      - Me
       summary: List websites for the current user
       parameters:
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/pageSize'
-        - $ref: '#/components/parameters/orderBy'
-        - $ref: '#/components/parameters/search'
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/orderBy'
+      - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: Paginated list of websites
@@ -758,18 +773,17 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Website'
-
-  # ---------- Websites ----------
-  /api/websites:
+  /v1/analytics/websites:
     get:
       operationId: listWebsites
-      tags: [Websites]
+      tags:
+      - Websites
       summary: List websites owned by current user
       parameters:
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/pageSize'
-        - $ref: '#/components/parameters/orderBy'
-        - $ref: '#/components/parameters/search'
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/orderBy'
+      - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: Paginated list of websites
@@ -781,7 +795,8 @@ paths:
                   $ref: '#/components/schemas/Website'
     post:
       operationId: createWebsite
-      tags: [Websites]
+      tags:
+      - Websites
       summary: Create a new website
       requestBody:
         required: true
@@ -789,7 +804,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, domain]
+              required:
+              - name
+              - domain
               properties:
                 name:
                   type: string
@@ -812,14 +829,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Website'
-
-  /api/websites/{websiteId}:
+  /v1/analytics/websites/{websiteId}:
     get:
       operationId: getWebsite
-      tags: [Websites]
+      tags:
+      - Websites
       summary: Get website by ID
       parameters:
-        - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/websiteId'
       responses:
         '200':
           description: Website details
@@ -829,17 +846,20 @@ paths:
                 $ref: '#/components/schemas/Website'
     post:
       operationId: updateWebsite
-      tags: [Websites]
+      tags:
+      - Websites
       summary: Update website
       parameters:
-        - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/websiteId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [name, domain]
+              required:
+              - name
+              - domain
               properties:
                 name:
                   type: string
@@ -857,10 +877,11 @@ paths:
                 $ref: '#/components/schemas/Website'
     delete:
       operationId: deleteWebsite
-      tags: [Websites]
+      tags:
+      - Websites
       summary: Delete website
       parameters:
-        - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/websiteId'
       responses:
         '200':
           description: Website deleted
@@ -868,14 +889,14 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /api/websites/{websiteId}/active:
+  /v1/analytics/websites/{websiteId}/active:
     get:
       operationId: getActiveVisitors
-      tags: [Websites]
+      tags:
+      - Websites
       summary: Get count of active visitors
       parameters:
-        - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/websiteId'
       responses:
         '200':
           description: Active visitor count
@@ -887,14 +908,14 @@ paths:
                   x:
                     type: integer
                     description: Number of active visitors
-
-  /api/websites/{websiteId}/daterange:
+  /v1/analytics/websites/{websiteId}/daterange:
     get:
       operationId: getWebsiteDateRange
-      tags: [Websites]
+      tags:
+      - Websites
       summary: Get the date range of data available for a website
       parameters:
-        - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/websiteId'
       responses:
         '200':
           description: Date range
@@ -909,14 +930,14 @@ paths:
                   maxDate:
                     type: string
                     format: date-time
-
-  /api/websites/{websiteId}/reset:
+  /v1/analytics/websites/{websiteId}/reset:
     post:
       operationId: resetWebsite
-      tags: [Websites]
+      tags:
+      - Websites
       summary: Reset all data for a website
       parameters:
-        - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/websiteId'
       responses:
         '200':
           description: Website data reset
@@ -924,14 +945,14 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /api/websites/{websiteId}/transfer:
+  /v1/analytics/websites/{websiteId}/transfer:
     post:
       operationId: transferWebsite
-      tags: [Websites]
+      tags:
+      - Websites
       summary: Transfer website ownership to another user or team
       parameters:
-        - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/websiteId'
       requestBody:
         required: true
         content:
@@ -954,26 +975,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Website'
-
-  /api/websites/{websiteId}/values:
+  /v1/analytics/websites/{websiteId}/values:
     get:
       operationId: getWebsiteValues
-      tags: [Websites]
+      tags:
+      - Websites
       summary: Get distinct values for a given column type
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - name: type
-          in: query
-          required: true
-          description: Column type (e.g. browser, os, device, country, url, referrer, title, event, tag, language, region, city, host)
-          schema:
-            type: string
-        - name: search
-          in: query
-          schema:
-            type: string
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - name: type
+        in: query
+        required: true
+        description: Column type (e.g. browser, os, device, country, url, referrer, title, event, tag, language, region, city,
+          host)
+        schema:
+          type: string
+      - name: search
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Sorted list of distinct values
@@ -983,74 +1005,73 @@ paths:
                 type: array
                 items:
                   type: string
-
-  # ---------- Stats ----------
-  /api/websites/{websiteId}/stats:
+  /v1/analytics/websites/{websiteId}/stats:
     get:
       operationId: getWebsiteStats
-      tags: [Stats]
+      tags:
+      - Stats
       summary: Get aggregate statistics for a website
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - name: compare
-          in: query
-          description: Compare period (e.g. "previous_period")
-          schema:
-            type: string
-        - name: url
-          in: query
-          schema:
-            type: string
-        - name: referrer
-          in: query
-          schema:
-            type: string
-        - name: title
-          in: query
-          schema:
-            type: string
-        - name: os
-          in: query
-          schema:
-            type: string
-        - name: browser
-          in: query
-          schema:
-            type: string
-        - name: device
-          in: query
-          schema:
-            type: string
-        - name: country
-          in: query
-          schema:
-            type: string
-        - name: region
-          in: query
-          schema:
-            type: string
-        - name: city
-          in: query
-          schema:
-            type: string
-        - name: tag
-          in: query
-          schema:
-            type: string
-        - name: host
-          in: query
-          schema:
-            type: string
-        - name: language
-          in: query
-          schema:
-            type: string
-        - name: event
-          in: query
-          schema:
-            type: string
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - name: compare
+        in: query
+        description: Compare period (e.g. "previous_period")
+        schema:
+          type: string
+      - name: url
+        in: query
+        schema:
+          type: string
+      - name: referrer
+        in: query
+        schema:
+          type: string
+      - name: title
+        in: query
+        schema:
+          type: string
+      - name: os
+        in: query
+        schema:
+          type: string
+      - name: browser
+        in: query
+        schema:
+          type: string
+      - name: device
+        in: query
+        schema:
+          type: string
+      - name: country
+        in: query
+        schema:
+          type: string
+      - name: region
+        in: query
+        schema:
+          type: string
+      - name: city
+        in: query
+        schema:
+          type: string
+      - name: tag
+        in: query
+        schema:
+          type: string
+      - name: host
+        in: query
+        schema:
+          type: string
+      - name: language
+        in: query
+        schema:
+          type: string
+      - name: event
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Stats with current and previous period values
@@ -1069,87 +1090,102 @@ paths:
                     $ref: '#/components/schemas/StatValue'
                   totalTime:
                     $ref: '#/components/schemas/StatValue'
-
-  /api/websites/{websiteId}/metrics:
+  /v1/analytics/websites/{websiteId}/metrics:
     get:
       operationId: getWebsiteMetrics
-      tags: [Stats]
+      tags:
+      - Stats
       summary: Get breakdown metrics by type (url, referrer, browser, os, device, country, event, channel, etc.)
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - name: type
-          in: query
-          required: true
-          description: Metric type to break down by
-          schema:
-            type: string
-            enum: [url, referrer, title, browser, os, device, country, region, city, language, event, tag, host, query, channel]
-        - name: limit
-          in: query
-          schema:
-            type: integer
-        - name: offset
-          in: query
-          schema:
-            type: integer
-        - name: search
-          in: query
-          schema:
-            type: string
-        - name: url
-          in: query
-          schema:
-            type: string
-        - name: referrer
-          in: query
-          schema:
-            type: string
-        - name: title
-          in: query
-          schema:
-            type: string
-        - name: os
-          in: query
-          schema:
-            type: string
-        - name: browser
-          in: query
-          schema:
-            type: string
-        - name: device
-          in: query
-          schema:
-            type: string
-        - name: country
-          in: query
-          schema:
-            type: string
-        - name: region
-          in: query
-          schema:
-            type: string
-        - name: city
-          in: query
-          schema:
-            type: string
-        - name: tag
-          in: query
-          schema:
-            type: string
-        - name: host
-          in: query
-          schema:
-            type: string
-        - name: language
-          in: query
-          schema:
-            type: string
-        - name: event
-          in: query
-          schema:
-            type: string
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - name: type
+        in: query
+        required: true
+        description: Metric type to break down by
+        schema:
+          type: string
+          enum:
+          - url
+          - referrer
+          - title
+          - browser
+          - os
+          - device
+          - country
+          - region
+          - city
+          - language
+          - event
+          - tag
+          - host
+          - query
+          - channel
+      - name: limit
+        in: query
+        schema:
+          type: integer
+      - name: offset
+        in: query
+        schema:
+          type: integer
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: url
+        in: query
+        schema:
+          type: string
+      - name: referrer
+        in: query
+        schema:
+          type: string
+      - name: title
+        in: query
+        schema:
+          type: string
+      - name: os
+        in: query
+        schema:
+          type: string
+      - name: browser
+        in: query
+        schema:
+          type: string
+      - name: device
+        in: query
+        schema:
+          type: string
+      - name: country
+        in: query
+        schema:
+          type: string
+      - name: region
+        in: query
+        schema:
+          type: string
+      - name: city
+        in: query
+        schema:
+          type: string
+      - name: tag
+        in: query
+        schema:
+          type: string
+      - name: host
+        in: query
+        schema:
+          type: string
+      - name: language
+        in: query
+        schema:
+          type: string
+      - name: event
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Metric breakdown
@@ -1159,75 +1195,74 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Metric'
-
-  # ---------- Pageviews ----------
-  /api/websites/{websiteId}/pageviews:
+  /v1/analytics/websites/{websiteId}/pageviews:
     get:
       operationId: getPageviews
-      tags: [Pageviews]
+      tags:
+      - Pageviews
       summary: Get pageview and session time series
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - $ref: '#/components/parameters/unit'
-        - $ref: '#/components/parameters/timezone'
-        - name: compare
-          in: query
-          schema:
-            type: string
-        - name: url
-          in: query
-          schema:
-            type: string
-        - name: referrer
-          in: query
-          schema:
-            type: string
-        - name: title
-          in: query
-          schema:
-            type: string
-        - name: os
-          in: query
-          schema:
-            type: string
-        - name: browser
-          in: query
-          schema:
-            type: string
-        - name: device
-          in: query
-          schema:
-            type: string
-        - name: country
-          in: query
-          schema:
-            type: string
-        - name: region
-          in: query
-          schema:
-            type: string
-        - name: city
-          in: query
-          schema:
-            type: string
-        - name: tag
-          in: query
-          schema:
-            type: string
-        - name: host
-          in: query
-          schema:
-            type: string
-        - name: language
-          in: query
-          schema:
-            type: string
-        - name: event
-          in: query
-          schema:
-            type: string
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - $ref: '#/components/parameters/unit'
+      - $ref: '#/components/parameters/timezone'
+      - name: compare
+        in: query
+        schema:
+          type: string
+      - name: url
+        in: query
+        schema:
+          type: string
+      - name: referrer
+        in: query
+        schema:
+          type: string
+      - name: title
+        in: query
+        schema:
+          type: string
+      - name: os
+        in: query
+        schema:
+          type: string
+      - name: browser
+        in: query
+        schema:
+          type: string
+      - name: device
+        in: query
+        schema:
+          type: string
+      - name: country
+        in: query
+        schema:
+          type: string
+      - name: region
+        in: query
+        schema:
+          type: string
+      - name: city
+        in: query
+        schema:
+          type: string
+      - name: tag
+        in: query
+        schema:
+          type: string
+      - name: host
+        in: query
+        schema:
+          type: string
+      - name: language
+        in: query
+        schema:
+          type: string
+      - name: event
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Pageview and session series data
@@ -1267,21 +1302,20 @@ paths:
                       endDate:
                         type: string
                         format: date-time
-
-  # ---------- Events ----------
-  /api/websites/{websiteId}/events:
+  /v1/analytics/websites/{websiteId}/events:
     get:
       operationId: getEvents
-      tags: [Events]
+      tags:
+      - Events
       summary: Get paginated list of events
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/pageSize'
-        - $ref: '#/components/parameters/orderBy'
-        - $ref: '#/components/parameters/search'
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/orderBy'
+      - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: Paginated event list
@@ -1291,70 +1325,70 @@ paths:
                 type: array
                 items:
                   type: object
-
-  /api/websites/{websiteId}/events/series:
+  /v1/analytics/websites/{websiteId}/events/series:
     get:
       operationId: getEventSeries
-      tags: [Events]
+      tags:
+      - Events
       summary: Get event metrics as a time series
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - $ref: '#/components/parameters/unit'
-        - $ref: '#/components/parameters/timezone'
-        - name: url
-          in: query
-          schema:
-            type: string
-        - name: referrer
-          in: query
-          schema:
-            type: string
-        - name: title
-          in: query
-          schema:
-            type: string
-        - name: os
-          in: query
-          schema:
-            type: string
-        - name: browser
-          in: query
-          schema:
-            type: string
-        - name: device
-          in: query
-          schema:
-            type: string
-        - name: country
-          in: query
-          schema:
-            type: string
-        - name: region
-          in: query
-          schema:
-            type: string
-        - name: city
-          in: query
-          schema:
-            type: string
-        - name: tag
-          in: query
-          schema:
-            type: string
-        - name: host
-          in: query
-          schema:
-            type: string
-        - name: language
-          in: query
-          schema:
-            type: string
-        - name: event
-          in: query
-          schema:
-            type: string
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - $ref: '#/components/parameters/unit'
+      - $ref: '#/components/parameters/timezone'
+      - name: url
+        in: query
+        schema:
+          type: string
+      - name: referrer
+        in: query
+        schema:
+          type: string
+      - name: title
+        in: query
+        schema:
+          type: string
+      - name: os
+        in: query
+        schema:
+          type: string
+      - name: browser
+        in: query
+        schema:
+          type: string
+      - name: device
+        in: query
+        schema:
+          type: string
+      - name: country
+        in: query
+        schema:
+          type: string
+      - name: region
+        in: query
+        schema:
+          type: string
+      - name: city
+        in: query
+        schema:
+          type: string
+      - name: tag
+        in: query
+        schema:
+          type: string
+      - name: host
+        in: query
+        schema:
+          type: string
+      - name: language
+        in: query
+        schema:
+          type: string
+      - name: event
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Event time series
@@ -1364,21 +1398,20 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/PageviewSeries'
-
-  # ---------- Event Data ----------
-  /api/websites/{websiteId}/event-data/events:
+  /v1/analytics/websites/{websiteId}/event-data/events:
     get:
       operationId: getEventDataEvents
-      tags: [Events]
+      tags:
+      - Events
       summary: Get event data grouped by event name
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - name: event
-          in: query
-          schema:
-            type: string
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - name: event
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Event data events
@@ -1388,16 +1421,16 @@ paths:
                 type: array
                 items:
                   type: object
-
-  /api/websites/{websiteId}/event-data/fields:
+  /v1/analytics/websites/{websiteId}/event-data/fields:
     get:
       operationId: getEventDataFields
-      tags: [Events]
+      tags:
+      - Events
       summary: Get event data fields
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
       responses:
         '200':
           description: Event data fields
@@ -1414,20 +1447,20 @@ paths:
                       type: integer
                     total:
                       type: integer
-
-  /api/websites/{websiteId}/event-data/properties:
+  /v1/analytics/websites/{websiteId}/event-data/properties:
     get:
       operationId: getEventDataProperties
-      tags: [Events]
+      tags:
+      - Events
       summary: Get event data properties
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - name: propertyName
-          in: query
-          schema:
-            type: string
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - name: propertyName
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Event data properties
@@ -1437,24 +1470,24 @@ paths:
                 type: array
                 items:
                   type: object
-
-  /api/websites/{websiteId}/event-data/values:
+  /v1/analytics/websites/{websiteId}/event-data/values:
     get:
       operationId: getEventDataValues
-      tags: [Events]
+      tags:
+      - Events
       summary: Get event data values for a property
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - name: eventName
-          in: query
-          schema:
-            type: string
-        - name: propertyName
-          in: query
-          schema:
-            type: string
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - name: eventName
+        in: query
+        schema:
+          type: string
+      - name: propertyName
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Event data values
@@ -1464,20 +1497,20 @@ paths:
                 type: array
                 items:
                   type: object
-
-  /api/websites/{websiteId}/event-data/stats:
+  /v1/analytics/websites/{websiteId}/event-data/stats:
     get:
       operationId: getEventDataStats
-      tags: [Events]
+      tags:
+      - Events
       summary: Get event data aggregate stats
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - name: propertyName
-          in: query
-          schema:
-            type: string
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - name: propertyName
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Event data stats
@@ -1487,21 +1520,20 @@ paths:
                 type: array
                 items:
                   type: object
-
-  # ---------- Sessions ----------
-  /api/websites/{websiteId}/sessions:
+  /v1/analytics/websites/{websiteId}/sessions:
     get:
       operationId: getSessions
-      tags: [Sessions]
+      tags:
+      - Sessions
       summary: Get paginated list of sessions
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/pageSize'
-        - $ref: '#/components/parameters/orderBy'
-        - $ref: '#/components/parameters/search'
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/orderBy'
+      - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: Paginated session list
@@ -1511,68 +1543,68 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Session'
-
-  /api/websites/{websiteId}/sessions/stats:
+  /v1/analytics/websites/{websiteId}/sessions/stats:
     get:
       operationId: getSessionStats
-      tags: [Sessions]
+      tags:
+      - Sessions
       summary: Get aggregate session statistics
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - name: url
-          in: query
-          schema:
-            type: string
-        - name: referrer
-          in: query
-          schema:
-            type: string
-        - name: title
-          in: query
-          schema:
-            type: string
-        - name: os
-          in: query
-          schema:
-            type: string
-        - name: browser
-          in: query
-          schema:
-            type: string
-        - name: device
-          in: query
-          schema:
-            type: string
-        - name: country
-          in: query
-          schema:
-            type: string
-        - name: region
-          in: query
-          schema:
-            type: string
-        - name: city
-          in: query
-          schema:
-            type: string
-        - name: tag
-          in: query
-          schema:
-            type: string
-        - name: host
-          in: query
-          schema:
-            type: string
-        - name: language
-          in: query
-          schema:
-            type: string
-        - name: event
-          in: query
-          schema:
-            type: string
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - name: url
+        in: query
+        schema:
+          type: string
+      - name: referrer
+        in: query
+        schema:
+          type: string
+      - name: title
+        in: query
+        schema:
+          type: string
+      - name: os
+        in: query
+        schema:
+          type: string
+      - name: browser
+        in: query
+        schema:
+          type: string
+      - name: device
+        in: query
+        schema:
+          type: string
+      - name: country
+        in: query
+        schema:
+          type: string
+      - name: region
+        in: query
+        schema:
+          type: string
+      - name: city
+        in: query
+        schema:
+          type: string
+      - name: tag
+        in: query
+        schema:
+          type: string
+      - name: host
+        in: query
+        schema:
+          type: string
+      - name: language
+        in: query
+        schema:
+          type: string
+      - name: event
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Session stats
@@ -1585,21 +1617,21 @@ paths:
                   properties:
                     value:
                       type: number
-
-  /api/websites/{websiteId}/sessions/weekly:
+  /v1/analytics/websites/{websiteId}/sessions/weekly:
     get:
       operationId: getSessionsWeekly
-      tags: [Sessions]
+      tags:
+      - Sessions
       summary: Get weekly session breakdown
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - $ref: '#/components/parameters/timezone'
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/pageSize'
-        - $ref: '#/components/parameters/orderBy'
-        - $ref: '#/components/parameters/search'
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - $ref: '#/components/parameters/timezone'
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/orderBy'
+      - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: Weekly session data
@@ -1609,15 +1641,15 @@ paths:
                 type: array
                 items:
                   type: object
-
-  /api/websites/{websiteId}/sessions/{sessionId}:
+  /v1/analytics/websites/{websiteId}/sessions/{sessionId}:
     get:
       operationId: getSession
-      tags: [Sessions]
+      tags:
+      - Sessions
       summary: Get a single session by ID
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/sessionId'
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/sessionId'
       responses:
         '200':
           description: Session details
@@ -1625,17 +1657,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Session'
-
-  /api/websites/{websiteId}/sessions/{sessionId}/activity:
+  /v1/analytics/websites/{websiteId}/sessions/{sessionId}/activity:
     get:
       operationId: getSessionActivity
-      tags: [Sessions]
+      tags:
+      - Sessions
       summary: Get activity log for a session
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/sessionId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/sessionId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
       responses:
         '200':
           description: Session activity entries
@@ -1654,15 +1686,15 @@ paths:
                     createdAt:
                       type: string
                       format: date-time
-
-  /api/websites/{websiteId}/sessions/{sessionId}/properties:
+  /v1/analytics/websites/{websiteId}/sessions/{sessionId}/properties:
     get:
       operationId: getSessionProperties
-      tags: [Sessions]
+      tags:
+      - Sessions
       summary: Get custom session data properties
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/sessionId'
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/sessionId'
       responses:
         '200':
           description: Session data key-value pairs
@@ -1672,21 +1704,20 @@ paths:
                 type: array
                 items:
                   type: object
-
-  # ---------- Session Data ----------
-  /api/websites/{websiteId}/session-data/properties:
+  /v1/analytics/websites/{websiteId}/session-data/properties:
     get:
       operationId: getSessionDataProperties
-      tags: [Sessions]
+      tags:
+      - Sessions
       summary: Get distinct session data property names
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - name: propertyName
-          in: query
-          schema:
-            type: string
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - name: propertyName
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Session data properties
@@ -1696,20 +1727,20 @@ paths:
                 type: array
                 items:
                   type: object
-
-  /api/websites/{websiteId}/session-data/values:
+  /v1/analytics/websites/{websiteId}/session-data/values:
     get:
       operationId: getSessionDataValues
-      tags: [Sessions]
+      tags:
+      - Sessions
       summary: Get session data values for a property
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
-        - name: propertyName
-          in: query
-          schema:
-            type: string
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
+      - name: propertyName
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Session data values
@@ -1719,28 +1750,27 @@ paths:
                 type: array
                 items:
                   type: object
-
-  # ---------- Reports (CRUD) ----------
-  /api/reports:
+  /v1/analytics/reports:
     get:
       operationId: listReports
-      tags: [Reports]
+      tags:
+      - Reports
       summary: List reports, optionally filtered by website or team
       parameters:
-        - name: websiteId
-          in: query
-          schema:
-            type: string
-            format: uuid
-        - name: teamId
-          in: query
-          schema:
-            type: string
-            format: uuid
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/pageSize'
-        - $ref: '#/components/parameters/orderBy'
-        - $ref: '#/components/parameters/search'
+      - name: websiteId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: teamId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/orderBy'
+      - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: Paginated list of reports
@@ -1752,7 +1782,8 @@ paths:
                   $ref: '#/components/schemas/Report'
     post:
       operationId: createReport
-      tags: [Reports]
+      tags:
+      - Reports
       summary: Create a new report
       requestBody:
         required: true
@@ -1760,7 +1791,12 @@ paths:
           application/json:
             schema:
               type: object
-              required: [websiteId, name, type, description, parameters]
+              required:
+              - websiteId
+              - name
+              - type
+              - description
+              - parameters
               properties:
                 websiteId:
                   type: string
@@ -1770,7 +1806,15 @@ paths:
                   maxLength: 200
                 type:
                   type: string
-                  enum: [funnel, insights, retention, utm, goals, journey, revenue, attribution]
+                  enum:
+                  - funnel
+                  - insights
+                  - retention
+                  - utm
+                  - goals
+                  - journey
+                  - revenue
+                  - attribution
                 description:
                   type: string
                   maxLength: 500
@@ -1783,14 +1827,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Report'
-
-  /api/reports/{reportId}:
+  /v1/analytics/reports/{reportId}:
     get:
       operationId: getReport
-      tags: [Reports]
+      tags:
+      - Reports
       summary: Get a report by ID
       parameters:
-        - $ref: '#/components/parameters/reportId'
+      - $ref: '#/components/parameters/reportId'
       responses:
         '200':
           description: Report details
@@ -1802,24 +1846,38 @@ paths:
           description: Report not found
     post:
       operationId: updateReport
-      tags: [Reports]
+      tags:
+      - Reports
       summary: Update a report
       parameters:
-        - $ref: '#/components/parameters/reportId'
+      - $ref: '#/components/parameters/reportId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [websiteId, type, name, description, parameters]
+              required:
+              - websiteId
+              - type
+              - name
+              - description
+              - parameters
               properties:
                 websiteId:
                   type: string
                   format: uuid
                 type:
                   type: string
-                  enum: [funnel, insights, retention, utm, goals, journey, revenue, attribution]
+                  enum:
+                  - funnel
+                  - insights
+                  - retention
+                  - utm
+                  - goals
+                  - journey
+                  - revenue
+                  - attribution
                 name:
                   type: string
                   maxLength: 200
@@ -1837,10 +1895,11 @@ paths:
                 $ref: '#/components/schemas/Report'
     delete:
       operationId: deleteReport
-      tags: [Reports]
+      tags:
+      - Reports
       summary: Delete a report
       parameters:
-        - $ref: '#/components/parameters/reportId'
+      - $ref: '#/components/parameters/reportId'
       responses:
         '200':
           description: Report deleted
@@ -1848,18 +1907,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /api/websites/{websiteId}/reports:
+  /v1/analytics/websites/{websiteId}/reports:
     get:
       operationId: getWebsiteReports
-      tags: [Reports]
+      tags:
+      - Reports
       summary: List reports for a specific website
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/pageSize'
-        - $ref: '#/components/parameters/orderBy'
-        - $ref: '#/components/parameters/search'
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/orderBy'
+      - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: Paginated report list
@@ -1869,12 +1928,11 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Report'
-
-  # ---------- Report Execution ----------
-  /api/reports/funnel:
+  /v1/analytics/reports/funnel:
     post:
       operationId: runFunnelReport
-      tags: [Reports]
+      tags:
+      - Reports
       summary: Run a funnel report
       requestBody:
         required: true
@@ -1882,7 +1940,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [websiteId, dateRange, window, steps]
+              required:
+              - websiteId
+              - dateRange
+              - window
+              - steps
               properties:
                 websiteId:
                   type: string
@@ -1898,7 +1960,9 @@ paths:
                   minItems: 2
                   items:
                     type: object
-                    required: [type, value]
+                    required:
+                    - type
+                    - value
                     properties:
                       type:
                         type: string
@@ -1913,11 +1977,11 @@ paths:
                 type: array
                 items:
                   type: object
-
-  /api/reports/insights:
+  /v1/analytics/reports/insights:
     post:
       operationId: runInsightsReport
-      tags: [Reports]
+      tags:
+      - Reports
       summary: Run an insights report
       requestBody:
         required: true
@@ -1925,7 +1989,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [websiteId, dateRange, fields, filters]
+              required:
+              - websiteId
+              - dateRange
+              - fields
+              - filters
               properties:
                 websiteId:
                   type: string
@@ -1937,7 +2005,10 @@ paths:
                   minItems: 1
                   items:
                     type: object
-                    required: [name, type, label]
+                    required:
+                    - name
+                    - type
+                    - label
                     properties:
                       name:
                         type: string
@@ -1949,7 +2020,11 @@ paths:
                   type: array
                   items:
                     type: object
-                    required: [name, type, operator, value]
+                    required:
+                    - name
+                    - type
+                    - operator
+                    - value
                     properties:
                       name:
                         type: string
@@ -1968,11 +2043,11 @@ paths:
                 type: array
                 items:
                   type: object
-
-  /api/reports/retention:
+  /v1/analytics/reports/retention:
     post:
       operationId: runRetentionReport
-      tags: [Reports]
+      tags:
+      - Reports
       summary: Run a retention report
       requestBody:
         required: true
@@ -1980,7 +2055,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [websiteId, dateRange, timezone]
+              required:
+              - websiteId
+              - dateRange
+              - timezone
               properties:
                 websiteId:
                   type: string
@@ -1998,11 +2076,11 @@ paths:
                 type: array
                 items:
                   type: object
-
-  /api/reports/goals:
+  /v1/analytics/reports/goals:
     post:
       operationId: runGoalsReport
-      tags: [Reports]
+      tags:
+      - Reports
       summary: Run a goals report
       requestBody:
         required: true
@@ -2010,7 +2088,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [websiteId, dateRange, goals]
+              required:
+              - websiteId
+              - dateRange
+              - goals
               properties:
                 websiteId:
                   type: string
@@ -2022,18 +2103,27 @@ paths:
                   minItems: 1
                   items:
                     type: object
-                    required: [type, value, goal]
+                    required:
+                    - type
+                    - value
+                    - goal
                     properties:
                       type:
                         type: string
-                        enum: [url, event, event-data]
+                        enum:
+                        - url
+                        - event
+                        - event-data
                       value:
                         type: string
                       goal:
                         type: number
                       operator:
                         type: string
-                        enum: [count, sum, average]
+                        enum:
+                        - count
+                        - sum
+                        - average
                         description: Required when type is event-data
                       property:
                         type: string
@@ -2047,11 +2137,11 @@ paths:
                 type: array
                 items:
                   type: object
-
-  /api/reports/journey:
+  /v1/analytics/reports/journey:
     post:
       operationId: runJourneyReport
-      tags: [Reports]
+      tags:
+      - Reports
       summary: Run a user journey report
       requestBody:
         required: true
@@ -2059,7 +2149,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [websiteId, dateRange, steps]
+              required:
+              - websiteId
+              - dateRange
+              - steps
               properties:
                 websiteId:
                   type: string
@@ -2083,11 +2176,11 @@ paths:
                 type: array
                 items:
                   type: object
-
-  /api/reports/utm:
+  /v1/analytics/reports/utm:
     post:
       operationId: runUtmReport
-      tags: [Reports]
+      tags:
+      - Reports
       summary: Run a UTM report
       requestBody:
         required: true
@@ -2095,7 +2188,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [websiteId, dateRange]
+              required:
+              - websiteId
+              - dateRange
               properties:
                 websiteId:
                   type: string
@@ -2111,31 +2206,31 @@ paths:
                 type: array
                 items:
                   type: object
-
-  /api/reports/revenue:
+  /v1/analytics/reports/revenue:
     get:
       operationId: getRevenueValues
-      tags: [Reports]
+      tags:
+      - Reports
       summary: Get available revenue values for a website
       parameters:
-        - name: websiteId
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: startDate
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date-time
-        - name: endDate
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date-time
+      - name: websiteId
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: startDate
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+      - name: endDate
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
       responses:
         '200':
           description: Revenue values
@@ -2147,7 +2242,8 @@ paths:
                   type: object
     post:
       operationId: runRevenueReport
-      tags: [Reports]
+      tags:
+      - Reports
       summary: Run a revenue report
       requestBody:
         required: true
@@ -2155,7 +2251,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [websiteId, dateRange, currency, timezone]
+              required:
+              - websiteId
+              - dateRange
+              - currency
+              - timezone
               properties:
                 websiteId:
                   type: string
@@ -2175,11 +2275,11 @@ paths:
                 type: array
                 items:
                   type: object
-
-  /api/reports/attribution:
+  /v1/analytics/reports/attribution:
     post:
       operationId: runAttributionReport
-      tags: [Reports]
+      tags:
+      - Reports
       summary: Run an attribution report
       requestBody:
         required: true
@@ -2187,7 +2287,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [websiteId, dateRange, model, steps]
+              required:
+              - websiteId
+              - dateRange
+              - model
+              - steps
               properties:
                 websiteId:
                   type: string
@@ -2196,13 +2300,17 @@ paths:
                   $ref: '#/components/schemas/DateRange'
                 model:
                   type: string
-                  enum: [firstClick, lastClick]
+                  enum:
+                  - firstClick
+                  - lastClick
                 steps:
                   type: array
                   minItems: 1
                   items:
                     type: object
-                    required: [type, value]
+                    required:
+                    - type
+                    - value
                     properties:
                       type:
                         type: string
@@ -2219,12 +2327,11 @@ paths:
                 type: array
                 items:
                   type: object
-
-  # ---------- Users ----------
-  /api/users:
+  /v1/analytics/users:
     post:
       operationId: createUser
-      tags: [Users]
+      tags:
+      - Users
       summary: Create a new user (admin only)
       requestBody:
         required: true
@@ -2232,7 +2339,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [username, password, role]
+              required:
+              - username
+              - password
+              - role
               properties:
                 id:
                   type: string
@@ -2244,7 +2354,10 @@ paths:
                   type: string
                 role:
                   type: string
-                  enum: [admin, user, view-only]
+                  enum:
+                  - admin
+                  - user
+                  - view-only
       responses:
         '200':
           description: User created
@@ -2254,14 +2367,14 @@ paths:
                 $ref: '#/components/schemas/User'
         '400':
           description: User already exists
-
-  /api/users/{userId}:
+  /v1/analytics/users/{userId}:
     get:
       operationId: getUser
-      tags: [Users]
+      tags:
+      - Users
       summary: Get user by ID
       parameters:
-        - $ref: '#/components/parameters/userId'
+      - $ref: '#/components/parameters/userId'
       responses:
         '200':
           description: User details
@@ -2271,17 +2384,19 @@ paths:
                 $ref: '#/components/schemas/User'
     post:
       operationId: updateUser
-      tags: [Users]
+      tags:
+      - Users
       summary: Update user
       parameters:
-        - $ref: '#/components/parameters/userId'
+      - $ref: '#/components/parameters/userId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [username]
+              required:
+              - username
               properties:
                 username:
                   type: string
@@ -2291,7 +2406,10 @@ paths:
                   maxLength: 255
                 role:
                   type: string
-                  enum: [admin, user, view-only]
+                  enum:
+                  - admin
+                  - user
+                  - view-only
       responses:
         '200':
           description: User updated
@@ -2301,10 +2419,11 @@ paths:
                 $ref: '#/components/schemas/User'
     delete:
       operationId: deleteUser
-      tags: [Users]
+      tags:
+      - Users
       summary: Delete user (admin only)
       parameters:
-        - $ref: '#/components/parameters/userId'
+      - $ref: '#/components/parameters/userId'
       responses:
         '200':
           description: User deleted
@@ -2314,18 +2433,18 @@ paths:
                 type: object
         '400':
           description: Cannot delete yourself
-
-  /api/users/{userId}/teams:
+  /v1/analytics/users/{userId}/teams:
     get:
       operationId: getUserTeams
-      tags: [Users]
+      tags:
+      - Users
       summary: List teams a user belongs to
       parameters:
-        - $ref: '#/components/parameters/userId'
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/pageSize'
-        - $ref: '#/components/parameters/orderBy'
-        - $ref: '#/components/parameters/search'
+      - $ref: '#/components/parameters/userId'
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/orderBy'
+      - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: Paginated team list
@@ -2335,18 +2454,18 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Team'
-
-  /api/users/{userId}/websites:
+  /v1/analytics/users/{userId}/websites:
     get:
       operationId: getUserWebsites
-      tags: [Users]
+      tags:
+      - Users
       summary: List websites owned by a user
       parameters:
-        - $ref: '#/components/parameters/userId'
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/pageSize'
-        - $ref: '#/components/parameters/orderBy'
-        - $ref: '#/components/parameters/search'
+      - $ref: '#/components/parameters/userId'
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/orderBy'
+      - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: Paginated website list
@@ -2356,16 +2475,16 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Website'
-
-  /api/users/{userId}/usage:
+  /v1/analytics/users/{userId}/usage:
     get:
       operationId: getUserUsage
-      tags: [Users]
+      tags:
+      - Users
       summary: Get event usage breakdown for a user (admin only)
       parameters:
-        - $ref: '#/components/parameters/userId'
-        - $ref: '#/components/parameters/startAt'
-        - $ref: '#/components/parameters/endAt'
+      - $ref: '#/components/parameters/userId'
+      - $ref: '#/components/parameters/startAt'
+      - $ref: '#/components/parameters/endAt'
       responses:
         '200':
           description: Usage data
@@ -2392,12 +2511,11 @@ paths:
                           type: integer
                         eventDataUsage:
                           type: integer
-
-  # ---------- Teams ----------
-  /api/teams:
+  /v1/analytics/teams:
     post:
       operationId: createTeam
-      tags: [Teams]
+      tags:
+      - Teams
       summary: Create a new team
       requestBody:
         required: true
@@ -2405,7 +2523,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              required:
+              - name
               properties:
                 name:
                   type: string
@@ -2417,11 +2536,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Team'
-
-  /api/teams/join:
+  /v1/analytics/teams/join:
     post:
       operationId: joinTeam
-      tags: [Teams]
+      tags:
+      - Teams
       summary: Join a team using an access code
       requestBody:
         required: true
@@ -2429,7 +2548,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [accessCode]
+              required:
+              - accessCode
               properties:
                 accessCode:
                   type: string
@@ -2445,14 +2565,14 @@ paths:
           description: Already a team member
         '404':
           description: Team not found
-
-  /api/teams/{teamId}:
+  /v1/analytics/teams/{teamId}:
     get:
       operationId: getTeam
-      tags: [Teams]
+      tags:
+      - Teams
       summary: Get team by ID (includes members)
       parameters:
-        - $ref: '#/components/parameters/teamId'
+      - $ref: '#/components/parameters/teamId'
       responses:
         '200':
           description: Team details with members
@@ -2464,10 +2584,11 @@ paths:
           description: Team not found
     post:
       operationId: updateTeam
-      tags: [Teams]
+      tags:
+      - Teams
       summary: Update team (owner only)
       parameters:
-        - $ref: '#/components/parameters/teamId'
+      - $ref: '#/components/parameters/teamId'
       requestBody:
         required: true
         content:
@@ -2490,10 +2611,11 @@ paths:
                 $ref: '#/components/schemas/Team'
     delete:
       operationId: deleteTeam
-      tags: [Teams]
+      tags:
+      - Teams
       summary: Delete team (owner only)
       parameters:
-        - $ref: '#/components/parameters/teamId'
+      - $ref: '#/components/parameters/teamId'
       responses:
         '200':
           description: Team deleted
@@ -2501,18 +2623,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /api/teams/{teamId}/users:
+  /v1/analytics/teams/{teamId}/users:
     get:
       operationId: getTeamUsers
-      tags: [Teams]
+      tags:
+      - Teams
       summary: List team members
       parameters:
-        - $ref: '#/components/parameters/teamId'
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/pageSize'
-        - $ref: '#/components/parameters/orderBy'
-        - $ref: '#/components/parameters/search'
+      - $ref: '#/components/parameters/teamId'
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/orderBy'
+      - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: Paginated team member list
@@ -2524,24 +2646,30 @@ paths:
                   $ref: '#/components/schemas/TeamUser'
     post:
       operationId: addTeamUser
-      tags: [Teams]
+      tags:
+      - Teams
       summary: Add a user to a team
       parameters:
-        - $ref: '#/components/parameters/teamId'
+      - $ref: '#/components/parameters/teamId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [userId, role]
+              required:
+              - userId
+              - role
               properties:
                 userId:
                   type: string
                   format: uuid
                 role:
                   type: string
-                  enum: [team-member, team-view-only, team-manager]
+                  enum:
+                  - team-member
+                  - team-view-only
+                  - team-manager
       responses:
         '200':
           description: User added to team
@@ -2551,15 +2679,15 @@ paths:
                 $ref: '#/components/schemas/TeamUser'
         '400':
           description: User is already a member
-
-  /api/teams/{teamId}/users/{userId}:
+  /v1/analytics/teams/{teamId}/users/{userId}:
     get:
       operationId: getTeamUser
-      tags: [Teams]
+      tags:
+      - Teams
       summary: Get a team member
       parameters:
-        - $ref: '#/components/parameters/teamId'
-        - $ref: '#/components/parameters/userId'
+      - $ref: '#/components/parameters/teamId'
+      - $ref: '#/components/parameters/userId'
       responses:
         '200':
           description: Team user details
@@ -2569,22 +2697,27 @@ paths:
                 $ref: '#/components/schemas/TeamUser'
     post:
       operationId: updateTeamUser
-      tags: [Teams]
+      tags:
+      - Teams
       summary: Update team member role (owner only)
       parameters:
-        - $ref: '#/components/parameters/teamId'
-        - $ref: '#/components/parameters/userId'
+      - $ref: '#/components/parameters/teamId'
+      - $ref: '#/components/parameters/userId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [role]
+              required:
+              - role
               properties:
                 role:
                   type: string
-                  enum: [team-member, team-view-only, team-manager]
+                  enum:
+                  - team-member
+                  - team-view-only
+                  - team-manager
       responses:
         '200':
           description: Team user updated
@@ -2594,11 +2727,12 @@ paths:
                 $ref: '#/components/schemas/TeamUser'
     delete:
       operationId: removeTeamUser
-      tags: [Teams]
+      tags:
+      - Teams
       summary: Remove user from team
       parameters:
-        - $ref: '#/components/parameters/teamId'
-        - $ref: '#/components/parameters/userId'
+      - $ref: '#/components/parameters/teamId'
+      - $ref: '#/components/parameters/userId'
       responses:
         '200':
           description: User removed from team
@@ -2606,18 +2740,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /api/teams/{teamId}/websites:
+  /v1/analytics/teams/{teamId}/websites:
     get:
       operationId: getTeamWebsites
-      tags: [Teams]
+      tags:
+      - Teams
       summary: List websites belonging to a team
       parameters:
-        - $ref: '#/components/parameters/teamId'
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/pageSize'
-        - $ref: '#/components/parameters/orderBy'
-        - $ref: '#/components/parameters/search'
+      - $ref: '#/components/parameters/teamId'
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/orderBy'
+      - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: Paginated website list
@@ -2627,18 +2761,17 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Website'
-
-  # ---------- Admin ----------
-  /api/admin/users:
+  /v1/analytics/admin/users:
     get:
       operationId: adminListUsers
-      tags: [Admin]
+      tags:
+      - Admin
       summary: List all users (admin only)
       parameters:
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/pageSize'
-        - $ref: '#/components/parameters/orderBy'
-        - $ref: '#/components/parameters/search'
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/orderBy'
+      - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: Paginated user list with website counts
@@ -2648,39 +2781,39 @@ paths:
                 type: array
                 items:
                   allOf:
-                    - $ref: '#/components/schemas/User'
-                    - type: object
-                      properties:
-                        _count:
-                          type: object
-                          properties:
-                            websiteUser:
-                              type: integer
-
-  /api/admin/websites:
+                  - $ref: '#/components/schemas/User'
+                  - type: object
+                    properties:
+                      _count:
+                        type: object
+                        properties:
+                          websiteUser:
+                            type: integer
+  /v1/analytics/admin/websites:
     get:
       operationId: adminListWebsites
-      tags: [Admin]
+      tags:
+      - Admin
       summary: List all websites for a user (admin only)
       parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: includeOwnedTeams
-          in: query
-          schema:
-            type: string
-        - name: includeAllTeams
-          in: query
-          schema:
-            type: string
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/pageSize'
-        - $ref: '#/components/parameters/orderBy'
-        - $ref: '#/components/parameters/search'
+      - name: userId
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: includeOwnedTeams
+        in: query
+        schema:
+          type: string
+      - name: includeAllTeams
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/orderBy'
+      - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: Paginated website list
@@ -2690,16 +2823,15 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Website'
-
-  # ---------- Realtime ----------
-  /api/realtime/{websiteId}:
+  /v1/analytics/realtime/{websiteId}:
     get:
       operationId: getRealtimeData
-      tags: [Realtime]
+      tags:
+      - Realtime
       summary: Get realtime visitor data for the last 30 minutes
       parameters:
-        - $ref: '#/components/parameters/websiteId'
-        - $ref: '#/components/parameters/timezone'
+      - $ref: '#/components/parameters/websiteId'
+      - $ref: '#/components/parameters/timezone'
       responses:
         '200':
           description: Realtime data
@@ -2707,16 +2839,15 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ---------- Share ----------
-  /api/share/{shareId}:
+  /v1/analytics/share/{shareId}:
     get:
       operationId: getSharedWebsite
-      tags: [Share]
+      tags:
+      - Share
       summary: Get a shared website by share ID (no auth required)
       security: []
       parameters:
-        - $ref: '#/components/parameters/shareId'
+      - $ref: '#/components/parameters/shareId'
       responses:
         '200':
           description: Shared website token
@@ -2732,12 +2863,11 @@ paths:
                     type: string
         '404':
           description: Share not found
-
-  # ---------- Telemetry ----------
-  /api/scripts/telemetry:
+  /v1/analytics/scripts/telemetry:
     get:
       operationId: getTelemetryScript
-      tags: [Auth]
+      tags:
+      - Auth
       summary: Get telemetry pixel script
       security: []
       responses:
