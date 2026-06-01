@@ -1,12 +1,16 @@
 openapi: 3.1.0
 info:
   title: Hanzo Flow API
-  description: |
-    Hanzo Flow is a visual workflow automation platform for building AI-powered
+  description: 'Hanzo Flow is a visual workflow automation platform for building AI-powered
+
     automations. It provides APIs for managing flows, connections, triggers,
+
     pieces (integrations), projects, and more.
 
+
     Integrates with the Hanzo ecosystem (Hanzo MQ, Hanzo KV).
+
+    '
   version: 1.0.0
   contact:
     name: Hanzo AI
@@ -15,95 +19,94 @@ info:
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
-
 servers:
-  - url: https://flow.hanzo.ai
-    description: Production
-
+- url: https://flow.hanzo.ai
+  description: Flow Production
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway (via api.hanzo.ai/v1/flow/*)
 security:
-  - BearerAuth: []
-
+- BearerAuth: []
 tags:
-  - name: flows
-    description: Create, read, update, delete, and operate on flows
-  - name: flow-runs
-    description: List and manage flow execution runs
-  - name: app-connections
-    description: Manage connections to external services
-  - name: pieces
-    description: Browse and manage integration pieces
-  - name: triggers
-    description: Manage flow triggers and trigger events
-  - name: projects
-    description: Project management
-  - name: folders
-    description: Organize flows into folders
-  - name: authentication
-    description: Sign up, sign in, and token management
-  - name: webhooks
-    description: Incoming webhook endpoints for flow triggers
-  - name: store-entries
-    description: Key-value store for flow state
-  - name: templates
-    description: Flow templates
-  - name: users
-    description: User management
-  - name: user-invitations
-    description: Invite users to projects
-  - name: platform
-    description: Platform-level settings
-  - name: ai-providers
-    description: AI provider configuration
-  - name: tables
-    description: Database tables for structured data
-  - name: fields
-    description: Table field definitions
-  - name: records
-    description: Table record CRUD
-  - name: todos
-    description: Task management within flows
-  - name: mcp
-    description: Model Context Protocol server management
-  - name: flags
-    description: Feature flags and system configuration
-  - name: health
-    description: Health check
-  - name: sample-data
-    description: Sample data for flow step testing
-  - name: tags
-    description: Piece tagging
-  - name: solutions
-    description: Packaged flow solutions (EE)
-  - name: alerts
-    description: Platform alert configuration (EE)
-  - name: api-keys
-    description: API key management (EE)
-  - name: project-members
-    description: Project membership management (EE)
-  - name: project-roles
-    description: RBAC role management (EE)
-  - name: project-releases
-    description: Release and versioning (EE)
-  - name: git-repos
-    description: Git sync for flows (EE)
-  - name: global-connections
-    description: Platform-wide shared connections (EE)
-  - name: signing-keys
-    description: JWT signing key management (EE)
-  - name: audit-events
-    description: Audit logging (EE)
-  - name: oauth-apps
-    description: OAuth application configuration (EE)
-  - name: custom-domains
-    description: Custom domain management (EE)
-
+- name: flows
+  description: Create, read, update, delete, and operate on flows
+- name: flow-runs
+  description: List and manage flow execution runs
+- name: app-connections
+  description: Manage connections to external services
+- name: pieces
+  description: Browse and manage integration pieces
+- name: triggers
+  description: Manage flow triggers and trigger events
+- name: projects
+  description: Project management
+- name: folders
+  description: Organize flows into folders
+- name: authentication
+  description: Sign up, sign in, and token management
+- name: webhooks
+  description: Incoming webhook endpoints for flow triggers
+- name: store-entries
+  description: Key-value store for flow state
+- name: templates
+  description: Flow templates
+- name: users
+  description: User management
+- name: user-invitations
+  description: Invite users to projects
+- name: platform
+  description: Platform-level settings
+- name: ai-providers
+  description: AI provider configuration
+- name: tables
+  description: Database tables for structured data
+- name: fields
+  description: Table field definitions
+- name: records
+  description: Table record CRUD
+- name: todos
+  description: Task management within flows
+- name: mcp
+  description: Model Context Protocol server management
+- name: flags
+  description: Feature flags and system configuration
+- name: health
+  description: Health check
+- name: sample-data
+  description: Sample data for flow step testing
+- name: tags
+  description: Piece tagging
+- name: solutions
+  description: Packaged flow solutions (EE)
+- name: alerts
+  description: Platform alert configuration (EE)
+- name: api-keys
+  description: API key management (EE)
+- name: project-members
+  description: Project membership management (EE)
+- name: project-roles
+  description: RBAC role management (EE)
+- name: project-releases
+  description: Release and versioning (EE)
+- name: git-repos
+  description: Git sync for flows (EE)
+- name: global-connections
+  description: Platform-wide shared connections (EE)
+- name: signing-keys
+  description: JWT signing key management (EE)
+- name: audit-events
+  description: Audit logging (EE)
+- name: oauth-apps
+  description: OAuth application configuration (EE)
+- name: custom-domains
+  description: Custom domain management (EE)
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
-      description: API key generated from the platform admin console
-
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
+        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
     SeekPage:
       type: object
@@ -117,7 +120,6 @@ components:
         previous:
           type: string
           nullable: true
-
     Flow:
       type: object
       properties:
@@ -130,7 +132,9 @@ components:
           nullable: true
         status:
           type: string
-          enum: [ENABLED, DISABLED]
+          enum:
+          - ENABLED
+          - DISABLED
         externalId:
           type: string
         version:
@@ -141,7 +145,6 @@ components:
         updated:
           type: string
           format: date-time
-
     FlowVersion:
       type: object
       properties:
@@ -157,7 +160,9 @@ components:
           type: boolean
         state:
           type: string
-          enum: [DRAFT, LOCKED]
+          enum:
+          - DRAFT
+          - LOCKED
         updatedBy:
           type: string
           nullable: true
@@ -167,7 +172,6 @@ components:
         updated:
           type: string
           format: date-time
-
     FlowRun:
       type: object
       properties:
@@ -183,7 +187,15 @@ components:
           type: string
         status:
           type: string
-          enum: [RUNNING, SUCCEEDED, FAILED, TIMEOUT, PAUSED, STOPPED, INTERNAL_ERROR, QUOTA_EXCEEDED]
+          enum:
+          - RUNNING
+          - SUCCEEDED
+          - FAILED
+          - TIMEOUT
+          - PAUSED
+          - STOPPED
+          - INTERNAL_ERROR
+          - QUOTA_EXCEEDED
         startTime:
           type: string
           format: date-time
@@ -203,7 +215,6 @@ components:
         updated:
           type: string
           format: date-time
-
     AppConnection:
       type: object
       properties:
@@ -219,10 +230,19 @@ components:
           type: string
         type:
           type: string
-          enum: [OAUTH2, CLOUD_OAUTH2, PLATFORM_OAUTH2, SECRET_TEXT, BASIC_AUTH, CUSTOM_AUTH]
+          enum:
+          - OAUTH2
+          - CLOUD_OAUTH2
+          - PLATFORM_OAUTH2
+          - SECRET_TEXT
+          - BASIC_AUTH
+          - CUSTOM_AUTH
         status:
           type: string
-          enum: [ACTIVE, ERROR, MISSING_PERMISSIONS]
+          enum:
+          - ACTIVE
+          - ERROR
+          - MISSING_PERMISSIONS
         externalId:
           type: string
         created:
@@ -231,7 +251,6 @@ components:
         updated:
           type: string
           format: date-time
-
     Piece:
       type: object
       properties:
@@ -253,7 +272,6 @@ components:
           type: object
         triggers:
           type: object
-
     Project:
       type: object
       properties:
@@ -271,7 +289,6 @@ components:
         updated:
           type: string
           format: date-time
-
     Folder:
       type: object
       properties:
@@ -287,7 +304,6 @@ components:
         updated:
           type: string
           format: date-time
-
     StoreEntry:
       type: object
       properties:
@@ -295,8 +311,7 @@ components:
           type: string
         key:
           type: string
-        value:
-          {}
+        value: {}
         projectId:
           type: string
         created:
@@ -305,7 +320,6 @@ components:
         updated:
           type: string
           format: date-time
-
     Template:
       type: object
       properties:
@@ -327,7 +341,6 @@ components:
         updated:
           type: string
           format: date-time
-
     User:
       type: object
       properties:
@@ -349,7 +362,6 @@ components:
         updated:
           type: string
           format: date-time
-
     UserInvitation:
       type: object
       properties:
@@ -365,11 +377,12 @@ components:
           type: string
         status:
           type: string
-          enum: [PENDING, ACCEPTED]
+          enum:
+          - PENDING
+          - ACCEPTED
         created:
           type: string
           format: date-time
-
     Platform:
       type: object
       properties:
@@ -391,7 +404,6 @@ components:
         updated:
           type: string
           format: date-time
-
     Table:
       type: object
       properties:
@@ -409,7 +421,6 @@ components:
         updated:
           type: string
           format: date-time
-
     Field:
       type: object
       properties:
@@ -423,7 +434,6 @@ components:
           type: string
         externalId:
           type: string
-
     Record:
       type: object
       properties:
@@ -438,7 +448,6 @@ components:
         created:
           type: string
           format: date-time
-
     Todo:
       type: object
       properties:
@@ -457,7 +466,6 @@ components:
         created:
           type: string
           format: date-time
-
     Error:
       type: object
       properties:
@@ -467,13 +475,12 @@ components:
           type: string
         message:
           type: string
-
 paths:
-  # ── Health ──────────────────────────────────────────────────────────────────
-  /v1/health:
+  /v1/flow/health:
     get:
       operationId: getHealth
-      tags: [health]
+      tags:
+      - health
       summary: Health check
       security: []
       responses:
@@ -483,12 +490,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Flags ───────────────────────────────────────────────────────────────────
-  /v1/flags:
+  /v1/flow/flags:
     get:
       operationId: getFlags
-      tags: [flags]
+      tags:
+      - flags
       summary: Get feature flags and configuration
       security: []
       responses:
@@ -498,12 +504,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Authentication ──────────────────────────────────────────────────────────
-  /v1/authentication/sign-up:
+  /v1/flow/authentication/sign-up:
     post:
       operationId: signUp
-      tags: [authentication]
+      tags:
+      - authentication
       summary: Sign up a new user
       security: []
       requestBody:
@@ -512,7 +517,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, password, firstName, lastName]
+              required:
+              - email
+              - password
+              - firstName
+              - lastName
               properties:
                 email:
                   type: string
@@ -530,11 +539,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/authentication/sign-in:
+  /v1/flow/authentication/sign-in:
     post:
       operationId: signIn
-      tags: [authentication]
+      tags:
+      - authentication
       summary: Sign in with credentials
       security: []
       requestBody:
@@ -543,7 +552,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, password]
+              required:
+              - email
+              - password
               properties:
                 email:
                   type: string
@@ -557,36 +568,37 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Flows ───────────────────────────────────────────────────────────────────
-  /v1/flows:
+  /v1/flow/flows:
     get:
       operationId: listFlows
-      tags: [flows]
+      tags:
+      - flows
       summary: List flows
       parameters:
-        - name: folderId
-          in: query
-          schema:
-            type: string
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [ENABLED, DISABLED]
-        - name: name
-          in: query
-          schema:
-            type: string
-        - name: cursor
-          in: query
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 10
+      - name: folderId
+        in: query
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - ENABLED
+          - DISABLED
+      - name: name
+        in: query
+        schema:
+          type: string
+      - name: cursor
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 10
       responses:
         '200':
           description: Paginated list of flows
@@ -594,16 +606,17 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/SeekPage'
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/Flow'
+                - $ref: '#/components/schemas/SeekPage'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Flow'
     post:
       operationId: createFlow
-      tags: [flows]
+      tags:
+      - flows
       summary: Create a flow
       requestBody:
         required: true
@@ -611,7 +624,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [displayName]
+              required:
+              - displayName
               properties:
                 displayName:
                   type: string
@@ -624,17 +638,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Flow'
-
-  /v1/flows/count:
+  /v1/flow/flows/count:
     get:
       operationId: countFlows
-      tags: [flows]
+      tags:
+      - flows
       summary: Count flows
       parameters:
-        - name: folderId
-          in: query
-          schema:
-            type: string
+      - name: folderId
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Flow count
@@ -645,22 +659,22 @@ paths:
                 properties:
                   count:
                     type: integer
-
-  /v1/flows/{id}:
+  /v1/flow/flows/{id}:
     get:
       operationId: getFlow
-      tags: [flows]
+      tags:
+      - flows
       summary: Get a flow by id
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: versionId
-          in: query
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: versionId
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Flow details
@@ -670,36 +684,39 @@ paths:
                 $ref: '#/components/schemas/Flow'
     post:
       operationId: updateFlow
-      tags: [flows]
+      tags:
+      - flows
       summary: Apply an operation to a flow
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [type, request]
+              required:
+              - type
+              - request
               properties:
                 type:
                   type: string
                   enum:
-                    - CHANGE_STATUS
-                    - CHANGE_FOLDER
-                    - CHANGE_NAME
-                    - LOCK_AND_PUBLISH
-                    - IMPORT_FLOW
-                    - UPDATE_TRIGGER
-                    - ADD_ACTION
-                    - UPDATE_ACTION
-                    - DELETE_ACTION
-                    - MOVE_ACTION
-                    - DUPLICATE_ACTION
+                  - CHANGE_STATUS
+                  - CHANGE_FOLDER
+                  - CHANGE_NAME
+                  - LOCK_AND_PUBLISH
+                  - IMPORT_FLOW
+                  - UPDATE_TRIGGER
+                  - ADD_ACTION
+                  - UPDATE_ACTION
+                  - DELETE_ACTION
+                  - MOVE_ACTION
+                  - DUPLICATE_ACTION
                 request:
                   type: object
       responses:
@@ -711,29 +728,30 @@ paths:
                 $ref: '#/components/schemas/Flow'
     delete:
       operationId: deleteFlow
-      tags: [flows]
+      tags:
+      - flows
       summary: Delete a flow
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Flow deleted
-
-  /v1/flows/{id}/template:
+  /v1/flow/flows/{id}/template:
     get:
       operationId: getFlowTemplate
-      tags: [flows]
+      tags:
+      - flows
       summary: Export flow as template
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Flow template
@@ -741,50 +759,55 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Template'
-
-  # ── Flow Runs ───────────────────────────────────────────────────────────────
-  /v1/flow-runs:
+  /v1/flow/flow-runs:
     get:
       operationId: listFlowRuns
-      tags: [flow-runs]
+      tags:
+      - flow-runs
       summary: List flow runs
       parameters:
-        - name: flowId
-          in: query
-          schema:
+      - name: flowId
+        in: query
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          type: array
+          items:
             type: string
-        - name: status
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-              enum: [RUNNING, SUCCEEDED, FAILED, TIMEOUT, PAUSED, STOPPED]
-        - name: tags
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-        - name: cursor
-          in: query
-          schema:
+            enum:
+            - RUNNING
+            - SUCCEEDED
+            - FAILED
+            - TIMEOUT
+            - PAUSED
+            - STOPPED
+      - name: tags
+        in: query
+        schema:
+          type: array
+          items:
             type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 10
-        - name: createdAfter
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: createdBefore
-          in: query
-          schema:
-            type: string
-            format: date-time
+      - name: cursor
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 10
+      - name: createdAfter
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: createdBefore
+        in: query
+        schema:
+          type: string
+          format: date-time
       responses:
         '200':
           description: Paginated list of flow runs
@@ -792,25 +815,25 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/SeekPage'
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/FlowRun'
-
-  /v1/flow-runs/{id}:
+                - $ref: '#/components/schemas/SeekPage'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/FlowRun'
+  /v1/flow/flow-runs/{id}:
     get:
       operationId: getFlowRun
-      tags: [flow-runs]
+      tags:
+      - flow-runs
       summary: Get a flow run by id
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Flow run details
@@ -818,23 +841,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FlowRun'
-
-  /v1/flow-runs/{id}/requests/{requestId}:
+  /v1/flow/flow-runs/{id}/requests/{requestId}:
     post:
       operationId: resumeFlowRun
-      tags: [flow-runs]
+      tags:
+      - flow-runs
       summary: Resume a paused flow run with human input
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: requestId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         content:
           application/json:
@@ -847,11 +870,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/flow-runs/bulk/cancel:
+  /v1/flow/flow-runs/bulk/cancel:
     post:
       operationId: bulkCancelFlowRuns
-      tags: [flow-runs]
+      tags:
+      - flow-runs
       summary: Bulk cancel running flow runs
       requestBody:
         required: true
@@ -871,18 +894,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/flow-runs/{id}/retry:
+  /v1/flow/flow-runs/{id}/retry:
     post:
       operationId: retryFlowRun
-      tags: [flow-runs]
+      tags:
+      - flow-runs
       summary: Retry a failed flow run
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         content:
           application/json:
@@ -891,7 +914,9 @@ paths:
               properties:
                 strategy:
                   type: string
-                  enum: [ON_LATEST_VERSION, FROM_FAILED_STEP]
+                  enum:
+                  - ON_LATEST_VERSION
+                  - FROM_FAILED_STEP
       responses:
         '200':
           description: Run retried
@@ -899,38 +924,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FlowRun'
-
-  # ── App Connections ─────────────────────────────────────────────────────────
-  /v1/app-connections:
+  /v1/flow/app-connections:
     get:
       operationId: listAppConnections
-      tags: [app-connections]
+      tags:
+      - app-connections
       summary: List app connections
       parameters:
-        - name: pieceName
-          in: query
-          schema:
+      - name: pieceName
+        in: query
+        schema:
+          type: string
+      - name: displayName
+        in: query
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          type: array
+          items:
             type: string
-        - name: displayName
-          in: query
-          schema:
-            type: string
-        - name: status
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-              enum: [ACTIVE, ERROR, MISSING_PERMISSIONS]
-        - name: cursor
-          in: query
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 10
+            enum:
+            - ACTIVE
+            - ERROR
+            - MISSING_PERMISSIONS
+      - name: cursor
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 10
       responses:
         '200':
           description: Paginated list of app connections
@@ -938,16 +965,17 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/SeekPage'
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/AppConnection'
+                - $ref: '#/components/schemas/SeekPage'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/AppConnection'
     post:
       operationId: upsertAppConnection
-      tags: [app-connections]
+      tags:
+      - app-connections
       summary: Upsert an app connection
       requestBody:
         required: true
@@ -955,7 +983,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [displayName, pieceName, type, value]
+              required:
+              - displayName
+              - pieceName
+              - type
+              - value
               properties:
                 displayName:
                   type: string
@@ -965,7 +997,13 @@ paths:
                   type: string
                 type:
                   type: string
-                  enum: [OAUTH2, CLOUD_OAUTH2, PLATFORM_OAUTH2, SECRET_TEXT, BASIC_AUTH, CUSTOM_AUTH]
+                  enum:
+                  - OAUTH2
+                  - CLOUD_OAUTH2
+                  - PLATFORM_OAUTH2
+                  - SECRET_TEXT
+                  - BASIC_AUTH
+                  - CUSTOM_AUTH
                 value:
                   type: object
                 metadata:
@@ -977,11 +1015,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AppConnection'
-
-  /v1/app-connections/owners:
+  /v1/flow/app-connections/owners:
     get:
       operationId: listAppConnectionOwners
-      tags: [app-connections]
+      tags:
+      - app-connections
       summary: List app connection owners
       responses:
         '200':
@@ -990,11 +1028,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SeekPage'
-
-  /v1/app-connections/replace:
+  /v1/flow/app-connections/replace:
     post:
       operationId: replaceAppConnections
-      tags: [app-connections]
+      tags:
+      - app-connections
       summary: Replace one connection with another across all flows
       requestBody:
         required: true
@@ -1002,7 +1040,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [sourceAppConnectionId, targetAppConnectionId]
+              required:
+              - sourceAppConnectionId
+              - targetAppConnectionId
               properties:
                 sourceAppConnectionId:
                   type: string
@@ -1015,18 +1055,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/app-connections/{id}:
+  /v1/flow/app-connections/{id}:
     post:
       operationId: updateAppConnection
-      tags: [app-connections]
+      tags:
+      - app-connections
       summary: Update an app connection
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -1047,54 +1087,54 @@ paths:
                 $ref: '#/components/schemas/AppConnection'
     delete:
       operationId: deleteAppConnection
-      tags: [app-connections]
+      tags:
+      - app-connections
       summary: Delete an app connection
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Connection deleted
-
-  # ── Pieces ──────────────────────────────────────────────────────────────────
-  /v1/pieces:
+  /v1/flow/pieces:
     get:
       operationId: listPieces
-      tags: [pieces]
+      tags:
+      - pieces
       summary: List available pieces
       security: []
       parameters:
-        - name: searchQuery
-          in: query
-          schema:
+      - name: searchQuery
+        in: query
+        schema:
+          type: string
+      - name: categories
+        in: query
+        schema:
+          type: array
+          items:
             type: string
-        - name: categories
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-        - name: includeHidden
-          in: query
-          schema:
-            type: boolean
-            default: false
-        - name: includeTags
-          in: query
-          schema:
-            type: boolean
-            default: false
-        - name: sortBy
-          in: query
-          schema:
-            type: string
-        - name: orderBy
-          in: query
-          schema:
-            type: string
+      - name: includeHidden
+        in: query
+        schema:
+          type: boolean
+          default: false
+      - name: includeTags
+        in: query
+        schema:
+          type: boolean
+          default: false
+      - name: sortBy
+        in: query
+        schema:
+          type: string
+      - name: orderBy
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: List of pieces
@@ -1104,11 +1144,11 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Piece'
-
-  /v1/pieces/categories:
+  /v1/flow/pieces/categories:
     get:
       operationId: listPieceCategories
-      tags: [pieces]
+      tags:
+      - pieces
       summary: List piece categories
       security: []
       responses:
@@ -1120,19 +1160,19 @@ paths:
                 type: array
                 items:
                   type: string
-
-  /v1/pieces/versions:
+  /v1/flow/pieces/versions:
     get:
       operationId: listPieceVersions
-      tags: [pieces]
+      tags:
+      - pieces
       summary: List available versions of a piece
       security: []
       parameters:
-        - name: name
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Version list
@@ -1140,11 +1180,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/pieces/registry:
+  /v1/flow/pieces/registry:
     get:
       operationId: getPieceRegistry
-      tags: [pieces]
+      tags:
+      - pieces
       summary: Get piece registry metadata
       security: []
       responses:
@@ -1154,11 +1194,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/pieces/sync:
+  /v1/flow/pieces/sync:
     post:
       operationId: syncPieces
-      tags: [pieces]
+      tags:
+      - pieces
       summary: Sync piece metadata from registry
       responses:
         '200':
@@ -1167,11 +1207,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/pieces/options:
+  /v1/flow/pieces/options:
     post:
       operationId: getPieceOptions
-      tags: [pieces]
+      tags:
+      - pieces
       summary: Get dynamic property options for a piece action/trigger
       requestBody:
         required: true
@@ -1179,7 +1219,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [flowId, flowVersionId, actionOrTriggerName, propertyName, pieceName, pieceVersion]
+              required:
+              - flowId
+              - flowVersionId
+              - actionOrTriggerName
+              - propertyName
+              - pieceName
+              - pieceVersion
               properties:
                 flowId:
                   type: string
@@ -1204,23 +1250,23 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/pieces/{name}:
+  /v1/flow/pieces/{name}:
     get:
       operationId: getPiece
-      tags: [pieces]
+      tags:
+      - pieces
       summary: Get piece metadata by name
       security: []
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: version
-          in: query
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: version
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Piece metadata
@@ -1228,28 +1274,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Piece'
-
-  /v1/pieces/{scope}/{name}:
+  /v1/flow/pieces/{scope}/{name}:
     get:
       operationId: getScopedPiece
-      tags: [pieces]
+      tags:
+      - pieces
       summary: Get scoped piece metadata
       security: []
       parameters:
-        - name: scope
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: version
-          in: query
-          schema:
-            type: string
+      - name: scope
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: version
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Piece metadata
@@ -1257,19 +1303,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Piece'
-
-  # ── Triggers ────────────────────────────────────────────────────────────────
-  /v1/trigger-events:
+  /v1/flow/trigger-events:
     get:
       operationId: listTriggerEvents
-      tags: [triggers]
+      tags:
+      - triggers
       summary: List trigger events for a flow
       parameters:
-        - name: flowId
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: flowId
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Trigger events
@@ -1277,11 +1322,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/test-trigger:
+  /v1/flow/test-trigger:
     post:
       operationId: testTrigger
-      tags: [triggers]
+      tags:
+      - triggers
       summary: Test a trigger and get sample data
       requestBody:
         required: true
@@ -1289,7 +1334,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [flowId, flowVersionId]
+              required:
+              - flowId
+              - flowVersionId
               properties:
                 flowId:
                   type: string
@@ -1302,25 +1349,25 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/trigger-runs:
+  /v1/flow/trigger-runs:
     get:
       operationId: listTriggerRuns
-      tags: [triggers]
+      tags:
+      - triggers
       summary: List trigger run history
       parameters:
-        - name: flowId
-          in: query
-          schema:
-            type: string
-        - name: cursor
-          in: query
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
+      - name: flowId
+        in: query
+        schema:
+          type: string
+      - name: cursor
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: Trigger run history
@@ -1328,20 +1375,19 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Webhooks ────────────────────────────────────────────────────────────────
-  /v1/webhooks/{flowId}:
+  /v1/flow/webhooks/{flowId}:
     post:
       operationId: handleWebhook
-      tags: [webhooks]
+      tags:
+      - webhooks
       summary: Receive incoming webhook for a flow trigger
       security: []
       parameters:
-        - name: flowId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: flowId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         content:
           application/json:
@@ -1354,19 +1400,19 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/webhooks/{flowId}/sync:
+  /v1/flow/webhooks/{flowId}/sync:
     post:
       operationId: handleWebhookSync
-      tags: [webhooks]
+      tags:
+      - webhooks
       summary: Receive webhook and wait for flow run result
       security: []
       parameters:
-        - name: flowId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: flowId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         content:
           application/json:
@@ -1379,18 +1425,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/webhooks/{flowId}/simulate:
+  /v1/flow/webhooks/{flowId}/simulate:
     get:
       operationId: simulateWebhook
-      tags: [webhooks]
+      tags:
+      - webhooks
       summary: Simulate a webhook to capture sample data
       parameters:
-        - name: flowId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: flowId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Simulated webhook captured
@@ -1398,12 +1444,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Projects ────────────────────────────────────────────────────────────────
-  /v1/projects:
+  /v1/flow/projects:
     get:
       operationId: listProjects
-      tags: [projects]
+      tags:
+      - projects
       summary: List projects
       responses:
         '200':
@@ -1414,18 +1459,18 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Project'
-
-  /v1/projects/{id}:
+  /v1/flow/projects/{id}:
     get:
       operationId: getProject
-      tags: [projects]
+      tags:
+      - projects
       summary: Get a project by id
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Project details
@@ -1435,14 +1480,15 @@ paths:
                 $ref: '#/components/schemas/Project'
     post:
       operationId: updateProject
-      tags: [projects]
+      tags:
+      - projects
       summary: Update project settings
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -1459,12 +1505,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Project'
-
-  # ── Folders ─────────────────────────────────────────────────────────────────
-  /v1/folders:
+  /v1/flow/folders:
     get:
       operationId: listFolders
-      tags: [folders]
+      tags:
+      - folders
       summary: List folders
       responses:
         '200':
@@ -1477,7 +1522,8 @@ paths:
                   $ref: '#/components/schemas/Folder'
     post:
       operationId: createFolder
-      tags: [folders]
+      tags:
+      - folders
       summary: Create a folder
       requestBody:
         required: true
@@ -1485,7 +1531,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [displayName]
+              required:
+              - displayName
               properties:
                 displayName:
                   type: string
@@ -1496,18 +1543,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Folder'
-
-  /v1/folders/{id}:
+  /v1/flow/folders/{id}:
     get:
       operationId: getFolder
-      tags: [folders]
+      tags:
+      - folders
       summary: Get a folder by id
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Folder details
@@ -1517,14 +1564,15 @@ paths:
                 type: object
     post:
       operationId: updateFolder
-      tags: [folders]
+      tags:
+      - folders
       summary: Update a folder
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -1543,33 +1591,33 @@ paths:
                 type: object
     delete:
       operationId: deleteFolder
-      tags: [folders]
+      tags:
+      - folders
       summary: Delete a folder
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Folder deleted
-
-  # ── Store Entries ───────────────────────────────────────────────────────────
-  /v1/store-entries:
+  /v1/flow/store-entries:
     get:
       operationId: listStoreEntries
-      tags: [store-entries]
+      tags:
+      - store-entries
       summary: List store entries
       parameters:
-        - name: cursor
-          in: query
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
+      - name: cursor
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: Store entries
@@ -1579,7 +1627,8 @@ paths:
                 type: object
     post:
       operationId: upsertStoreEntry
-      tags: [store-entries]
+      tags:
+      - store-entries
       summary: Create or update a store entry
       requestBody:
         required: true
@@ -1587,12 +1636,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [key, value]
+              required:
+              - key
+              - value
               properties:
                 key:
                   type: string
-                value:
-                  {}
+                value: {}
       responses:
         '200':
           description: Entry created or updated
@@ -1600,18 +1650,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StoreEntry'
-
-  /v1/store-entries/{key}:
+  /v1/flow/store-entries/{key}:
     get:
       operationId: getStoreEntry
-      tags: [store-entries]
+      tags:
+      - store-entries
       summary: Get a store entry by key
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Store entry value
@@ -1621,37 +1671,37 @@ paths:
                 type: object
     delete:
       operationId: deleteStoreEntry
-      tags: [store-entries]
+      tags:
+      - store-entries
       summary: Delete a store entry
       parameters:
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Entry deleted
-
-  # ── Templates ───────────────────────────────────────────────────────────────
-  /v1/templates:
+  /v1/flow/templates:
     get:
       operationId: listTemplates
-      tags: [templates]
+      tags:
+      - templates
       summary: List flow templates
       parameters:
-        - name: pieces
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-        - name: tags
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
+      - name: pieces
+        in: query
+        schema:
+          type: array
+          items:
+            type: string
+      - name: tags
+        in: query
+        schema:
+          type: array
+          items:
+            type: string
       responses:
         '200':
           description: Template list
@@ -1659,18 +1709,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/templates/{id}:
+  /v1/flow/templates/{id}:
     get:
       operationId: getTemplate
-      tags: [templates]
+      tags:
+      - templates
       summary: Get a template by id
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Template details
@@ -1678,22 +1728,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Template'
-
-  # ── Users ───────────────────────────────────────────────────────────────────
-  /v1/users:
+  /v1/flow/users:
     get:
       operationId: listUsers
-      tags: [users]
+      tags:
+      - users
       summary: List platform users
       parameters:
-        - name: cursor
-          in: query
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
+      - name: cursor
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: User list
@@ -1701,25 +1750,25 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/SeekPage'
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/User'
-
-  /v1/users/{id}:
+                - $ref: '#/components/schemas/SeekPage'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/User'
+  /v1/flow/users/{id}:
     get:
       operationId: getUser
-      tags: [users]
+      tags:
+      - users
       summary: Get user by id
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: User details
@@ -1727,12 +1776,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
-
-  # ── User Invitations ────────────────────────────────────────────────────────
-  /v1/user-invitations:
+  /v1/flow/user-invitations:
     get:
       operationId: listUserInvitations
-      tags: [user-invitations]
+      tags:
+      - user-invitations
       summary: List pending invitations
       responses:
         '200':
@@ -1743,7 +1791,8 @@ paths:
                 type: object
     post:
       operationId: createUserInvitation
-      tags: [user-invitations]
+      tags:
+      - user-invitations
       summary: Invite a user to a project
       requestBody:
         required: true
@@ -1751,7 +1800,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, projectRoleId]
+              required:
+              - email
+              - projectRoleId
               properties:
                 email:
                   type: string
@@ -1765,18 +1816,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/user-invitations/{id}/accept:
+  /v1/flow/user-invitations/{id}/accept:
     post:
       operationId: acceptUserInvitation
-      tags: [user-invitations]
+      tags:
+      - user-invitations
       summary: Accept an invitation
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Invitation accepted
@@ -1784,19 +1835,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Platform ────────────────────────────────────────────────────────────────
-  /v1/platforms/{id}:
+  /v1/flow/platforms/{id}:
     get:
       operationId: getPlatform
-      tags: [platform]
+      tags:
+      - platform
       summary: Get platform settings
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Platform settings
@@ -1806,14 +1856,15 @@ paths:
                 $ref: '#/components/schemas/Platform'
     post:
       operationId: updatePlatform
-      tags: [platform]
+      tags:
+      - platform
       summary: Update platform settings
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -1838,12 +1889,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── AI Providers ────────────────────────────────────────────────────────────
-  /v1/ai-providers:
+  /v1/flow/ai-providers:
     get:
       operationId: listAiProviders
-      tags: [ai-providers]
+      tags:
+      - ai-providers
       summary: List configured AI providers
       responses:
         '200':
@@ -1854,7 +1904,8 @@ paths:
                 type: object
     post:
       operationId: upsertAiProvider
-      tags: [ai-providers]
+      tags:
+      - ai-providers
       summary: Add or update an AI provider
       requestBody:
         required: true
@@ -1862,7 +1913,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [provider, baseUrl]
+              required:
+              - provider
+              - baseUrl
               properties:
                 provider:
                   type: string
@@ -1877,27 +1930,26 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/ai-providers/{provider}:
+  /v1/flow/ai-providers/{provider}:
     delete:
       operationId: deleteAiProvider
-      tags: [ai-providers]
+      tags:
+      - ai-providers
       summary: Delete an AI provider
       parameters:
-        - name: provider
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Provider deleted
-
-  # ── Tables ──────────────────────────────────────────────────────────────────
-  /v1/tables:
+  /v1/flow/tables:
     get:
       operationId: listTables
-      tags: [tables]
+      tags:
+      - tables
       summary: List tables
       responses:
         '200':
@@ -1908,7 +1960,8 @@ paths:
                 type: object
     post:
       operationId: createTable
-      tags: [tables]
+      tags:
+      - tables
       summary: Create a table
       requestBody:
         required: true
@@ -1916,7 +1969,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              required:
+              - name
               properties:
                 name:
                   type: string
@@ -1927,18 +1981,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/tables/{id}:
+  /v1/flow/tables/{id}:
     get:
       operationId: getTable
-      tags: [tables]
+      tags:
+      - tables
       summary: Get a table
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Table details
@@ -1948,30 +2002,30 @@ paths:
                 type: object
     delete:
       operationId: deleteTable
-      tags: [tables]
+      tags:
+      - tables
       summary: Delete a table
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Table deleted
-
-  # ── Fields ──────────────────────────────────────────────────────────────────
-  /v1/fields:
+  /v1/flow/fields:
     get:
       operationId: listFields
-      tags: [fields]
+      tags:
+      - fields
       summary: List fields for a table
       parameters:
-        - name: tableId
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: tableId
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Field list
@@ -1981,7 +2035,8 @@ paths:
                 type: object
     post:
       operationId: createField
-      tags: [fields]
+      tags:
+      - fields
       summary: Create a field in a table
       requestBody:
         required: true
@@ -1989,7 +2044,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, type, tableId]
+              required:
+              - name
+              - type
+              - tableId
               properties:
                 name:
                   type: string
@@ -2004,27 +2062,26 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Records ─────────────────────────────────────────────────────────────────
-  /v1/records:
+  /v1/flow/records:
     get:
       operationId: listRecords
-      tags: [records]
+      tags:
+      - records
       summary: List records in a table
       parameters:
-        - name: tableId
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: cursor
-          in: query
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
+      - name: tableId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: cursor
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: Record list
@@ -2034,7 +2091,8 @@ paths:
                 type: object
     post:
       operationId: createRecord
-      tags: [records]
+      tags:
+      - records
       summary: Create a record
       requestBody:
         required: true
@@ -2042,7 +2100,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [tableId, cells]
+              required:
+              - tableId
+              - cells
               properties:
                 tableId:
                   type: string
@@ -2055,18 +2115,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/records/{id}:
+  /v1/flow/records/{id}:
     get:
       operationId: getRecord
-      tags: [records]
+      tags:
+      - records
       summary: Get a record
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Record details
@@ -2076,14 +2136,15 @@ paths:
                 type: object
     patch:
       operationId: updateRecord
-      tags: [records]
+      tags:
+      - records
       summary: Update a record
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -2102,33 +2163,33 @@ paths:
                 type: object
     delete:
       operationId: deleteRecord
-      tags: [records]
+      tags:
+      - records
       summary: Delete a record
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Record deleted
-
-  # ── Todos ───────────────────────────────────────────────────────────────────
-  /v1/todos:
+  /v1/flow/todos:
     get:
       operationId: listTodos
-      tags: [todos]
+      tags:
+      - todos
       summary: List todos
       parameters:
-        - name: cursor
-          in: query
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
+      - name: cursor
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: Todo list
@@ -2136,18 +2197,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/todos/{id}:
+  /v1/flow/todos/{id}:
     get:
       operationId: getTodo
-      tags: [todos]
+      tags:
+      - todos
       summary: Get a todo
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Todo details
@@ -2157,14 +2218,15 @@ paths:
                 type: object
     post:
       operationId: updateTodo
-      tags: [todos]
+      tags:
+      - todos
       summary: Update a todo
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -2181,18 +2243,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/todo-activities:
+  /v1/flow/todo-activities:
     get:
       operationId: listTodoActivities
-      tags: [todos]
+      tags:
+      - todos
       summary: List todo activity log
       parameters:
-        - name: todoId
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: todoId
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Activity log
@@ -2200,19 +2262,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── MCP Server ──────────────────────────────────────────────────────────────
-  /v1/projects/{projectId}/mcp-server:
+  /v1/flow/projects/{projectId}/mcp-server:
     get:
       operationId: getMcpServer
-      tags: [mcp]
+      tags:
+      - mcp
       summary: Get MCP server configuration for a project
       parameters:
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: MCP server configuration
@@ -2220,29 +2281,28 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Sample Data ─────────────────────────────────────────────────────────────
-  /v1/sample-data:
+  /v1/flow/sample-data:
     get:
       operationId: getSampleData
-      tags: [sample-data]
+      tags:
+      - sample-data
       summary: Get sample data for a flow step
       parameters:
-        - name: flowId
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: flowVersionId
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: stepName
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: flowId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: flowVersionId
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: stepName
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Sample data
@@ -2252,7 +2312,8 @@ paths:
                 type: object
     post:
       operationId: saveSampleData
-      tags: [sample-data]
+      tags:
+      - sample-data
       summary: Save sample data for a flow step
       requestBody:
         required: true
@@ -2260,7 +2321,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [flowId, flowVersionId, stepName, payload]
+              required:
+              - flowId
+              - flowVersionId
+              - stepName
+              - payload
               properties:
                 flowId:
                   type: string
@@ -2277,12 +2342,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Tags ────────────────────────────────────────────────────────────────────
-  /v1/tags:
+  /v1/flow/tags:
     get:
       operationId: listTags
-      tags: [tags]
+      tags:
+      - tags
       summary: List piece tags
       responses:
         '200':
@@ -2291,19 +2355,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Step Files ──────────────────────────────────────────────────────────────
-  /v1/step-files:
+  /v1/flow/step-files:
     get:
       operationId: getStepFile
-      tags: [flows]
+      tags:
+      - flows
       summary: Get a file produced by a flow step
       parameters:
-        - name: id
-          in: query
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: query
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: File content
@@ -2312,20 +2375,19 @@ paths:
               schema:
                 type: string
                 format: binary
-
-  # ── Human Input ─────────────────────────────────────────────────────────────
-  /v1/human-input/form/{flowId}:
+  /v1/flow/human-input/form/{flowId}:
     get:
       operationId: getHumanInputForm
-      tags: [flows]
+      tags:
+      - flows
       summary: Get human input form definition for a flow
       security: []
       parameters:
-        - name: flowId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: flowId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Form definition
@@ -2333,12 +2395,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Analytics ───────────────────────────────────────────────────────────────
-  /v1/analytics:
+  /v1/flow/analytics:
     get:
       operationId: getAnalytics
-      tags: [platform]
+      tags:
+      - platform
       summary: Get platform analytics data
       responses:
         '200':
@@ -2347,20 +2408,19 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── App Events ──────────────────────────────────────────────────────────────
-  /v1/app-events/{pieceUrl}:
+  /v1/flow/app-events/{pieceUrl}:
     post:
       operationId: handleAppEvent
-      tags: [triggers]
+      tags:
+      - triggers
       summary: Handle incoming app event for trigger routing
       security: []
       parameters:
-        - name: pieceUrl
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: pieceUrl
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         content:
           application/json:
@@ -2373,12 +2433,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── EE: Solutions ───────────────────────────────────────────────────────────
-  /v1/solutions:
+  /v1/flow/solutions:
     get:
       operationId: listSolutions
-      tags: [solutions]
+      tags:
+      - solutions
       summary: List packaged solutions (EE)
       responses:
         '200':
@@ -2389,7 +2448,8 @@ paths:
                 type: object
     post:
       operationId: createSolution
-      tags: [solutions]
+      tags:
+      - solutions
       summary: Create a solution from flows (EE)
       requestBody:
         required: true
@@ -2397,7 +2457,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [flowIds]
+              required:
+              - flowIds
               properties:
                 flowIds:
                   type: array
@@ -2410,18 +2471,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/solutions/{id}/apply:
+  /v1/flow/solutions/{id}/apply:
     post:
       operationId: applySolution
-      tags: [solutions]
+      tags:
+      - solutions
       summary: Apply a solution to the project (EE)
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Solution applied
@@ -2429,12 +2490,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── EE: API Keys ────────────────────────────────────────────────────────────
-  /v1/api-keys:
+  /v1/flow/api-keys:
     get:
       operationId: listApiKeys
-      tags: [api-keys]
+      tags:
+      - api-keys
       summary: List API keys (EE)
       responses:
         '200':
@@ -2445,7 +2505,8 @@ paths:
                 type: object
     post:
       operationId: createApiKey
-      tags: [api-keys]
+      tags:
+      - api-keys
       summary: Create an API key (EE)
       requestBody:
         required: true
@@ -2453,7 +2514,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [displayName]
+              required:
+              - displayName
               properties:
                 displayName:
                   type: string
@@ -2464,27 +2526,26 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/api-keys/{id}:
+  /v1/flow/api-keys/{id}:
     delete:
       operationId: deleteApiKey
-      tags: [api-keys]
+      tags:
+      - api-keys
       summary: Delete an API key (EE)
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: API key deleted
-
-  # ── EE: Alerts ──────────────────────────────────────────────────────────────
-  /v1/alerts:
+  /v1/flow/alerts:
     get:
       operationId: listAlerts
-      tags: [alerts]
+      tags:
+      - alerts
       summary: List alerts (EE)
       responses:
         '200':
@@ -2495,7 +2556,8 @@ paths:
                 type: object
     post:
       operationId: createAlert
-      tags: [alerts]
+      tags:
+      - alerts
       summary: Create an alert (EE)
       requestBody:
         required: true
@@ -2510,27 +2572,26 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/alerts/{id}:
+  /v1/flow/alerts/{id}:
     delete:
       operationId: deleteAlert
-      tags: [alerts]
+      tags:
+      - alerts
       summary: Delete an alert (EE)
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Alert deleted
-
-  # ── EE: Project Members ─────────────────────────────────────────────────────
-  /v1/project-members:
+  /v1/flow/project-members:
     get:
       operationId: listProjectMembers
-      tags: [project-members]
+      tags:
+      - project-members
       summary: List project members (EE)
       responses:
         '200':
@@ -2541,7 +2602,8 @@ paths:
                 type: object
     post:
       operationId: addProjectMember
-      tags: [project-members]
+      tags:
+      - project-members
       summary: Add a project member (EE)
       requestBody:
         required: true
@@ -2549,7 +2611,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [userId, projectRoleId]
+              required:
+              - userId
+              - projectRoleId
               properties:
                 userId:
                   type: string
@@ -2562,27 +2626,26 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/project-members/{id}:
+  /v1/flow/project-members/{id}:
     delete:
       operationId: removeProjectMember
-      tags: [project-members]
+      tags:
+      - project-members
       summary: Remove a project member (EE)
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Member removed
-
-  # ── EE: Project Roles ───────────────────────────────────────────────────────
-  /v1/project-roles:
+  /v1/flow/project-roles:
     get:
       operationId: listProjectRoles
-      tags: [project-roles]
+      tags:
+      - project-roles
       summary: List project roles (EE)
       responses:
         '200':
@@ -2591,12 +2654,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── EE: Project Releases ────────────────────────────────────────────────────
-  /v1/project-releases:
+  /v1/flow/project-releases:
     get:
       operationId: listProjectReleases
-      tags: [project-releases]
+      tags:
+      - project-releases
       summary: List releases (EE)
       responses:
         '200':
@@ -2607,7 +2669,8 @@ paths:
                 type: object
     post:
       operationId: createProjectRelease
-      tags: [project-releases]
+      tags:
+      - project-releases
       summary: Create a release (EE)
       requestBody:
         required: true
@@ -2622,12 +2685,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── EE: Git Repos ──────────────────────────────────────────────────────────
-  /v1/git-repos:
+  /v1/flow/git-repos:
     get:
       operationId: listGitRepos
-      tags: [git-repos]
+      tags:
+      - git-repos
       summary: List connected git repos (EE)
       responses:
         '200':
@@ -2638,7 +2700,8 @@ paths:
                 type: object
     post:
       operationId: connectGitRepo
-      tags: [git-repos]
+      tags:
+      - git-repos
       summary: Connect a git repo for sync (EE)
       requestBody:
         required: true
@@ -2646,7 +2709,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [remoteUrl]
+              required:
+              - remoteUrl
               properties:
                 remoteUrl:
                   type: string
@@ -2663,33 +2727,33 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/git-repos/{id}:
+  /v1/flow/git-repos/{id}:
     delete:
       operationId: disconnectGitRepo
-      tags: [git-repos]
+      tags:
+      - git-repos
       summary: Disconnect a git repo (EE)
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Git repo disconnected
-
-  /v1/git-repos/{id}/push:
+  /v1/flow/git-repos/{id}/push:
     post:
       operationId: pushToGitRepo
-      tags: [git-repos]
+      tags:
+      - git-repos
       summary: Push flows to git (EE)
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Pushed
@@ -2697,18 +2761,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/git-repos/{id}/pull:
+  /v1/flow/git-repos/{id}/pull:
     post:
       operationId: pullFromGitRepo
-      tags: [git-repos]
+      tags:
+      - git-repos
       summary: Pull flows from git (EE)
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Pulled
@@ -2716,12 +2780,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── EE: Global Connections ──────────────────────────────────────────────────
-  /v1/global-connections:
+  /v1/flow/global-connections:
     get:
       operationId: listGlobalConnections
-      tags: [global-connections]
+      tags:
+      - global-connections
       summary: List platform-wide connections (EE)
       responses:
         '200':
@@ -2732,7 +2795,8 @@ paths:
                 type: object
     post:
       operationId: createGlobalConnection
-      tags: [global-connections]
+      tags:
+      - global-connections
       summary: Create a global connection (EE)
       requestBody:
         required: true
@@ -2747,18 +2811,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/global-connections/{id}:
+  /v1/flow/global-connections/{id}:
     post:
       operationId: updateGlobalConnection
-      tags: [global-connections]
+      tags:
+      - global-connections
       summary: Update a global connection (EE)
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -2774,23 +2838,23 @@ paths:
                 type: object
     delete:
       operationId: deleteGlobalConnection
-      tags: [global-connections]
+      tags:
+      - global-connections
       summary: Delete a global connection (EE)
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Global connection deleted
-
-  # ── EE: Signing Keys ───────────────────────────────────────────────────────
-  /v1/signing-keys:
+  /v1/flow/signing-keys:
     get:
       operationId: listSigningKeys
-      tags: [signing-keys]
+      tags:
+      - signing-keys
       summary: List signing keys (EE)
       responses:
         '200':
@@ -2801,7 +2865,8 @@ paths:
                 type: object
     post:
       operationId: createSigningKey
-      tags: [signing-keys]
+      tags:
+      - signing-keys
       summary: Create a signing key (EE)
       requestBody:
         required: true
@@ -2809,7 +2874,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [displayName]
+              required:
+              - displayName
               properties:
                 displayName:
                   type: string
@@ -2820,22 +2886,21 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── EE: Audit Events ───────────────────────────────────────────────────────
-  /v1/audit-events:
+  /v1/flow/audit-events:
     get:
       operationId: listAuditEvents
-      tags: [audit-events]
+      tags:
+      - audit-events
       summary: List audit log events (EE)
       parameters:
-        - name: cursor
-          in: query
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
+      - name: cursor
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: Audit event list
@@ -2843,12 +2908,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── EE: OAuth Apps ─────────────────────────────────────────────────────────
-  /v1/oauth-apps:
+  /v1/flow/oauth-apps:
     get:
       operationId: listOAuthApps
-      tags: [oauth-apps]
+      tags:
+      - oauth-apps
       summary: List OAuth app configurations (EE)
       responses:
         '200':
@@ -2859,7 +2923,8 @@ paths:
                 type: object
     post:
       operationId: upsertOAuthApp
-      tags: [oauth-apps]
+      tags:
+      - oauth-apps
       summary: Upsert an OAuth app (EE)
       requestBody:
         required: true
@@ -2867,7 +2932,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [pieceName, clientId]
+              required:
+              - pieceName
+              - clientId
               properties:
                 pieceName:
                   type: string
@@ -2882,27 +2949,26 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/oauth-apps/{id}:
+  /v1/flow/oauth-apps/{id}:
     delete:
       operationId: deleteOAuthApp
-      tags: [oauth-apps]
+      tags:
+      - oauth-apps
       summary: Delete an OAuth app (EE)
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: OAuth app deleted
-
-  # ── EE: Custom Domains ─────────────────────────────────────────────────────
-  /v1/custom-domains:
+  /v1/flow/custom-domains:
     get:
       operationId: listCustomDomains
-      tags: [custom-domains]
+      tags:
+      - custom-domains
       summary: List custom domains (EE)
       responses:
         '200':
@@ -2913,7 +2979,8 @@ paths:
                 type: object
     post:
       operationId: createCustomDomain
-      tags: [custom-domains]
+      tags:
+      - custom-domains
       summary: Add a custom domain (EE)
       requestBody:
         required: true
@@ -2921,7 +2988,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [domain]
+              required:
+              - domain
               properties:
                 domain:
                   type: string
@@ -2932,37 +3000,36 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/custom-domains/{id}:
+  /v1/flow/custom-domains/{id}:
     delete:
       operationId: deleteCustomDomain
-      tags: [custom-domains]
+      tags:
+      - custom-domains
       summary: Remove a custom domain (EE)
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Domain removed
-
-  # ── EE: Federated Auth ─────────────────────────────────────────────────────
-  /v1/authn/federated/login:
+  /v1/flow/authn/federated/login:
     get:
       operationId: federatedLogin
-      tags: [authentication]
+      tags:
+      - authentication
       summary: Initiate federated authentication (EE)
       security: []
       responses:
         '302':
           description: Redirect to identity provider
-
-  /v1/authn/federated/claim:
+  /v1/flow/authn/federated/claim:
     post:
       operationId: federatedClaim
-      tags: [authentication]
+      tags:
+      - authentication
       summary: Complete federated authentication (EE)
       security: []
       requestBody:
@@ -2978,12 +3045,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Docs ────────────────────────────────────────────────────────────────────
-  /v1/docs:
+  /v1/flow/docs:
     get:
       operationId: getDocs
-      tags: [health]
+      tags:
+      - health
       summary: Get auto-generated OpenAPI documentation
       security: []
       responses:
@@ -2993,12 +3059,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Queue Metrics ───────────────────────────────────────────────────────────
-  /v1/queue-metrics:
+  /v1/flow/queue-metrics:
     get:
       operationId: getQueueMetrics
-      tags: [platform]
+      tags:
+      - platform
       summary: Get worker queue metrics (EE)
       responses:
         '200':
