@@ -1,19 +1,28 @@
 openapi: 3.1.0
 info:
   title: Hanzo Console API
-  description: |
-    Hanzo Console is an LLM engineering platform for observability, prompt management,
+  description: 'Hanzo Console is an LLM engineering platform for observability, prompt management,
+
     evaluations, and datasets. It provides comprehensive tracing and monitoring
+
     for AI applications.
+
 
     ## Authentication
 
+
     Authenticate with Basic Auth using project API keys:
+
     - username: Hanzo Public Key
+
     - password: Hanzo Secret Key
 
+
     Organization-scoped API keys support org-level endpoints (projects, memberships).
+
     Project-scoped API keys support project-level endpoints (traces, observations, scores, etc.).
+
+    '
   version: 1.0.0
   contact:
     name: Hanzo AI
@@ -22,15 +31,13 @@ info:
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
-
 servers:
-  - url: https://console.hanzo.ai
-    description: Production
-
+- url: https://console.hanzo.ai
+  description: Console Production
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway (via api.hanzo.ai/v1/console/*)
 security:
-  - bearerAuth: []
-  - basicAuth: []
-
+- BearerAuth: []
 components:
   securitySchemes:
     bearerAuth:
@@ -41,9 +48,15 @@ components:
     basicAuth:
       type: http
       scheme: basic
-      description: |
-        Basic Auth with Hanzo Public Key as username and Secret Key as password.
+      description: 'Basic Auth with Hanzo Public Key as username and Secret Key as password.
 
+        '
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
+        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
     Error:
       type: object
@@ -52,7 +65,6 @@ components:
           type: string
         error:
           type: string
-
     PaginationMeta:
       type: object
       properties:
@@ -64,8 +76,6 @@ components:
           type: integer
         totalPages:
           type: integer
-
-    # --- Trace ---
     Trace:
       type: object
       properties:
@@ -118,22 +128,19 @@ components:
           items:
             type: string
             description: Score IDs
-
     TraceWithFullDetails:
       allOf:
-        - $ref: '#/components/schemas/Trace'
-        - type: object
-          properties:
-            observations:
-              type: array
-              items:
-                $ref: '#/components/schemas/Observation'
-            scores:
-              type: array
-              items:
-                $ref: '#/components/schemas/Score'
-
-    # --- Observation ---
+      - $ref: '#/components/schemas/Trace'
+      - type: object
+        properties:
+          observations:
+            type: array
+            items:
+              $ref: '#/components/schemas/Observation'
+          scores:
+            type: array
+            items:
+              $ref: '#/components/schemas/Score'
     Observation:
       type: object
       properties:
@@ -143,7 +150,10 @@ components:
           type: string
         type:
           type: string
-          enum: [GENERATION, SPAN, EVENT]
+          enum:
+          - GENERATION
+          - SPAN
+          - EVENT
         name:
           type: string
         startTime:
@@ -167,7 +177,11 @@ components:
           type: object
         level:
           type: string
-          enum: [DEBUG, DEFAULT, WARNING, ERROR]
+          enum:
+          - DEBUG
+          - DEFAULT
+          - WARNING
+          - ERROR
         statusMessage:
           type: string
         parentObservationId:
@@ -196,7 +210,6 @@ components:
         timeToFirstToken:
           type: number
           description: Time to first token in seconds
-
     Usage:
       type: object
       properties:
@@ -211,9 +224,13 @@ components:
           description: Total token count
         unit:
           type: string
-          enum: [TOKENS, CHARACTERS, MILLISECONDS, SECONDS, IMAGES, REQUESTS]
-
-    # --- Score ---
+          enum:
+          - TOKENS
+          - CHARACTERS
+          - MILLISECONDS
+          - SECONDS
+          - IMAGES
+          - REQUESTS
     Score:
       type: object
       properties:
@@ -231,12 +248,18 @@ components:
           type: string
         dataType:
           type: string
-          enum: [NUMERIC, CATEGORICAL, BOOLEAN]
+          enum:
+          - NUMERIC
+          - CATEGORICAL
+          - BOOLEAN
         comment:
           type: string
         source:
           type: string
-          enum: [API, EVAL, ANNOTATION]
+          enum:
+          - API
+          - EVAL
+          - ANNOTATION
         environment:
           type: string
         configId:
@@ -249,10 +272,11 @@ components:
         updatedAt:
           type: string
           format: date-time
-
     CreateScoreRequest:
       type: object
-      required: [name, value]
+      required:
+      - name
+      - value
       properties:
         id:
           type: string
@@ -278,11 +302,12 @@ components:
           type: string
         dataType:
           type: string
-          enum: [NUMERIC, CATEGORICAL, BOOLEAN]
+          enum:
+          - NUMERIC
+          - CATEGORICAL
+          - BOOLEAN
         configId:
           type: string
-
-    # --- Score Config ---
     ScoreConfig:
       type: object
       properties:
@@ -292,7 +317,10 @@ components:
           type: string
         dataType:
           type: string
-          enum: [NUMERIC, CATEGORICAL, BOOLEAN]
+          enum:
+          - NUMERIC
+          - CATEGORICAL
+          - BOOLEAN
         categories:
           type: array
           items:
@@ -316,8 +344,6 @@ components:
         updatedAt:
           type: string
           format: date-time
-
-    # --- Session ---
     Session:
       type: object
       properties:
@@ -330,18 +356,15 @@ components:
           type: string
         environment:
           type: string
-
     SessionWithTraces:
       allOf:
-        - $ref: '#/components/schemas/Session'
-        - type: object
-          properties:
-            traces:
-              type: array
-              items:
-                $ref: '#/components/schemas/Trace'
-
-    # --- Dataset ---
+      - $ref: '#/components/schemas/Session'
+      - type: object
+        properties:
+          traces:
+            type: array
+            items:
+              $ref: '#/components/schemas/Trace'
     Dataset:
       type: object
       properties:
@@ -361,7 +384,6 @@ components:
         updatedAt:
           type: string
           format: date-time
-
     DatasetItem:
       type: object
       properties:
@@ -381,14 +403,15 @@ components:
           type: string
         status:
           type: string
-          enum: [ACTIVE, ARCHIVED]
+          enum:
+          - ACTIVE
+          - ARCHIVED
         createdAt:
           type: string
           format: date-time
         updatedAt:
           type: string
           format: date-time
-
     DatasetRun:
       type: object
       properties:
@@ -408,7 +431,6 @@ components:
         updatedAt:
           type: string
           format: date-time
-
     DatasetRunItem:
       type: object
       properties:
@@ -428,10 +450,10 @@ components:
         updatedAt:
           type: string
           format: date-time
-
     CreateDatasetItemRequest:
       type: object
-      required: [datasetName]
+      required:
+      - datasetName
       properties:
         datasetName:
           type: string
@@ -447,11 +469,15 @@ components:
           description: Upsert key. Must be unique within the project.
         status:
           type: string
-          enum: [ACTIVE, ARCHIVED]
-
+          enum:
+          - ACTIVE
+          - ARCHIVED
     CreateDatasetRunItemRequest:
       type: object
-      required: [datasetItemId, traceId, runName]
+      required:
+      - datasetItemId
+      - traceId
+      - runName
       properties:
         datasetItemId:
           type: string
@@ -465,8 +491,6 @@ components:
           type: string
         metadata:
           type: object
-
-    # --- Prompt ---
     Prompt:
       type: object
       properties:
@@ -478,7 +502,9 @@ components:
           description: Prompt content (string or chat messages array)
         type:
           type: string
-          enum: [text, chat]
+          enum:
+          - text
+          - chat
         config:
           type: object
         labels:
@@ -495,7 +521,6 @@ components:
         updatedAt:
           type: string
           format: date-time
-
     PromptMeta:
       type: object
       properties:
@@ -518,10 +543,12 @@ components:
           format: date-time
         lastConfig:
           type: object
-
     CreatePromptRequest:
       type: object
-      required: [name, prompt, type]
+      required:
+      - name
+      - prompt
+      - type
       properties:
         name:
           type: string
@@ -529,7 +556,9 @@ components:
           description: Prompt content (string for text, array of messages for chat)
         type:
           type: string
-          enum: [text, chat]
+          enum:
+          - text
+          - chat
         config:
           type: object
         labels:
@@ -542,8 +571,6 @@ components:
             type: string
         commitMessage:
           type: string
-
-    # --- Model ---
     Model:
       type: object
       properties:
@@ -558,7 +585,13 @@ components:
           format: date-time
         unit:
           type: string
-          enum: [TOKENS, CHARACTERS, MILLISECONDS, SECONDS, IMAGES, REQUESTS]
+          enum:
+          - TOKENS
+          - CHARACTERS
+          - MILLISECONDS
+          - SECONDS
+          - IMAGES
+          - REQUESTS
         inputPrice:
           type: number
         outputPrice:
@@ -571,10 +604,11 @@ components:
           type: object
         isHanzoManaged:
           type: boolean
-
     CreateModelRequest:
       type: object
-      required: [modelName, matchPattern]
+      required:
+      - modelName
+      - matchPattern
       properties:
         modelName:
           type: string
@@ -585,7 +619,13 @@ components:
           format: date-time
         unit:
           type: string
-          enum: [TOKENS, CHARACTERS, MILLISECONDS, SECONDS, IMAGES, REQUESTS]
+          enum:
+          - TOKENS
+          - CHARACTERS
+          - MILLISECONDS
+          - SECONDS
+          - IMAGES
+          - REQUESTS
         inputPrice:
           type: number
         outputPrice:
@@ -596,8 +636,6 @@ components:
           type: string
         tokenizerConfig:
           type: object
-
-    # --- Project ---
     Project:
       type: object
       properties:
@@ -616,8 +654,6 @@ components:
           type: object
         retentionDays:
           type: integer
-
-    # --- Annotation Queue ---
     AnnotationQueue:
       type: object
       properties:
@@ -637,7 +673,6 @@ components:
         updatedAt:
           type: string
           format: date-time
-
     AnnotationQueueItem:
       type: object
       properties:
@@ -647,19 +682,22 @@ components:
           type: string
         objectType:
           type: string
-          enum: [TRACE, OBSERVATION]
+          enum:
+          - TRACE
+          - OBSERVATION
         objectId:
           type: string
         status:
           type: string
-          enum: [PENDING, COMPLETED, SKIPPED]
+          enum:
+          - PENDING
+          - COMPLETED
+          - SKIPPED
         completedAt:
           type: string
           format: date-time
         assignedUserId:
           type: string
-
-    # --- Comment ---
     Comment:
       type: object
       properties:
@@ -681,8 +719,6 @@ components:
         updatedAt:
           type: string
           format: date-time
-
-    # --- Media ---
     MediaRecord:
       type: object
       properties:
@@ -699,25 +735,27 @@ components:
           type: string
         urlExpiry:
           type: string
-
-    # --- Ingestion ---
     IngestionEvent:
       type: object
-      required: [id, type, timestamp, body]
+      required:
+      - id
+      - type
+      - timestamp
+      - body
       properties:
         id:
           type: string
         type:
           type: string
           enum:
-            - trace-create
-            - score-create
-            - span-create
-            - span-update
-            - generation-create
-            - generation-update
-            - event-create
-            - sdk-log
+          - trace-create
+          - score-create
+          - span-create
+          - span-update
+          - generation-create
+          - generation-update
+          - event-create
+          - sdk-log
         timestamp:
           type: string
           format: date-time
@@ -725,7 +763,6 @@ components:
           type: object
         body:
           type: object
-
     IngestionResponse:
       type: object
       properties:
@@ -751,8 +788,6 @@ components:
                 type: string
               error:
                 type: string
-
-    # --- Membership ---
     Membership:
       type: object
       properties:
@@ -760,13 +795,15 @@ components:
           type: string
         role:
           type: string
-          enum: [OWNER, ADMIN, MEMBER, VIEWER]
+          enum:
+          - OWNER
+          - ADMIN
+          - MEMBER
+          - VIEWER
         email:
           type: string
         name:
           type: string
-
-    # --- Health ---
     HealthResponse:
       type: object
       properties:
@@ -774,51 +811,49 @@ components:
           type: string
         status:
           type: string
-
 tags:
-  - name: Health
-    description: Service health checks
-  - name: Traces
-    description: Trace management and retrieval
-  - name: Observations
-    description: Observation (span, generation, event) retrieval
-  - name: Scores
-    description: Score creation and retrieval
-  - name: Score Configs
-    description: Score configuration management
-  - name: Sessions
-    description: Session management
-  - name: Datasets
-    description: Dataset management
-  - name: Dataset Items
-    description: Dataset item CRUD
-  - name: Dataset Run Items
-    description: Dataset run item creation
-  - name: Prompts
-    description: Prompt version management
-  - name: Models
-    description: Model definition and pricing
-  - name: Metrics
-    description: Aggregated metrics queries
-  - name: Projects
-    description: Project management
-  - name: Organizations
-    description: Organization management and memberships
-  - name: Annotation Queues
-    description: Annotation queue management
-  - name: Comments
-    description: Comment management
-  - name: Media
-    description: Media upload and retrieval
-  - name: Ingestion
-    description: Batch event ingestion (legacy)
-
+- name: Health
+  description: Service health checks
+- name: Traces
+  description: Trace management and retrieval
+- name: Observations
+  description: Observation (span, generation, event) retrieval
+- name: Scores
+  description: Score creation and retrieval
+- name: Score Configs
+  description: Score configuration management
+- name: Sessions
+  description: Session management
+- name: Datasets
+  description: Dataset management
+- name: Dataset Items
+  description: Dataset item CRUD
+- name: Dataset Run Items
+  description: Dataset run item creation
+- name: Prompts
+  description: Prompt version management
+- name: Models
+  description: Model definition and pricing
+- name: Metrics
+  description: Aggregated metrics queries
+- name: Projects
+  description: Project management
+- name: Organizations
+  description: Organization management and memberships
+- name: Annotation Queues
+  description: Annotation queue management
+- name: Comments
+  description: Comment management
+- name: Media
+  description: Media upload and retrieval
+- name: Ingestion
+  description: Batch event ingestion (legacy)
 paths:
-  # ── Health ──────────────────────────────────────────────────
-  /api/public/health:
+  /v1/console/health:
     get:
       operationId: getHealth
-      tags: [Health]
+      tags:
+      - Health
       summary: Check health of API and database
       security: []
       responses:
@@ -830,76 +865,75 @@ paths:
                 $ref: '#/components/schemas/HealthResponse'
         '503':
           description: Service unavailable
-
-  # ── Traces ──────────────────────────────────────────────────
-  /api/public/traces:
+  /v1/console/traces:
     get:
       operationId: listTraces
-      tags: [Traces]
+      tags:
+      - Traces
       summary: Get list of traces
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-        - name: userId
-          in: query
-          schema:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 50
+      - name: userId
+        in: query
+        schema:
+          type: string
+      - name: name
+        in: query
+        schema:
+          type: string
+      - name: sessionId
+        in: query
+        schema:
+          type: string
+      - name: fromTimestamp
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: toTimestamp
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: orderBy
+        in: query
+        schema:
+          type: string
+        description: 'Format: field.asc|desc (e.g., timestamp.desc)'
+      - name: tags
+        in: query
+        schema:
+          type: array
+          items:
             type: string
-        - name: name
-          in: query
-          schema:
+      - name: version
+        in: query
+        schema:
+          type: string
+      - name: release
+        in: query
+        schema:
+          type: string
+      - name: environment
+        in: query
+        schema:
+          type: array
+          items:
             type: string
-        - name: sessionId
-          in: query
-          schema:
-            type: string
-        - name: fromTimestamp
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: toTimestamp
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: orderBy
-          in: query
-          schema:
-            type: string
-          description: 'Format: field.asc|desc (e.g., timestamp.desc)'
-        - name: tags
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-        - name: version
-          in: query
-          schema:
-            type: string
-        - name: release
-          in: query
-          schema:
-            type: string
-        - name: environment
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-        - name: filter
-          in: query
-          schema:
-            type: string
-          description: JSON array of filter conditions (overrides other filters when provided)
+      - name: filter
+        in: query
+        schema:
+          type: string
+        description: JSON array of filter conditions (overrides other filters when provided)
       responses:
         '200':
           description: Paginated trace list
@@ -916,7 +950,8 @@ paths:
                     $ref: '#/components/schemas/PaginationMeta'
     delete:
       operationId: deleteTraces
-      tags: [Traces]
+      tags:
+      - Traces
       summary: Delete multiple traces
       requestBody:
         required: true
@@ -924,7 +959,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [traceIds]
+              required:
+              - traceIds
               properties:
                 traceIds:
                   type: array
@@ -940,18 +976,18 @@ paths:
                 properties:
                   message:
                     type: string
-
-  /api/public/traces/{traceId}:
+  /v1/console/traces/{traceId}:
     get:
       operationId: getTrace
-      tags: [Traces]
+      tags:
+      - Traces
       summary: Get a specific trace with full details
       parameters:
-        - name: traceId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: traceId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Trace with observations and scores
@@ -961,14 +997,15 @@ paths:
                 $ref: '#/components/schemas/TraceWithFullDetails'
     delete:
       operationId: deleteTrace
-      tags: [Traces]
+      tags:
+      - Traces
       summary: Delete a specific trace
       parameters:
-        - name: traceId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: traceId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Trace deleted
@@ -979,69 +1016,72 @@ paths:
                 properties:
                   message:
                     type: string
-
-  # ── Observations ────────────────────────────────────────────
-  /api/public/observations:
+  /v1/console/observations:
     get:
       operationId: listObservations
-      tags: [Observations]
+      tags:
+      - Observations
       summary: Get a list of observations
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-        - name: name
-          in: query
-          schema:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 50
+      - name: name
+        in: query
+        schema:
+          type: string
+      - name: userId
+        in: query
+        schema:
+          type: string
+      - name: type
+        in: query
+        schema:
+          type: string
+      - name: traceId
+        in: query
+        schema:
+          type: string
+      - name: level
+        in: query
+        schema:
+          type: string
+          enum:
+          - DEBUG
+          - DEFAULT
+          - WARNING
+          - ERROR
+      - name: parentObservationId
+        in: query
+        schema:
+          type: string
+      - name: environment
+        in: query
+        schema:
+          type: array
+          items:
             type: string
-        - name: userId
-          in: query
-          schema:
-            type: string
-        - name: type
-          in: query
-          schema:
-            type: string
-        - name: traceId
-          in: query
-          schema:
-            type: string
-        - name: level
-          in: query
-          schema:
-            type: string
-            enum: [DEBUG, DEFAULT, WARNING, ERROR]
-        - name: parentObservationId
-          in: query
-          schema:
-            type: string
-        - name: environment
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-        - name: fromStartTime
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: toStartTime
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: version
-          in: query
-          schema:
-            type: string
+      - name: fromStartTime
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: toStartTime
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: version
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Paginated observation list
@@ -1056,18 +1096,18 @@ paths:
                       $ref: '#/components/schemas/Observation'
                   meta:
                     $ref: '#/components/schemas/PaginationMeta'
-
-  /api/public/observations/{observationId}:
+  /v1/console/observations/{observationId}:
     get:
       operationId: getObservation
-      tags: [Observations]
+      tags:
+      - Observations
       summary: Get an observation by ID
       parameters:
-        - name: observationId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: observationId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Observation details
@@ -1075,69 +1115,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Observation'
-
-  /api/public/v2/observations:
-    get:
-      operationId: listObservationsV2
-      tags: [Observations]
-      summary: Get observations (v2 with cursor pagination)
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-        - name: name
-          in: query
-          schema:
-            type: string
-        - name: userId
-          in: query
-          schema:
-            type: string
-        - name: type
-          in: query
-          schema:
-            type: string
-        - name: traceId
-          in: query
-          schema:
-            type: string
-        - name: fromStartTime
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: toStartTime
-          in: query
-          schema:
-            type: string
-            format: date-time
-      responses:
-        '200':
-          description: Paginated observation list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Observation'
-                  meta:
-                    $ref: '#/components/schemas/PaginationMeta'
-
-  # ── Scores ──────────────────────────────────────────────────
-  /api/public/scores:
+  /v1/console/scores:
     post:
       operationId: createScore
-      tags: [Scores]
+      tags:
+      - Scores
       summary: Create a score
       requestBody:
         required: true
@@ -1157,70 +1139,77 @@ paths:
                     type: string
     get:
       operationId: listScores
-      tags: [Scores]
+      tags:
+      - Scores
       summary: Get all scores
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-        - name: userId
-          in: query
-          schema:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 50
+      - name: userId
+        in: query
+        schema:
+          type: string
+      - name: name
+        in: query
+        schema:
+          type: string
+      - name: fromTimestamp
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: toTimestamp
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: source
+        in: query
+        schema:
+          type: string
+          enum:
+          - API
+          - EVAL
+          - ANNOTATION
+      - name: operator
+        in: query
+        schema:
+          type: string
+      - name: value
+        in: query
+        schema:
+          type: number
+      - name: scoreIds
+        in: query
+        schema:
+          type: string
+          description: Comma-separated score IDs
+      - name: configId
+        in: query
+        schema:
+          type: string
+      - name: dataType
+        in: query
+        schema:
+          type: string
+          enum:
+          - NUMERIC
+          - CATEGORICAL
+          - BOOLEAN
+      - name: environment
+        in: query
+        schema:
+          type: array
+          items:
             type: string
-        - name: name
-          in: query
-          schema:
-            type: string
-        - name: fromTimestamp
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: toTimestamp
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: source
-          in: query
-          schema:
-            type: string
-            enum: [API, EVAL, ANNOTATION]
-        - name: operator
-          in: query
-          schema:
-            type: string
-        - name: value
-          in: query
-          schema:
-            type: number
-        - name: scoreIds
-          in: query
-          schema:
-            type: string
-            description: Comma-separated score IDs
-        - name: configId
-          in: query
-          schema:
-            type: string
-        - name: dataType
-          in: query
-          schema:
-            type: string
-            enum: [NUMERIC, CATEGORICAL, BOOLEAN]
-        - name: environment
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
       responses:
         '200':
           description: Paginated score list
@@ -1235,18 +1224,18 @@ paths:
                       $ref: '#/components/schemas/Score'
                   meta:
                     $ref: '#/components/schemas/PaginationMeta'
-
-  /api/public/scores/{scoreId}:
+  /v1/console/scores/{scoreId}:
     get:
       operationId: getScore
-      tags: [Scores]
+      tags:
+      - Scores
       summary: Get a score by ID
       parameters:
-        - name: scoreId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: scoreId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Score details
@@ -1256,14 +1245,15 @@ paths:
                 $ref: '#/components/schemas/Score'
     delete:
       operationId: deleteScore
-      tags: [Scores]
+      tags:
+      - Scores
       summary: Delete a score
       parameters:
-        - name: scoreId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: scoreId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Score deleted
@@ -1271,22 +1261,21 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Score Configs ───────────────────────────────────────────
-  /api/public/score-configs:
+  /v1/console/score-configs:
     get:
       operationId: listScoreConfigs
-      tags: [Score Configs]
+      tags:
+      - Score Configs
       summary: Get all score configs
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-        - name: limit
-          in: query
-          schema:
-            type: integer
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: Score config list
@@ -1303,7 +1292,8 @@ paths:
                     $ref: '#/components/schemas/PaginationMeta'
     post:
       operationId: createScoreConfig
-      tags: [Score Configs]
+      tags:
+      - Score Configs
       summary: Create a score config
       requestBody:
         required: true
@@ -1311,13 +1301,18 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, dataType]
+              required:
+              - name
+              - dataType
               properties:
                 name:
                   type: string
                 dataType:
                   type: string
-                  enum: [NUMERIC, CATEGORICAL, BOOLEAN]
+                  enum:
+                  - NUMERIC
+                  - CATEGORICAL
+                  - BOOLEAN
                 categories:
                   type: array
                   items:
@@ -1340,18 +1335,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ScoreConfig'
-
-  /api/public/score-configs/{configId}:
+  /v1/console/score-configs/{configId}:
     get:
       operationId: getScoreConfig
-      tags: [Score Configs]
+      tags:
+      - Score Configs
       summary: Get a score config
       parameters:
-        - name: configId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: configId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Score config details
@@ -1361,14 +1356,15 @@ paths:
                 $ref: '#/components/schemas/ScoreConfig'
     patch:
       operationId: updateScoreConfig
-      tags: [Score Configs]
+      tags:
+      - Score Configs
       summary: Update a score config
       parameters:
-        - name: configId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: configId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -1402,40 +1398,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ScoreConfig'
-
-  # ── Sessions ────────────────────────────────────────────────
-  /api/public/sessions:
+  /v1/console/sessions:
     get:
       operationId: listSessions
-      tags: [Sessions]
+      tags:
+      - Sessions
       summary: Get sessions
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-        - name: fromTimestamp
-          in: query
-          schema:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 50
+      - name: fromTimestamp
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: toTimestamp
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: environment
+        in: query
+        schema:
+          type: array
+          items:
             type: string
-            format: date-time
-        - name: toTimestamp
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: environment
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
       responses:
         '200':
           description: Paginated session list
@@ -1450,18 +1445,18 @@ paths:
                       $ref: '#/components/schemas/Session'
                   meta:
                     $ref: '#/components/schemas/PaginationMeta'
-
-  /api/public/sessions/{sessionId}:
+  /v1/console/sessions/{sessionId}:
     get:
       operationId: getSession
-      tags: [Sessions]
+      tags:
+      - Sessions
       summary: Get a session with its traces
       parameters:
-        - name: sessionId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Session with traces
@@ -1469,22 +1464,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionWithTraces'
-
-  # ── Datasets ────────────────────────────────────────────────
-  /api/public/v2/datasets:
+  /v1/console/datasets:
     get:
       operationId: listDatasets
-      tags: [Datasets]
+      tags:
+      - Datasets
       summary: Get all datasets
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-        - name: limit
-          in: query
-          schema:
-            type: integer
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: Paginated dataset list
@@ -1501,7 +1495,8 @@ paths:
                     $ref: '#/components/schemas/PaginationMeta'
     post:
       operationId: createDataset
-      tags: [Datasets]
+      tags:
+      - Datasets
       summary: Create a dataset
       requestBody:
         required: true
@@ -1509,7 +1504,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              required:
+              - name
               properties:
                 name:
                   type: string
@@ -1524,18 +1520,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Dataset'
-
-  /api/public/v2/datasets/{datasetName}:
+  /v1/console/datasets/{datasetName}:
     get:
       operationId: getDataset
-      tags: [Datasets]
+      tags:
+      - Datasets
       summary: Get a dataset by name
       parameters:
-        - name: datasetName
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: datasetName
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Dataset details
@@ -1543,26 +1539,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Dataset'
-
-  /api/public/datasets/{datasetName}/runs:
+  /v1/console/datasets/{datasetName}/runs:
     get:
       operationId: listDatasetRuns
-      tags: [Datasets]
+      tags:
+      - Datasets
       summary: Get dataset runs
       parameters:
-        - name: datasetName
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: page
-          in: query
-          schema:
-            type: integer
-        - name: limit
-          in: query
-          schema:
-            type: integer
+      - name: datasetName
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: Dataset runs
@@ -1577,23 +1573,23 @@ paths:
                       $ref: '#/components/schemas/DatasetRun'
                   meta:
                     $ref: '#/components/schemas/PaginationMeta'
-
-  /api/public/datasets/{datasetName}/runs/{runName}:
+  /v1/console/datasets/{datasetName}/runs/{runName}:
     get:
       operationId: getDatasetRun
-      tags: [Datasets]
+      tags:
+      - Datasets
       summary: Get a dataset run and its items
       parameters:
-        - name: datasetName
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: runName
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: datasetName
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: runName
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Dataset run with items
@@ -1614,19 +1610,20 @@ paths:
                       $ref: '#/components/schemas/DatasetRunItem'
     delete:
       operationId: deleteDatasetRun
-      tags: [Datasets]
+      tags:
+      - Datasets
       summary: Delete a dataset run and all its run items
       parameters:
-        - name: datasetName
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: runName
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: datasetName
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: runName
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Run deleted
@@ -1637,40 +1634,39 @@ paths:
                 properties:
                   message:
                     type: string
-
-  # ── Dataset Items ───────────────────────────────────────────
-  /api/public/dataset-items:
+  /v1/console/dataset-items:
     get:
       operationId: listDatasetItems
-      tags: [Dataset Items]
+      tags:
+      - Dataset Items
       summary: Get dataset items
       parameters:
-        - name: datasetName
-          in: query
-          schema:
-            type: string
-        - name: sourceTraceId
-          in: query
-          schema:
-            type: string
-        - name: sourceObservationId
-          in: query
-          schema:
-            type: string
-        - name: version
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: ISO 8601 timestamp. Returns state of dataset at this time.
-        - name: page
-          in: query
-          schema:
-            type: integer
-        - name: limit
-          in: query
-          schema:
-            type: integer
+      - name: datasetName
+        in: query
+        schema:
+          type: string
+      - name: sourceTraceId
+        in: query
+        schema:
+          type: string
+      - name: sourceObservationId
+        in: query
+        schema:
+          type: string
+      - name: version
+        in: query
+        schema:
+          type: string
+          format: date-time
+        description: ISO 8601 timestamp. Returns state of dataset at this time.
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: Paginated dataset items
@@ -1687,7 +1683,8 @@ paths:
                     $ref: '#/components/schemas/PaginationMeta'
     post:
       operationId: createDatasetItem
-      tags: [Dataset Items]
+      tags:
+      - Dataset Items
       summary: Create or upsert a dataset item
       requestBody:
         required: true
@@ -1702,18 +1699,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DatasetItem'
-
-  /api/public/dataset-items/{id}:
+  /v1/console/dataset-items/{id}:
     get:
       operationId: getDatasetItem
-      tags: [Dataset Items]
+      tags:
+      - Dataset Items
       summary: Get a dataset item
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Dataset item
@@ -1723,14 +1720,15 @@ paths:
                 $ref: '#/components/schemas/DatasetItem'
     delete:
       operationId: deleteDatasetItem
-      tags: [Dataset Items]
+      tags:
+      - Dataset Items
       summary: Delete a dataset item
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Item deleted
@@ -1741,12 +1739,11 @@ paths:
                 properties:
                   message:
                     type: string
-
-  # ── Dataset Run Items ───────────────────────────────────────
-  /api/public/dataset-run-items:
+  /v1/console/dataset-run-items:
     post:
       operationId: createDatasetRunItem
-      tags: [Dataset Run Items]
+      tags:
+      - Dataset Run Items
       summary: Create a dataset run item
       requestBody:
         required: true
@@ -1761,44 +1758,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DatasetRunItem'
-
-  # ── Prompts ─────────────────────────────────────────────────
-  /api/public/v2/prompts:
+  /v1/console/prompts:
     get:
       operationId: listPrompts
-      tags: [Prompts]
+      tags:
+      - Prompts
       summary: Get a list of prompt names with versions and labels
       parameters:
-        - name: name
-          in: query
-          schema:
-            type: string
-        - name: label
-          in: query
-          schema:
-            type: string
-        - name: tag
-          in: query
-          schema:
-            type: string
-        - name: page
-          in: query
-          schema:
-            type: integer
-        - name: limit
-          in: query
-          schema:
-            type: integer
-        - name: fromUpdatedAt
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: toUpdatedAt
-          in: query
-          schema:
-            type: string
-            format: date-time
+      - name: name
+        in: query
+        schema:
+          type: string
+      - name: label
+        in: query
+        schema:
+          type: string
+      - name: tag
+        in: query
+        schema:
+          type: string
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          type: integer
+      - name: fromUpdatedAt
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: toUpdatedAt
+        in: query
+        schema:
+          type: string
+          format: date-time
       responses:
         '200':
           description: Prompt list with metadata
@@ -1815,7 +1811,8 @@ paths:
                     $ref: '#/components/schemas/PaginationMeta'
     post:
       operationId: createPrompt
-      tags: [Prompts]
+      tags:
+      - Prompts
       summary: Create a new prompt version
       requestBody:
         required: true
@@ -1830,27 +1827,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Prompt'
-
-  /api/public/v2/prompts/{promptName}:
+  /v1/console/prompts/{promptName}:
     get:
       operationId: getPrompt
-      tags: [Prompts]
+      tags:
+      - Prompts
       summary: Get a prompt by name
       parameters:
-        - name: promptName
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: version
-          in: query
-          schema:
-            type: integer
-        - name: label
-          in: query
-          schema:
-            type: string
-          description: Defaults to "production" if no label or version is set
+      - name: promptName
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: version
+        in: query
+        schema:
+          type: integer
+      - name: label
+        in: query
+        schema:
+          type: string
+        description: Defaults to "production" if no label or version is set
       responses:
         '200':
           description: Prompt details
@@ -1860,23 +1857,24 @@ paths:
                 $ref: '#/components/schemas/Prompt'
     delete:
       operationId: deletePrompt
-      tags: [Prompts]
+      tags:
+      - Prompts
       summary: Delete prompt versions
       description: If neither version nor label is specified, all versions are deleted.
       parameters:
-        - name: promptName
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: label
-          in: query
-          schema:
-            type: string
-        - name: version
-          in: query
-          schema:
-            type: integer
+      - name: promptName
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: label
+        in: query
+        schema:
+          type: string
+      - name: version
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: Prompt deleted
@@ -1884,23 +1882,23 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /api/public/v2/prompts/{promptName}/versions/{promptVersion}:
+  /v1/console/prompts/{promptName}/versions/{promptVersion}:
     get:
       operationId: getPromptVersion
-      tags: [Prompts]
+      tags:
+      - Prompts
       summary: Get a specific prompt version
       parameters:
-        - name: promptName
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: promptVersion
-          in: path
-          required: true
-          schema:
-            type: integer
+      - name: promptName
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: promptVersion
+        in: path
+        required: true
+        schema:
+          type: integer
       responses:
         '200':
           description: Prompt version
@@ -1908,22 +1906,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Prompt'
-
-  # ── Models ──────────────────────────────────────────────────
-  /api/public/models:
+  /v1/console/models:
     get:
       operationId: listModels
-      tags: [Models]
+      tags:
+      - Models
       summary: Get all models
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-        - name: limit
-          in: query
-          schema:
-            type: integer
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: Paginated model list
@@ -1940,7 +1937,8 @@ paths:
                     $ref: '#/components/schemas/PaginationMeta'
     post:
       operationId: createModel
-      tags: [Models]
+      tags:
+      - Models
       summary: Create a model definition
       requestBody:
         required: true
@@ -1955,18 +1953,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Model'
-
-  /api/public/models/{id}:
+  /v1/console/models/{id}:
     get:
       operationId: getModel
-      tags: [Models]
+      tags:
+      - Models
       summary: Get a model by ID
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Model details
@@ -1976,14 +1974,15 @@ paths:
                 $ref: '#/components/schemas/Model'
     delete:
       operationId: deleteModel
-      tags: [Models]
+      tags:
+      - Models
       summary: Delete a model
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Model deleted
@@ -1991,20 +1990,20 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # ── Metrics ─────────────────────────────────────────────────
-  /api/public/metrics:
+  /v1/console/metrics:
     get:
       operationId: getMetrics
-      tags: [Metrics]
+      tags:
+      - Metrics
       summary: Get metrics from the project
       parameters:
-        - name: query
-          in: query
-          required: true
-          schema:
-            type: string
-          description: JSON string containing the query parameters (view, dimensions, metrics, filters, timeDimension, fromTimestamp, toTimestamp)
+      - name: query
+        in: query
+        required: true
+        schema:
+          type: string
+        description: JSON string containing the query parameters (view, dimensions, metrics, filters, timeDimension, fromTimestamp,
+          toTimestamp)
       responses:
         '200':
           description: Metrics data
@@ -2017,51 +2016,51 @@ paths:
                     type: array
                     items:
                       type: object
-
-  /api/public/metrics/daily:
+  /v1/console/metrics/daily:
     get:
       operationId: getDailyMetrics
-      tags: [Metrics]
+      tags:
+      - Metrics
       summary: Get daily metrics
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-        - name: limit
-          in: query
-          schema:
-            type: integer
-        - name: traceName
-          in: query
-          schema:
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          type: integer
+      - name: traceName
+        in: query
+        schema:
+          type: string
+      - name: userId
+        in: query
+        schema:
+          type: string
+      - name: tags
+        in: query
+        schema:
+          type: array
+          items:
             type: string
-        - name: userId
-          in: query
-          schema:
+      - name: fromTimestamp
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: toTimestamp
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: environment
+        in: query
+        schema:
+          type: array
+          items:
             type: string
-        - name: tags
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-        - name: fromTimestamp
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: toTimestamp
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: environment
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
       responses:
         '200':
           description: Daily metrics
@@ -2090,37 +2089,11 @@ paths:
                             type: object
                   meta:
                     $ref: '#/components/schemas/PaginationMeta'
-
-  /api/public/v2/metrics:
-    get:
-      operationId: getMetricsV2
-      tags: [Metrics]
-      summary: Get metrics (v2, better performance)
-      parameters:
-        - name: query
-          in: query
-          required: true
-          schema:
-            type: string
-          description: JSON query string
-      responses:
-        '200':
-          description: Metrics data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-
-  # ── Projects ────────────────────────────────────────────────
-  /api/public/projects:
+  /v1/console/projects:
     get:
       operationId: getProject
-      tags: [Projects]
+      tags:
+      - Projects
       summary: Get project associated with API key
       responses:
         '200':
@@ -2136,7 +2109,8 @@ paths:
                       $ref: '#/components/schemas/Project'
     post:
       operationId: createProject
-      tags: [Projects]
+      tags:
+      - Projects
       summary: Create a new project (requires organization-scoped API key)
       requestBody:
         required: true
@@ -2144,7 +2118,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              required:
+              - name
               properties:
                 name:
                   type: string
@@ -2160,18 +2135,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Project'
-
-  /api/public/projects/{projectId}:
+  /v1/console/projects/{projectId}:
     get:
       operationId: getProjectById
-      tags: [Projects]
+      tags:
+      - Projects
       summary: Get a project by ID
       parameters:
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Project details
@@ -2181,21 +2156,23 @@ paths:
                 $ref: '#/components/schemas/Project'
     put:
       operationId: updateProject
-      tags: [Projects]
+      tags:
+      - Projects
       summary: Update a project
       parameters:
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [name]
+              required:
+              - name
               properties:
                 name:
                   type: string
@@ -2212,14 +2189,15 @@ paths:
                 $ref: '#/components/schemas/Project'
     delete:
       operationId: deleteProject
-      tags: [Projects]
+      tags:
+      - Projects
       summary: Delete a project (async)
       parameters:
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '202':
           description: Deletion accepted
@@ -2232,18 +2210,18 @@ paths:
                     type: boolean
                   message:
                     type: string
-
-  /api/public/projects/{projectId}/apiKeys:
+  /v1/console/projects/{projectId}/apiKeys:
     get:
       operationId: listProjectApiKeys
-      tags: [Projects]
+      tags:
+      - Projects
       summary: Get all API keys for a project
       parameters:
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: API key list
@@ -2276,14 +2254,15 @@ paths:
                           type: string
     post:
       operationId: createProjectApiKey
-      tags: [Projects]
+      tags:
+      - Projects
       summary: Create an API key for a project
       parameters:
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -2313,23 +2292,23 @@ paths:
                     type: string
                   displaySecretKey:
                     type: string
-
-  /api/public/projects/{projectId}/apiKeys/{apiKeyId}:
+  /v1/console/projects/{projectId}/apiKeys/{apiKeyId}:
     delete:
       operationId: deleteProjectApiKey
-      tags: [Projects]
+      tags:
+      - Projects
       summary: Delete a project API key
       parameters:
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: apiKeyId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: apiKeyId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: API key deleted
@@ -2340,18 +2319,18 @@ paths:
                 properties:
                   success:
                     type: boolean
-
-  /api/public/projects/{projectId}/memberships:
+  /v1/console/projects/{projectId}/memberships:
     get:
       operationId: listProjectMemberships
-      tags: [Organizations]
+      tags:
+      - Organizations
       summary: Get all memberships for a project
       parameters:
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Memberships
@@ -2366,27 +2345,34 @@ paths:
                       $ref: '#/components/schemas/Membership'
     put:
       operationId: updateProjectMembership
-      tags: [Organizations]
+      tags:
+      - Organizations
       summary: Create or update a project membership
       parameters:
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [userId, role]
+              required:
+              - userId
+              - role
               properties:
                 userId:
                   type: string
                 role:
                   type: string
-                  enum: [OWNER, ADMIN, MEMBER, VIEWER]
+                  enum:
+                  - OWNER
+                  - ADMIN
+                  - MEMBER
+                  - VIEWER
       responses:
         '200':
           description: Membership updated
@@ -2396,21 +2382,23 @@ paths:
                 $ref: '#/components/schemas/Membership'
     delete:
       operationId: deleteProjectMembership
-      tags: [Organizations]
+      tags:
+      - Organizations
       summary: Delete a project membership
       parameters:
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [userId]
+              required:
+              - userId
               properties:
                 userId:
                   type: string
@@ -2426,12 +2414,11 @@ paths:
                     type: string
                   userId:
                     type: string
-
-  # ── Organizations ───────────────────────────────────────────
-  /api/public/organizations/memberships:
+  /v1/console/organizations/memberships:
     get:
       operationId: listOrganizationMemberships
-      tags: [Organizations]
+      tags:
+      - Organizations
       summary: Get all memberships for the organization
       responses:
         '200':
@@ -2447,7 +2434,8 @@ paths:
                       $ref: '#/components/schemas/Membership'
     put:
       operationId: updateOrganizationMembership
-      tags: [Organizations]
+      tags:
+      - Organizations
       summary: Create or update an organization membership
       requestBody:
         required: true
@@ -2455,13 +2443,19 @@ paths:
           application/json:
             schema:
               type: object
-              required: [userId, role]
+              required:
+              - userId
+              - role
               properties:
                 userId:
                   type: string
                 role:
                   type: string
-                  enum: [OWNER, ADMIN, MEMBER, VIEWER]
+                  enum:
+                  - OWNER
+                  - ADMIN
+                  - MEMBER
+                  - VIEWER
       responses:
         '200':
           description: Membership updated
@@ -2471,7 +2465,8 @@ paths:
                 $ref: '#/components/schemas/Membership'
     delete:
       operationId: deleteOrganizationMembership
-      tags: [Organizations]
+      tags:
+      - Organizations
       summary: Delete an organization membership
       requestBody:
         required: true
@@ -2479,7 +2474,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [userId]
+              required:
+              - userId
               properties:
                 userId:
                   type: string
@@ -2495,11 +2491,11 @@ paths:
                     type: string
                   userId:
                     type: string
-
-  /api/public/organizations/projects:
+  /v1/console/organizations/projects:
     get:
       operationId: listOrganizationProjects
-      tags: [Organizations]
+      tags:
+      - Organizations
       summary: Get all projects for the organization
       responses:
         '200':
@@ -2526,11 +2522,11 @@ paths:
                         updatedAt:
                           type: string
                           format: date-time
-
-  /api/public/organizations/apiKeys:
+  /v1/console/organizations/apiKeys:
     get:
       operationId: listOrganizationApiKeys
-      tags: [Organizations]
+      tags:
+      - Organizations
       summary: Get all API keys for the organization
       responses:
         '200':
@@ -2562,22 +2558,21 @@ paths:
                           type: string
                         displaySecretKey:
                           type: string
-
-  # ── Annotation Queues ───────────────────────────────────────
-  /api/public/annotation-queues:
+  /v1/console/annotation-queues:
     get:
       operationId: listAnnotationQueues
-      tags: [Annotation Queues]
+      tags:
+      - Annotation Queues
       summary: Get all annotation queues
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-        - name: limit
-          in: query
-          schema:
-            type: integer
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: Annotation queues
@@ -2594,7 +2589,8 @@ paths:
                     $ref: '#/components/schemas/PaginationMeta'
     post:
       operationId: createAnnotationQueue
-      tags: [Annotation Queues]
+      tags:
+      - Annotation Queues
       summary: Create an annotation queue
       requestBody:
         required: true
@@ -2602,7 +2598,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              required:
+              - name
               properties:
                 name:
                   type: string
@@ -2619,18 +2616,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AnnotationQueue'
-
-  /api/public/annotation-queues/{queueId}:
+  /v1/console/annotation-queues/{queueId}:
     get:
       operationId: getAnnotationQueue
-      tags: [Annotation Queues]
+      tags:
+      - Annotation Queues
       summary: Get an annotation queue
       parameters:
-        - name: queueId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: queueId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Annotation queue
@@ -2638,31 +2635,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AnnotationQueue'
-
-  /api/public/annotation-queues/{queueId}/items:
+  /v1/console/annotation-queues/{queueId}/items:
     get:
       operationId: listAnnotationQueueItems
-      tags: [Annotation Queues]
+      tags:
+      - Annotation Queues
       summary: Get items for an annotation queue
       parameters:
-        - name: queueId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [PENDING, COMPLETED, SKIPPED]
-        - name: page
-          in: query
-          schema:
-            type: integer
-        - name: limit
-          in: query
-          schema:
-            type: integer
+      - name: queueId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - PENDING
+          - COMPLETED
+          - SKIPPED
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: Queue items
@@ -2677,35 +2677,34 @@ paths:
                       $ref: '#/components/schemas/AnnotationQueueItem'
                   meta:
                     $ref: '#/components/schemas/PaginationMeta'
-
-  # ── Comments ────────────────────────────────────────────────
-  /api/public/comments:
+  /v1/console/comments:
     get:
       operationId: listComments
-      tags: [Comments]
+      tags:
+      - Comments
       summary: Get all comments
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-        - name: limit
-          in: query
-          schema:
-            type: integer
-        - name: objectType
-          in: query
-          schema:
-            type: string
-          description: Filter by object type (trace, observation, session, prompt)
-        - name: objectId
-          in: query
-          schema:
-            type: string
-        - name: authorUserId
-          in: query
-          schema:
-            type: string
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          type: integer
+      - name: objectType
+        in: query
+        schema:
+          type: string
+        description: Filter by object type (trace, observation, session, prompt)
+      - name: objectId
+        in: query
+        schema:
+          type: string
+      - name: authorUserId
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Comments
@@ -2722,7 +2721,8 @@ paths:
                     $ref: '#/components/schemas/PaginationMeta'
     post:
       operationId: createComment
-      tags: [Comments]
+      tags:
+      - Comments
       summary: Create a comment
       requestBody:
         required: true
@@ -2730,7 +2730,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectId, objectType, objectId, content]
+              required:
+              - projectId
+              - objectType
+              - objectId
+              - content
               properties:
                 projectId:
                   type: string
@@ -2753,18 +2757,18 @@ paths:
                 properties:
                   id:
                     type: string
-
-  /api/public/comments/{commentId}:
+  /v1/console/comments/{commentId}:
     get:
       operationId: getComment
-      tags: [Comments]
+      tags:
+      - Comments
       summary: Get a comment by ID
       parameters:
-        - name: commentId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Comment details
@@ -2772,12 +2776,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Comment'
-
-  # ── Media ───────────────────────────────────────────────────
-  /api/public/media:
+  /v1/console/media:
     post:
       operationId: getMediaUploadUrl
-      tags: [Media]
+      tags:
+      - Media
       summary: Get a presigned upload URL for a media record
       requestBody:
         required: true
@@ -2785,7 +2788,12 @@ paths:
           application/json:
             schema:
               type: object
-              required: [traceId, contentType, contentLength, sha256Hash, field]
+              required:
+              - traceId
+              - contentType
+              - contentLength
+              - sha256Hash
+              - field
               properties:
                 traceId:
                   type: string
@@ -2812,18 +2820,18 @@ paths:
                     type: string
                   mediaId:
                     type: string
-
-  /api/public/media/{mediaId}:
+  /v1/console/media/{mediaId}:
     get:
       operationId: getMedia
-      tags: [Media]
+      tags:
+      - Media
       summary: Get a media record
       parameters:
-        - name: mediaId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: mediaId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Media record
@@ -2833,21 +2841,24 @@ paths:
                 $ref: '#/components/schemas/MediaRecord'
     patch:
       operationId: patchMedia
-      tags: [Media]
+      tags:
+      - Media
       summary: Patch a media record (update upload status)
       parameters:
-        - name: mediaId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: mediaId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [uploadedAt, uploadHttpStatus]
+              required:
+              - uploadedAt
+              - uploadHttpStatus
               properties:
                 uploadedAt:
                   type: string
@@ -2861,42 +2872,12 @@ paths:
       responses:
         '204':
           description: Media record patched
-
-  # ── Ingestion (Legacy) ─────────────────────────────────────
-  /api/public/ingestion:
-    post:
-      operationId: batchIngest
-      tags: [Ingestion]
-      summary: Batch ingest tracing events (legacy)
-      deprecated: true
-      description: Use the OpenTelemetry endpoint at /api/public/otel/v1/traces instead.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [batch]
-              properties:
-                batch:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/IngestionEvent'
-                metadata:
-                  type: object
-      responses:
-        '207':
-          description: Multi-status response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IngestionResponse'
-
-  # ── OpenTelemetry ───────────────────────────────────────────
-  /api/public/otel/v1/traces:
+  /v1/console/ingestion: {}
+  /v1/console/otel/v1/traces:
     post:
       operationId: ingestOtelTraces
-      tags: [Ingestion]
+      tags:
+      - Ingestion
       summary: Ingest OpenTelemetry traces
       description: OTLP/HTTP endpoint for trace ingestion (JSON or protobuf)
       requestBody:
@@ -2912,11 +2893,11 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /api/public/otel/v1/metrics:
+  /v1/console/otel/v1/metrics:
     post:
       operationId: ingestOtelMetrics
-      tags: [Ingestion]
+      tags:
+      - Ingestion
       summary: Ingest OpenTelemetry metrics
       requestBody:
         required: true
