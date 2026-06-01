@@ -1,15 +1,22 @@
 openapi: 3.1.0
 info:
   title: Hanzo Vector API
-  description: |
-    Hanzo Vector provides a high-performance vector database for embeddings,
+  description: 'Hanzo Vector provides a high-performance vector database for embeddings,
+
     similarity search, and retrieval-augmented generation (RAG).
 
+
     Features:
+
     - Multi-tenant collections
+
     - Automatic embedding generation
+
     - Integration with Hanzo Gateway for LLM inference
+
     - Hybrid search (vector + keyword)
+
+    '
   version: 1.0.0
   contact:
     name: Hanzo AI
@@ -17,31 +24,26 @@ info:
     email: support@hanzo.ai
   license:
     name: Proprietary
-
 servers:
-  - url: https://vector.hanzo.ai
-    description: Production
-  - url: https://vector.staging.hanzo.ai
-    description: Staging
-
+- url: https://vector.hanzo.ai
+  description: Vector Production
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway (via api.hanzo.ai/v1/vector/*)
 tags:
-  - name: Collections
-    description: Collection management
-  - name: Points
-    description: Vector point operations
-  - name: Search
-    description: Similarity search
-  - name: Snapshots
-    description: Collection snapshots
-  - name: Cluster
-    description: Cluster management
-  - name: Service
-    description: Service operations
-
+- name: Collections
+  description: Collection management
+- name: Points
+  description: Vector point operations
+- name: Search
+  description: Similarity search
+- name: Snapshots
+  description: Collection snapshots
+- name: Cluster
+  description: Cluster management
+- name: Service
+  description: Service operations
 security:
-  - bearerAuth: []
-  - apiKey: []
-
+- BearerAuth: []
 components:
   securitySchemes:
     bearerAuth:
@@ -51,14 +53,22 @@ components:
       type: apiKey
       in: header
       name: api-key
-
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
+        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
     CollectionInfo:
       type: object
       properties:
         status:
           type: string
-          enum: [green, yellow, red]
+          enum:
+          - green
+          - yellow
+          - red
         optimizer_status:
           type: string
         vectors_count:
@@ -71,7 +81,6 @@ components:
           type: integer
         config:
           $ref: '#/components/schemas/CollectionConfig'
-
     CollectionConfig:
       type: object
       properties:
@@ -80,10 +89,10 @@ components:
           properties:
             vectors:
               oneOf:
-                - $ref: '#/components/schemas/VectorParams'
-                - type: object
-                  additionalProperties:
-                    $ref: '#/components/schemas/VectorParams'
+              - $ref: '#/components/schemas/VectorParams'
+              - type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/VectorParams'
             shard_number:
               type: integer
             replication_factor:
@@ -94,22 +103,24 @@ components:
           $ref: '#/components/schemas/OptimizerConfig'
         wal_config:
           $ref: '#/components/schemas/WalConfig'
-
     VectorParams:
       type: object
       required:
-        - size
-        - distance
+      - size
+      - distance
       properties:
         size:
           type: integer
           description: Vector dimension
         distance:
           type: string
-          enum: [Cosine, Euclidean, Dot, Manhattan]
+          enum:
+          - Cosine
+          - Euclidean
+          - Dot
+          - Manhattan
         on_disk:
           type: boolean
-
     HnswConfig:
       type: object
       properties:
@@ -125,7 +136,6 @@ components:
           type: integer
         on_disk:
           type: boolean
-
     OptimizerConfig:
       type: object
       properties:
@@ -143,7 +153,6 @@ components:
           type: integer
         flush_interval_sec:
           type: integer
-
     WalConfig:
       type: object
       properties:
@@ -151,50 +160,48 @@ components:
           type: integer
         wal_segments_ahead:
           type: integer
-
     PointStruct:
       type: object
       required:
-        - id
-        - vector
+      - id
+      - vector
       properties:
         id:
           oneOf:
-            - type: integer
-            - type: string
-              format: uuid
+          - type: integer
+          - type: string
+            format: uuid
         vector:
           oneOf:
-            - type: array
+          - type: array
+            items:
+              type: number
+          - type: object
+            additionalProperties:
+              type: array
               items:
                 type: number
-            - type: object
-              additionalProperties:
-                type: array
-                items:
-                  type: number
         payload:
           type: object
           additionalProperties: true
-
     SearchRequest:
       type: object
       required:
-        - vector
+      - vector
       properties:
         vector:
           oneOf:
-            - type: array
-              items:
-                type: number
-            - type: object
-              properties:
-                name:
-                  type: string
-                vector:
-                  type: array
-                  items:
-                    type: number
+          - type: array
+            items:
+              type: number
+          - type: object
+            properties:
+              name:
+                type: string
+              vector:
+                type: array
+                items:
+                  type: number
         filter:
           $ref: '#/components/schemas/Filter'
         params:
@@ -207,19 +214,18 @@ components:
           default: 0
         with_payload:
           oneOf:
-            - type: boolean
-            - type: array
-              items:
-                type: string
+          - type: boolean
+          - type: array
+            items:
+              type: string
         with_vector:
           oneOf:
-            - type: boolean
-            - type: array
-              items:
-                type: string
+          - type: boolean
+          - type: array
+            items:
+              type: string
         score_threshold:
           type: number
-
     SearchParams:
       type: object
       properties:
@@ -237,7 +243,6 @@ components:
               type: boolean
             oversampling:
               type: number
-
     Filter:
       type: object
       properties:
@@ -253,50 +258,48 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Condition'
-
     Condition:
       oneOf:
-        - type: object
-          properties:
-            key:
-              type: string
-            match:
-              type: object
-              properties:
-                value:
-                  oneOf:
-                    - type: string
-                    - type: integer
-                    - type: boolean
-                any:
-                  type: array
-                  items: {}
-                except:
-                  type: array
-                  items: {}
-        - type: object
-          properties:
-            key:
-              type: string
-            range:
-              type: object
-              properties:
-                lt:
-                  type: number
-                lte:
-                  type: number
-                gt:
-                  type: number
-                gte:
-                  type: number
-
+      - type: object
+        properties:
+          key:
+            type: string
+          match:
+            type: object
+            properties:
+              value:
+                oneOf:
+                - type: string
+                - type: integer
+                - type: boolean
+              any:
+                type: array
+                items: {}
+              except:
+                type: array
+                items: {}
+      - type: object
+        properties:
+          key:
+            type: string
+          range:
+            type: object
+            properties:
+              lt:
+                type: number
+              lte:
+                type: number
+              gt:
+                type: number
+              gte:
+                type: number
     ScoredPoint:
       type: object
       properties:
         id:
           oneOf:
-            - type: integer
-            - type: string
+          - type: integer
+          - type: string
         version:
           type: integer
         score:
@@ -305,11 +308,10 @@ components:
           type: object
         vector:
           oneOf:
-            - type: array
-              items:
-                type: number
-            - type: object
-
+          - type: array
+            items:
+              type: number
+          - type: object
     SnapshotDescription:
       type: object
       properties:
@@ -320,13 +322,11 @@ components:
           format: date-time
         size:
           type: integer
-
 paths:
-  # Collections
-  /collections:
+  /v1/vector/collections:
     get:
       tags:
-        - Collections
+      - Collections
       summary: List collections
       operationId: listCollections
       responses:
@@ -347,19 +347,18 @@ paths:
                           properties:
                             name:
                               type: string
-
-  /collections/{collection_name}:
+  /v1/vector/collections/{collection_name}:
     get:
       tags:
-        - Collections
+      - Collections
       summary: Get collection info
       operationId: getCollection
       parameters:
-        - name: collection_name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: collection_name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Collection info
@@ -370,18 +369,17 @@ paths:
                 properties:
                   result:
                     $ref: '#/components/schemas/CollectionInfo'
-
     put:
       tags:
-        - Collections
+      - Collections
       summary: Create collection
       operationId: createCollection
       parameters:
-        - name: collection_name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: collection_name
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -391,10 +389,10 @@ paths:
               properties:
                 vectors:
                   oneOf:
-                    - $ref: '#/components/schemas/VectorParams'
-                    - type: object
-                      additionalProperties:
-                        $ref: '#/components/schemas/VectorParams'
+                  - $ref: '#/components/schemas/VectorParams'
+                  - type: object
+                    additionalProperties:
+                      $ref: '#/components/schemas/VectorParams'
                 shard_number:
                   type: integer
                 replication_factor:
@@ -419,18 +417,17 @@ paths:
                 properties:
                   result:
                     type: boolean
-
     delete:
       tags:
-        - Collections
+      - Collections
       summary: Delete collection
       operationId: deleteCollection
       parameters:
-        - name: collection_name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: collection_name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Collection deleted
@@ -441,25 +438,23 @@ paths:
                 properties:
                   result:
                     type: boolean
-
-  # Points
-  /collections/{collection_name}/points:
+  /v1/vector/collections/{collection_name}/points:
     put:
       tags:
-        - Points
+      - Points
       summary: Upsert points
       operationId: upsertPoints
       parameters:
-        - name: collection_name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: wait
-          in: query
-          schema:
-            type: boolean
-            default: true
+      - name: collection_name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: wait
+        in: query
+        schema:
+          type: boolean
+          default: true
       requestBody:
         required: true
         content:
@@ -467,7 +462,7 @@ paths:
             schema:
               type: object
               required:
-                - points
+              - points
               properties:
                 points:
                   type: array
@@ -488,26 +483,25 @@ paths:
                         type: integer
                       status:
                         type: string
-
-  /collections/{collection_name}/points/{id}:
+  /v1/vector/collections/{collection_name}/points/{id}:
     get:
       tags:
-        - Points
+      - Points
       summary: Get point
       operationId: getPoint
       parameters:
-        - name: collection_name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: id
-          in: path
-          required: true
-          schema:
-            oneOf:
-              - type: integer
-              - type: string
+      - name: collection_name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          oneOf:
+          - type: integer
+          - type: string
       responses:
         '200':
           description: Point details
@@ -518,24 +512,23 @@ paths:
                 properties:
                   result:
                     $ref: '#/components/schemas/PointStruct'
-
-  /collections/{collection_name}/points/delete:
+  /v1/vector/collections/{collection_name}/points/delete:
     post:
       tags:
-        - Points
+      - Points
       summary: Delete points
       operationId: deletePoints
       parameters:
-        - name: collection_name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: wait
-          in: query
-          schema:
-            type: boolean
-            default: true
+      - name: collection_name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: wait
+        in: query
+        schema:
+          type: boolean
+          default: true
       requestBody:
         required: true
         content:
@@ -547,8 +540,8 @@ paths:
                   type: array
                   items:
                     oneOf:
-                      - type: integer
-                      - type: string
+                    - type: integer
+                    - type: string
                 filter:
                   $ref: '#/components/schemas/Filter'
       responses:
@@ -561,20 +554,18 @@ paths:
                 properties:
                   result:
                     type: object
-
-  # Search
-  /collections/{collection_name}/points/search:
+  /v1/vector/collections/{collection_name}/points/search:
     post:
       tags:
-        - Search
+      - Search
       summary: Search points
       operationId: searchPoints
       parameters:
-        - name: collection_name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: collection_name
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -593,19 +584,18 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/ScoredPoint'
-
-  /collections/{collection_name}/points/search/batch:
+  /v1/vector/collections/{collection_name}/points/search/batch:
     post:
       tags:
-        - Search
+      - Search
       summary: Batch search
       operationId: searchBatch
       parameters:
-        - name: collection_name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: collection_name
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -613,7 +603,7 @@ paths:
             schema:
               type: object
               required:
-                - searches
+              - searches
               properties:
                 searches:
                   type: array
@@ -633,19 +623,18 @@ paths:
                       type: array
                       items:
                         $ref: '#/components/schemas/ScoredPoint'
-
-  /collections/{collection_name}/points/recommend:
+  /v1/vector/collections/{collection_name}/points/recommend:
     post:
       tags:
-        - Search
+      - Search
       summary: Recommend points
       operationId: recommendPoints
       parameters:
-        - name: collection_name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: collection_name
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -653,20 +642,20 @@ paths:
             schema:
               type: object
               required:
-                - positive
+              - positive
               properties:
                 positive:
                   type: array
                   items:
                     oneOf:
-                      - type: integer
-                      - type: string
+                    - type: integer
+                    - type: string
                 negative:
                   type: array
                   items:
                     oneOf:
-                      - type: integer
-                      - type: string
+                    - type: integer
+                    - type: string
                 filter:
                   $ref: '#/components/schemas/Filter'
                 limit:
@@ -688,20 +677,18 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/ScoredPoint'
-
-  # Snapshots
-  /collections/{collection_name}/snapshots:
+  /v1/vector/collections/{collection_name}/snapshots:
     get:
       tags:
-        - Snapshots
+      - Snapshots
       summary: List snapshots
       operationId: listSnapshots
       parameters:
-        - name: collection_name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: collection_name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: List of snapshots
@@ -714,18 +701,17 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/SnapshotDescription'
-
     post:
       tags:
-        - Snapshots
+      - Snapshots
       summary: Create snapshot
       operationId: createSnapshot
       parameters:
-        - name: collection_name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: collection_name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Snapshot created
@@ -736,24 +722,23 @@ paths:
                 properties:
                   result:
                     $ref: '#/components/schemas/SnapshotDescription'
-
-  /collections/{collection_name}/snapshots/{snapshot_name}:
+  /v1/vector/collections/{collection_name}/snapshots/{snapshot_name}:
     get:
       tags:
-        - Snapshots
+      - Snapshots
       summary: Download snapshot
       operationId: downloadSnapshot
       parameters:
-        - name: collection_name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: snapshot_name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: collection_name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: snapshot_name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Snapshot file
@@ -762,23 +747,22 @@ paths:
               schema:
                 type: string
                 format: binary
-
     delete:
       tags:
-        - Snapshots
+      - Snapshots
       summary: Delete snapshot
       operationId: deleteSnapshot
       parameters:
-        - name: collection_name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: snapshot_name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: collection_name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: snapshot_name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Snapshot deleted
@@ -789,12 +773,10 @@ paths:
                 properties:
                   result:
                     type: boolean
-
-  # Service
   /healthz:
     get:
       tags:
-        - Service
+      - Service
       summary: Health check
       operationId: healthCheck
       security: []
@@ -805,11 +787,10 @@ paths:
             text/plain:
               schema:
                 type: string
-
-  /readyz:
+  /v1/vector/readyz:
     get:
       tags:
-        - Service
+      - Service
       summary: Readiness check
       operationId: readinessCheck
       security: []
@@ -820,11 +801,10 @@ paths:
             text/plain:
               schema:
                 type: string
-
-  /telemetry:
+  /v1/vector/telemetry:
     get:
       tags:
-        - Service
+      - Service
       summary: Get telemetry
       operationId: getTelemetry
       responses:
