@@ -1,15 +1,22 @@
 openapi: 3.1.0
 info:
   title: Hanzo Registry API
-  description: |
-    Hanzo Registry provides a container image registry with vulnerability scanning,
+  description: 'Hanzo Registry provides a container image registry with vulnerability scanning,
+
     image signing, access control, and replication.
 
+
     Features:
+
     - Multi-tenant project isolation
+
     - Automated vulnerability scanning on push
+
     - Webhook-driven CI/CD integration
+
     - Storage quota management per project
+
+    '
   version: 1.0.0
   contact:
     name: Hanzo AI
@@ -17,32 +24,28 @@ info:
     email: support@hanzo.ai
   license:
     name: Proprietary
-
 servers:
-  - url: https://registry.hanzo.ai
-    description: Production
-  - url: https://api.hanzo.ai/v1/registry
-    description: Gateway Proxy
-
+- url: https://registry.hanzo.ai
+  description: Registry Production
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway (via api.hanzo.ai/v1/registry/*)
 tags:
-  - name: Projects
-    description: Project management (tenancy boundary for repositories)
-  - name: Repositories
-    description: Container image repositories within projects
-  - name: Artifacts
-    description: OCI artifacts (images, Helm charts, WASM modules)
-  - name: Scans
-    description: Vulnerability scanning
-  - name: Webhooks
-    description: Event notification webhooks
-  - name: Quotas
-    description: Storage quota management
-  - name: Health
-    description: Service health
-
+- name: Projects
+  description: Project management (tenancy boundary for repositories)
+- name: Repositories
+  description: Container image repositories within projects
+- name: Artifacts
+  description: OCI artifacts (images, Helm charts, WASM modules)
+- name: Scans
+  description: Vulnerability scanning
+- name: Webhooks
+  description: Event notification webhooks
+- name: Quotas
+  description: Storage quota management
+- name: Health
+  description: Service health
 security:
-  - bearerAuth: []
-
+- BearerAuth: []
 components:
   securitySchemes:
     bearerAuth:
@@ -50,7 +53,12 @@ components:
       scheme: bearer
       bearerFormat: HANZO_API_KEY
       description: Hanzo API Key (Bearer hk-...)
-
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
+        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
     Error:
       type: object
@@ -59,7 +67,6 @@ components:
           type: integer
         message:
           type: string
-
     Project:
       type: object
       properties:
@@ -79,24 +86,32 @@ components:
           properties:
             auto_scan:
               type: string
-              enum: ["true", "false"]
+              enum:
+              - 'true'
+              - 'false'
             severity:
               type: string
-              enum: [none, low, medium, high, critical]
+              enum:
+              - none
+              - low
+              - medium
+              - high
+              - critical
             reuse_sys_cve_allowlist:
               type: string
-              enum: ["true", "false"]
+              enum:
+              - 'true'
+              - 'false'
         creation_time:
           type: string
           format: date-time
         update_time:
           type: string
           format: date-time
-
     ProjectCreate:
       type: object
       required:
-        - project_name
+      - project_name
       properties:
         project_name:
           type: string
@@ -113,8 +128,9 @@ components:
           properties:
             auto_scan:
               type: string
-              enum: ["true", "false"]
-
+              enum:
+              - 'true'
+              - 'false'
     Repository:
       type: object
       properties:
@@ -133,7 +149,6 @@ components:
         update_time:
           type: string
           format: date-time
-
     Artifact:
       type: object
       properties:
@@ -151,7 +166,11 @@ components:
           type: string
         type:
           type: string
-          enum: [IMAGE, CHART, WASM, UNKNOWN]
+          enum:
+          - IMAGE
+          - CHART
+          - WASM
+          - UNKNOWN
         tags:
           type: array
           items:
@@ -166,7 +185,6 @@ components:
           type: object
           additionalProperties:
             $ref: '#/components/schemas/ScanOverview'
-
     Tag:
       type: object
       properties:
@@ -181,7 +199,6 @@ components:
           format: date-time
         immutable:
           type: boolean
-
     ScanOverview:
       type: object
       properties:
@@ -189,10 +206,21 @@ components:
           type: string
         scan_status:
           type: string
-          enum: [Pending, Queued, Running, Success, Error, Stopped]
+          enum:
+          - Pending
+          - Queued
+          - Running
+          - Success
+          - Error
+          - Stopped
         severity:
           type: string
-          enum: [None, Low, Medium, High, Critical]
+          enum:
+          - None
+          - Low
+          - Medium
+          - High
+          - Critical
         start_time:
           type: string
           format: date-time
@@ -216,7 +244,6 @@ components:
               type: integer
             low:
               type: integer
-
     ScanReport:
       type: object
       properties:
@@ -249,7 +276,6 @@ components:
                 items:
                   type: string
                   format: uri
-
     Webhook:
       type: object
       properties:
@@ -266,12 +292,12 @@ components:
           items:
             type: string
             enum:
-              - PUSH_ARTIFACT
-              - PULL_ARTIFACT
-              - DELETE_ARTIFACT
-              - SCANNING_COMPLETED
-              - SCANNING_FAILED
-              - QUOTA_EXCEEDED
+            - PUSH_ARTIFACT
+            - PULL_ARTIFACT
+            - DELETE_ARTIFACT
+            - SCANNING_COMPLETED
+            - SCANNING_FAILED
+            - QUOTA_EXCEEDED
         targets:
           type: array
           items:
@@ -279,7 +305,9 @@ components:
             properties:
               type:
                 type: string
-                enum: [http, slack]
+                enum:
+                - http
+                - slack
               address:
                 type: string
                 format: uri
@@ -290,13 +318,12 @@ components:
         creation_time:
           type: string
           format: date-time
-
     WebhookCreate:
       type: object
       required:
-        - name
-        - event_types
-        - targets
+      - name
+      - event_types
+      - targets
       properties:
         name:
           type: string
@@ -312,8 +339,8 @@ components:
           items:
             type: object
             required:
-              - type
-              - address
+            - type
+            - address
             properties:
               type:
                 type: string
@@ -324,7 +351,6 @@ components:
                 type: string
               skip_cert_verify:
                 type: boolean
-
     Quota:
       type: object
       properties:
@@ -353,7 +379,6 @@ components:
               type: integer
               format: int64
               description: Storage used in bytes
-
   responses:
     BadRequest:
       description: Bad Request
@@ -391,13 +416,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-
 paths:
-  # Health
   /health:
     get:
       tags:
-        - Health
+      - Health
       summary: Health check
       operationId: healthCheck
       security: []
@@ -411,41 +434,40 @@ paths:
                 properties:
                   status:
                     type: string
-                    enum: [healthy]
-
-  # Projects
-  /projects:
+                    enum:
+                    - healthy
+  /v1/registry/projects:
     get:
       tags:
-        - Projects
+      - Projects
       summary: List projects
       operationId: listProjects
       parameters:
-        - name: name
-          in: query
-          schema:
-            type: string
-          description: Filter by project name (fuzzy match)
-        - name: public
-          in: query
-          schema:
-            type: boolean
-          description: Filter by public/private
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: page_size
-          in: query
-          schema:
-            type: integer
-            default: 10
-        - name: sort
-          in: query
-          schema:
-            type: string
-            default: creation_time
+      - name: name
+        in: query
+        schema:
+          type: string
+        description: Filter by project name (fuzzy match)
+      - name: public
+        in: query
+        schema:
+          type: boolean
+        description: Filter by public/private
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 10
+      - name: sort
+        in: query
+        schema:
+          type: string
+          default: creation_time
       responses:
         '200':
           description: List of projects
@@ -462,10 +484,9 @@ paths:
               description: Total number of projects
         '401':
           $ref: '#/components/responses/Unauthorized'
-
     post:
       tags:
-        - Projects
+      - Projects
       summary: Create project
       operationId: createProject
       requestBody:
@@ -492,19 +513,18 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Conflict'
-
-  /projects/{name}:
+  /v1/registry/projects/{name}:
     get:
       tags:
-        - Projects
+      - Projects
       summary: Get project
       operationId: getProject
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Project details
@@ -514,18 +534,17 @@ paths:
                 $ref: '#/components/schemas/Project'
         '404':
           $ref: '#/components/responses/NotFound'
-
     put:
       tags:
-        - Projects
+      - Projects
       summary: Update project
       operationId: updateProject
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -556,18 +575,17 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       tags:
-        - Projects
+      - Projects
       summary: Delete project
       operationId: deleteProject
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Project deleted
@@ -577,40 +595,41 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # Repositories
-  /projects/{name}/repositories:
+  /v1/registry/projects/{name}/repositories:
     get:
       tags:
-        - Repositories
+      - Repositories
       summary: List repositories
       operationId: listRepositories
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: q
-          in: query
-          schema:
-            type: string
-          description: Search query
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: page_size
-          in: query
-          schema:
-            type: integer
-            default: 10
-        - name: sort
-          in: query
-          schema:
-            type: string
-            enum: [name, pull_count, update_time]
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: q
+        in: query
+        schema:
+          type: string
+        description: Search query
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 10
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - name
+          - pull_count
+          - update_time
       responses:
         '200':
           description: List of repositories
@@ -626,24 +645,23 @@ paths:
                 type: integer
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /projects/{name}/repositories/{repo}:
+  /v1/registry/projects/{name}/repositories/{repo}:
     get:
       tags:
-        - Repositories
+      - Repositories
       summary: Get repository
       operationId: getRepository
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: repo
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: repo
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Repository details
@@ -653,23 +671,22 @@ paths:
                 $ref: '#/components/schemas/Repository'
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       tags:
-        - Repositories
+      - Repositories
       summary: Delete repository
       operationId: deleteRepository
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: repo
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: repo
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Repository deleted
@@ -679,51 +696,52 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # Artifacts
-  /projects/{name}/repositories/{repo}/artifacts:
+  /v1/registry/projects/{name}/repositories/{repo}/artifacts:
     get:
       tags:
-        - Artifacts
+      - Artifacts
       summary: List artifacts
       operationId: listArtifacts
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: repo
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: type
-          in: query
-          schema:
-            type: string
-            enum: [IMAGE, CHART, WASM]
-          description: Filter by artifact type
-        - name: with_tag
-          in: query
-          schema:
-            type: boolean
-            default: true
-        - name: with_scan_overview
-          in: query
-          schema:
-            type: boolean
-            default: false
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: page_size
-          in: query
-          schema:
-            type: integer
-            default: 10
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: repo
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: type
+        in: query
+        schema:
+          type: string
+          enum:
+          - IMAGE
+          - CHART
+          - WASM
+        description: Filter by artifact type
+      - name: with_tag
+        in: query
+        schema:
+          type: boolean
+          default: true
+      - name: with_scan_overview
+        in: query
+        schema:
+          type: boolean
+          default: false
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 10
       responses:
         '200':
           description: List of artifacts
@@ -739,35 +757,34 @@ paths:
                 type: integer
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /projects/{name}/repositories/{repo}/artifacts/{digest}:
+  /v1/registry/projects/{name}/repositories/{repo}/artifacts/{digest}:
     get:
       tags:
-        - Artifacts
+      - Artifacts
       summary: Get artifact
       operationId: getArtifact
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: repo
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: digest
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Artifact digest (sha256:...)
-        - name: with_scan_overview
-          in: query
-          schema:
-            type: boolean
-            default: false
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: repo
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Artifact digest (sha256:...)
+      - name: with_scan_overview
+        in: query
+        schema:
+          type: boolean
+          default: false
       responses:
         '200':
           description: Artifact details
@@ -777,28 +794,27 @@ paths:
                 $ref: '#/components/schemas/Artifact'
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       tags:
-        - Artifacts
+      - Artifacts
       summary: Delete artifact
       operationId: deleteArtifact
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: repo
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: digest
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: repo
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Artifact deleted
@@ -808,40 +824,38 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # Tags
-  /projects/{name}/repositories/{repo}/artifacts/{digest}/tags:
+  /v1/registry/projects/{name}/repositories/{repo}/artifacts/{digest}/tags:
     get:
       tags:
-        - Artifacts
+      - Artifacts
       summary: List tags
       operationId: listTags
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: repo
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: digest
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: page_size
-          in: query
-          schema:
-            type: integer
-            default: 10
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: repo
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 10
       responses:
         '200':
           description: List of tags
@@ -851,34 +865,33 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Tag'
-
-  /projects/{name}/repositories/{repo}/artifacts/{digest}/tags/{tag}:
+  /v1/registry/projects/{name}/repositories/{repo}/artifacts/{digest}/tags/{tag}:
     post:
       tags:
-        - Artifacts
+      - Artifacts
       summary: Create tag
       operationId: createTag
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: repo
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: digest
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: tag
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: repo
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: tag
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '201':
           description: Tag created
@@ -890,33 +903,32 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '409':
           $ref: '#/components/responses/Conflict'
-
     delete:
       tags:
-        - Artifacts
+      - Artifacts
       summary: Delete tag
       operationId: deleteTag
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: repo
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: digest
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: tag
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: repo
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: tag
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Tag deleted
@@ -926,58 +938,55 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # Scans
-  /projects/{name}/repositories/{repo}/artifacts/{digest}/scan:
+  /v1/registry/projects/{name}/repositories/{repo}/artifacts/{digest}/scan:
     post:
       tags:
-        - Scans
+      - Scans
       summary: Trigger vulnerability scan
       operationId: triggerScan
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: repo
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: digest
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: repo
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '202':
           description: Scan triggered
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /projects/{name}/repositories/{repo}/artifacts/{digest}/scan/report:
+  /v1/registry/projects/{name}/repositories/{repo}/artifacts/{digest}/scan/report:
     get:
       tags:
-        - Scans
+      - Scans
       summary: Get scan report
       operationId: getScanReport
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: repo
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: digest
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: repo
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Scan report
@@ -987,30 +996,28 @@ paths:
                 $ref: '#/components/schemas/ScanReport'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # Webhooks
-  /webhooks:
+  /v1/registry/webhooks:
     get:
       tags:
-        - Webhooks
+      - Webhooks
       summary: List webhooks
       operationId: listWebhooks
       parameters:
-        - name: project_id
-          in: query
-          schema:
-            type: integer
-          description: Filter by project ID
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: page_size
-          in: query
-          schema:
-            type: integer
-            default: 10
+      - name: project_id
+        in: query
+        schema:
+          type: integer
+        description: Filter by project ID
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 10
       responses:
         '200':
           description: List of webhooks
@@ -1020,10 +1027,9 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Webhook'
-
     post:
       tags:
-        - Webhooks
+      - Webhooks
       summary: Create webhook
       operationId: createWebhook
       requestBody:
@@ -1041,19 +1047,18 @@ paths:
                 type: object
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /webhooks/{id}:
+  /v1/registry/webhooks/{id}:
     get:
       tags:
-        - Webhooks
+      - Webhooks
       summary: Get webhook
       operationId: getWebhook
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
       responses:
         '200':
           description: Webhook details
@@ -1063,18 +1068,17 @@ paths:
                 $ref: '#/components/schemas/Webhook'
         '404':
           $ref: '#/components/responses/NotFound'
-
     put:
       tags:
-        - Webhooks
+      - Webhooks
       summary: Update webhook
       operationId: updateWebhook
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
       requestBody:
         required: true
         content:
@@ -1090,18 +1094,17 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       tags:
-        - Webhooks
+      - Webhooks
       summary: Delete webhook
       operationId: deleteWebhook
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
       responses:
         '200':
           description: Webhook deleted
@@ -1111,29 +1114,27 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # Quotas
-  /quotas:
+  /v1/registry/quotas:
     get:
       tags:
-        - Quotas
+      - Quotas
       summary: List storage quotas
       operationId: listQuotas
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: page_size
-          in: query
-          schema:
-            type: integer
-            default: 10
-        - name: sort
-          in: query
-          schema:
-            type: string
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 10
+      - name: sort
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: List of quotas
