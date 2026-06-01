@@ -1,19 +1,30 @@
 openapi: 3.1.0
 info:
   title: Hanzo PubSub API
-  description: |
-    Hanzo PubSub provides high-performance publish/subscribe messaging with
+  description: 'Hanzo PubSub provides high-performance publish/subscribe messaging with
+
     persistent streaming (JetStream), distributed key-value store, and object
+
     storage.
 
+
     Features:
+
     - Subject-based publish/subscribe with wildcard subscriptions
+
     - Request/reply with automatic inbox routing
+
     - JetStream persistent streaming with at-least-once and exactly-once delivery
+
     - Distributed key-value store with watch, history, and TTL
+
     - Object store for large blobs with chunked upload
+
     - Multi-tenant account isolation
+
     - WebSocket transport for browser clients
+
+    '
   version: 1.0.0
   contact:
     name: Hanzo AI
@@ -21,36 +32,32 @@ info:
     email: support@hanzo.ai
   license:
     name: Proprietary
-
 servers:
-  - url: https://pubsub.hanzo.ai:8222
-    description: Monitoring API
-  - url: https://api.hanzo.ai/v1/pubsub
-    description: Gateway Proxy
-
+- url: https://pubsub.hanzo.ai
+  description: PubSub Production
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway (via api.hanzo.ai/v1/pubsub/*)
 tags:
-  - name: Publish
-    description: Publish messages to subjects
-  - name: Subscribe
-    description: Subscribe to subjects via SSE/WebSocket
-  - name: Request-Reply
-    description: Synchronous request/reply messaging
-  - name: Streams
-    description: JetStream stream management
-  - name: Consumers
-    description: JetStream consumer management
-  - name: Key-Value
-    description: Distributed key-value store operations
-  - name: Object Store
-    description: Large object storage operations
-  - name: Monitoring
-    description: Server monitoring and metrics
-  - name: Health
-    description: Service health
-
+- name: Publish
+  description: Publish messages to subjects
+- name: Subscribe
+  description: Subscribe to subjects via SSE/WebSocket
+- name: Request-Reply
+  description: Synchronous request/reply messaging
+- name: Streams
+  description: JetStream stream management
+- name: Consumers
+  description: JetStream consumer management
+- name: Key-Value
+  description: Distributed key-value store operations
+- name: Object Store
+  description: Large object storage operations
+- name: Monitoring
+  description: Server monitoring and metrics
+- name: Health
+  description: Service health
 security:
-  - bearerAuth: []
-
+- BearerAuth: []
 components:
   securitySchemes:
     bearerAuth:
@@ -58,7 +65,12 @@ components:
       scheme: bearer
       bearerFormat: HANZO_API_KEY
       description: Hanzo API Key (Bearer hk-...)
-
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
+        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
     Error:
       type: object
@@ -67,7 +79,6 @@ components:
           type: string
         code:
           type: integer
-
     Message:
       type: object
       properties:
@@ -84,12 +95,11 @@ components:
             items:
               type: string
           description: Optional message headers
-
     PublishRequest:
       type: object
       required:
-        - subject
-        - data
+      - subject
+      - data
       properties:
         subject:
           type: string
@@ -107,7 +117,6 @@ components:
         reply:
           type: string
           description: Reply-to subject for request/reply pattern
-
     PublishResponse:
       type: object
       properties:
@@ -122,12 +131,11 @@ components:
         duplicate:
           type: boolean
           description: Whether message was a duplicate (dedup by Msg-Id header)
-
     StreamConfig:
       type: object
       required:
-        - name
-        - subjects
+      - name
+      - subjects
       properties:
         name:
           type: string
@@ -138,20 +146,29 @@ components:
           items:
             type: string
           description: Subjects captured by this stream
-          example: ["orders.>"]
+          example:
+          - orders.>
         storage:
           type: string
-          enum: [file, memory]
+          enum:
+          - file
+          - memory
           default: file
           description: Storage backend
         replicas:
           type: integer
-          enum: [1, 3, 5]
+          enum:
+          - 1
+          - 3
+          - 5
           default: 1
           description: Replication factor
         retention:
           type: string
-          enum: [limits, interest, workqueue]
+          enum:
+          - limits
+          - interest
+          - workqueue
           default: limits
         max_msgs:
           type: integer
@@ -167,10 +184,11 @@ components:
           default: 0
         discard:
           type: string
-          enum: [old, new]
+          enum:
+          - old
+          - new
           default: old
           description: Discard policy when limits are reached
-
     StreamInfo:
       type: object
       properties:
@@ -192,11 +210,10 @@ components:
         created:
           type: string
           format: date-time
-
     ConsumerConfig:
       type: object
       required:
-        - durable_name
+      - durable_name
       properties:
         durable_name:
           type: string
@@ -204,11 +221,20 @@ components:
           example: order-processor
         deliver_policy:
           type: string
-          enum: [all, last, new, by_start_sequence, by_start_time, last_per_subject]
+          enum:
+          - all
+          - last
+          - new
+          - by_start_sequence
+          - by_start_time
+          - last_per_subject
           default: all
         ack_policy:
           type: string
-          enum: [explicit, none, all]
+          enum:
+          - explicit
+          - none
+          - all
           default: explicit
         filter_subject:
           type: string
@@ -221,7 +247,6 @@ components:
           type: integer
           description: Ack wait timeout in nanoseconds
           default: 30000000000
-
     ConsumerInfo:
       type: object
       properties:
@@ -245,7 +270,6 @@ components:
           type: integer
         num_redelivered:
           type: integer
-
     KVEntry:
       type: object
       properties:
@@ -261,12 +285,14 @@ components:
           format: date-time
         operation:
           type: string
-          enum: [PUT, DEL, PURGE]
-
+          enum:
+          - PUT
+          - DEL
+          - PURGE
     KVBucketConfig:
       type: object
       required:
-        - bucket
+      - bucket
       properties:
         bucket:
           type: string
@@ -282,13 +308,15 @@ components:
           default: 0
         replicas:
           type: integer
-          enum: [1, 3, 5]
+          enum:
+          - 1
+          - 3
+          - 5
           default: 1
         max_value_size:
           type: integer
           default: -1
           description: Maximum value size in bytes
-
     ObjectMeta:
       type: object
       properties:
@@ -311,7 +339,6 @@ components:
         modified:
           type: string
           format: date-time
-
     ServerVarz:
       type: object
       properties:
@@ -341,7 +368,6 @@ components:
           type: integer
         out_bytes:
           type: integer
-
     ConnInfo:
       type: object
       properties:
@@ -363,7 +389,6 @@ components:
           type: integer
         out_msgs:
           type: integer
-
     JetStreamInfo:
       type: object
       properties:
@@ -382,14 +407,15 @@ components:
               type: integer
             errors:
               type: integer
-
 paths:
-  /publish:
+  /v1/pubsub/publish:
     post:
       operationId: publishMessage
       summary: Publish a message
-      description: Publish a message to a subject. If the subject is captured by a JetStream stream, the message is durably stored.
-      tags: [Publish]
+      description: Publish a message to a subject. If the subject is captured by a JetStream stream, the message is durably
+        stored.
+      tags:
+      - Publish
       requestBody:
         required: true
         content:
@@ -422,28 +448,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  /subscribe:
+  /v1/pubsub/subscribe:
     get:
       operationId: subscribe
       summary: Subscribe to a subject (SSE)
-      description: |
-        Subscribe to messages on a subject using Server-Sent Events.
+      description: 'Subscribe to messages on a subject using Server-Sent Events.
+
         Supports wildcard subscriptions (`>` for multi-level, `*` for single-level).
-      tags: [Subscribe]
+
+        '
+      tags:
+      - Subscribe
       parameters:
-        - name: subject
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Subject to subscribe to (supports wildcards)
-          example: orders.>
-        - name: queue
-          in: query
-          schema:
-            type: string
-          description: Queue group name for load-balanced delivery
+      - name: subject
+        in: query
+        required: true
+        schema:
+          type: string
+        description: Subject to subscribe to (supports wildcards)
+        example: orders.>
+      - name: queue
+        in: query
+        schema:
+          type: string
+        description: Queue group name for load-balanced delivery
       responses:
         '200':
           description: SSE stream of messages
@@ -453,20 +481,20 @@ paths:
                 $ref: '#/components/schemas/Message'
         '401':
           description: Unauthorized
-
-  /request:
+  /v1/pubsub/request:
     post:
       operationId: requestReply
       summary: Request/reply
       description: Send a request and wait for a reply with timeout.
-      tags: [Request-Reply]
+      tags:
+      - Request-Reply
       parameters:
-        - name: timeout
-          in: query
-          schema:
-            type: integer
-            default: 5000
-          description: Timeout in milliseconds
+      - name: timeout
+        in: query
+        schema:
+          type: integer
+          default: 5000
+        description: Timeout in milliseconds
       requestBody:
         required: true
         content:
@@ -486,13 +514,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  /jetstream/streams:
+  /v1/pubsub/jetstream/streams:
     get:
       operationId: listStreams
       summary: List streams
       description: List all JetStream streams.
-      tags: [Streams]
+      tags:
+      - Streams
       responses:
         '200':
           description: Stream list
@@ -511,7 +539,8 @@ paths:
       operationId: createStream
       summary: Create a stream
       description: Create a new JetStream stream for persistent message storage.
-      tags: [Streams]
+      tags:
+      - Streams
       requestBody:
         required: true
         content:
@@ -523,7 +552,8 @@ paths:
                 summary: Orders stream
                 value:
                   name: ORDERS
-                  subjects: ["orders.>"]
+                  subjects:
+                  - orders.>
                   storage: file
                   replicas: 3
                   retention: limits
@@ -541,18 +571,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  /jetstream/streams/{stream}:
+  /v1/pubsub/jetstream/streams/{stream}:
     get:
       operationId: getStream
       summary: Get stream info
-      tags: [Streams]
+      tags:
+      - Streams
       parameters:
-        - name: stream
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: stream
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Stream info
@@ -565,13 +595,14 @@ paths:
     put:
       operationId: updateStream
       summary: Update stream config
-      tags: [Streams]
+      tags:
+      - Streams
       parameters:
-        - name: stream
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: stream
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -588,30 +619,31 @@ paths:
     delete:
       operationId: deleteStream
       summary: Delete a stream
-      tags: [Streams]
+      tags:
+      - Streams
       parameters:
-        - name: stream
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: stream
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Stream deleted
         '404':
           description: Stream not found
-
-  /jetstream/streams/{stream}/consumers:
+  /v1/pubsub/jetstream/streams/{stream}/consumers:
     get:
       operationId: listConsumers
       summary: List consumers
-      tags: [Consumers]
+      tags:
+      - Consumers
       parameters:
-        - name: stream
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: stream
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Consumer list
@@ -630,13 +662,14 @@ paths:
       operationId: createConsumer
       summary: Create a consumer
       description: Create a durable or ephemeral consumer on a stream.
-      tags: [Consumers]
+      tags:
+      - Consumers
       parameters:
-        - name: stream
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: stream
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -657,23 +690,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConsumerInfo'
-
-  /jetstream/streams/{stream}/consumers/{consumer}:
+  /v1/pubsub/jetstream/streams/{stream}/consumers/{consumer}:
     get:
       operationId: getConsumer
       summary: Get consumer info
-      tags: [Consumers]
+      tags:
+      - Consumers
       parameters:
-        - name: stream
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: consumer
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: stream
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: consumer
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Consumer info
@@ -684,33 +717,34 @@ paths:
     delete:
       operationId: deleteConsumer
       summary: Delete a consumer
-      tags: [Consumers]
+      tags:
+      - Consumers
       parameters:
-        - name: stream
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: consumer
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: stream
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: consumer
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Consumer deleted
-
-  /kv/{bucket}:
+  /v1/pubsub/kv/{bucket}:
     post:
       operationId: createKVBucket
       summary: Create a KV bucket
-      tags: [Key-Value]
+      tags:
+      - Key-Value
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -723,38 +757,39 @@ paths:
     delete:
       operationId: deleteKVBucket
       summary: Delete a KV bucket
-      tags: [Key-Value]
+      tags:
+      - Key-Value
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Bucket deleted
-
-  /kv/{bucket}/{key}:
+  /v1/pubsub/kv/{bucket}/{key}:
     get:
       operationId: kvGet
       summary: Get a value
-      tags: [Key-Value]
+      tags:
+      - Key-Value
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: revision
-          in: query
-          schema:
-            type: integer
-          description: Specific revision to retrieve
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: revision
+        in: query
+        schema:
+          type: integer
+        description: Specific revision to retrieve
       responses:
         '200':
           description: Value found
@@ -767,18 +802,19 @@ paths:
     put:
       operationId: kvPut
       summary: Set a value
-      tags: [Key-Value]
+      tags:
+      - Key-Value
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -799,40 +835,41 @@ paths:
     delete:
       operationId: kvDelete
       summary: Delete a key
-      tags: [Key-Value]
+      tags:
+      - Key-Value
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Key deleted
         '404':
           description: Key not found
-
-  /kv/{bucket}/{key}/history:
+  /v1/pubsub/kv/{bucket}/{key}/history:
     get:
       operationId: kvHistory
       summary: Get key history
-      tags: [Key-Value]
+      tags:
+      - Key-Value
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: key
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Key history
@@ -845,18 +882,18 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/KVEntry'
-
-  /objects/{bucket}:
+  /v1/pubsub/objects/{bucket}:
     get:
       operationId: listObjects
       summary: List objects in a bucket
-      tags: [Object Store]
+      tags:
+      - Object Store
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Object list
@@ -869,23 +906,23 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/ObjectMeta'
-
-  /objects/{bucket}/{name}:
+  /v1/pubsub/objects/{bucket}/{name}:
     get:
       operationId: getObject
       summary: Download an object
-      tags: [Object Store]
+      tags:
+      - Object Store
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Object data
@@ -900,22 +937,23 @@ paths:
       operationId: putObject
       summary: Upload an object
       description: Upload a large object with automatic chunking and SHA-256 integrity.
-      tags: [Object Store]
+      tags:
+      - Object Store
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: description
-          in: query
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: description
+        in: query
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -933,28 +971,29 @@ paths:
     delete:
       operationId: deleteObject
       summary: Delete an object
-      tags: [Object Store]
+      tags:
+      - Object Store
       parameters:
-        - name: bucket
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: bucket
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Object deleted
-
-  /varz:
+  /v1/pubsub/varz:
     get:
       operationId: getVarz
       summary: Server statistics
       description: General server information including uptime, connections, message rates.
-      tags: [Monitoring]
+      tags:
+      - Monitoring
       security: []
       responses:
         '200':
@@ -963,26 +1002,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ServerVarz'
-
-  /connz:
+  /v1/pubsub/connz:
     get:
       operationId: getConnz
       summary: Connection details
       description: Active client connection information.
-      tags: [Monitoring]
+      tags:
+      - Monitoring
       security: []
       parameters:
-        - name: sort
-          in: query
-          schema:
-            type: string
-            enum: [cid, start, subs, pending, msgs_to, msgs_from, bytes_to, bytes_from, last, idle, uptime, stop, reason]
-          description: Sort connections by field
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 1024
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - cid
+          - start
+          - subs
+          - pending
+          - msgs_to
+          - msgs_from
+          - bytes_to
+          - bytes_from
+          - last
+          - idle
+          - uptime
+          - stop
+          - reason
+        description: Sort connections by field
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 1024
       responses:
         '200':
           description: Connection info
@@ -997,13 +1049,13 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/ConnInfo'
-
-  /jsz:
+  /v1/pubsub/jsz:
     get:
       operationId: getJsz
       summary: JetStream info
       description: JetStream account and usage information.
-      tags: [Monitoring]
+      tags:
+      - Monitoring
       security: []
       responses:
         '200':
@@ -1012,13 +1064,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JetStreamInfo'
-
-  /routez:
+  /v1/pubsub/routez:
     get:
       operationId: getRoutez
       summary: Cluster routes
       description: Cluster route connection information.
-      tags: [Monitoring]
+      tags:
+      - Monitoring
       security: []
       responses:
         '200':
@@ -1027,13 +1079,13 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /gatewayz:
+  /v1/pubsub/gatewayz:
     get:
       operationId: getGatewayz
       summary: Gateway status
       description: Super-cluster gateway connection status.
-      tags: [Monitoring]
+      tags:
+      - Monitoring
       security: []
       responses:
         '200':
@@ -1042,13 +1094,13 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /leafz:
+  /v1/pubsub/leafz:
     get:
       operationId: getLeafz
       summary: Leaf node info
       description: Leaf node connection details.
-      tags: [Monitoring]
+      tags:
+      - Monitoring
       security: []
       responses:
         '200':
@@ -1057,13 +1109,13 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /subsz:
+  /v1/pubsub/subsz:
     get:
       operationId: getSubsz
       summary: Subscription info
       description: Subscription routing tree information.
-      tags: [Monitoring]
+      tags:
+      - Monitoring
       security: []
       responses:
         '200':
@@ -1072,13 +1124,13 @@ paths:
             application/json:
               schema:
                 type: object
-
   /healthz:
     get:
       operationId: healthCheck
       summary: Health check
       description: Returns 200 when the server is ready to accept connections.
-      tags: [Health]
+      tags:
+      - Health
       security: []
       responses:
         '200':
@@ -1090,6 +1142,7 @@ paths:
                 properties:
                   status:
                     type: string
-                    enum: [ok]
+                    enum:
+                    - ok
         '503':
           description: Server is not ready
