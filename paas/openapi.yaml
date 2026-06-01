@@ -1,17 +1,26 @@
 openapi: 3.1.0
 info:
   title: Hanzo PaaS API
-  description: |
-    Production PaaS for Hanzo Platform — K8s-native GitOps deployments,
+  description: 'Production PaaS for Hanzo Platform — K8s-native GitOps deployments,
+
     per-org DOKS cluster management, and fleet operations.
 
+
     Features:
+
     - Per-organization isolated DOKS clusters
+
     - Fleet management across multiple clusters
+
     - KMS-managed secrets (kms.hanzo.ai)
+
     - Unified IAM via hanzo.id
+
     - Nixpacks-based build system
+
     - Tekton CI/CD pipelines
+
+    '
   version: 1.0.0
   contact:
     name: Hanzo AI
@@ -19,48 +28,44 @@ info:
     email: support@hanzo.ai
   license:
     name: Proprietary
-
 servers:
-  - url: https://paas.hanzo.ai
-    description: Production
-  - url: https://api.hanzo.ai/v1/paas
-    description: Gateway Proxy
-
+- url: https://paas.hanzo.ai
+  description: PaaS Production
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway (via api.hanzo.ai/v1/paas/*)
 tags:
-  - name: Cluster
-    description: Cluster setup, info, and management
-  - name: DOKS
-    description: DigitalOcean Kubernetes cluster provisioning and fleet management
-  - name: Auth
-    description: Authentication and session management
-  - name: Organizations
-    description: Organization management
-  - name: Projects
-    description: Project management (grouping of environments)
-  - name: Environments
-    description: Environment lifecycle within projects
-  - name: Containers
-    description: Container/application lifecycle (build, deploy, scale)
-  - name: Domains
-    description: Domain and routing configuration
-  - name: Storage
-    description: Object storage management
-  - name: Registry
-    description: Container registry configuration
-  - name: Git
-    description: Git provider integration
-  - name: Logs
-    description: Container and build logs
-  - name: Telemetry
-    description: Resource usage and metrics
-  - name: System
-    description: System configuration
-  - name: Health
-    description: Service health checks
-
+- name: Cluster
+  description: Cluster setup, info, and management
+- name: DOKS
+  description: DigitalOcean Kubernetes cluster provisioning and fleet management
+- name: Auth
+  description: Authentication and session management
+- name: Organizations
+  description: Organization management
+- name: Projects
+  description: Project management (grouping of environments)
+- name: Environments
+  description: Environment lifecycle within projects
+- name: Containers
+  description: Container/application lifecycle (build, deploy, scale)
+- name: Domains
+  description: Domain and routing configuration
+- name: Storage
+  description: Object storage management
+- name: Registry
+  description: Container registry configuration
+- name: Git
+  description: Git provider integration
+- name: Logs
+  description: Container and build logs
+- name: Telemetry
+  description: Resource usage and metrics
+- name: System
+  description: System configuration
+- name: Health
+  description: Service health checks
 security:
-  - bearerAuth: []
-
+- BearerAuth: []
 components:
   securitySchemes:
     bearerAuth:
@@ -68,7 +73,12 @@ components:
       scheme: bearer
       bearerFormat: HANZO_API_KEY
       description: Hanzo API Key (Bearer hk-...)
-
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
+        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
     Error:
       type: object
@@ -79,7 +89,6 @@ components:
           type: string
         details:
           type: object
-
     Cluster:
       type: object
       properties:
@@ -104,7 +113,6 @@ components:
         createdAt:
           type: string
           format: date-time
-
     DOKSCluster:
       type: object
       properties:
@@ -118,7 +126,12 @@ components:
           type: string
         status:
           type: string
-          enum: [provisioning, running, degraded, error, deleted]
+          enum:
+          - provisioning
+          - running
+          - degraded
+          - error
+          - deleted
         node_count:
           type: integer
         node_pools:
@@ -133,7 +146,6 @@ components:
         created_at:
           type: string
           format: date-time
-
     NodePool:
       type: object
       properties:
@@ -163,7 +175,6 @@ components:
                 type: string
               status:
                 type: string
-
     Organization:
       type: object
       properties:
@@ -194,7 +205,6 @@ components:
         updatedAt:
           type: string
           format: date-time
-
     Project:
       type: object
       properties:
@@ -217,7 +227,10 @@ components:
                 type: string
               role:
                 type: string
-                enum: [Admin, Developer, Viewer]
+                enum:
+                - Admin
+                - Developer
+                - Viewer
         environments:
           type: array
           items:
@@ -225,7 +238,6 @@ components:
         createdAt:
           type: string
           format: date-time
-
     Environment:
       type: object
       properties:
@@ -253,7 +265,6 @@ components:
         createdAt:
           type: string
           format: date-time
-
     Container:
       type: object
       properties:
@@ -271,13 +282,21 @@ components:
           type: string
         type:
           type: string
-          enum: [deployment, statefulset, cronjob, knativeservice]
+          enum:
+          - deployment
+          - statefulset
+          - cronjob
+          - knativeservice
         status:
           type: object
           properties:
             status:
               type: string
-              enum: [OK, Error, Updating, Creating]
+              enum:
+              - OK
+              - Error
+              - Updating
+              - Creating
             availableReplicas:
               type: integer
             readyReplicas:
@@ -290,7 +309,10 @@ components:
           properties:
             type:
               type: string
-              enum: [github, gitlab, bitbucket]
+              enum:
+              - github
+              - gitlab
+              - bitbucket
             url:
               type: string
             branch:
@@ -309,11 +331,12 @@ components:
                   type: boolean
                 type:
                   type: string
-                  enum: [path, subdomain]
+                  enum:
+                  - path
+                  - subdomain
         createdAt:
           type: string
           format: date-time
-
     Domain:
       type: object
       properties:
@@ -330,7 +353,6 @@ components:
         createdAt:
           type: string
           format: date-time
-
     FleetOverview:
       type: object
       properties:
@@ -363,7 +385,6 @@ components:
           type: integer
         totalMonthlyCost:
           type: number
-
   responses:
     BadRequest:
       description: Bad Request
@@ -395,13 +416,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-
 paths:
-  # Health
   /health:
     get:
       tags:
-        - Health
+      - Health
       summary: Health check
       operationId: healthCheck
       security: []
@@ -415,15 +434,14 @@ paths:
                 properties:
                   status:
                     type: string
-                    enum: [ok]
+                    enum:
+                    - ok
                   version:
                     type: string
-
-  # Cluster Setup
-  /v1/cluster/setup-status:
+  /v1/paas/cluster/setup-status:
     get:
       tags:
-        - Cluster
+      - Cluster
       summary: Check cluster setup status
       operationId: getSetupStatus
       security: []
@@ -437,11 +455,10 @@ paths:
                 properties:
                   status:
                     type: boolean
-
-  /v1/cluster/info:
+  /v1/paas/cluster/info:
     get:
       tags:
-        - Cluster
+      - Cluster
       summary: Get cluster info
       operationId: getClusterInfo
       responses:
@@ -451,11 +468,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Cluster'
-
-  /v1/cluster/domains:
+  /v1/paas/cluster/domains:
     get:
       tags:
-        - Cluster
+      - Cluster
       summary: List cluster domains
       operationId: listClusterDomains
       responses:
@@ -469,7 +485,7 @@ paths:
                   type: string
     post:
       tags:
-        - Cluster
+      - Cluster
       summary: Add cluster domain
       operationId: addClusterDomain
       requestBody:
@@ -479,7 +495,7 @@ paths:
             schema:
               type: object
               required:
-                - domain
+              - domain
               properties:
                 domain:
                   type: string
@@ -492,19 +508,18 @@ paths:
                 type: object
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /v1/cluster/domains/{domain}:
+  /v1/paas/cluster/domains/{domain}:
     delete:
       tags:
-        - Cluster
+      - Cluster
       summary: Remove cluster domain
       operationId: removeClusterDomain
       parameters:
-        - name: domain
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: domain
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Domain removed
@@ -514,12 +529,10 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # DOKS Fleet Management
-  /v1/cluster/doks/fleet:
+  /v1/paas/cluster/doks/fleet:
     get:
       tags:
-        - DOKS
+      - DOKS
       summary: Fleet overview (all org clusters)
       operationId: getDOKSFleet
       responses:
@@ -529,11 +542,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FleetOverview'
-
-  /v1/cluster/doks/options:
+  /v1/paas/cluster/doks/options:
     get:
       tags:
-        - DOKS
+      - DOKS
       summary: Available regions and node sizes
       operationId: getDOKSOptions
       responses:
@@ -576,19 +588,18 @@ paths:
                     type: array
                     items:
                       type: string
-
-  /v1/cluster/doks/pricing/{sizeSlug}:
+  /v1/paas/cluster/doks/pricing/{sizeSlug}:
     get:
       tags:
-        - DOKS
+      - DOKS
       summary: Get droplet pricing
       operationId: getDOKSPricing
       parameters:
-        - name: sizeSlug
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: sizeSlug
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Pricing info
@@ -603,11 +614,10 @@ paths:
                     type: number
                   price_hourly:
                     type: number
-
-  /v1/cluster/doks/provision:
+  /v1/paas/cluster/doks/provision:
     post:
       tags:
-        - DOKS
+      - DOKS
       summary: Provision new DOKS cluster for org
       operationId: provisionDOKS
       requestBody:
@@ -617,11 +627,11 @@ paths:
             schema:
               type: object
               required:
-                - orgId
-                - name
-                - region
-                - version
-                - nodePool
+              - orgId
+              - name
+              - region
+              - version
+              - nodePool
               properties:
                 orgId:
                   type: string
@@ -637,9 +647,9 @@ paths:
                 nodePool:
                   type: object
                   required:
-                    - name
-                    - size
-                    - count
+                  - name
+                  - size
+                  - count
                   properties:
                     name:
                       type: string
@@ -662,19 +672,18 @@ paths:
                 $ref: '#/components/schemas/DOKSCluster'
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /v1/cluster/doks/{orgId}/status:
+  /v1/paas/cluster/doks/{orgId}/status:
     get:
       tags:
-        - DOKS
+      - DOKS
       summary: Get cluster status (polls DO API)
       operationId: getDOKSStatus
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Cluster status
@@ -684,19 +693,18 @@ paths:
                 $ref: '#/components/schemas/DOKSCluster'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /v1/cluster/doks/{orgId}/kubeconfig:
+  /v1/paas/cluster/doks/{orgId}/kubeconfig:
     get:
       tags:
-        - DOKS
+      - DOKS
       summary: Download kubeconfig
       operationId: getDOKSKubeconfig
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Kubeconfig YAML
@@ -706,19 +714,18 @@ paths:
                 type: string
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /v1/cluster/doks/{orgId}/node-pools:
+  /v1/paas/cluster/doks/{orgId}/node-pools:
     get:
       tags:
-        - DOKS
+      - DOKS
       summary: List node pools
       operationId: listDOKSNodePools
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Node pools
@@ -730,15 +737,15 @@ paths:
                   $ref: '#/components/schemas/NodePool'
     post:
       tags:
-        - DOKS
+      - DOKS
       summary: Add node pool
       operationId: addDOKSNodePool
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -754,24 +761,23 @@ paths:
                 type: object
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /v1/cluster/doks/{orgId}/node-pools/{poolId}:
+  /v1/paas/cluster/doks/{orgId}/node-pools/{poolId}:
     put:
       tags:
-        - DOKS
+      - DOKS
       summary: Update node pool
       operationId: updateDOKSNodePool
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: poolId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: poolId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -798,20 +804,20 @@ paths:
                 type: object
     delete:
       tags:
-        - DOKS
+      - DOKS
       summary: Delete node pool
       operationId: deleteDOKSNodePool
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: poolId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: poolId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Node pool deleted
@@ -819,19 +825,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/cluster/doks/{orgId}/upgrade-ha:
+  /v1/paas/cluster/doks/{orgId}/upgrade-ha:
     post:
       tags:
-        - DOKS
+      - DOKS
       summary: Upgrade to HA control plane
       operationId: upgradeDOKSHA
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: HA upgrade initiated
@@ -839,25 +844,24 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/cluster/doks/{orgId}:
+  /v1/paas/cluster/doks/{orgId}:
     delete:
       tags:
-        - DOKS
+      - DOKS
       summary: Destroy DOKS cluster
       operationId: destroyDOKS
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: confirm
-          in: query
-          required: true
-          schema:
-            type: boolean
-          description: Must be true to confirm destruction
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: confirm
+        in: query
+        required: true
+        schema:
+          type: boolean
+        description: Must be true to confirm destruction
       responses:
         '200':
           description: Cluster destruction initiated
@@ -867,12 +871,10 @@ paths:
                 type: object
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  # Auth
-  /v1/auth/login:
+  /v1/paas/auth/login:
     post:
       tags:
-        - Auth
+      - Auth
       summary: Login via IAM
       operationId: login
       security: []
@@ -884,7 +886,11 @@ paths:
               properties:
                 provider:
                   type: string
-                  enum: [hanzo, github, gitlab, bitbucket]
+                  enum:
+                  - hanzo
+                  - github
+                  - gitlab
+                  - bitbucket
                 code:
                   type: string
                 redirect_uri:
@@ -901,11 +907,10 @@ paths:
                     type: string
                   user:
                     type: object
-
-  /v1/auth/me:
+  /v1/paas/auth/me:
     get:
       tags:
-        - Auth
+      - Auth
       summary: Get current user
       operationId: getCurrentUser
       responses:
@@ -915,12 +920,10 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # Organizations
-  /v1/org:
+  /v1/paas/org:
     get:
       tags:
-        - Organizations
+      - Organizations
       summary: List organizations
       operationId: listOrganizations
       responses:
@@ -934,7 +937,7 @@ paths:
                   $ref: '#/components/schemas/Organization'
     post:
       tags:
-        - Organizations
+      - Organizations
       summary: Create organization
       operationId: createOrganization
       requestBody:
@@ -944,7 +947,7 @@ paths:
             schema:
               type: object
               required:
-                - name
+              - name
               properties:
                 name:
                   type: string
@@ -957,19 +960,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Organization'
-
-  /v1/org/{orgId}:
+  /v1/paas/org/{orgId}:
     get:
       tags:
-        - Organizations
+      - Organizations
       summary: Get organization
       operationId: getOrganization
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Organization details
@@ -979,15 +981,15 @@ paths:
                 $ref: '#/components/schemas/Organization'
     put:
       tags:
-        - Organizations
+      - Organizations
       summary: Update organization
       operationId: updateOrganization
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -1008,15 +1010,15 @@ paths:
                 type: object
     delete:
       tags:
-        - Organizations
+      - Organizations
       summary: Delete organization
       operationId: deleteOrganization
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Organization deleted
@@ -1024,20 +1026,18 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # Projects
-  /v1/org/{orgId}/project:
+  /v1/paas/org/{orgId}/project:
     get:
       tags:
-        - Projects
+      - Projects
       summary: List projects
       operationId: listProjects
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: List of projects
@@ -1049,15 +1049,15 @@ paths:
                   $ref: '#/components/schemas/Project'
     post:
       tags:
-        - Projects
+      - Projects
       summary: Create project
       operationId: createProject
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -1065,7 +1065,7 @@ paths:
             schema:
               type: object
               required:
-                - name
+              - name
               properties:
                 name:
                   type: string
@@ -1078,24 +1078,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Project'
-
-  /v1/org/{orgId}/project/{projectId}:
+  /v1/paas/org/{orgId}/project/{projectId}:
     get:
       tags:
-        - Projects
+      - Projects
       summary: Get project
       operationId: getProject
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Project details
@@ -1105,20 +1104,20 @@ paths:
                 $ref: '#/components/schemas/Project'
     put:
       tags:
-        - Projects
+      - Projects
       summary: Update project
       operationId: updateProject
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -1139,20 +1138,20 @@ paths:
                 type: object
     delete:
       tags:
-        - Projects
+      - Projects
       summary: Delete project
       operationId: deleteProject
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Project deleted
@@ -1160,25 +1159,23 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # Environments
-  /v1/org/{orgId}/project/{projectId}/env:
+  /v1/paas/org/{orgId}/project/{projectId}/env:
     get:
       tags:
-        - Environments
+      - Environments
       summary: List environments
       operationId: listEnvironments
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: List of environments
@@ -1190,20 +1187,20 @@ paths:
                   $ref: '#/components/schemas/Environment'
     post:
       tags:
-        - Environments
+      - Environments
       summary: Create environment
       operationId: createEnvironment
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -1211,7 +1208,7 @@ paths:
             schema:
               type: object
               required:
-                - name
+              - name
               properties:
                 name:
                   type: string
@@ -1222,29 +1219,28 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/org/{orgId}/project/{projectId}/env/{envId}:
+  /v1/paas/org/{orgId}/project/{projectId}/env/{envId}:
     get:
       tags:
-        - Environments
+      - Environments
       summary: Get environment
       operationId: getEnvironment
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: envId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: envId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Environment details
@@ -1254,25 +1250,25 @@ paths:
                 $ref: '#/components/schemas/Environment'
     delete:
       tags:
-        - Environments
+      - Environments
       summary: Delete environment
       operationId: deleteEnvironment
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: envId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: envId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Environment deleted
@@ -1280,30 +1276,28 @@ paths:
             application/json:
               schema:
                 type: object
-
-  # Containers
-  /v1/org/{orgId}/project/{projectId}/env/{envId}/containers:
+  /v1/paas/org/{orgId}/project/{projectId}/env/{envId}/containers:
     get:
       tags:
-        - Containers
+      - Containers
       summary: List containers
       operationId: listContainers
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: envId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: envId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: List of containers
@@ -1315,25 +1309,25 @@ paths:
                   $ref: '#/components/schemas/Container'
     post:
       tags:
-        - Containers
+      - Containers
       summary: Create container
       operationId: createContainer
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: envId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: envId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -1341,14 +1335,18 @@ paths:
             schema:
               type: object
               required:
-                - name
-                - type
+              - name
+              - type
               properties:
                 name:
                   type: string
                 type:
                   type: string
-                  enum: [deployment, statefulset, cronjob, knativeservice]
+                  enum:
+                  - deployment
+                  - statefulset
+                  - cronjob
+                  - knativeservice
                 template:
                   type: string
                   description: Template slug (nodejs, python, go, rust, etc.)
@@ -1357,7 +1355,10 @@ paths:
                   properties:
                     type:
                       type: string
-                      enum: [github, gitlab, bitbucket]
+                      enum:
+                      - github
+                      - gitlab
+                      - bitbucket
                     url:
                       type: string
                     branch:
@@ -1369,34 +1370,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Container'
-
-  /v1/org/{orgId}/project/{projectId}/env/{envId}/containers/{containerId}:
+  /v1/paas/org/{orgId}/project/{projectId}/env/{envId}/containers/{containerId}:
     get:
       tags:
-        - Containers
+      - Containers
       summary: Get container
       operationId: getContainer
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: envId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: containerId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: envId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: containerId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Container details
@@ -1406,30 +1406,30 @@ paths:
                 $ref: '#/components/schemas/Container'
     put:
       tags:
-        - Containers
+      - Containers
       summary: Update container
       operationId: updateContainer
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: envId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: containerId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: envId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: containerId
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -1445,30 +1445,30 @@ paths:
                 type: object
     delete:
       tags:
-        - Containers
+      - Containers
       summary: Delete container
       operationId: deleteContainer
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: envId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: containerId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: envId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: containerId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Container deleted
@@ -1476,34 +1476,33 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/org/{orgId}/project/{projectId}/env/{envId}/containers/{containerId}/deploy:
+  /v1/paas/org/{orgId}/project/{projectId}/env/{envId}/containers/{containerId}/deploy:
     post:
       tags:
-        - Containers
+      - Containers
       summary: Trigger deployment (Nixpacks build + deploy)
       operationId: deployContainer
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: envId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: containerId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: envId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: containerId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Deployment triggered
@@ -1511,34 +1510,33 @@ paths:
             application/json:
               schema:
                 type: object
-
-  /v1/org/{orgId}/project/{projectId}/env/{envId}/containers/{containerId}/pods:
+  /v1/paas/org/{orgId}/project/{projectId}/env/{envId}/containers/{containerId}/pods:
     get:
       tags:
-        - Containers
+      - Containers
       summary: List container pods
       operationId: listContainerPods
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: envId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: containerId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: envId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: containerId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Pod list
@@ -1559,44 +1557,43 @@ paths:
                       type: integer
                     age:
                       type: string
-
-  /v1/org/{orgId}/project/{projectId}/env/{envId}/containers/{containerId}/logs:
+  /v1/paas/org/{orgId}/project/{projectId}/env/{envId}/containers/{containerId}/logs:
     get:
       tags:
-        - Logs
+      - Logs
       summary: Get container logs
       operationId: getContainerLogs
       parameters:
-        - name: orgId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: projectId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: envId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: containerId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: tail
-          in: query
-          schema:
-            type: integer
-            default: 100
-        - name: follow
-          in: query
-          schema:
-            type: boolean
-            default: false
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: envId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: containerId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: tail
+        in: query
+        schema:
+          type: integer
+          default: 100
+      - name: follow
+        in: query
+        schema:
+          type: boolean
+          default: false
       responses:
         '200':
           description: Container logs
@@ -1607,12 +1604,10 @@ paths:
             text/event-stream:
               schema:
                 type: string
-
-  # System
-  /v1/system/templates:
+  /v1/paas/system/templates:
     get:
       tags:
-        - System
+      - System
       summary: List available templates
       operationId: listTemplates
       security: []
