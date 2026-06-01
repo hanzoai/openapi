@@ -1,17 +1,26 @@
 openapi: 3.1.0
 info:
   title: Hanzo Edge API
-  description: |
-    Hanzo Edge provides serverless edge functions with global deployment,
+  description: 'Hanzo Edge provides serverless edge functions with global deployment,
+
     instant scaling, and zero cold starts.
 
+
     Features:
+
     - Deploy TypeScript/JavaScript functions to edge locations worldwide
+
     - Sub-millisecond cold starts via V8 isolates
+
     - Integrated secrets management
+
     - Custom domain support with automatic TLS
+
     - Streaming responses and SSE support
+
     - Built-in metrics and log tailing
+
+    '
   version: 1.0.0
   contact:
     name: Hanzo AI
@@ -19,28 +28,24 @@ info:
     email: support@hanzo.ai
   license:
     name: Proprietary
-
 servers:
-  - url: https://edge.hanzo.ai
-    description: Production
-  - url: https://api.hanzo.ai/v1/edge
-    description: Gateway Proxy
-
+- url: https://edge.hanzo.ai
+  description: Edge Production
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway (via api.hanzo.ai/v1/edge/*)
 tags:
-  - name: Functions
-    description: Edge function lifecycle management
-  - name: Versions
-    description: Function version history
-  - name: Logs
-    description: Function execution logs
-  - name: Secrets
-    description: Environment secrets for functions
-  - name: Domains
-    description: Custom domain management
-
+- name: Functions
+  description: Edge function lifecycle management
+- name: Versions
+  description: Function version history
+- name: Logs
+  description: Function execution logs
+- name: Secrets
+  description: Environment secrets for functions
+- name: Domains
+  description: Custom domain management
 security:
-  - bearerAuth: []
-
+- BearerAuth: []
 components:
   securitySchemes:
     bearerAuth:
@@ -48,7 +53,12 @@ components:
       scheme: bearer
       bearerFormat: HANZO_API_KEY
       description: Hanzo API Key (Bearer hk-...)
-
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
+        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
     Error:
       type: object
@@ -57,7 +67,6 @@ components:
           type: string
         message:
           type: string
-
     Function:
       type: object
       properties:
@@ -71,13 +80,19 @@ components:
           type: string
         status:
           type: string
-          enum: [active, inactive, deploying, failed]
+          enum:
+          - active
+          - inactive
+          - deploying
+          - failed
         version:
           type: integer
           description: Current deployed version number
         runtime:
           type: string
-          enum: [deno, node]
+          enum:
+          - deno
+          - node
           default: deno
         entrypoint:
           type: string
@@ -97,12 +112,11 @@ components:
         updated_at:
           type: string
           format: date-time
-
     FunctionCreate:
       type: object
       required:
-        - slug
-        - name
+      - slug
+      - name
       properties:
         slug:
           type: string
@@ -118,7 +132,6 @@ components:
         entrypoint:
           type: string
           default: index.ts
-
     FunctionUpdate:
       type: object
       properties:
@@ -130,7 +143,6 @@ components:
           type: boolean
         entrypoint:
           type: string
-
     FunctionVersion:
       type: object
       properties:
@@ -138,7 +150,9 @@ components:
           type: integer
         status:
           type: string
-          enum: [active, inactive]
+          enum:
+          - active
+          - inactive
         entrypoint:
           type: string
         import_map:
@@ -146,7 +160,6 @@ components:
         created_at:
           type: string
           format: date-time
-
     FunctionMetrics:
       type: object
       properties:
@@ -172,7 +185,6 @@ components:
         data_out_bytes:
           type: integer
           format: int64
-
     LogEntry:
       type: object
       properties:
@@ -183,15 +195,22 @@ components:
           format: date-time
         event_type:
           type: string
-          enum: [uncaughtException, log, boot, beforeUnload]
+          enum:
+          - uncaughtException
+          - log
+          - boot
+          - beforeUnload
         level:
           type: string
-          enum: [info, warn, error, debug]
+          enum:
+          - info
+          - warn
+          - error
+          - debug
         message:
           type: string
         execution_id:
           type: string
-
     Secret:
       type: object
       properties:
@@ -206,19 +225,17 @@ components:
         updated_at:
           type: string
           format: date-time
-
     SecretCreate:
       type: object
       required:
-        - name
-        - value
+      - name
+      - value
       properties:
         name:
           type: string
           pattern: ^[A-Z_][A-Z0-9_]{0,127}$
         value:
           type: string
-
     Domain:
       type: object
       properties:
@@ -231,16 +248,25 @@ components:
           type: string
         status:
           type: string
-          enum: [pending, active, error]
+          enum:
+          - pending
+          - active
+          - error
         tls_state:
           type: string
-          enum: [pending, provisioning, active, failed]
+          enum:
+          - pending
+          - provisioning
+          - active
+          - failed
         verification:
           type: object
           properties:
             type:
               type: string
-              enum: [CNAME, TXT]
+              enum:
+              - CNAME
+              - TXT
             name:
               type: string
             value:
@@ -248,18 +274,16 @@ components:
         created_at:
           type: string
           format: date-time
-
     DomainCreate:
       type: object
       required:
-        - hostname
-        - function_slug
+      - hostname
+      - function_slug
       properties:
         hostname:
           type: string
         function_slug:
           type: string
-
   responses:
     BadRequest:
       description: Bad Request
@@ -285,31 +309,33 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-
 paths:
-  # Functions
-  /functions:
+  /v1/edge/functions:
     get:
       tags:
-        - Functions
+      - Functions
       summary: List functions
       operationId: listFunctions
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: page_size
-          in: query
-          schema:
-            type: integer
-            default: 20
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [active, inactive, deploying, failed]
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 20
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - active
+          - inactive
+          - deploying
+          - failed
       responses:
         '200':
           description: List of functions
@@ -321,10 +347,9 @@ paths:
                   $ref: '#/components/schemas/Function'
         '401':
           $ref: '#/components/responses/Unauthorized'
-
     post:
       tags:
-        - Functions
+      - Functions
       summary: Create function
       operationId: createFunction
       requestBody:
@@ -342,19 +367,18 @@ paths:
                 $ref: '#/components/schemas/Function'
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /functions/{slug}:
+  /v1/edge/functions/{slug}:
     get:
       tags:
-        - Functions
+      - Functions
       summary: Get function
       operationId: getFunction
       parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Function details
@@ -364,18 +388,17 @@ paths:
                 $ref: '#/components/schemas/Function'
         '404':
           $ref: '#/components/responses/NotFound'
-
     put:
       tags:
-        - Functions
+      - Functions
       summary: Update function
       operationId: updateFunction
       parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -391,18 +414,17 @@ paths:
                 $ref: '#/components/schemas/Function'
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       tags:
-        - Functions
+      - Functions
       summary: Delete function
       operationId: deleteFunction
       parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Function deleted
@@ -412,22 +434,23 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /functions/{slug}/deploy:
+  /v1/edge/functions/{slug}/deploy:
     post:
       tags:
-        - Functions
+      - Functions
       summary: Deploy function
       operationId: deployFunction
-      description: |
-        Deploy function source code. Upload a tarball or zip containing
+      description: 'Deploy function source code. Upload a tarball or zip containing
+
         the function source. Creates a new version on success.
+
+        '
       parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -451,22 +474,23 @@ paths:
                 $ref: '#/components/schemas/Function'
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /functions/{slug}/invoke:
+  /v1/edge/functions/{slug}/invoke:
     post:
       tags:
-        - Functions
+      - Functions
       summary: Invoke function
       operationId: invokeFunction
-      description: |
-        Invoke an edge function directly. The request body is passed
+      description: 'Invoke an edge function directly. The request body is passed
+
         through to the function handler.
+
+        '
       parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         content:
           application/json:
@@ -495,20 +519,18 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-
-  # Versions
-  /functions/{slug}/versions:
+  /v1/edge/functions/{slug}/versions:
     get:
       tags:
-        - Versions
+      - Versions
       summary: List function versions
       operationId: listFunctionVersions
       parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: List of versions
@@ -520,19 +542,18 @@ paths:
                   $ref: '#/components/schemas/FunctionVersion'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /functions/{slug}/rollback:
+  /v1/edge/functions/{slug}/rollback:
     post:
       tags:
-        - Versions
+      - Versions
       summary: Rollback to version
       operationId: rollbackFunction
       parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -540,7 +561,7 @@ paths:
             schema:
               type: object
               required:
-                - version
+              - version
               properties:
                 version:
                   type: integer
@@ -556,45 +577,49 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # Logs
-  /functions/{slug}/logs:
+  /v1/edge/functions/{slug}/logs:
     get:
       tags:
-        - Logs
+      - Logs
       summary: Get function logs
       operationId: getFunctionLogs
-      description: |
-        Returns function execution logs. Supports SSE streaming
+      description: 'Returns function execution logs. Supports SSE streaming
+
         via Accept: text/event-stream header for live tailing.
+
+        '
       parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: since
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: Return logs after this timestamp
-        - name: until
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: level
-          in: query
-          schema:
-            type: string
-            enum: [info, warn, error, debug]
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 100
-            maximum: 1000
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: since
+        in: query
+        schema:
+          type: string
+          format: date-time
+        description: Return logs after this timestamp
+      - name: until
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: level
+        in: query
+        schema:
+          type: string
+          enum:
+          - info
+          - warn
+          - error
+          - debug
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 100
+          maximum: 1000
       responses:
         '200':
           description: Log entries
@@ -610,36 +635,37 @@ paths:
                 description: SSE stream of log entries
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # Metrics
-  /functions/{slug}/metrics:
+  /v1/edge/functions/{slug}/metrics:
     get:
       tags:
-        - Functions
+      - Functions
       summary: Get function metrics
       operationId: getFunctionMetrics
       parameters:
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: from
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: to
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: granularity
-          in: query
-          schema:
-            type: string
-            enum: [minute, hour, day]
-            default: hour
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: from
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: granularity
+        in: query
+        schema:
+          type: string
+          enum:
+          - minute
+          - hour
+          - day
+          default: hour
       responses:
         '200':
           description: Function metrics
@@ -651,12 +677,10 @@ paths:
                   $ref: '#/components/schemas/FunctionMetrics'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # Secrets
-  /secrets:
+  /v1/edge/secrets:
     get:
       tags:
-        - Secrets
+      - Secrets
       summary: List secrets
       operationId: listSecrets
       description: Returns secret names only; values are never exposed after creation.
@@ -680,10 +704,9 @@ paths:
                       format: date-time
         '401':
           $ref: '#/components/responses/Unauthorized'
-
     post:
       tags:
-        - Secrets
+      - Secrets
       summary: Create secret
       operationId: createSecret
       requestBody:
@@ -701,19 +724,18 @@ paths:
                 $ref: '#/components/schemas/Secret'
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /secrets/{name}:
+  /v1/edge/secrets/{name}:
     put:
       tags:
-        - Secrets
+      - Secrets
       summary: Update secret
       operationId: updateSecret
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -721,7 +743,7 @@ paths:
             schema:
               type: object
               required:
-                - value
+              - value
               properties:
                 value:
                   type: string
@@ -734,18 +756,17 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       tags:
-        - Secrets
+      - Secrets
       summary: Delete secret
       operationId: deleteSecret
       parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Secret deleted
@@ -755,12 +776,10 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # Domains
-  /domains:
+  /v1/edge/domains:
     get:
       tags:
-        - Domains
+      - Domains
       summary: List custom domains
       operationId: listDomains
       responses:
@@ -774,10 +793,9 @@ paths:
                   $ref: '#/components/schemas/Domain'
         '401':
           $ref: '#/components/responses/Unauthorized'
-
     post:
       tags:
-        - Domains
+      - Domains
       summary: Add custom domain
       operationId: createDomain
       requestBody:
@@ -795,20 +813,19 @@ paths:
                 $ref: '#/components/schemas/Domain'
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /domains/{id}:
+  /v1/edge/domains/{id}:
     delete:
       tags:
-        - Domains
+      - Domains
       summary: Remove custom domain
       operationId: deleteDomain
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Domain removed
