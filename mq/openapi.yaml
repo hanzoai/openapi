@@ -1,43 +1,70 @@
 openapi: 3.1.0
 info:
   title: Hanzo MQ API
-  description: |
-    Hanzo MQ provides a managed message queue and pub/sub service built on
+  description: 'Hanzo MQ provides a managed message queue and pub/sub service built on
+
     NATS + JetStream with Hanzo extensions for:
 
+
     - Multi-tenant org isolation via Hanzo IAM
+
     - Core pub/sub with subject-based routing and wildcards
+
     - JetStream durable streams with configurable retention
+
     - Pull-based consumers with at-least-once delivery
+
     - Distributed key-value store (NATS KV)
+
     - Large object storage (NATS Object Store)
+
     - Request/reply messaging patterns
+
     - SSE streaming for subscriptions and watches
+
     - KMS-managed credentials and TLS certificates
+
 
     ## Authentication
 
+
     All endpoints require a valid Hanzo IAM bearer token. Include it in the
+
     Authorization header:
 
-    ```
-    Authorization: Bearer <HANZO_API_KEY>
+
     ```
 
+    Authorization: Bearer <HANZO_API_KEY>
+
+    ```
+
+
     API keys are managed via Hanzo IAM at hanzo.id. The org_id is extracted
+
     from the token and scopes all resources automatically.
+
 
     ## Connection Credentials
 
+
     NATS connection credentials and TLS certificates are managed via
+
     Hanzo KMS (kms.hanzo.ai). The REST API abstracts direct NATS connections;
+
     use the native NATS client libraries with KMS-provisioned credentials
+
     for direct wire-protocol access.
+
 
     ## Upstream
 
+
     Based on @hanzomsg (fork of nats-io/nats-server) with Hanzo
+
     multi-tenancy, IAM integration, and KMS-managed secrets.
+
+    '
   version: 1.0.0
   contact:
     name: Hanzo AI
@@ -45,49 +72,46 @@ info:
     url: https://hanzo.ai
   license:
     name: Proprietary
-
 servers:
-  - url: https://mq.hanzo.ai
-    description: Production
-  - url: https://api.hanzo.ai/v1/mq
-    description: Gateway Proxy
-
+- url: https://mq.hanzo.ai
+  description: MQ Production
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway (via api.hanzo.ai/v1/mq/*)
 tags:
-  - name: Publish
-    description: Publish messages to subjects
-  - name: Subscribe
-    description: Subscribe to subjects via SSE
-  - name: Subjects
-    description: Subject introspection and stats
-  - name: Streams
-    description: JetStream durable message streams
-  - name: Consumers
-    description: JetStream durable consumers
-  - name: KeyValue
-    description: Distributed key-value store (NATS KV)
-  - name: ObjectStore
-    description: Large object storage on JetStream
-  - name: Accounts
-    description: Multi-tenant account management
-  - name: Health
-    description: Service health and server info
-
+- name: Publish
+  description: Publish messages to subjects
+- name: Subscribe
+  description: Subscribe to subjects via SSE
+- name: Subjects
+  description: Subject introspection and stats
+- name: Streams
+  description: JetStream durable message streams
+- name: Consumers
+  description: JetStream durable consumers
+- name: KeyValue
+  description: Distributed key-value store (NATS KV)
+- name: ObjectStore
+  description: Large object storage on JetStream
+- name: Accounts
+  description: Multi-tenant account management
+- name: Health
+  description: Service health and server info
 security:
-  - bearerAuth: []
-
+- BearerAuth: []
 paths:
-  # ---------------------------------------------------------------------------
-  # Publish / Subscribe
-  # ---------------------------------------------------------------------------
   /v1/mq/publish:
     post:
       operationId: publishMessage
       summary: Publish message to subject
-      description: |
-        Publish a message to the specified subject. Supports optional headers
+      description: 'Publish a message to the specified subject. Supports optional headers
+
         and reply-to subject for request/reply patterns. If the subject is
+
         bound to a JetStream stream, the message is persisted.
-      tags: [Publish]
+
+        '
+      tags:
+      - Publish
       requestBody:
         required: true
         content:
@@ -115,31 +139,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /v1/mq/subscribe/{subject}:
     get:
       operationId: subscribe
       summary: Subscribe to subject via SSE
-      description: |
-        Opens a Server-Sent Events stream for messages on the given subject.
+      description: 'Opens a Server-Sent Events stream for messages on the given subject.
+
         Supports NATS wildcard tokens: `*` matches a single token, `>`
+
         matches one or more tokens. The connection stays open until the
+
         client disconnects.
-      tags: [Subscribe]
+
+        '
+      tags:
+      - Subscribe
       parameters:
-        - name: subject
-          in: path
-          required: true
-          schema:
-            type: string
-          description: |
-            Subject to subscribe to. Supports wildcards (`events.*`,
-            `logs.>`).
-        - name: queue
-          in: query
-          schema:
-            type: string
-          description: Queue group name for load-balanced delivery.
+      - name: subject
+        in: path
+        required: true
+        schema:
+          type: string
+        description: 'Subject to subscribe to. Supports wildcards (`events.*`,
+
+          `logs.>`).
+
+          '
+      - name: queue
+        in: query
+        schema:
+          type: string
+        description: Queue group name for load-balanced delivery.
       responses:
         '200':
           description: SSE stream of messages
@@ -149,16 +179,19 @@ paths:
                 $ref: '#/components/schemas/Message'
         '401':
           $ref: '#/components/responses/Unauthorized'
-
   /v1/mq/request:
     post:
       operationId: requestReply
       summary: Request/reply pattern
-      description: |
-        Publishes a message and waits for a single reply within the specified
+      description: 'Publishes a message and waits for a single reply within the specified
+
         timeout. Uses an ephemeral inbox subject for the reply. Returns the
+
         reply message or a timeout error.
-      tags: [Publish]
+
+        '
+      tags:
+      - Publish
       requestBody:
         required: true
         content:
@@ -186,26 +219,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  # ---------------------------------------------------------------------------
-  # Subjects
-  # ---------------------------------------------------------------------------
   /v1/mq/subjects:
     get:
       operationId: listSubjects
       summary: List active subjects
-      description: |
-        Returns all active subjects visible to the authenticated account,
+      description: 'Returns all active subjects visible to the authenticated account,
+
         with subscriber counts and message rates.
-      tags: [Subjects]
+
+        '
+      tags:
+      - Subjects
       parameters:
-        - $ref: '#/components/parameters/LimitParam'
-        - $ref: '#/components/parameters/OffsetParam'
-        - name: filter
-          in: query
-          schema:
-            type: string
-          description: Subject filter pattern (supports wildcards).
+      - $ref: '#/components/parameters/LimitParam'
+      - $ref: '#/components/parameters/OffsetParam'
+      - name: filter
+        in: query
+        schema:
+          type: string
+        description: Subject filter pattern (supports wildcards).
       responses:
         '200':
           description: List of active subjects
@@ -222,21 +254,23 @@ paths:
                     type: integer
         '401':
           $ref: '#/components/responses/Unauthorized'
-
   /v1/mq/subjects/{subject}/info:
     get:
       operationId: getSubjectInfo
       summary: Get subject info
-      description: |
-        Returns detailed information about a specific subject, including
+      description: 'Returns detailed information about a specific subject, including
+
         subscriber count and message throughput.
-      tags: [Subjects]
+
+        '
+      tags:
+      - Subjects
       parameters:
-        - name: subject
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: subject
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Subject info
@@ -248,19 +282,16 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # ---------------------------------------------------------------------------
-  # Streams (JetStream)
-  # ---------------------------------------------------------------------------
   /v1/mq/streams:
     get:
       operationId: listStreams
       summary: List streams
       description: Returns all JetStream streams for the authenticated account.
-      tags: [Streams]
+      tags:
+      - Streams
       parameters:
-        - $ref: '#/components/parameters/LimitParam'
-        - $ref: '#/components/parameters/OffsetParam'
+      - $ref: '#/components/parameters/LimitParam'
+      - $ref: '#/components/parameters/OffsetParam'
       responses:
         '200':
           description: List of streams
@@ -277,15 +308,18 @@ paths:
                     type: integer
         '401':
           $ref: '#/components/responses/Unauthorized'
-
     post:
       operationId: createStream
       summary: Create stream
-      description: |
-        Creates a new JetStream stream with the specified configuration.
+      description: 'Creates a new JetStream stream with the specified configuration.
+
         Streams provide durable, replicated message storage with configurable
+
         retention policies.
-      tags: [Streams]
+
+        '
+      tags:
+      - Streams
       requestBody:
         required: true
         content:
@@ -313,17 +347,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /v1/mq/streams/{name}:
     get:
       operationId: getStream
       summary: Get stream info
-      description: |
-        Returns stream configuration and current state including message
+      description: 'Returns stream configuration and current state including message
+
         count, byte size, and consumer count.
-      tags: [Streams]
+
+        '
+      tags:
+      - Streams
       parameters:
-        - $ref: '#/components/parameters/StreamName'
+      - $ref: '#/components/parameters/StreamName'
       responses:
         '200':
           description: Stream info
@@ -335,16 +371,18 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
     put:
       operationId: updateStream
       summary: Update stream config
-      description: |
-        Updates an existing stream's configuration. Not all fields are
+      description: 'Updates an existing stream''s configuration. Not all fields are
+
         mutable after creation (e.g., storage type cannot change).
-      tags: [Streams]
+
+        '
+      tags:
+      - Streams
       parameters:
-        - $ref: '#/components/parameters/StreamName'
+      - $ref: '#/components/parameters/StreamName'
       requestBody:
         required: true
         content:
@@ -368,16 +406,18 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       operationId: deleteStream
       summary: Delete stream
-      description: |
-        Deletes a stream and all its messages and consumers. This operation
+      description: 'Deletes a stream and all its messages and consumers. This operation
+
         is irreversible.
-      tags: [Streams]
+
+        '
+      tags:
+      - Streams
       parameters:
-        - $ref: '#/components/parameters/StreamName'
+      - $ref: '#/components/parameters/StreamName'
       responses:
         '204':
           description: Stream deleted
@@ -385,17 +425,19 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
   /v1/mq/streams/{name}/purge:
     post:
       operationId: purgeStream
       summary: Purge stream messages
-      description: |
-        Removes all messages from the stream. Consumers are not deleted.
+      description: 'Removes all messages from the stream. Consumers are not deleted.
+
         Optionally filter by subject to purge only matching messages.
-      tags: [Streams]
+
+        '
+      tags:
+      - Streams
       parameters:
-        - $ref: '#/components/parameters/StreamName'
+      - $ref: '#/components/parameters/StreamName'
       requestBody:
         content:
           application/json:
@@ -423,36 +465,40 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
   /v1/mq/streams/{name}/messages:
     get:
       operationId: getStreamMessages
       summary: Get stream messages
-      description: |
-        Retrieves messages from the stream by sequence number or subject.
+      description: 'Retrieves messages from the stream by sequence number or subject.
+
         Use for direct message access without a consumer.
-      tags: [Streams]
+
+        '
+      tags:
+      - Streams
       parameters:
-        - $ref: '#/components/parameters/StreamName'
-        - name: seq
-          in: query
-          schema:
-            type: integer
-            format: uint64
-          description: Get message at this sequence number.
-        - name: last_by_subject
-          in: query
-          schema:
-            type: string
-          description: Get last message for the given subject.
-        - name: next_by_subject
-          in: query
-          schema:
-            type: string
-          description: |
-            Get next message for the given subject (requires seq param
-            as starting point).
-        - $ref: '#/components/parameters/LimitParam'
+      - $ref: '#/components/parameters/StreamName'
+      - name: seq
+        in: query
+        schema:
+          type: integer
+          format: uint64
+        description: Get message at this sequence number.
+      - name: last_by_subject
+        in: query
+        schema:
+          type: string
+        description: Get last message for the given subject.
+      - name: next_by_subject
+        in: query
+        schema:
+          type: string
+        description: 'Get next message for the given subject (requires seq param
+
+          as starting point).
+
+          '
+      - $ref: '#/components/parameters/LimitParam'
       responses:
         '200':
           description: Stream messages
@@ -469,24 +515,26 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
   /v1/mq/streams/{name}/messages/{seq}:
     delete:
       operationId: deleteStreamMessage
       summary: Delete specific message
-      description: |
-        Deletes a specific message from the stream by sequence number.
+      description: 'Deletes a specific message from the stream by sequence number.
+
         The sequence gap remains; subsequent messages are not renumbered.
-      tags: [Streams]
+
+        '
+      tags:
+      - Streams
       parameters:
-        - $ref: '#/components/parameters/StreamName'
-        - name: seq
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: uint64
-          description: Message sequence number.
+      - $ref: '#/components/parameters/StreamName'
+      - name: seq
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: uint64
+        description: Message sequence number.
       responses:
         '204':
           description: Message deleted
@@ -494,20 +542,17 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # ---------------------------------------------------------------------------
-  # Consumers (JetStream)
-  # ---------------------------------------------------------------------------
   /v1/mq/streams/{stream}/consumers:
     get:
       operationId: listConsumers
       summary: List consumers
       description: Returns all consumers for the specified stream.
-      tags: [Consumers]
+      tags:
+      - Consumers
       parameters:
-        - $ref: '#/components/parameters/StreamNamePath'
-        - $ref: '#/components/parameters/LimitParam'
-        - $ref: '#/components/parameters/OffsetParam'
+      - $ref: '#/components/parameters/StreamNamePath'
+      - $ref: '#/components/parameters/LimitParam'
+      - $ref: '#/components/parameters/OffsetParam'
       responses:
         '200':
           description: List of consumers
@@ -526,17 +571,20 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
     post:
       operationId: createConsumer
       summary: Create consumer
-      description: |
-        Creates a new consumer on the specified stream. Consumers track
+      description: 'Creates a new consumer on the specified stream. Consumers track
+
         delivery state and support at-least-once or exactly-once semantics
+
         depending on the ack policy.
-      tags: [Consumers]
+
+        '
+      tags:
+      - Consumers
       parameters:
-        - $ref: '#/components/parameters/StreamNamePath'
+      - $ref: '#/components/parameters/StreamNamePath'
       requestBody:
         required: true
         content:
@@ -570,18 +618,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /v1/mq/streams/{stream}/consumers/{name}:
     get:
       operationId: getConsumer
       summary: Get consumer info
-      description: |
-        Returns consumer configuration and delivery state including
+      description: 'Returns consumer configuration and delivery state including
+
         pending count, ack floor, and redelivery metrics.
-      tags: [Consumers]
+
+        '
+      tags:
+      - Consumers
       parameters:
-        - $ref: '#/components/parameters/StreamNamePath'
-        - $ref: '#/components/parameters/ConsumerName'
+      - $ref: '#/components/parameters/StreamNamePath'
+      - $ref: '#/components/parameters/ConsumerName'
       responses:
         '200':
           description: Consumer info
@@ -593,17 +643,19 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       operationId: deleteConsumer
       summary: Delete consumer
-      description: |
-        Deletes a consumer and its delivery state. Unacknowledged messages
+      description: 'Deletes a consumer and its delivery state. Unacknowledged messages
+
         remain in the stream.
-      tags: [Consumers]
+
+        '
+      tags:
+      - Consumers
       parameters:
-        - $ref: '#/components/parameters/StreamNamePath'
-        - $ref: '#/components/parameters/ConsumerName'
+      - $ref: '#/components/parameters/StreamNamePath'
+      - $ref: '#/components/parameters/ConsumerName'
       responses:
         '204':
           description: Consumer deleted
@@ -611,18 +663,20 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
   /v1/mq/streams/{stream}/consumers/{name}/next:
     post:
       operationId: pullMessages
       summary: Pull next message(s)
-      description: |
-        Pulls the next batch of messages from the consumer. Supports
+      description: 'Pulls the next batch of messages from the consumer. Supports
+
         configurable batch size, timeout, and no-wait mode.
-      tags: [Consumers]
+
+        '
+      tags:
+      - Consumers
       parameters:
-        - $ref: '#/components/parameters/StreamNamePath'
-        - $ref: '#/components/parameters/ConsumerName'
+      - $ref: '#/components/parameters/StreamNamePath'
+      - $ref: '#/components/parameters/ConsumerName'
       requestBody:
         content:
           application/json:
@@ -637,15 +691,19 @@ paths:
                   description: Number of messages to pull.
                 expires:
                   type: string
-                  description: |
-                    Maximum time to wait for messages (e.g., "5s", "30s").
+                  description: 'Maximum time to wait for messages (e.g., "5s", "30s").
+
                     Defaults to 30s.
+
+                    '
                 no_wait:
                   type: boolean
                   default: false
-                  description: |
-                    Return immediately if no messages are available instead
+                  description: 'Return immediately if no messages are available instead
+
                     of waiting.
+
+                    '
       responses:
         '200':
           description: Messages pulled
@@ -668,19 +726,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  # ---------------------------------------------------------------------------
-  # KeyValue (NATS KV)
-  # ---------------------------------------------------------------------------
   /v1/mq/kv:
     get:
       operationId: listKVBuckets
       summary: List KV buckets
       description: Returns all key-value buckets for the authenticated account.
-      tags: [KeyValue]
+      tags:
+      - KeyValue
       parameters:
-        - $ref: '#/components/parameters/LimitParam'
-        - $ref: '#/components/parameters/OffsetParam'
+      - $ref: '#/components/parameters/LimitParam'
+      - $ref: '#/components/parameters/OffsetParam'
       responses:
         '200':
           description: List of KV buckets
@@ -697,14 +752,16 @@ paths:
                     type: integer
         '401':
           $ref: '#/components/responses/Unauthorized'
-
     post:
       operationId: createKVBucket
       summary: Create KV bucket
-      description: |
-        Creates a new key-value bucket backed by a JetStream stream.
+      description: 'Creates a new key-value bucket backed by a JetStream stream.
+
         Supports configurable history depth, TTL, and replication.
-      tags: [KeyValue]
+
+        '
+      tags:
+      - KeyValue
       requestBody:
         required: true
         content:
@@ -732,15 +789,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /v1/mq/kv/{bucket}:
     get:
       operationId: getKVBucket
       summary: Get bucket info
       description: Returns bucket configuration and current state.
-      tags: [KeyValue]
+      tags:
+      - KeyValue
       parameters:
-        - $ref: '#/components/parameters/BucketName'
+      - $ref: '#/components/parameters/BucketName'
       responses:
         '200':
           description: Bucket info
@@ -752,14 +809,14 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       operationId: deleteKVBucket
       summary: Delete bucket
       description: Deletes the bucket and all its keys. Irreversible.
-      tags: [KeyValue]
+      tags:
+      - KeyValue
       parameters:
-        - $ref: '#/components/parameters/BucketName'
+      - $ref: '#/components/parameters/BucketName'
       responses:
         '204':
           description: Bucket deleted
@@ -767,22 +824,22 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
   /v1/mq/kv/{bucket}/keys:
     get:
       operationId: listKVKeys
       summary: List keys in bucket
       description: Returns all keys in the bucket, optionally filtered by pattern.
-      tags: [KeyValue]
+      tags:
+      - KeyValue
       parameters:
-        - $ref: '#/components/parameters/BucketName'
-        - name: filter
-          in: query
-          schema:
-            type: string
-          description: Key filter pattern (supports wildcards).
-        - $ref: '#/components/parameters/LimitParam'
-        - $ref: '#/components/parameters/OffsetParam'
+      - $ref: '#/components/parameters/BucketName'
+      - name: filter
+        in: query
+        schema:
+          type: string
+        description: Key filter pattern (supports wildcards).
+      - $ref: '#/components/parameters/LimitParam'
+      - $ref: '#/components/parameters/OffsetParam'
       responses:
         '200':
           description: List of keys
@@ -801,18 +858,20 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
   /v1/mq/kv/{bucket}/{key}:
     get:
       operationId: getKVEntry
       summary: Get value
-      description: |
-        Returns the current value for the key. The revision number is
+      description: 'Returns the current value for the key. The revision number is
+
         included in the X-MQ-Revision response header.
-      tags: [KeyValue]
+
+        '
+      tags:
+      - KeyValue
       parameters:
-        - $ref: '#/components/parameters/BucketName'
-        - $ref: '#/components/parameters/KeyName'
+      - $ref: '#/components/parameters/BucketName'
+      - $ref: '#/components/parameters/KeyName'
       responses:
         '200':
           description: Key value
@@ -830,7 +889,10 @@ paths:
             X-MQ-Operation:
               schema:
                 type: string
-                enum: [put, delete, purge]
+                enum:
+                - put
+                - delete
+                - purge
               description: Operation that produced this revision.
           content:
             application/json:
@@ -840,26 +902,31 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
     put:
       operationId: putKVEntry
       summary: Put value
-      description: |
-        Sets the value for the key. Returns the new revision number. Use
+      description: 'Sets the value for the key. Returns the new revision number. Use
+
         the X-MQ-Expected-Revision header for optimistic concurrency
+
         (CAS operation).
-      tags: [KeyValue]
+
+        '
+      tags:
+      - KeyValue
       parameters:
-        - $ref: '#/components/parameters/BucketName'
-        - $ref: '#/components/parameters/KeyName'
-        - name: X-MQ-Expected-Revision
-          in: header
-          schema:
-            type: integer
-            format: uint64
-          description: |
-            Expected current revision for CAS. The put fails with 409 if
-            the current revision does not match.
+      - $ref: '#/components/parameters/BucketName'
+      - $ref: '#/components/parameters/KeyName'
+      - name: X-MQ-Expected-Revision
+        in: header
+        schema:
+          type: integer
+          format: uint64
+        description: 'Expected current revision for CAS. The put fails with 409 if
+
+          the current revision does not match.
+
+          '
       requestBody:
         required: true
         content:
@@ -871,7 +938,7 @@ paths:
                   type: string
                   description: Value to store (base64-encoded for binary data).
               required:
-                - value
+              - value
       responses:
         '200':
           description: Value stored
@@ -901,17 +968,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
     delete:
       operationId: deleteKVEntry
       summary: Delete key
-      description: |
-        Deletes the key by writing a tombstone marker. The key's history
-        is preserved according to the bucket's history setting.
-      tags: [KeyValue]
+      description: 'Deletes the key by writing a tombstone marker. The key''s history
+
+        is preserved according to the bucket''s history setting.
+
+        '
+      tags:
+      - KeyValue
       parameters:
-        - $ref: '#/components/parameters/BucketName'
-        - $ref: '#/components/parameters/KeyName'
+      - $ref: '#/components/parameters/BucketName'
+      - $ref: '#/components/parameters/KeyName'
       responses:
         '204':
           description: Key deleted (tombstone written)
@@ -919,19 +988,22 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
   /v1/mq/kv/{bucket}/{key}/history:
     get:
       operationId: getKVHistory
       summary: Get key history
-      description: |
-        Returns all revisions of the key, from oldest to newest. The
-        number of revisions kept is determined by the bucket's history
+      description: 'Returns all revisions of the key, from oldest to newest. The
+
+        number of revisions kept is determined by the bucket''s history
+
         setting.
-      tags: [KeyValue]
+
+        '
+      tags:
+      - KeyValue
       parameters:
-        - $ref: '#/components/parameters/BucketName'
-        - $ref: '#/components/parameters/KeyName'
+      - $ref: '#/components/parameters/BucketName'
+      - $ref: '#/components/parameters/KeyName'
       responses:
         '200':
           description: Key revision history
@@ -948,29 +1020,32 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
   /v1/mq/kv/{bucket}/watch:
     get:
       operationId: watchKVBucket
       summary: Watch bucket changes via SSE
-      description: |
-        Opens a Server-Sent Events stream that emits KVEntry events for
+      description: 'Opens a Server-Sent Events stream that emits KVEntry events for
+
         every change in the bucket. Optionally filter by key pattern.
+
         Delivers initial values followed by real-time updates.
-      tags: [KeyValue]
+
+        '
+      tags:
+      - KeyValue
       parameters:
-        - $ref: '#/components/parameters/BucketName'
-        - name: key
-          in: query
-          schema:
-            type: string
-          description: Key pattern filter (supports wildcards).
-        - name: include_history
-          in: query
-          schema:
-            type: boolean
-            default: false
-          description: Include all historical revisions before live updates.
+      - $ref: '#/components/parameters/BucketName'
+      - name: key
+        in: query
+        schema:
+          type: string
+        description: Key pattern filter (supports wildcards).
+      - name: include_history
+        in: query
+        schema:
+          type: boolean
+          default: false
+        description: Include all historical revisions before live updates.
       responses:
         '200':
           description: SSE stream of KV changes
@@ -982,19 +1057,16 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # ---------------------------------------------------------------------------
-  # Object Store
-  # ---------------------------------------------------------------------------
   /v1/mq/objects:
     get:
       operationId: listObjectStores
       summary: List object stores
       description: Returns all object stores for the authenticated account.
-      tags: [ObjectStore]
+      tags:
+      - ObjectStore
       parameters:
-        - $ref: '#/components/parameters/LimitParam'
-        - $ref: '#/components/parameters/OffsetParam'
+      - $ref: '#/components/parameters/LimitParam'
+      - $ref: '#/components/parameters/OffsetParam'
       responses:
         '200':
           description: List of object stores
@@ -1011,14 +1083,16 @@ paths:
                     type: integer
         '401':
           $ref: '#/components/responses/Unauthorized'
-
     post:
       operationId: createObjectStore
       summary: Create object store
-      description: |
-        Creates a new object store backed by JetStream. Large objects are
+      description: 'Creates a new object store backed by JetStream. Large objects are
+
         automatically chunked and stored across the stream.
-      tags: [ObjectStore]
+
+        '
+      tags:
+      - ObjectStore
       requestBody:
         required: true
         content:
@@ -1046,15 +1120,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /v1/mq/objects/{store}:
     get:
       operationId: getObjectStore
       summary: Get store info
       description: Returns object store configuration and state.
-      tags: [ObjectStore]
+      tags:
+      - ObjectStore
       parameters:
-        - $ref: '#/components/parameters/StoreName'
+      - $ref: '#/components/parameters/StoreName'
       responses:
         '200':
           description: Store info
@@ -1066,14 +1140,14 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
     delete:
       operationId: deleteObjectStore
       summary: Delete object store
       description: Deletes the store and all objects. Irreversible.
-      tags: [ObjectStore]
+      tags:
+      - ObjectStore
       parameters:
-        - $ref: '#/components/parameters/StoreName'
+      - $ref: '#/components/parameters/StoreName'
       responses:
         '204':
           description: Store deleted
@@ -1081,17 +1155,17 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
   /v1/mq/objects/{store}/list:
     get:
       operationId: listObjects
       summary: List objects in store
       description: Returns metadata for all objects in the store.
-      tags: [ObjectStore]
+      tags:
+      - ObjectStore
       parameters:
-        - $ref: '#/components/parameters/StoreName'
-        - $ref: '#/components/parameters/LimitParam'
-        - $ref: '#/components/parameters/OffsetParam'
+      - $ref: '#/components/parameters/StoreName'
+      - $ref: '#/components/parameters/LimitParam'
+      - $ref: '#/components/parameters/OffsetParam'
       responses:
         '200':
           description: List of objects
@@ -1110,18 +1184,20 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
   /v1/mq/objects/{store}/{name}:
     get:
       operationId: getObject
       summary: Download object
-      description: |
-        Downloads the object as a binary stream. Chunks are reassembled
+      description: 'Downloads the object as a binary stream. Chunks are reassembled
+
         transparently.
-      tags: [ObjectStore]
+
+        '
+      tags:
+      - ObjectStore
       parameters:
-        - $ref: '#/components/parameters/StoreName'
-        - $ref: '#/components/parameters/ObjectName'
+      - $ref: '#/components/parameters/StoreName'
+      - $ref: '#/components/parameters/ObjectName'
       responses:
         '200':
           description: Object binary data
@@ -1148,23 +1224,26 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
     put:
       operationId: putObject
       summary: Upload object
-      description: |
-        Uploads an object to the store. The object is automatically chunked
+      description: 'Uploads an object to the store. The object is automatically chunked
+
         for storage. Use multipart/form-data for file uploads or
+
         application/octet-stream for raw binary.
-      tags: [ObjectStore]
+
+        '
+      tags:
+      - ObjectStore
       parameters:
-        - $ref: '#/components/parameters/StoreName'
-        - $ref: '#/components/parameters/ObjectName'
-        - name: X-MQ-Object-Description
-          in: header
-          schema:
-            type: string
-          description: Optional description for the object.
+      - $ref: '#/components/parameters/StoreName'
+      - $ref: '#/components/parameters/ObjectName'
+      - name: X-MQ-Object-Description
+        in: header
+        schema:
+          type: string
+        description: Optional description for the object.
       requestBody:
         required: true
         content:
@@ -1208,15 +1287,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
     delete:
       operationId: deleteObject
       summary: Delete object
       description: Deletes the object and its chunks from the store.
-      tags: [ObjectStore]
+      tags:
+      - ObjectStore
       parameters:
-        - $ref: '#/components/parameters/StoreName'
-        - $ref: '#/components/parameters/ObjectName'
+      - $ref: '#/components/parameters/StoreName'
+      - $ref: '#/components/parameters/ObjectName'
       responses:
         '204':
           description: Object deleted
@@ -1224,21 +1303,20 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # ---------------------------------------------------------------------------
-  # Accounts (Multi-tenant)
-  # ---------------------------------------------------------------------------
   /v1/mq/accounts:
     get:
       operationId: listAccounts
       summary: List accounts
-      description: |
-        Returns all MQ accounts visible to the authenticated user. Each
+      description: 'Returns all MQ accounts visible to the authenticated user. Each
+
         account maps to a Hanzo IAM organization.
-      tags: [Accounts]
+
+        '
+      tags:
+      - Accounts
       parameters:
-        - $ref: '#/components/parameters/LimitParam'
-        - $ref: '#/components/parameters/OffsetParam'
+      - $ref: '#/components/parameters/LimitParam'
+      - $ref: '#/components/parameters/OffsetParam'
       responses:
         '200':
           description: List of accounts
@@ -1255,17 +1333,19 @@ paths:
                     type: integer
         '401':
           $ref: '#/components/responses/Unauthorized'
-
   /v1/mq/accounts/{id}:
     get:
       operationId: getAccount
       summary: Get account info
-      description: |
-        Returns account details including connection count, subscription
+      description: 'Returns account details including connection count, subscription
+
         count, data throughput, and slow consumer metrics.
-      tags: [Accounts]
+
+        '
+      tags:
+      - Accounts
       parameters:
-        - $ref: '#/components/parameters/AccountId'
+      - $ref: '#/components/parameters/AccountId'
       responses:
         '200':
           description: Account info
@@ -1277,17 +1357,17 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
   /v1/mq/accounts/{id}/connections:
     get:
       operationId: listAccountConnections
       summary: List account connections
       description: Returns all active connections for the account.
-      tags: [Accounts]
+      tags:
+      - Accounts
       parameters:
-        - $ref: '#/components/parameters/AccountId'
-        - $ref: '#/components/parameters/LimitParam'
-        - $ref: '#/components/parameters/OffsetParam'
+      - $ref: '#/components/parameters/AccountId'
+      - $ref: '#/components/parameters/LimitParam'
+      - $ref: '#/components/parameters/OffsetParam'
       responses:
         '200':
           description: List of connections
@@ -1306,16 +1386,13 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # ---------------------------------------------------------------------------
-  # Health / Info
-  # ---------------------------------------------------------------------------
   /v1/mq/health:
     get:
       operationId: healthCheck
       summary: Health check
       description: Returns service health status. Does not require authentication.
-      tags: [Health]
+      tags:
+      - Health
       security: []
       responses:
         '200':
@@ -1327,21 +1404,25 @@ paths:
                 properties:
                   status:
                     type: string
-                    enum: [ok, degraded]
+                    enum:
+                    - ok
+                    - degraded
                   version:
                     type: string
                   uptime:
                     type: string
                     description: Human-readable uptime duration.
-
   /v1/mq/info:
     get:
       operationId: serverInfo
       summary: Server info
-      description: |
-        Returns server information including version, cluster details,
+      description: 'Returns server information including version, cluster details,
+
         and JetStream status.
-      tags: [Health]
+
+        '
+      tags:
+      - Health
       responses:
         '200':
           description: Server info
@@ -1351,10 +1432,6 @@ paths:
                 $ref: '#/components/schemas/ServerInfo'
         '401':
           $ref: '#/components/responses/Unauthorized'
-
-# =============================================================================
-# Components
-# =============================================================================
 components:
   securitySchemes:
     bearerAuth:
@@ -1362,7 +1439,12 @@ components:
       scheme: bearer
       bearerFormat: HANZO_API_KEY
       description: Hanzo API Key (Bearer hk-...)
-
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
+        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   parameters:
     LimitParam:
       name: limit
@@ -1373,7 +1455,6 @@ components:
         maximum: 1000
         default: 100
       description: Maximum number of items to return.
-
     OffsetParam:
       name: offset
       in: query
@@ -1382,47 +1463,42 @@ components:
         minimum: 0
         default: 0
       description: Number of items to skip.
-
     StreamName:
       name: name
       in: path
       required: true
       schema:
         type: string
-        pattern: '^[a-zA-Z0-9_-]+$'
+        pattern: ^[a-zA-Z0-9_-]+$
         maxLength: 256
       description: Stream name.
-
     StreamNamePath:
       name: stream
       in: path
       required: true
       schema:
         type: string
-        pattern: '^[a-zA-Z0-9_-]+$'
+        pattern: ^[a-zA-Z0-9_-]+$
         maxLength: 256
       description: Stream name.
-
     ConsumerName:
       name: name
       in: path
       required: true
       schema:
         type: string
-        pattern: '^[a-zA-Z0-9_-]+$'
+        pattern: ^[a-zA-Z0-9_-]+$
         maxLength: 256
       description: Consumer name.
-
     BucketName:
       name: bucket
       in: path
       required: true
       schema:
         type: string
-        pattern: '^[a-zA-Z0-9_-]+$'
+        pattern: ^[a-zA-Z0-9_-]+$
         maxLength: 256
       description: KV bucket name.
-
     KeyName:
       name: key
       in: path
@@ -1431,17 +1507,15 @@ components:
         type: string
         maxLength: 1024
       description: Key name (supports dotted hierarchy).
-
     StoreName:
       name: store
       in: path
       required: true
       schema:
         type: string
-        pattern: '^[a-zA-Z0-9_-]+$'
+        pattern: ^[a-zA-Z0-9_-]+$
         maxLength: 256
       description: Object store name.
-
     ObjectName:
       name: name
       in: path
@@ -1450,7 +1524,6 @@ components:
         type: string
         maxLength: 1024
       description: Object name.
-
     AccountId:
       name: id
       in: path
@@ -1458,7 +1531,6 @@ components:
       schema:
         type: string
       description: Account ID (maps to IAM org_id).
-
   responses:
     Unauthorized:
       description: Missing or invalid bearer token
@@ -1466,18 +1538,13 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-
     NotFound:
       description: Resource not found
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-
   schemas:
-    # -------------------------------------------------------------------------
-    # Common
-    # -------------------------------------------------------------------------
     Error:
       type: object
       properties:
@@ -1491,12 +1558,8 @@ components:
           type: string
           description: Additional error details.
       required:
-        - error
-        - code
-
-    # -------------------------------------------------------------------------
-    # Messages
-    # -------------------------------------------------------------------------
+      - error
+      - code
     Message:
       type: object
       description: A message received from a subject subscription.
@@ -1524,9 +1587,9 @@ components:
         sequence:
           type: integer
           format: uint64
-          description: |
-            Stream sequence number (present only for JetStream messages).
+          description: 'Stream sequence number (present only for JetStream messages).
 
+            '
     StreamMessage:
       type: object
       description: A message stored in a JetStream stream.
@@ -1554,7 +1617,6 @@ components:
         num_pending:
           type: integer
           description: Messages remaining after this one (consumer context).
-
     PublishRequest:
       type: object
       description: Request body for publishing a message.
@@ -1576,28 +1638,30 @@ components:
           type: string
           description: Optional reply-to subject.
       required:
-        - subject
-        - data
-
+      - subject
+      - data
     PublishResponse:
       type: object
       description: Response after publishing a message.
       properties:
         stream:
           type: string
-          description: |
-            Stream name if the subject is bound to a JetStream stream.
+          description: 'Stream name if the subject is bound to a JetStream stream.
+
             Absent for core NATS subjects.
+
+            '
         sequence:
           type: integer
           format: uint64
-          description: |
-            Stream sequence number. Present only for JetStream-bound
+          description: 'Stream sequence number. Present only for JetStream-bound
+
             subjects.
+
+            '
         duplicate:
           type: boolean
           description: True if the message was a duplicate (dedup window).
-
     RequestReply:
       type: object
       description: Request body for the request/reply pattern.
@@ -1610,10 +1674,12 @@ components:
           description: Request payload (base64-encoded for binary data).
         timeout:
           type: string
-          description: |
-            Maximum time to wait for a reply (e.g., "5s", "30s").
+          description: 'Maximum time to wait for a reply (e.g., "5s", "30s").
+
             Defaults to "10s".
-          default: "10s"
+
+            '
+          default: 10s
         headers:
           type: object
           additionalProperties:
@@ -1622,12 +1688,8 @@ components:
               type: string
           description: Optional message headers.
       required:
-        - subject
-        - data
-
-    # -------------------------------------------------------------------------
-    # Subjects
-    # -------------------------------------------------------------------------
+      - subject
+      - data
     SubjectInfo:
       type: object
       properties:
@@ -1645,10 +1707,6 @@ components:
           type: integer
           format: int64
           description: Current data rate (bytes per second).
-
-    # -------------------------------------------------------------------------
-    # Streams
-    # -------------------------------------------------------------------------
     Stream:
       type: object
       description: A JetStream stream with its configuration and state.
@@ -1662,7 +1720,6 @@ components:
         created:
           type: string
           format: date-time
-
     StreamConfig:
       type: object
       description: JetStream stream configuration.
@@ -1670,22 +1727,29 @@ components:
         name:
           type: string
           description: Stream name (alphanumeric, hyphens, underscores).
-          pattern: '^[a-zA-Z0-9_-]+$'
+          pattern: ^[a-zA-Z0-9_-]+$
           maxLength: 256
         subjects:
           type: array
           items:
             type: string
-          description: |
-            Subjects bound to this stream. Supports wildcards.
+          description: 'Subjects bound to this stream. Supports wildcards.
+
+            '
         retention:
           type: string
-          enum: [limits, interest, workqueue]
+          enum:
+          - limits
+          - interest
+          - workqueue
           default: limits
-          description: |
-            Message retention policy. `limits` keeps messages until
+          description: 'Message retention policy. `limits` keeps messages until
+
             limits are hit. `interest` keeps messages while consumers
+
             exist. `workqueue` deletes messages after acknowledgment.
+
+            '
         max_msgs:
           type: integer
           format: int64
@@ -1698,9 +1762,10 @@ components:
           description: Maximum total bytes (-1 for unlimited).
         max_age:
           type: string
-          description: |
-            Maximum message age (e.g., "24h", "7d", "0" for unlimited).
-          default: "0"
+          description: 'Maximum message age (e.g., "24h", "7d", "0" for unlimited).
+
+            '
+          default: '0'
         max_msg_size:
           type: integer
           format: int32
@@ -1708,7 +1773,9 @@ components:
           description: Maximum single message size in bytes (-1 for default).
         storage:
           type: string
-          enum: [file, memory]
+          enum:
+          - file
+          - memory
           default: file
           description: Storage backend for stream data.
         num_replicas:
@@ -1719,24 +1786,29 @@ components:
           description: Number of replicas in the cluster.
         discard:
           type: string
-          enum: [old, new]
+          enum:
+          - old
+          - new
           default: old
-          description: |
-            Discard policy when limits are reached. `old` discards the
+          description: 'Discard policy when limits are reached. `old` discards the
+
             oldest messages. `new` rejects new messages.
+
+            '
         duplicate_window:
           type: string
-          description: |
-            Window for message deduplication based on Nats-Msg-Id header
+          description: 'Window for message deduplication based on Nats-Msg-Id header
+
             (e.g., "2m"). Defaults to "2m".
-          default: "2m"
+
+            '
+          default: 2m
         description:
           type: string
           description: Optional human-readable description.
       required:
-        - name
-        - subjects
-
+      - name
+      - subjects
     StreamState:
       type: object
       description: Current state of a JetStream stream.
@@ -1774,10 +1846,6 @@ components:
         num_deleted:
           type: integer
           description: Number of deleted messages (gaps in sequence).
-
-    # -------------------------------------------------------------------------
-    # Consumers
-    # -------------------------------------------------------------------------
     Consumer:
       type: object
       description: A JetStream consumer with configuration and delivery state.
@@ -1808,80 +1876,111 @@ components:
         created:
           type: string
           format: date-time
-
     ConsumerConfig:
       type: object
       description: JetStream consumer configuration.
       properties:
         durable_name:
           type: string
-          description: |
-            Durable consumer name. If set, the consumer survives client
+          description: 'Durable consumer name. If set, the consumer survives client
+
             disconnections.
-          pattern: '^[a-zA-Z0-9_-]+$'
+
+            '
+          pattern: ^[a-zA-Z0-9_-]+$
           maxLength: 256
         filter_subject:
           type: string
-          description: |
-            Subject filter. Only messages matching this subject are
+          description: 'Subject filter. Only messages matching this subject are
+
             delivered. Supports wildcards.
+
+            '
         ack_policy:
           type: string
-          enum: [none, all, explicit]
+          enum:
+          - none
+          - all
+          - explicit
           default: explicit
-          description: |
-            Acknowledgment policy. `explicit` requires per-message ack.
+          description: 'Acknowledgment policy. `explicit` requires per-message ack.
+
             `all` acks all messages up to the acked sequence. `none`
+
             disables acks.
+
+            '
         deliver_policy:
           type: string
-          enum: [all, last, new, by_start_sequence, by_start_time, last_per_subject]
+          enum:
+          - all
+          - last
+          - new
+          - by_start_sequence
+          - by_start_time
+          - last_per_subject
           default: all
-          description: |
-            Where to start delivery. `all` delivers from the beginning.
+          description: 'Where to start delivery. `all` delivers from the beginning.
+
             `last` delivers the last message. `new` delivers only new
+
             messages. `by_start_sequence` and `by_start_time` start from
+
             a specific point.
+
+            '
         opt_start_seq:
           type: integer
           format: uint64
-          description: |
-            Starting sequence number (used with deliver_policy
+          description: 'Starting sequence number (used with deliver_policy
+
             `by_start_sequence`).
+
+            '
         opt_start_time:
           type: string
           format: date-time
-          description: |
-            Starting timestamp (used with deliver_policy `by_start_time`).
+          description: 'Starting timestamp (used with deliver_policy `by_start_time`).
+
+            '
         max_deliver:
           type: integer
           default: -1
-          description: |
-            Maximum delivery attempts before the message is dropped or
+          description: 'Maximum delivery attempts before the message is dropped or
+
             sent to a dead letter subject (-1 for unlimited).
+
+            '
         ack_wait:
           type: string
-          description: |
-            Time to wait for acknowledgment before redelivery
+          description: 'Time to wait for acknowledgment before redelivery
+
             (e.g., "30s", "5m"). Defaults to "30s".
-          default: "30s"
+
+            '
+          default: 30s
         replay_policy:
           type: string
-          enum: [instant, original]
+          enum:
+          - instant
+          - original
           default: instant
-          description: |
-            Replay policy for historical messages. `instant` delivers as
+          description: 'Replay policy for historical messages. `instant` delivers as
+
             fast as possible. `original` preserves original timing gaps.
+
+            '
         max_ack_pending:
           type: integer
           default: 1000
-          description: |
-            Maximum number of unacknowledged messages before delivery
+          description: 'Maximum number of unacknowledged messages before delivery
+
             pauses.
+
+            '
         description:
           type: string
           description: Optional human-readable description.
-
     SequencePair:
       type: object
       description: A pair of consumer and stream sequence numbers.
@@ -1894,10 +1993,6 @@ components:
           type: integer
           format: uint64
           description: Corresponding stream sequence number.
-
-    # -------------------------------------------------------------------------
-    # KeyValue
-    # -------------------------------------------------------------------------
     KVBucket:
       type: object
       description: A NATS KV bucket with configuration and state.
@@ -1926,7 +2021,6 @@ components:
         created:
           type: string
           format: date-time
-
     KVBucketConfig:
       type: object
       description: KV bucket creation configuration.
@@ -1934,7 +2028,7 @@ components:
         name:
           type: string
           description: Bucket name.
-          pattern: '^[a-zA-Z0-9_-]+$'
+          pattern: ^[a-zA-Z0-9_-]+$
           maxLength: 256
         history:
           type: integer
@@ -1944,9 +2038,10 @@ components:
           description: Maximum number of revisions per key.
         ttl:
           type: string
-          description: |
-            Default TTL for keys (e.g., "1h", "7d", "0" for no expiry).
-          default: "0"
+          description: 'Default TTL for keys (e.g., "1h", "7d", "0" for no expiry).
+
+            '
+          default: '0'
         max_value_size:
           type: integer
           format: int32
@@ -1959,7 +2054,9 @@ components:
           description: Maximum total bucket size (-1 for unlimited).
         storage:
           type: string
-          enum: [file, memory]
+          enum:
+          - file
+          - memory
           default: file
           description: Storage backend.
         num_replicas:
@@ -1972,8 +2069,7 @@ components:
           type: string
           description: Optional human-readable description.
       required:
-        - name
-
+      - name
     KVEntry:
       type: object
       description: A key-value entry with revision metadata.
@@ -1994,22 +2090,24 @@ components:
           description: Timestamp of this revision.
         operation:
           type: string
-          enum: [put, delete, purge]
-          description: |
-            Operation that produced this revision. `delete` is a
+          enum:
+          - put
+          - delete
+          - purge
+          description: 'Operation that produced this revision. `delete` is a
+
             tombstone. `purge` removes all prior revisions.
+
+            '
         bucket:
           type: string
           description: Bucket name.
         delta:
           type: integer
           format: uint64
-          description: |
-            Number of revisions since this entry (for watch operations).
+          description: 'Number of revisions since this entry (for watch operations).
 
-    # -------------------------------------------------------------------------
-    # Object Store
-    # -------------------------------------------------------------------------
+            '
     ObjectStoreInfo:
       type: object
       description: Object store metadata.
@@ -2034,7 +2132,6 @@ components:
         created:
           type: string
           format: date-time
-
     ObjectStoreConfig:
       type: object
       description: Object store creation configuration.
@@ -2042,7 +2139,7 @@ components:
         name:
           type: string
           description: Store name.
-          pattern: '^[a-zA-Z0-9_-]+$'
+          pattern: ^[a-zA-Z0-9_-]+$
           maxLength: 256
         max_chunk_size:
           type: integer
@@ -2056,7 +2153,9 @@ components:
           description: Maximum total store size (-1 for unlimited).
         storage:
           type: string
-          enum: [file, memory]
+          enum:
+          - file
+          - memory
           default: file
           description: Storage backend.
         num_replicas:
@@ -2069,8 +2168,7 @@ components:
           type: string
           description: Optional human-readable description.
       required:
-        - name
-
+      - name
     ObjectInfo:
       type: object
       description: Metadata for a stored object.
@@ -2105,15 +2203,13 @@ components:
             items:
               type: string
           description: Optional metadata headers.
-
-    # -------------------------------------------------------------------------
-    # Accounts
-    # -------------------------------------------------------------------------
     Account:
       type: object
-      description: |
-        Multi-tenant account mapped to a Hanzo IAM organization. All
+      description: 'Multi-tenant account mapped to a Hanzo IAM organization. All
+
         resources (streams, consumers, buckets) are scoped to the account.
+
+        '
       properties:
         id:
           type: string
@@ -2149,7 +2245,6 @@ components:
           description: Number of JetStream consumers.
         limits:
           $ref: '#/components/schemas/AccountLimits'
-
     AccountLimits:
       type: object
       description: Resource limits for the account.
@@ -2173,7 +2268,6 @@ components:
           type: integer
           format: int64
           description: Maximum total JetStream storage in bytes.
-
     Connection:
       type: object
       description: An active client connection to the MQ server.
@@ -2229,10 +2323,6 @@ components:
         tls_version:
           type: string
           description: TLS version (if TLS is active).
-
-    # -------------------------------------------------------------------------
-    # Server
-    # -------------------------------------------------------------------------
     ServerInfo:
       type: object
       description: Server information and capabilities.
