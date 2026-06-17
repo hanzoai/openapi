@@ -1,4 +1,4 @@
-# openapi — AI Assistant Context
+# openapi
 
 OpenAPI 3.1 specifications for all Hanzo services. v1.0.0 lock-in as of
 2026-05-31. No backwards compatibility, no `/api/` prefixes, no cross-brand
