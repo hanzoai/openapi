@@ -12,9 +12,21 @@ every service. Every route is `/v1/<service>/<resource>` so the same path
 works through the gateway (`api.hanzo.ai`) and through the service's own
 hostname (`<service>.hanzo.ai`).
 
+**One exception — AI inference is top-level.** The `ai` service
+(`hanzoai/ai`) exposes its OpenAI- and Claude-compatible surface at the bare
+`/v1/*` paths (`/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`,
+`/v1/models`, `/v1/rerank`, `/v1/messages`) — NOT `/v1/ai/*` — because every
+OpenAI/Anthropic SDK hard-codes those paths, so the path is the compatibility
+contract. Everything else stays under `/v1/<service>/`.
+
 ```bash
+# AI inference (top-level, OpenAI-compatible)
 curl -H "Authorization: Bearer ${HANZO_TOKEN}" \
-     https://api.hanzo.ai/v1/cloud/models
+     https://api.hanzo.ai/v1/chat/completions -d '{"model":"zen5","messages":[...]}'
+
+# Control-plane (per-service prefix)
+curl -H "Authorization: Bearer ${HANZO_TOKEN}" \
+     https://api.hanzo.ai/v1/cloud/get-providers
 ```
 
 OIDC discovery:
@@ -24,6 +36,7 @@ OIDC discovery:
 
 | Service | Spec | Hostname | Gateway prefix |
 |---------|------|----------|----------------|
+| ai | [ai/openapi.yaml](ai/openapi.yaml) | `api.hanzo.ai` | `/v1/{chat,completions,embeddings,models,rerank,messages}` (top-level — OpenAI/Claude-compatible) |
 | analytics | [analytics/openapi.yaml](analytics/openapi.yaml) | `analytics.hanzo.ai` | `/v1/analytics` |
 | auto | [auto/openapi.yaml](auto/openapi.yaml) | `auto.hanzo.ai` | `/v1/auto` |
 | bot | [bot/openapi.yaml](bot/openapi.yaml) | `app.hanzo.bot` | `/v1/bot` |
