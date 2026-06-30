@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.0.0 — 2026-06-30
+
+### AI inference namespace
+
+- Added the `ai` service spec (`ai/openapi.yaml`): the top-level OpenAI- and
+  Claude-compatible inference surface served by `hanzoai/ai` — `/v1/chat/completions`,
+  `/v1/completions`, `/v1/embeddings`, `/v1/rerank`, `/v1/models`, `/v1/models/{model}`,
+  `/v1/messages` (Anthropic). These are the ONE deliberate exception to the
+  `/v1/<service>/` rule (SDK path-compatibility is the contract).
+- Un-nested inference from the cloud control plane: removed
+  `/v1/cloud/chat/completions` (moved to top-level `ai`). `/v1/cloud/*` is now the
+  user-org control plane only.
+- `hanzo.yaml` discovery now lists `ai` (gateway_route `/v1/chat/completions`) and
+  corrects `cloud` to `/v1/cloud`.
+
 ## v1.0.0 — 2026-05-31
 
 Forward-only v1 lock-in. No prior versions, no backwards compatibility.
