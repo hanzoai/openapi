@@ -1,0 +1,368 @@
+openapi: 3.1.0
+info:
+  title: Hanzo AI — Inference API
+  summary: Top-level OpenAI- and Claude-compatible inference surface (hanzoai/ai).
+  description: |
+    The Hanzo inference API served by the `hanzoai/ai` subsystem of the unified
+    cloud binary (HIP-0106), reached through the gateway at `api.hanzo.ai`.
+
+    NAMESPACE EXCEPTION — these routes are TOP-LEVEL `/v1/*`, NOT `/v1/ai/*`.
+    Every OTHER Hanzo service lives under `/v1/<service>/<resource>`; inference is
+    the one deliberate exception because it is drop-in OpenAI- and Anthropic-
+    Claude-compatible: every OpenAI/Anthropic SDK hard-codes `/v1/chat/completions`
+    and `/v1/messages`, so the path IS the contract. `hanzoai/ai` folds its routes
+    into top-level `/v1/`; nothing here nests under `/v1/cloud` or `/v1/gateway`.
+
+    Two wire dialects, one backend:
+      - OpenAI:  /v1/chat/completions, /v1/completions, /v1/embeddings,
+                 /v1/models, /v1/rerank, /v1/audio/*, /v1/images/*
+      - Claude:  /v1/messages
+
+    Authentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`). The same
+    token authenticates every Hanzo service. API keys (`hk-...`) minted on hanzo.id
+    are accepted on these routes as well.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+servers:
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
+security:
+- BearerAuth: []
+tags:
+- name: OpenAI Compatible
+  description: Drop-in OpenAI Chat/Completions/Embeddings/Models surface.
+- name: Claude Compatible
+  description: Drop-in Anthropic Messages surface.
+- name: Models
+  description: Model discovery.
+paths:
+  /v1/chat/completions:
+    post:
+      tags:
+      - OpenAI Compatible
+      summary: Create chat completion
+      description: |
+        OpenAI-compatible chat completions. Set `stream: true` for an SSE token
+        stream (`text/event-stream`), otherwise a single JSON response. `model`
+        accepts any model id from `GET /v1/models` (including the Zen ladder).
+      operationId: createChatCompletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+      responses:
+        '200':
+          description: 'Completion (JSON) or SSE stream when `stream: true`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatCompletionResponse'
+            text/event-stream:
+              schema:
+                type: string
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /v1/completions:
+    post:
+      tags:
+      - OpenAI Compatible
+      summary: Create completion (legacy text)
+      operationId: createCompletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompletionRequest'
+      responses:
+        '200':
+          description: 'Completion (JSON) or SSE stream when `stream: true`.'
+          content:
+            application/json:
+              schema: { type: object }
+            text/event-stream:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /v1/embeddings:
+    post:
+      tags:
+      - OpenAI Compatible
+      summary: Create embeddings
+      operationId: createEmbeddings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmbeddingRequest'
+      responses:
+        '200':
+          description: Embedding vectors.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmbeddingResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /v1/rerank:
+    post:
+      tags:
+      - OpenAI Compatible
+      summary: Rerank documents against a query
+      operationId: rerank
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, query, documents]
+              properties:
+                model: { type: string }
+                query: { type: string }
+                documents:
+                  type: array
+                  items: { type: string }
+                top_n: { type: integer }
+      responses:
+        '200':
+          description: Ranked results.
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /v1/models:
+    get:
+      tags:
+      - Models
+      summary: List available models
+      description: OpenAI-compatible model list across every routable provider.
+      operationId: listModels
+      responses:
+        '200':
+          description: Model list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelList'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /v1/models/{model}:
+    get:
+      tags:
+      - Models
+      summary: Retrieve a model
+      operationId: retrieveModel
+      parameters:
+      - name: model
+        in: path
+        required: true
+        schema: { type: string }
+      responses:
+        '200':
+          description: Model object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Model'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/messages:
+    post:
+      tags:
+      - Claude Compatible
+      summary: Create a message (Anthropic-compatible)
+      description: |
+        Anthropic Messages-compatible endpoint. Set `stream: true` for an SSE
+        event stream. Drop-in for the Anthropic SDK and Claude Code's
+        `ANTHROPIC_BASE_URL`.
+      operationId: createMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+      responses:
+        '200':
+          description: 'Message (JSON) or SSE stream when `stream: true`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+            text/event-stream:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id) or an hk- API
+        key. Discovery: https://hanzo.id/.well-known/openid-configuration.'
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    PaymentRequired:
+      description: Insufficient balance — add credits.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    RateLimited:
+      description: Rate limit exceeded.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    ChatCompletionRequest:
+      title: ChatCompletionRequest
+      type: object
+      required: [model, messages]
+      properties:
+        model: { type: string }
+        messages:
+          type: array
+          items: { $ref: '#/components/schemas/ChatMessage' }
+        stream: { type: boolean, default: false }
+        temperature: { type: number }
+        top_p: { type: number }
+        max_tokens: { type: integer }
+        tools:
+          type: array
+          items: { type: object }
+        tool_choice: {}
+    ChatMessage:
+      title: ChatMessage
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant, tool]
+        content: {}
+        name: { type: string }
+        tool_calls:
+          type: array
+          items: { type: object }
+    ChatCompletionResponse:
+      title: ChatCompletionResponse
+      type: object
+      properties:
+        id: { type: string }
+        object: { type: string, examples: [chat.completion] }
+        created: { type: integer }
+        model: { type: string }
+        choices:
+          type: array
+          items: { type: object }
+        usage: { $ref: '#/components/schemas/Usage' }
+    CompletionRequest:
+      title: CompletionRequest
+      type: object
+      required: [model, prompt]
+      properties:
+        model: { type: string }
+        prompt: {}
+        stream: { type: boolean, default: false }
+        max_tokens: { type: integer }
+        temperature: { type: number }
+    EmbeddingRequest:
+      title: EmbeddingRequest
+      type: object
+      required: [model, input]
+      properties:
+        model: { type: string }
+        input: {}
+        encoding_format:
+          type: string
+          enum: [float, base64]
+    EmbeddingResponse:
+      title: EmbeddingResponse
+      type: object
+      properties:
+        object: { type: string, examples: [list] }
+        data:
+          type: array
+          items: { type: object }
+        model: { type: string }
+        usage: { $ref: '#/components/schemas/Usage' }
+    ModelList:
+      title: ModelList
+      type: object
+      properties:
+        object: { type: string, examples: [list] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Model' }
+    Model:
+      title: Model
+      type: object
+      properties:
+        id: { type: string }
+        object: { type: string, examples: [model] }
+        created: { type: integer }
+        owned_by: { type: string }
+    MessageRequest:
+      title: MessageRequest
+      type: object
+      required: [model, messages, max_tokens]
+      properties:
+        model: { type: string }
+        messages:
+          type: array
+          items: { type: object }
+        max_tokens: { type: integer }
+        stream: { type: boolean, default: false }
+        system: {}
+        temperature: { type: number }
+        tools:
+          type: array
+          items: { type: object }
+    MessageResponse:
+      title: MessageResponse
+      type: object
+      properties:
+        id: { type: string }
+        type: { type: string, examples: [message] }
+        role: { type: string, examples: [assistant] }
+        model: { type: string }
+        content:
+          type: array
+          items: { type: object }
+        stop_reason: { type: string }
+        usage: { type: object }
+    Usage:
+      title: Usage
+      type: object
+      properties:
+        prompt_tokens: { type: integer }
+        completion_tokens: { type: integer }
+        total_tokens: { type: integer }
+    Error:
+      title: Error
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message: { type: string }
+            type: { type: string }
+            code: { type: string }
