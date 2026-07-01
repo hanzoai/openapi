@@ -107,7 +107,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/object.WebFinger'
       summary: Root Controller Get Web Finger By Application
-  /.well-known/jwks:
+  /v1/iam/.well-known/jwks:
     get:
       tags:
       - Authentication
@@ -154,7 +154,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/object.WebFinger'
       summary: Root Controller Get Web Finger
-  /oauth/callback:
+  /v1/iam/oauth/callback:
     post:
       tags:
       - Authentication
@@ -168,6 +168,79 @@ paths:
               schema:
                 $ref: '#/components/schemas/object.Userinfo'
       summary: Api Controller Callback
+  /v1/iam/oauth/authorize:
+    get:
+      tags:
+      - Authentication
+      description: |
+        OAuth2 / OIDC authorization endpoint (RFC 6749 §3.1). Advertised by the
+        OIDC discovery document as `authorization_endpoint`. Unauthenticated
+        requests redirect (302) to the hosted login UI.
+      operationId: ApiController.Authorize
+      parameters:
+      - in: query
+        name: client_id
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: response_type
+        required: true
+        schema:
+          type: string
+          enum: [code]
+      - in: query
+        name: redirect_uri
+        schema:
+          type: string
+      - in: query
+        name: scope
+        schema:
+          type: string
+      - in: query
+        name: state
+        schema:
+          type: string
+      responses:
+        '302':
+          description: Redirect to the login UI or back to redirect_uri with a code.
+      summary: OAuth2 authorization endpoint
+  /v1/iam/oauth/device:
+    post:
+      tags:
+      - Authentication
+      description: |
+        OAuth2 device authorization endpoint (RFC 8628). Advertised by the OIDC
+        discovery document as `device_authorization_endpoint`.
+      operationId: ApiController.DeviceAuthorization
+      responses:
+        '200':
+          description: Device and user codes.
+      summary: OAuth2 device authorization endpoint
+  /v1/iam/oauth/register:
+    post:
+      tags:
+      - Authentication
+      description: |
+        OAuth2 dynamic client registration (RFC 7591). Advertised by the OIDC
+        discovery document as `registration_endpoint`.
+      operationId: ApiController.RegisterClient
+      responses:
+        '201':
+          description: Registered client metadata.
+      summary: OAuth2 dynamic client registration
+  /v1/iam/oauth/revoke:
+    post:
+      tags:
+      - Authentication
+      description: |
+        OAuth2 token revocation (RFC 7009). Advertised by the OIDC discovery
+        document as `revocation_endpoint`.
+      operationId: ApiController.RevokeToken
+      responses:
+        '200':
+          description: Token revoked.
+      summary: OAuth2 token revocation endpoint
   /v1/iam/adapters:
     post:
       tags:
@@ -1525,7 +1598,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/object.Webhook'
       security:
-      - test_apiKey: []
+      - BearerAuth: []
       summary: Api Controller Get Webhooks
   /v1/iam/enforce/batch:
     post:
@@ -4672,7 +4745,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/controllers.Response'
       summary: Api Controller Login
-  /oauth/token:
+  /v1/iam/oauth/token:
     post:
       tags:
       - Tokens
@@ -4723,7 +4796,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/object.TokenError'
       summary: Api Controller Get O Auth Token
-  /oauth/introspect:
+  /v1/iam/oauth/introspect:
     post:
       tags:
       - Authentication
@@ -4765,7 +4838,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/object.TokenError'
       summary: Api Controller Introspect Token
-  /oauth/token/refresh:
+  /v1/iam/oauth/token/refresh:
     post:
       tags:
       - Tokens
@@ -5503,7 +5576,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/controllers.LaravelResponse'
       summary: Api Controller User Info2
-  /oauth/userinfo:
+  /v1/iam/oauth/userinfo:
     get:
       tags:
       - Users

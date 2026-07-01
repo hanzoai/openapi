@@ -20,9 +20,9 @@ components:
       description: OAuth2 authentication via Hanzo IAM
       flows:
         authorizationCode:
-          authorizationUrl: https://iam.hanzo.ai/oauth/authorize
-          tokenUrl: https://iam.hanzo.ai/oauth/token
-          refreshUrl: https://iam.hanzo.ai/oauth/token
+          authorizationUrl: https://hanzo.id/v1/iam/oauth/authorize
+          tokenUrl: https://hanzo.id/v1/iam/oauth/token
+          refreshUrl: https://hanzo.id/v1/iam/oauth/token
           scopes:
             openid: OpenID Connect identity
             profile: User profile information
@@ -32,27 +32,28 @@ components:
             admin: Administrative access
 
         clientCredentials:
-          tokenUrl: https://iam.hanzo.ai/oauth/token
+          tokenUrl: https://hanzo.id/v1/iam/oauth/token
           scopes:
             read: Read access to resources
             write: Write access to resources
             admin: Administrative access
 
         password:
-          tokenUrl: https://iam.hanzo.ai/oauth/token
+          tokenUrl: https://hanzo.id/v1/iam/oauth/token
           scopes:
             openid: OpenID Connect identity
             profile: User profile information
             email: Email address
 
     apiKey:
-      type: apiKey
-      in: header
-      name: X-API-Key
+      type: http
+      scheme: bearer
       description: |
-        API key for service-to-service authentication.
-
-        Generate keys via the Hanzo Gateway /key/generate endpoint.
+        Hanzo API key presented as a Bearer credential:
+        `Authorization: Bearer hk-...`. Mint keys in the console
+        (console.hanzo.ai → Organization Settings → API Keys). Key prefixes:
+        `hk-` (full IAM key), `sk-` (secret), `pk-` (publishable, read-only),
+        `hz_` (widget). Accepted on the same routes as an IAM JWT.
 
   schemas:
     TokenResponse:

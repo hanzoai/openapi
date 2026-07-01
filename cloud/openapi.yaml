@@ -45,6 +45,460 @@ tags:
 - name: Video API
 - name: Workflow API
 paths:
+  # ============================================================================
+  # Unified top-level /v1 surface — the primary product routes served by the
+  # fused `cloud` binary (HIP-0106). The OpenAI-compatible inference plane and
+  # data plane live at the top level; the entire `/v1/cloud/<verb>-<resource>`
+  # casibase controller surface further below is ALSO reachable here without the
+  # `cloud/` segment (a gateway rewrite filter strips `/v1/cloud/` → `/v1/`).
+  # ============================================================================
+  /v1/chat/completions:
+    post:
+      tags:
+      - OpenAI Compatible API
+      summary: Chat completions (OpenAI-compatible)
+      description: |
+        OpenAI-compatible chat completions. Also served at
+        `/v1/cloud/chat/completions`. Accepts an IAM JWT or a Hanzo API key
+        (`hk-`/`sk-`). Per-org balance is reserved against Commerce before the
+        upstream call; premium models are plan-gated.
+      operationId: chatCompletions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, messages]
+              properties:
+                model:
+                  type: string
+                  example: claude-sonnet-4-5
+                messages:
+                  type: array
+                  items:
+                    type: object
+                    required: [role, content]
+                    properties:
+                      role:
+                        type: string
+                        enum: [system, user, assistant, tool]
+                      content: {}
+                temperature: { type: number }
+                max_tokens: { type: integer }
+                stream: { type: boolean }
+                tools: { type: array, items: { type: object } }
+      responses:
+        '200':
+          description: OpenAI chat completion object (or an SSE stream when `stream=true`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  object: { type: string, example: chat.completion }
+                  created: { type: integer }
+                  model: { type: string }
+                  choices: { type: array, items: { type: object } }
+                  usage: { type: object }
+        '401':
+          description: Missing or malformed Bearer credential.
+        '402':
+          description: Insufficient balance for the requested model.
+  /v1/completions:
+    post:
+      tags:
+      - OpenAI Compatible API
+      summary: Completions (alias of chat/completions)
+      description: Alias of `/v1/chat/completions`; expects the same chat-style body.
+      operationId: completions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, messages]
+              properties:
+                model: { type: string }
+                messages: { type: array, items: { type: object } }
+      responses:
+        '200':
+          description: OpenAI chat completion object.
+        '401':
+          description: Missing or malformed Bearer credential.
+  /v1/embeddings:
+    post:
+      tags:
+      - OpenAI Compatible API
+      summary: Embeddings (OpenAI-compatible)
+      description: OpenAI-compatible embeddings. Also served at `/v1/cloud/embeddings`.
+      operationId: embeddings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, input]
+              properties:
+                model: { type: string, example: text-embedding-3-small }
+                input:
+                  oneOf:
+                  - { type: string }
+                  - { type: array, items: { type: string } }
+                encoding_format: { type: string, enum: [float, base64] }
+                dimensions: { type: integer }
+      responses:
+        '200':
+          description: OpenAI embeddings response.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object: { type: string, example: list }
+                  data: { type: array, items: { type: object } }
+                  model: { type: string }
+                  usage: { type: object }
+        '401':
+          description: Missing or malformed Bearer credential.
+  /v1/rerank:
+    post:
+      tags:
+      - OpenAI Compatible API
+      summary: Rerank (Cohere/Jina-compatible)
+      description: |
+        Rerank documents against a query. Cohere/Jina-compatible. Falls back to
+        bi-encoder cosine similarity when no native rerank provider is configured.
+      operationId: rerank
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, query, documents]
+              properties:
+                model: { type: string }
+                query: { type: string }
+                documents: { type: array, items: { type: string } }
+                top_n: { type: integer }
+                return_documents: { type: boolean }
+      responses:
+        '200':
+          description: Ranked results with relevance scores.
+        '401':
+          description: Missing or malformed Bearer credential.
+  /v1/messages:
+    post:
+      tags:
+      - OpenAI Compatible API
+      summary: Messages (Anthropic-compatible)
+      description: Anthropic Messages API compatible endpoint.
+      operationId: anthropicMessages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, messages, max_tokens]
+              properties:
+                model: { type: string, example: claude-sonnet-4-5 }
+                messages: { type: array, items: { type: object } }
+                max_tokens: { type: integer }
+                system: { type: string }
+                stream: { type: boolean }
+      responses:
+        '200':
+          description: Anthropic message object.
+        '401':
+          description: Missing or malformed Bearer credential.
+  /v1/models:
+    get:
+      tags:
+      - OpenAI Compatible API
+      summary: Model catalog
+      description: |
+        Public model catalog served at the gateway (also mirrored on the CF edge
+        cache). Returns Zen, third-party, OpenRouter and featured models with
+        pricing metadata. The authenticated OpenAI-style list (`{object,data}`)
+        is served at `/v1/cloud/models`.
+      operationId: listModels
+      security: []
+      responses:
+        '200':
+          description: Model catalog.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object: { type: string, example: list }
+                  updated: { type: string, format: date-time }
+                  summary: { type: object }
+                  data: { type: array, items: { type: object } }
+  /v1/pricing:
+    get:
+      tags:
+      - System API
+      summary: Pricing catalog
+      description: Public per-model pricing catalog (also served at pricing.hanzo.ai and the CF edge cache).
+      operationId: getPricing
+      security: []
+      responses:
+        '200':
+          description: Pricing catalog keyed by model.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated: { type: string, format: date-time }
+                  summary: { type: object }
+                  models: { type: array, items: { type: object } }
+  /v1/plans:
+    get:
+      tags:
+      - System API
+      summary: Plans catalog
+      description: Public catalog of compute/subscription plans.
+      operationId: getPlans
+      security: []
+      responses:
+        '200':
+          description: List of plans.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plans: { type: array, items: { type: object } }
+  /v1/health:
+    get:
+      tags:
+      - System API
+      summary: API health
+      description: Liveness check for the cloud API. (`/health` at the gateway serves the console SPA; use `/v1/health` for the JSON API health.)
+      operationId: apiHealth
+      security: []
+      responses:
+        '200':
+          description: Health envelope.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/controllers.Response'
+              example:
+                status: ok
+                msg: ''
+                data: null
+                data2: null
+  # ---- Data plane (provisioning): logical resources inside the shared backends.
+  #      All require a Bearer credential AND an `X-Org-Id` header (403 otherwise).
+  #      Error shape: {status, error}. ----
+  /v1/sql:
+    get:
+      tags: [Vector API]
+      summary: List SQL databases for the org
+      operationId: listSqlDatabases
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: List of provisioned SQL databases. }
+        '403': { description: X-Org-Id required. }
+    post:
+      tags: [Vector API]
+      summary: Provision a SQL database
+      operationId: createSqlDatabase
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Provisioned database. }
+        '403': { description: X-Org-Id required. }
+  /v1/vector:
+    get:
+      tags: [Vector API]
+      summary: List vector databases for the org
+      operationId: listVectorDatabases
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: List of provisioned vector databases. }
+        '403': { description: X-Org-Id required. }
+    post:
+      tags: [Vector API]
+      summary: Provision a vector database
+      operationId: createVectorDatabase
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Provisioned vector database. }
+        '403': { description: X-Org-Id required. }
+  /v1/kv:
+    get:
+      tags: [Storage Provider API]
+      summary: List KV namespaces for the org
+      operationId: listKvNamespaces
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: List of KV namespaces. }
+        '403': { description: X-Org-Id required. }
+    post:
+      tags: [Storage Provider API]
+      summary: Provision a KV namespace
+      operationId: createKvNamespace
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Provisioned KV namespace. }
+        '403': { description: X-Org-Id required. }
+  /v1/s3:
+    get:
+      tags: [Storage Provider API]
+      summary: List S3 buckets for the org
+      operationId: listS3Buckets
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: List of S3 buckets. }
+        '403': { description: X-Org-Id required. }
+    post:
+      tags: [Storage Provider API]
+      summary: Provision an S3 bucket
+      operationId: createS3Bucket
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Provisioned S3 bucket. }
+        '403': { description: X-Org-Id required. }
+  /v1/docdb:
+    get:
+      tags: [Storage Provider API]
+      summary: List document databases for the org
+      operationId: listDocdbDatabases
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: List of document databases. }
+        '403': { description: X-Org-Id required. }
+    post:
+      tags: [Storage Provider API]
+      summary: Provision a document database
+      operationId: createDocdbDatabase
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Provisioned document database. }
+        '403': { description: X-Org-Id required. }
+  /v1/datastore:
+    get:
+      tags: [Storage Provider API]
+      summary: List datastores for the org
+      operationId: listDatastores
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: List of datastores. }
+        '403': { description: X-Org-Id required. }
+    post:
+      tags: [Storage Provider API]
+      summary: Provision a datastore
+      operationId: createDatastore
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Provisioned datastore. }
+        '403': { description: X-Org-Id required. }
+  /v1/search:
+    get:
+      tags: [Search API]
+      summary: List search indexes for the org
+      operationId: listSearchIndexes
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: List of provisioned search indexes. }
+        '403': { description: X-Org-Id required. }
+    post:
+      tags: [Search API]
+      summary: Provision a search index
+      operationId: createSearchIndex
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Provisioned search index. }
+        '403': { description: X-Org-Id required. }
+  # ---- Projects: org-scoped store of buildable/deployable sites. ----
+  /v1/projects:
+    get:
+      tags: [Deployment API]
+      summary: List projects for the org
+      operationId: listProjects
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: List of projects. }
+        '403': { description: X-Org-Id required. }
+    post:
+      tags: [Deployment API]
+      summary: Create a project
+      operationId: createProject
+      parameters:
+      - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Created project. }
+        '403': { description: X-Org-Id required. }
+  /v1/projects/{id}:
+    parameters:
+    - { in: path, name: id, required: true, schema: { type: string } }
+    - { in: header, name: X-Org-Id, required: true, schema: { type: string } }
+    get:
+      tags: [Deployment API]
+      summary: Get a project
+      operationId: getProject
+      responses:
+        '200': { description: Project. }
+    patch:
+      tags: [Deployment API]
+      summary: Update a project
+      operationId: updateProject
+      responses:
+        '200': { description: Updated project. }
+    delete:
+      tags: [Deployment API]
+      summary: Delete a project
+      operationId: deleteProject
+      responses:
+        '200': { description: Deleted. }
+  # ---- Code interpreter (sandbox). Returns 503 when the sandbox is unconfigured. ----
+  /v1/exec:
+    post:
+      tags: [System API]
+      summary: Execute code in a sandbox
+      operationId: execCode
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                language: { type: string, example: python }
+                code: { type: string }
+      responses:
+        '200': { description: Execution result (stdout/stderr/exit). }
+        '503': { description: Code execution not configured. }
+  /v1/files:
+    get:
+      tags: [File API]
+      summary: List sandbox files
+      operationId: listSandboxFiles
+      responses:
+        '200': { description: List of files. }
+        '503': { description: Code execution not configured. }
   /v1/cloud/activate-file:
     post:
       tags:
@@ -2561,20 +3015,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/object.Workflow'
       summary: Api Controller Get Workflows
-  /health:
-    get:
-      tags:
-      - System API
-      description: check if the system is live
-      operationId: ApiController.Health
-      responses:
-        '200':
-          description: The Response object
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/controllers.Response'
-      summary: Api Controller Health
   /v1/cloud/process-speech-to-text:
     post:
       tags:
@@ -3451,6 +3891,7 @@ paths:
       tags:
       - Search API
       description: Hybrid full-text + vector search over an indexed document store.
+      summary: Search documents (hybrid full-text + vector)
       operationId: ProductController.SearchDocs
       parameters:
       - in: query
@@ -3492,6 +3933,7 @@ paths:
       tags:
       - Search API
       description: List indexes with document counts and timestamps (Meilisearch-backed).
+      summary: List document indexes
       operationId: ProductController.SearchIndexes
       responses:
         '200':
@@ -3512,8 +3954,7 @@ paths:
                           type: integer
                           format: int64
                         lastIndexedAt:
-                          type: string
-                          nullable: true
+                          type: [string, 'null']
                         createdAt:
                           type: string
   /v1/search-docs/stats:
@@ -3521,6 +3962,7 @@ paths:
       tags:
       - Search API
       description: Aggregate search stats (total documents; per-day series when available).
+      summary: Document search stats
       operationId: ProductController.SearchStats
       responses:
         '200':
@@ -3554,6 +3996,7 @@ paths:
       tags:
       - Search API
       description: RAG chat — retrieves relevant context from the document index and returns a grounded answer.
+      summary: RAG chat over documents
       operationId: ProductController.ChatDocs
       parameters:
       - in: query
@@ -3596,6 +4039,7 @@ paths:
       tags:
       - Search API
       description: Index (upsert) documents into the search backend. Write scope required.
+      summary: Index documents
       operationId: ProductController.IndexDocs
       parameters:
       - in: query
@@ -3633,6 +4077,7 @@ paths:
       tags:
       - Vector API
       description: List vector collections with dimensions and point counts (Qdrant-backed).
+      summary: List vector collections
       operationId: ProductController.VectorCollections
       responses:
         '200':
@@ -3667,6 +4112,7 @@ paths:
       tags:
       - Vector API
       description: Aggregate vector stats — collection count, total vectors, total storage bytes.
+      summary: Vector store stats
       operationId: ProductController.VectorStats
       responses:
         '200':

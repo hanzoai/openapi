@@ -27,7 +27,7 @@ OIDC discovery:
 | bot | [bot/openapi.yaml](bot/openapi.yaml) | `app.hanzo.bot` | `/v1/bot` |
 | chat | [chat/openapi.yaml](chat/openapi.yaml) | `hanzo.chat` | `/v1/chat` |
 | cloud | [cloud/openapi.yaml](cloud/openapi.yaml) | `api.hanzo.ai` | `/v1/cloud` |
-| commerce | [commerce/openapi.yaml](commerce/openapi.yaml) | `commerce.hanzo.ai` | `/v1/commerce` |
+| commerce | [commerce/openapi.yaml](commerce/openapi.yaml) | `commerce.hanzo.ai` | `/v1/billing/*` + `/v1/*` |
 | console | [console/openapi.yaml](console/openapi.yaml) | `console.hanzo.ai` | `/v1/console` |
 | db | [db/openapi.yaml](db/openapi.yaml) | `db.hanzo.ai` | `/v1/db` |
 | did | [did/openapi.yaml](did/openapi.yaml) | `did.hanzo.ai` | `/v1/did` |
@@ -54,11 +54,33 @@ OIDC discovery:
 | search | [search/openapi.yaml](search/openapi.yaml) | `search.hanzo.ai` | `/v1/search` |
 | stream | [stream/openapi.yaml](stream/openapi.yaml) | `stream.hanzo.ai` | `/v1/stream` |
 | vector | [vector/openapi.yaml](vector/openapi.yaml) | `vector.hanzo.ai` | `/v1/vector` |
-| visor | [visor/openapi.yaml](visor/openapi.yaml) | `vm.hanzo.ai` | `/v1/visor` |
+| visor | [visor/openapi.yaml](visor/openapi.yaml) | `vm.hanzo.ai` | `/v1/*` (not gateway-proxied) |
 | zt | [zt/openapi.yaml](zt/openapi.yaml) | `zt.hanzo.ai` | `/v1/zt` |
 
-Discovery: [hanzo.yaml](hanzo.yaml) at `https://api.hanzo.ai/v1/discovery`
-returns the canonical list of services with their spec URLs.
+Discovery: [hanzo.yaml](hanzo.yaml) is the canonical index of services and
+their spec URLs. (The aggregated `GET /v1/discovery` JSON endpoint at the
+gateway is not yet wired; the specs in this repo are the machine-readable index.)
+
+### Reality notes (spec vs. live surface)
+
+The "Gateway prefix" column above is the intended `/v1/<service>/*` convention.
+Where the live surface differs, the per-service spec follows reality:
+
+- **cloud** — the fused binary serves the primary product routes at the **top
+  level** (`/v1/chat/completions`, `/v1/embeddings`, `/v1/models`, `/v1/pricing`,
+  `/v1/plans`, the `/v1/{sql,vector,kv,s3,docdb,datastore,search}` data plane,
+  `/v1/projects`, `/v1/exec`), not under `/v1/cloud/*`. The `/v1/cloud/*` RPC
+  routes remain valid — the same casibase surface is reachable both ways.
+- **iam** — OAuth/OIDC endpoints live under `/v1/iam/oauth/*` and
+  `/v1/iam/.well-known/jwks`; only `/.well-known/openid-configuration` is at the
+  root (per OIDC).
+- **commerce** — the money surface is `/v1/billing/*`; the resource models are
+  served at top-level `/v1/*` on the standalone host (the `/v1/commerce/*`
+  prefix is pending reconciliation).
+- **visor** — compute is served at `/v1/*` on `vm.hanzo.ai` and is not
+  gateway-proxied.
+- **nexus**, **gateway** `/v1/gateway/*` — documented but not currently live at
+  their hostnames (unverified; specs left as-is).
 
 ## v1.0.0 Conventions
 

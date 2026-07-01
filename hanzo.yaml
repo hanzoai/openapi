@@ -44,6 +44,11 @@ paths:
       tags:
       - Discovery
       summary: List Hanzo services
+      description: |
+        Canonical index of Hanzo services with their subdomain, gateway route,
+        and OpenAPI spec URL. NOTE: the machine-readable index is currently the
+        set of per-service specs in this repository; the aggregated JSON endpoint
+        at the gateway is not yet wired.
       operationId: listServices
       security: []
       responses:
@@ -88,16 +93,24 @@ paths:
                   status:
                     type: string
                     enum: [ok]
-                  version:
+                  msg:
                     type: string
+                  data: {}
+                  data2: {}
               example:
                 status: ok
-                version: 1.0.0
+                msg: ''
+                data: null
+                data2: null
   /.well-known/openid-configuration:
     get:
       tags:
       - OIDC
-      summary: OIDC discovery (proxied from hanzo.id)
+      summary: OIDC discovery
+      description: |
+        OpenID Connect discovery document. Served by Hanzo IAM at its own host:
+        https://hanzo.id/.well-known/openid-configuration. The advertised
+        endpoints live under `/v1/iam/oauth/*` and `/v1/iam/.well-known/jwks`.
       operationId: oidcDiscovery
       security: []
       responses:
@@ -115,10 +128,10 @@ paths:
                   jwks_uri: { type: string, format: uri }
               example:
                 issuer: https://hanzo.id
-                authorization_endpoint: https://hanzo.id/oauth/authorize
-                token_endpoint: https://hanzo.id/oauth/token
-                userinfo_endpoint: https://hanzo.id/oauth/userinfo
-                jwks_uri: https://hanzo.id/.well-known/jwks
+                authorization_endpoint: https://hanzo.id/v1/iam/oauth/authorize
+                token_endpoint: https://hanzo.id/v1/iam/oauth/token
+                userinfo_endpoint: https://hanzo.id/v1/iam/oauth/userinfo
+                jwks_uri: https://hanzo.id/v1/iam/.well-known/jwks
 components:
   securitySchemes:
     BearerAuth:
@@ -126,9 +139,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: |
-        Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery:
-        https://hanzo.id/.well-known/openid-configuration. Obtain via
-        /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.
+        Bearer credential accepted on every `/v1/*` route. Either a JWT issued
+        by Hanzo IAM (https://hanzo.id) or a Hanzo API key (`hk-...`). OIDC
+        discovery: https://hanzo.id/.well-known/openid-configuration. Obtain a
+        token via /v1/iam/auth/login or /v1/iam/oauth/token, or mint an API key
+        in the console (console.hanzo.ai).
   schemas:
     Service:
       type: object

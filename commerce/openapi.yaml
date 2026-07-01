@@ -70,6 +70,11 @@ tags:
   description: Analytics counters and metrics
 - name: Access Tokens
   description: API access token management
+- name: Billing
+  description: Live billing money surface — balance, usage metering, deposits, credits,
+    plans, invoices, subscriptions, payment methods, and customer portal
+- name: Commerce Checkout
+  description: Native hosted-checkout — public tenant config and deposit lifecycle
 security:
 - BearerAuth: []
 paths:
@@ -2602,6 +2607,1186 @@ paths:
                 type: object
         '400':
           $ref: '#/components/responses/BadRequest'
+  # NOTE: on commerce.hanzo.ai the resource models (product/order/store/cart/user/account/subscribe/checkout) are served at top-level /v1/* — the /v1/commerce/* prefix on the resource paths below is the gateway-namespaced form and is pending reconciliation.
+  /v1/billing/tier:
+    get:
+      tags:
+      - Billing
+      summary: Get subscription tier for the org or user
+      operationId: getBillingTier
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Subscription tier
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tier:
+                    type: string
+                  displayName:
+                    type: string
+                example:
+                  tier: pro
+                  displayName: Pro
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/tier-check:
+    get:
+      tags:
+      - Billing
+      summary: Lightweight model-access gate
+      operationId: checkBillingTier
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: model
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Access decision
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  allowed:
+                    type: boolean
+                  tier:
+                    type: string
+                example:
+                  allowed: true
+                  tier: pro
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/balance:
+    get:
+      tags:
+      - Billing
+      summary: Get balance by user and currency (cents)
+      operationId: getBillingBalance
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: currency
+        in: query
+        schema:
+          type: string
+          default: usd
+      responses:
+        '200':
+          description: Current balance in minor units (cents)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balance:
+                    type: integer
+                    description: Balance in minor units (cents)
+                  currency:
+                    type: string
+                example:
+                  balance: 9962
+                  currency: usd
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/balance/all:
+    get:
+      tags:
+      - Billing
+      summary: Get all-currency balances
+      operationId: getBillingBalanceAll
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Balances across all currencies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    balance:
+                      type: integer
+                    currency:
+                      type: string
+                example:
+                - balance: 9962
+                  currency: usd
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/status:
+    get:
+      tags:
+      - Billing
+      summary: Get payment-method presence and credit balance
+      operationId: getBillingStatus
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Billing status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hasPaymentMethod:
+                    type: boolean
+                  creditBalance:
+                    type: integer
+                example:
+                  hasPaymentMethod: true
+                  creditBalance: 9962
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/usage:
+    get:
+      tags:
+      - Billing
+      summary: Read usage
+      operationId: getBillingUsage
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Usage records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  usage:
+                    type: array
+                    items:
+                      type: object
+                example:
+                  usage:
+                  - model: gpt-4o-mini
+                    amount: 1
+                    currency: usd
+                    createdAt: '2026-06-24T00:00:00Z'
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+    post:
+      tags:
+      - Billing
+      summary: Record (withdraw) usage
+      operationId: recordBillingUsage
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: integer
+                  description: Amount in minor units (cents)
+                currency:
+                  type: string
+                model:
+                  type: string
+                metadata:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Usage recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balance:
+                    type: integer
+                  currency:
+                    type: string
+                example:
+                  balance: 9961
+                  currency: usd
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/transactions:
+    get:
+      tags:
+      - Billing
+      summary: List ledger transaction history
+      operationId: listBillingTransactions
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Ledger history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/me/balance:
+    get:
+      tags:
+      - Billing
+      summary: Get caller balance
+      operationId: getMyBalance
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Caller balance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balance:
+                    type: integer
+                  currency:
+                    type: string
+                example:
+                  balance: 9962
+                  currency: usd
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/deposit:
+    post:
+      tags:
+      - Billing
+      summary: Deposit funds
+      operationId: billingDeposit
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: integer
+                currency:
+                  type: string
+                source:
+                  type: string
+      responses:
+        '200':
+          description: Deposit accepted
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/refund:
+    post:
+      tags:
+      - Billing
+      summary: Refund
+      operationId: billingRefund
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: integer
+                currency:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Refund processed
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/topup:
+    post:
+      tags:
+      - Billing
+      summary: Top up balance
+      operationId: billingTopup
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: integer
+                currency:
+                  type: string
+      responses:
+        '200':
+          description: Balance topped up
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/withdraw:
+    post:
+      tags:
+      - Billing
+      summary: Withdraw
+      operationId: billingWithdraw
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: integer
+                currency:
+                  type: string
+      responses:
+        '200':
+          description: Withdrawal initiated
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/grant-starter:
+    post:
+      tags:
+      - Billing
+      summary: Grant idempotent $5 signup credit (service-to-service)
+      operationId: grantStarterCredit
+      security:
+      - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                org:
+                  type: string
+      responses:
+        '200':
+          description: Starter credit granted (idempotent)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  granted:
+                    type: boolean
+                  balance:
+                    type: integer
+                example:
+                  granted: true
+                  balance: 500
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/credit:
+    post:
+      tags:
+      - Billing
+      summary: Grant credit
+      operationId: grantCredit
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: integer
+                currency:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Credit granted
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/credit-grants:
+    get:
+      tags:
+      - Billing
+      summary: List credit grants
+      operationId: listCreditGrants
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Credit grants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/credit-balance:
+    get:
+      tags:
+      - Billing
+      summary: Get credit balance
+      operationId: getCreditBalance
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Credit balance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  creditBalance:
+                    type: integer
+                  currency:
+                    type: string
+                example:
+                  creditBalance: 500
+                  currency: usd
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/plans:
+    get:
+      tags:
+      - Billing
+      summary: Get public plan catalog
+      operationId: listBillingPlans
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Plan catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/plans/{id}:
+    get:
+      tags:
+      - Billing
+      summary: Get one plan
+      operationId: getBillingPlan
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Plan
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/payment-config:
+    get:
+      tags:
+      - Billing
+      summary: Get per-org Square Web Payments config
+      operationId: getPaymentConfig
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Square Web Payments config
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  applicationId:
+                    type: string
+                  locationId:
+                    type: string
+                example:
+                  applicationId: sq0idp-xxxxxxxx
+                  locationId: LXXXXXXXXXXXX
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/auto-recharge:
+    get:
+      tags:
+      - Billing
+      summary: Get auto-recharge config
+      operationId: getAutoRecharge
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Auto-recharge config
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                  threshold:
+                    type: integer
+                  amount:
+                    type: integer
+                example:
+                  enabled: true
+                  threshold: 500
+                  amount: 2000
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+    put:
+      tags:
+      - Billing
+      summary: Set auto-recharge config
+      operationId: setAutoRecharge
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                threshold:
+                  type: integer
+                amount:
+                  type: integer
+      responses:
+        '200':
+          description: Auto-recharge updated
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/payment-methods:
+    get:
+      tags:
+      - Billing
+      summary: List payment methods
+      operationId: listBillingPaymentMethods
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Payment methods
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+    post:
+      tags:
+      - Billing
+      summary: Add payment method
+      operationId: addBillingPaymentMethod
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sourceId:
+                  type: string
+                  description: Square payment token (nonce)
+      responses:
+        '201':
+          description: Payment method added
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/payment-methods/{id}:
+    get:
+      tags:
+      - Billing
+      summary: Get payment method
+      operationId: getBillingPaymentMethod
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Payment method
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+    patch:
+      tags:
+      - Billing
+      summary: Update payment method
+      operationId: updateBillingPaymentMethod
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Payment method updated
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+    delete:
+      tags:
+      - Billing
+      summary: Remove payment method
+      operationId: deleteBillingPaymentMethod
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Payment method removed
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/invoices:
+    get:
+      tags:
+      - Billing
+      summary: List invoices
+      operationId: listInvoices
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+    post:
+      tags:
+      - Billing
+      summary: Create invoice
+      operationId: createInvoice
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/invoices/{id}:
+    get:
+      tags:
+      - Billing
+      summary: Get invoice
+      operationId: getInvoice
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Invoice
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/invoices/{id}/pay:
+    post:
+      tags:
+      - Billing
+      summary: Pay invoice
+      operationId: payInvoice
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Invoice paid
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/invoices/{id}/void:
+    post:
+      tags:
+      - Billing
+      summary: Void invoice
+      operationId: voidInvoice
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Invoice voided
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/subscriptions:
+    get:
+      tags:
+      - Billing
+      summary: List subscriptions
+      operationId: listBillingSubscriptions
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+    post:
+      tags:
+      - Billing
+      summary: Create subscription
+      operationId: createBillingSubscription
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                planId:
+                  type: string
+      responses:
+        '201':
+          description: Subscription created
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/subscriptions/{id}:
+    get:
+      tags:
+      - Billing
+      summary: Get subscription
+      operationId: getBillingSubscription
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Subscription
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/subscriptions/{id}/cancel:
+    post:
+      tags:
+      - Billing
+      summary: Cancel subscription
+      operationId: cancelBillingSubscription
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Subscription cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/portal/overview:
+    get:
+      tags:
+      - Billing
+      summary: Customer portal overview
+      operationId: getPortalOverview
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Portal overview
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/portal/invoices:
+    get:
+      tags:
+      - Billing
+      summary: Customer portal invoices
+      operationId: getPortalInvoices
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Portal invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/portal/subscriptions:
+    get:
+      tags:
+      - Billing
+      summary: Customer portal subscriptions
+      operationId: getPortalSubscriptions
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Portal subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/portal/payment-methods:
+    get:
+      tags:
+      - Billing
+      summary: Customer portal payment methods
+      operationId: getPortalPaymentMethods
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Portal payment methods
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/billing/webhooks/{provider}:
+    post:
+      tags:
+      - Billing
+      summary: Inbound provider billing webhook (provider-signature-verified)
+      operationId: billingWebhook
+      security: []
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Webhook accepted
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/commerce/tenant:
+    get:
+      tags:
+      - Commerce Checkout
+      summary: Get public tenant JSON (branding + public Square config)
+      operationId: getCommerceTenant
+      security: []
+      responses:
+        '200':
+          description: Public tenant configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  branding:
+                    type: object
+                  square:
+                    type: object
+                    properties:
+                      applicationId:
+                        type: string
+                      locationId:
+                        type: string
+                example:
+                  name: MaxPower
+                  branding:
+                    logo: https://cdn.hanzo.ai/maxpower/logo.png
+                  square:
+                    applicationId: sq0idp-xxxxxxxx
+                    locationId: LXXXXXXXXXXXX
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/commerce/deposits:
+    post:
+      tags:
+      - Commerce Checkout
+      summary: Create a deposit
+      operationId: createCommerceDeposit
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: integer
+                currency:
+                  type: string
+      responses:
+        '201':
+          description: Deposit created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                example:
+                  id: dep_abc123
+                  status: pending
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/commerce/deposits/{id}/confirm:
+    post:
+      tags:
+      - Commerce Checkout
+      summary: Confirm a deposit
+      operationId: confirmCommerceDeposit
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sourceId:
+                  type: string
+                  description: Square payment token (nonce)
+      responses:
+        '200':
+          description: Deposit confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/commerce/deposits/{id}/status:
+    get:
+      tags:
+      - Commerce Checkout
+      summary: Get deposit status
+      operationId: getCommerceDepositStatus
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Deposit status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                example:
+                  id: dep_abc123
+                  status: completed
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
+  /v1/commerce/webhooks/{provider}:
+    post:
+      tags:
+      - Commerce Checkout
+      summary: Hosted-checkout provider webhook (provider-signature-verified)
+      operationId: commerceWebhook
+      security: []
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Webhook accepted
+          content:
+            application/json:
+              schema:
+                type: object
+        '4XX':
+          $ref: '#/components/responses/BillingErrorResponse'
 components:
   securitySchemes:
     bearerAuth:
@@ -2671,7 +3856,29 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+    BillingErrorResponse:
+      description: Billing/commerce error envelope (type defaults to "api-error")
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BillingError'
   schemas:
+    BillingError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            type:
+              type: string
+              default: api-error
+              description: Error class; defaults to "api-error"
+            message:
+              type: string
+            code:
+              type: string
+            param:
+              type: string
     Error:
       type: object
       properties:

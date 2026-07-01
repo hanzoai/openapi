@@ -1,18 +1,25 @@
 openapi: 3.1.0
 info:
-  title: Hanzo Visor API
-  description: 'Hanzo Visor is a VM and remote session management platform.
-
-    It manages cloud machines, remote desktop sessions via Guacamole (RDP/SSH/Telnet),
-
-    infrastructure providers, remote assets, audit records, and Kubernetes node pools.
+  title: Hanzo Visor
+  description: 'Hanzo Visor is the Hanzo compute control plane.
 
 
-    All mutation endpoints use POST (not PUT/PATCH/DELETE), following the Beego
+    It provisions and manages cloud machines (CPU and GPU), block-storage volumes,
+    Kubernetes node pools, remote-access assets and desktop sessions, infrastructure
+    providers (including BYOC), billing plans, and audit records.
 
-    controller convention. Responses are wrapped in a standard envelope with
 
-    `status`, `msg`, `data`, and optional `data2` (pagination count) fields.
+    Two surfaces coexist under the `/v1` namespace:
+
+    - A resource-style REST surface for the public machine catalog and machine
+    lifecycle (`/v1/regions`, `/v1/sizes`, `/v1/gpus`, `/v1/machines`, ...).
+
+    - The verb-style control-plane surface (`/v1/<verb>-<resource>`) used by the
+    console.
+
+
+    Every response is wrapped in a standard envelope with `status`, `msg`, `data`,
+    and `data2` fields.
 
     '
   version: 1.0.0
@@ -21,1476 +28,952 @@ info:
     url: https://hanzo.ai
     email: support@hanzo.ai
   license:
-    name: Apache-2.0
-    url: https://www.apache.org/licenses/LICENSE-2.0
+    name: Proprietary
 servers:
 - url: https://vm.hanzo.ai
-  description: Visor Production
-- url: https://api.hanzo.ai
-  description: Hanzo Gateway (via api.hanzo.ai/v1/visor/*)
+  description: Hanzo Visor Production
 security:
 - BearerAuth: []
 tags:
-- name: Auth
-  description: Authentication and account management
+- name: Compute
+  description: Public compute catalog (regions, sizes, GPUs) with Hanzo resale pricing
 - name: Machines
-  description: Cloud machine lifecycle management
-- name: Records
-  description: Audit records and blockchain commit/query
-- name: Assets
-  description: Remote access assets (SSH/RDP/Telnet targets)
+  description: Cloud machine catalog and lifecycle
+- name: Plans
+  description: Billing and capacity plans
 - name: Providers
-  description: Cloud infrastructure providers
-- name: Sessions
-  description: Remote desktop sessions via Guacamole
-- name: Tunnels
-  description: WebSocket tunnels for remote desktop connections
+  description: Infrastructure providers, including bring-your-own-cloud (BYOC)
+- name: Volumes
+  description: Block-storage volume lifecycle
 - name: NodePools
-  description: Kubernetes node pool management (DOKS)
+  description: Kubernetes node pool management
+- name: Sessions
+  description: Remote desktop and shell sessions
+- name: Assets
+  description: Remote-access assets and tunnels
+- name: Records
+  description: Audit records
+- name: Account
+  description: Authentication and account
 paths:
-  /v1/visor/signin:
-    post:
-      operationId: signin
-      summary: Sign in via IAM OAuth
-      tags:
-      - Auth
-      security: []
-      parameters:
-      - name: code
-        in: query
-        required: true
-        schema:
-          type: string
-        description: OAuth authorization code
-      - name: state
-        in: query
-        required: true
-        schema:
-          type: string
-        description: OAuth state parameter
-      responses:
-        '200':
-          description: Authenticated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-  /v1/visor/signout:
-    post:
-      operationId: signout
-      summary: Sign out and clear session
-      tags:
-      - Auth
-      responses:
-        '200':
-          description: Signed out
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-  /v1/visor/get-account:
+  /v1/regions:
     get:
-      operationId: getAccount
-      summary: Get current authenticated account
-      tags:
-      - Auth
+      operationId: listRegions
+      summary: List DO regions (cached catalog)
+      tags: [Compute]
+      security: []
       responses:
         '200':
-          description: Account claims
+          description: Region catalog in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
-  /v1/visor/get-machines:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/sizes:
+    get:
+      operationId: listSizes
+      summary: List machine sizes with Hanzo resale pricing
+      tags: [Compute]
+      security: []
+      responses:
+        '200':
+          description: Size catalog in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/gpus:
+    get:
+      operationId: listGpus
+      summary: List GPU sizes (H100/H200/MI300X/L40S), resale-priced
+      tags: [Compute]
+      security: []
+      responses:
+        '200':
+          description: GPU size catalog in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/machines:
+    get:
+      operationId: listMachines
+      summary: List machines for the caller's org
+      tags: [Machines]
+      responses:
+        '200':
+          description: Machines for the caller's org in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/machines/launch:
+    post:
+      operationId: launchMachineQuote
+      summary: Quote or launch a machine (dryRun=true returns a LaunchQuote, no spend)
+      tags: [Machines]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LaunchRequest'
+      responses:
+        '200':
+          description: The launched machine, or a LaunchQuote when dryRun=true, in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/machines/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Machine ID.
+      schema:
+        type: string
+    get:
+      operationId: getMachineById
+      summary: Get one machine (org-ownership verified)
+      tags: [Machines]
+      responses:
+        '200':
+          description: The machine in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      operationId: destroyMachine
+      summary: Destroy a machine
+      tags: [Machines]
+      responses:
+        '200':
+          description: Destroy result in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-machines:
     get:
       operationId: getMachines
-      summary: List all machines
-      tags:
-      - Machines
-      parameters:
-      - $ref: '#/components/parameters/Owner'
-      - $ref: '#/components/parameters/PageSize'
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Field'
-      - $ref: '#/components/parameters/Value'
-      - $ref: '#/components/parameters/SortField'
-      - $ref: '#/components/parameters/SortOrder'
+      summary: List machines (legacy)
+      tags: [Machines]
       responses:
         '200':
-          description: List of machines
+          description: Machines in `data`, total count in `data2`.
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: '#/components/schemas/Machine'
-                    data2:
-                      type: integer
-                      description: Total count (when paginated)
-  /v1/visor/get-machine:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-machine:
     get:
       operationId: getMachine
-      summary: Get a single machine
-      tags:
-      - Machines
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Machine ID in owner/name format
+      summary: Get a machine (legacy)
+      tags: [Machines]
       responses:
         '200':
-          description: Machine details
+          description: The machine in `data`.
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Machine'
-  /v1/visor/add-machine:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/add-machine:
     post:
       operationId: addMachine
-      summary: Add a new machine
-      tags:
-      - Machines
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Machine'
+      summary: Add a machine (legacy)
+      tags: [Machines]
       responses:
         '200':
-          description: Action result
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/update-machine:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/update-machine:
     post:
       operationId: updateMachine
-      summary: Update an existing machine
-      tags:
-      - Machines
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Machine ID in owner/name format
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Machine'
+      summary: Update a machine (legacy)
+      tags: [Machines]
       responses:
         '200':
-          description: Action result
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/delete-machine:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/delete-machine:
     post:
       operationId: deleteMachine
-      summary: Delete a machine
-      tags:
-      - Machines
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Machine'
+      summary: Delete a machine (legacy)
+      tags: [Machines]
       responses:
         '200':
-          description: Action result
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/launch-machine:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/launch-machine:
     post:
       operationId: launchMachine
-      summary: Launch a new cloud machine via provider
-      tags:
-      - Machines
-      parameters:
-      - name: owner
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: provider
-        in: query
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateMachineSpec'
+      summary: Launch a machine via provider (legacy)
+      tags: [Machines]
       responses:
         '200':
-          description: Launched machine
+          description: The launched machine in `data`.
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Machine'
-  /v1/visor/get-records:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-plans:
     get:
-      operationId: getRecords
-      summary: List all audit records
-      tags:
-      - Records
-      parameters:
-      - $ref: '#/components/parameters/Owner'
-      - $ref: '#/components/parameters/PageSize'
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Field'
-      - $ref: '#/components/parameters/Value'
-      - $ref: '#/components/parameters/SortField'
-      - $ref: '#/components/parameters/SortOrder'
+      operationId: getPlans
+      summary: List plans
+      tags: [Plans]
       responses:
         '200':
-          description: List of records
+          description: Plans in `data`, total count in `data2`.
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: '#/components/schemas/Record'
-  /v1/visor/get-record:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-plan:
     get:
-      operationId: getRecord
-      summary: Get a single record
-      tags:
-      - Records
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Record ID in owner/name format
+      operationId: getPlan
+      summary: Get a plan
+      tags: [Plans]
       responses:
         '200':
-          description: Record details
+          description: The plan in `data`.
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Record'
-  /v1/visor/add-record:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/add-plan:
     post:
-      operationId: addRecord
-      summary: Add an audit record
-      tags:
-      - Records
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Record'
+      operationId: addPlan
+      summary: Add a plan
+      tags: [Plans]
       responses:
         '200':
-          description: Action result
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/update-record:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/update-plan:
     post:
-      operationId: updateRecord
-      summary: Update a record
-      tags:
-      - Records
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Record'
+      operationId: updatePlan
+      summary: Update a plan
+      tags: [Plans]
       responses:
         '200':
-          description: Action result
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/delete-record:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/delete-plan:
     post:
-      operationId: deleteRecord
-      summary: Delete a record
-      tags:
-      - Records
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Record'
+      operationId: deletePlan
+      summary: Delete a plan
+      tags: [Plans]
       responses:
         '200':
-          description: Action result
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/commit-record:
-    post:
-      operationId: commitRecord
-      summary: Commit a record to the blockchain
-      tags:
-      - Records
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Record'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/query-record:
-    get:
-      operationId: queryRecord
-      summary: Query a record from the blockchain
-      tags:
-      - Records
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Record ID in owner/name format
-      responses:
-        '200':
-          description: Queried record
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-  /v1/visor/get-assets:
-    get:
-      operationId: getAssets
-      summary: List all remote access assets
-      tags:
-      - Assets
-      parameters:
-      - $ref: '#/components/parameters/Owner'
-      - $ref: '#/components/parameters/PageSize'
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Field'
-      - $ref: '#/components/parameters/Value'
-      - $ref: '#/components/parameters/SortField'
-      - $ref: '#/components/parameters/SortOrder'
-      responses:
-        '200':
-          description: List of assets
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: '#/components/schemas/Asset'
-  /v1/visor/get-asset:
-    get:
-      operationId: getAsset
-      summary: Get a single asset
-      tags:
-      - Assets
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Asset ID in owner/name format
-      responses:
-        '200':
-          description: Asset details
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Asset'
-  /v1/visor/add-asset:
-    post:
-      operationId: addAsset
-      summary: Add a remote access asset
-      tags:
-      - Assets
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Asset'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/update-asset:
-    post:
-      operationId: updateAsset
-      summary: Update an asset
-      tags:
-      - Assets
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Asset'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/delete-asset:
-    post:
-      operationId: deleteAsset
-      summary: Delete an asset
-      tags:
-      - Assets
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Asset'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/get-providers:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-providers:
     get:
       operationId: getProviders
-      summary: List all infrastructure providers
-      tags:
-      - Providers
-      parameters:
-      - $ref: '#/components/parameters/Owner'
-      - $ref: '#/components/parameters/PageSize'
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Field'
-      - $ref: '#/components/parameters/Value'
-      - $ref: '#/components/parameters/SortField'
-      - $ref: '#/components/parameters/SortOrder'
+      summary: List providers
+      tags: [Providers]
       responses:
         '200':
-          description: List of providers
+          description: Providers in `data`, total count in `data2`.
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: '#/components/schemas/Provider'
-  /v1/visor/get-provider:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-provider:
     get:
       operationId: getProvider
-      summary: Get a single provider
-      tags:
-      - Providers
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Provider ID in owner/name format
+      summary: Get a provider
+      tags: [Providers]
       responses:
         '200':
-          description: Provider details
+          description: The provider in `data`.
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Provider'
-  /v1/visor/add-provider:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/add-provider:
     post:
       operationId: addProvider
-      summary: Add a cloud provider
-      tags:
-      - Providers
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Provider'
+      summary: Add a provider (BYOC)
+      tags: [Providers]
       responses:
         '200':
-          description: Action result
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/update-provider:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/update-provider:
     post:
       operationId: updateProvider
       summary: Update a provider
-      tags:
-      - Providers
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Provider'
+      tags: [Providers]
       responses:
         '200':
-          description: Action result
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/delete-provider:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/delete-provider:
     post:
       operationId: deleteProvider
       summary: Delete a provider
-      tags:
-      - Providers
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Provider'
+      tags: [Providers]
       responses:
         '200':
-          description: Action result
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/get-sessions:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-volumes:
     get:
-      operationId: getSessions
-      summary: List all remote desktop sessions
-      tags:
-      - Sessions
-      parameters:
-      - $ref: '#/components/parameters/Owner'
-      - $ref: '#/components/parameters/PageSize'
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Field'
-      - $ref: '#/components/parameters/Value'
-      - $ref: '#/components/parameters/SortField'
-      - $ref: '#/components/parameters/SortOrder'
-      - name: status
-        in: query
-        schema:
-          type: string
-        description: Filter by session status
+      operationId: getVolumes
+      summary: List volumes
+      tags: [Volumes]
       responses:
         '200':
-          description: List of sessions
+          description: Volumes in `data`, total count in `data2`.
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: '#/components/schemas/Session'
-  /v1/visor/get-session:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-volume:
     get:
-      operationId: getSession
-      summary: Get a single session
-      tags:
-      - Sessions
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Session ID
+      operationId: getVolume
+      summary: Get a volume
+      tags: [Volumes]
       responses:
         '200':
-          description: Session details
+          description: The volume in `data`.
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Session'
-  /v1/visor/add-session:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/create-volume:
     post:
-      operationId: addSession
-      summary: Add a session record
-      tags:
-      - Sessions
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Session'
+      operationId: createVolume
+      summary: Create a volume
+      tags: [Volumes]
       responses:
         '200':
-          description: Action result
+          description: The created volume in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/update-session:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/delete-volume:
     post:
-      operationId: updateSession
-      summary: Update a session
-      tags:
-      - Sessions
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Session'
+      operationId: deleteVolume
+      summary: Delete a volume
+      tags: [Volumes]
       responses:
         '200':
-          description: Action result
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/delete-session:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/attach-volume:
     post:
-      operationId: deleteSession
-      summary: Delete a session
-      tags:
-      - Sessions
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Session'
+      operationId: attachVolume
+      summary: Attach a volume to a machine
+      tags: [Volumes]
       responses:
         '200':
-          description: Action result
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/start-session:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/detach-volume:
     post:
-      operationId: startSession
-      summary: Start a session (set status to connected)
-      tags:
-      - Sessions
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
+      operationId: detachVolume
+      summary: Detach a volume from a machine
+      tags: [Volumes]
       responses:
         '200':
-          description: Session started
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
-  /v1/visor/stop-session:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/resize-volume:
     post:
-      operationId: stopSession
-      summary: Forcibly stop a session
-      tags:
-      - Sessions
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
+      operationId: resizeVolume
+      summary: Resize a volume
+      tags: [Volumes]
       responses:
         '200':
-          description: Session stopped
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
-  /v1/visor/add-asset-tunnel:
-    post:
-      operationId: addAssetTunnel
-      summary: Create a Guacamole tunnel session for an asset
-      tags:
-      - Tunnels
-      parameters:
-      - name: assetId
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Asset ID to connect to
-      - name: mode
-        in: query
-        schema:
-          type: string
-        description: Connection mode
-      responses:
-        '200':
-          description: Tunnel session created
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Session'
-  /v1/visor/get-asset-tunnel:
-    get:
-      operationId: getAssetTunnel
-      summary: Open a WebSocket tunnel to a remote desktop
-      description: 'Upgrades to a WebSocket connection using the Guacamole protocol.
-
-        The subprotocol is "guacamole". Requires an existing session from
-
-        add-asset-tunnel.
-
-        '
-      tags:
-      - Tunnels
-      parameters:
-      - name: sessionId
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: width
-        in: query
-        required: true
-        schema:
-          type: integer
-      - name: height
-        in: query
-        required: true
-        schema:
-          type: integer
-      - name: dpi
-        in: query
-        schema:
-          type: string
-          default: '96'
-      - name: username
-        in: query
-        schema:
-          type: string
-      - name: password
-        in: query
-        schema:
-          type: string
-      responses:
-        '101':
-          description: WebSocket upgrade (Guacamole protocol)
-  /v1/visor/get-node-pools:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-node-pools:
     get:
       operationId: getNodePools
-      summary: List all Kubernetes node pools
-      tags:
-      - NodePools
-      parameters:
-      - $ref: '#/components/parameters/Owner'
-      - $ref: '#/components/parameters/PageSize'
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Field'
-      - $ref: '#/components/parameters/Value'
-      - $ref: '#/components/parameters/SortField'
-      - $ref: '#/components/parameters/SortOrder'
+      summary: List node pools
+      tags: [NodePools]
       responses:
         '200':
-          description: List of node pools
+          description: Node pools in `data`, total count in `data2`.
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: '#/components/schemas/NodePool'
-  /v1/visor/get-node-pool:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-node-pool:
     get:
       operationId: getNodePool
-      summary: Get a single node pool
-      tags:
-      - NodePools
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Node pool ID in owner/name format
+      summary: Get a node pool
+      tags: [NodePools]
       responses:
         '200':
-          description: Node pool details
+          description: The node pool in `data`.
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/NodePool'
-  /v1/visor/create-node-pool:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/create-node-pool:
     post:
       operationId: createNodePool
-      summary: Create a new node pool in DOKS
-      tags:
-      - NodePools
-      parameters:
-      - name: owner
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: provider
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: clusterId
-        in: query
-        schema:
-          type: string
-        description: DOKS cluster ID (optional, uses provider default)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateNodePoolSpec'
+      summary: Create a node pool
+      tags: [NodePools]
       responses:
         '200':
-          description: Created node pool
+          description: The created node pool in `data`.
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/NodePool'
-  /v1/visor/update-node-pool:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/update-node-pool:
     post:
       operationId: updateNodePool
       summary: Update a node pool
-      tags:
-      - NodePools
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/NodePool'
+      tags: [NodePools]
       responses:
         '200':
-          description: Action result
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/delete-node-pool:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/delete-node-pool:
     post:
       operationId: deleteNodePool
-      summary: Delete a node pool from DOKS and DB
-      tags:
-      - NodePools
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/NodePool'
+      summary: Delete a node pool
+      tags: [NodePools]
       responses:
         '200':
-          description: Action result
+          description: Action result in `data`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/scale-node-pool:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/scale-node-pool:
     post:
       operationId: scaleNodePool
-      summary: Scale a node pool to a desired count
-      tags:
-      - NodePools
-      parameters:
-      - name: owner
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: provider
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: clusterId
-        in: query
-        schema:
-          type: string
-      - name: poolId
-        in: query
-        required: true
-        schema:
-          type: string
-        description: DOKS node pool ID
-      - name: count
-        in: query
-        required: true
-        schema:
-          type: integer
-        description: Desired node count
+      summary: Scale a node pool
+      tags: [NodePools]
       responses:
         '200':
-          description: Scaled node pool
+          description: The scaled node pool in `data`.
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/NodePool'
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-sessions:
+    get:
+      operationId: getSessions
+      summary: List sessions
+      tags: [Sessions]
+      responses:
+        '200':
+          description: Sessions in `data`, total count in `data2`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-session:
+    get:
+      operationId: getSession
+      summary: Get a session
+      tags: [Sessions]
+      responses:
+        '200':
+          description: The session in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/add-session:
+    post:
+      operationId: addSession
+      summary: Add a session
+      tags: [Sessions]
+      responses:
+        '200':
+          description: Action result in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/update-session:
+    post:
+      operationId: updateSession
+      summary: Update a session
+      tags: [Sessions]
+      responses:
+        '200':
+          description: Action result in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/delete-session:
+    post:
+      operationId: deleteSession
+      summary: Delete a session
+      tags: [Sessions]
+      responses:
+        '200':
+          description: Action result in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/start-session:
+    post:
+      operationId: startSession
+      summary: Start a session
+      tags: [Sessions]
+      responses:
+        '200':
+          description: The started session in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/stop-session:
+    post:
+      operationId: stopSession
+      summary: Stop a session
+      tags: [Sessions]
+      responses:
+        '200':
+          description: The stopped session in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-assets:
+    get:
+      operationId: getAssets
+      summary: List assets
+      tags: [Assets]
+      responses:
+        '200':
+          description: Assets in `data`, total count in `data2`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-asset:
+    get:
+      operationId: getAsset
+      summary: Get an asset
+      tags: [Assets]
+      responses:
+        '200':
+          description: The asset in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/add-asset:
+    post:
+      operationId: addAsset
+      summary: Add an asset
+      tags: [Assets]
+      responses:
+        '200':
+          description: Action result in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/update-asset:
+    post:
+      operationId: updateAsset
+      summary: Update an asset
+      tags: [Assets]
+      responses:
+        '200':
+          description: Action result in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/delete-asset:
+    post:
+      operationId: deleteAsset
+      summary: Delete an asset
+      tags: [Assets]
+      responses:
+        '200':
+          description: Action result in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/add-asset-tunnel:
+    post:
+      operationId: addAssetTunnel
+      summary: Open a remote-access tunnel to an asset
+      tags: [Assets]
+      responses:
+        '200':
+          description: The tunnel session in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-asset-tunnel:
+    get:
+      operationId: getAssetTunnel
+      summary: Get an asset tunnel session
+      tags: [Assets]
+      responses:
+        '200':
+          description: The tunnel session in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-records:
+    get:
+      operationId: getRecords
+      summary: List audit records
+      tags: [Records]
+      responses:
+        '200':
+          description: Records in `data`, total count in `data2`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-record:
+    get:
+      operationId: getRecord
+      summary: Get an audit record
+      tags: [Records]
+      responses:
+        '200':
+          description: The record in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/add-record:
+    post:
+      operationId: addRecord
+      summary: Add an audit record
+      tags: [Records]
+      responses:
+        '200':
+          description: Action result in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/update-record:
+    post:
+      operationId: updateRecord
+      summary: Update an audit record
+      tags: [Records]
+      responses:
+        '200':
+          description: Action result in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/delete-record:
+    post:
+      operationId: deleteRecord
+      summary: Delete an audit record
+      tags: [Records]
+      responses:
+        '200':
+          description: Action result in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/commit-record:
+    post:
+      operationId: commitRecord
+      summary: Commit a record (audit anchor)
+      tags: [Records]
+      responses:
+        '200':
+          description: Commit result in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/query-record:
+    get:
+      operationId: queryRecord
+      summary: Query a committed record
+      tags: [Records]
+      responses:
+        '200':
+          description: The queried record in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/signin:
+    post:
+      operationId: signin
+      summary: Sign in (IAM OAuth code exchange)
+      tags: [Account]
+      responses:
+        '200':
+          description: The authenticated account in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/signout:
+    post:
+      operationId: signout
+      summary: Sign out
+      tags: [Account]
+      responses:
+        '200':
+          description: Sign-out result in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-account:
+    get:
+      operationId: getAccount
+      summary: Get the current account
+      tags: [Account]
+      responses:
+        '200':
+          description: The current account in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/get-whitelabel:
+    get:
+      operationId: getWhitelabel
+      summary: Get white-label branding for the host
+      tags: [Account]
+      responses:
+        '200':
+          description: White-label branding in `data`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '403':
+          $ref: '#/components/responses/Unauthorized'
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
-        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
-  parameters:
-    Owner:
-      name: owner
-      in: query
-      schema:
-        type: string
-      description: Owner (organization) name
-    PageSize:
-      name: pageSize
-      in: query
-      schema:
-        type: string
-      description: Number of items per page
-    Page:
-      name: p
-      in: query
-      schema:
-        type: string
-      description: Page number
-    Field:
-      name: field
-      in: query
-      schema:
-        type: string
-      description: Field name to filter by
-    Value:
-      name: value
-      in: query
-      schema:
-        type: string
-      description: Value to filter for
-    SortField:
-      name: sortField
-      in: query
-      schema:
-        type: string
-      description: Field to sort by
-    SortOrder:
-      name: sortOrder
-      in: query
-      schema:
-        type: string
-        enum:
-        - ascend
-        - descend
-      description: Sort direction
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.'
+  responses:
+    Unauthorized:
+      description: Authentication or authorization failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Response'
+          example:
+            status: error
+            msg: Unauthorized operation
+            data: null
+            data2: null
   schemas:
-    ApiResponse:
+    Response:
       type: object
+      description: Standard response envelope returned by every endpoint.
       properties:
         status:
           type: string
-          enum:
-          - ok
-          - error
+          enum: [ok, error]
+          description: Request outcome.
         msg:
           type: string
+          description: Human-readable message; empty on success, error detail on failure.
         data:
-          description: Primary response data
+          description: Primary payload; shape depends on the endpoint. Null when not applicable.
         data2:
-          description: Secondary data (usually pagination total count)
-    ActionResponse:
+          description: Secondary payload, often a pagination total count. Null when not applicable.
+    LaunchRequest:
       type: object
-      properties:
-        status:
-          type: string
-          enum:
-          - ok
-          - error
-        msg:
-          type: string
-        data:
-          type: string
-          enum:
-          - Affected
-          - Unaffected
-    Machine:
-      type: object
-      properties:
-        owner:
-          type: string
-        name:
-          type: string
-        id:
-          type: string
-        provider:
-          type: string
-        createdTime:
-          type: string
-        updatedTime:
-          type: string
-        expireTime:
-          type: string
-        displayName:
-          type: string
-        region:
-          type: string
-        zone:
-          type: string
-        category:
-          type: string
-        type:
-          type: string
-        size:
-          type: string
-        tag:
-          type: string
-        state:
-          type: string
-        image:
-          type: string
-        os:
-          type: string
-        publicIp:
-          type: string
-        privateIp:
-          type: string
-        cpuSize:
-          type: string
-        memSize:
-          type: string
-        remoteProtocol:
-          type: string
-          enum:
-          - SSH
-          - RDP
-          - Telnet
-          - VNC
-        remotePort:
-          type: integer
-        remoteUsername:
-          type: string
-        remotePassword:
-          type: string
-          format: password
-    CreateMachineSpec:
-      type: object
+      description: Machine launch or quote request; additional provider-specific spec fields are accepted.
       required:
-      - name
-      - instanceType
-      - imageId
-      - os
+      - size
       - region
       properties:
-        name:
+        size:
           type: string
-        displayName:
-          type: string
-        instanceType:
-          type: string
-          description: Instance type (e.g. t3.medium, mac2.metal)
-        imageId:
-          type: string
-          description: AMI ID or image name
-        os:
-          type: string
-          enum:
-          - linux
-          - macos
-          - windows
+          description: Machine size slug (see /v1/sizes and /v1/gpus).
         region:
           type: string
-        tags:
-          type: object
-          additionalProperties:
-            type: string
-    Record:
-      type: object
-      properties:
-        id:
-          type: integer
-        owner:
-          type: string
-        name:
-          type: string
-        createdTime:
-          type: string
-        organization:
-          type: string
-        clientIp:
-          type: string
-        userAgent:
-          type: string
-        user:
-          type: string
-        method:
-          type: string
-        requestUri:
-          type: string
-        action:
-          type: string
-        language:
-          type: string
-        object:
-          type: string
-        response:
-          type: string
-        provider:
-          type: string
-        block:
-          type: string
-          description: Blockchain block reference
-        transaction:
-          type: string
-          description: Blockchain transaction hash
-        isTriggered:
+          description: Target region slug (see /v1/regions).
+        dryRun:
           type: boolean
-    Asset:
-      type: object
-      properties:
-        owner:
-          type: string
-        name:
-          type: string
-        createdTime:
-          type: string
-        updatedTime:
-          type: string
-        displayName:
-          type: string
-        category:
-          type: string
-        type:
-          type: string
-        tag:
-          type: string
-        machineName:
-          type: string
-        os:
-          type: string
-        publicIp:
-          type: string
-        privateIp:
-          type: string
-        size:
-          type: string
-        cpuSize:
-          type: string
-        memSize:
-          type: string
-        remoteProtocol:
-          type: string
-          enum:
-          - SSH
-          - RDP
-          - Telnet
-          - VNC
-        remotePort:
-          type: integer
-        remoteUsername:
-          type: string
-        remotePassword:
-          type: string
-          format: password
-        autoQuery:
-          type: boolean
-        isPermanent:
-          type: boolean
-        language:
-          type: string
-    Provider:
-      type: object
-      properties:
-        owner:
-          type: string
-        name:
-          type: string
-        createdTime:
-          type: string
-        updatedTime:
-          type: string
-        displayName:
-          type: string
-        category:
-          type: string
-        type:
-          type: string
-        clientId:
-          type: string
-        clientSecret:
-          type: string
-          format: password
-        region:
-          type: string
-        network:
-          type: string
-        chain:
-          type: string
-        browserUrl:
-          type: string
-        state:
-          type: string
-        providerUrl:
-          type: string
-        clusterId:
-          type: string
-          description: DOKS cluster UUID
-    Session:
-      type: object
-      properties:
-        owner:
-          type: string
-        name:
-          type: string
-        createdTime:
-          type: string
-        startTime:
-          type: string
-        endTime:
-          type: string
-        protocol:
-          type: string
-          enum:
-          - rdp
-          - ssh
-          - telnet
-          - vnc
-        connectionId:
-          type: string
-        asset:
-          type: string
-          description: Asset ID (owner/name)
-        creator:
-          type: string
-        clientIp:
-          type: string
-        userAgent:
-          type: string
-        clientIpDesc:
-          type: string
-        userAgentDesc:
-          type: string
-        width:
-          type: integer
-        height:
-          type: integer
-        status:
-          type: string
-          enum:
-          - Connected
-          - Connecting
-          - Disconnected
-        recording:
-          type: string
-        code:
-          type: integer
-        message:
-          type: string
-        mode:
-          type: string
-        operations:
-          type: array
-          items:
-            type: string
-        reviewed:
-          type: boolean
-        commandCount:
-          type: integer
-          format: int64
-    NodePool:
-      type: object
-      properties:
-        owner:
-          type: string
-        name:
-          type: string
-        createdTime:
-          type: string
-        updatedTime:
-          type: string
-        clusterId:
-          type: string
-          description: DOKS cluster UUID
-        poolId:
-          type: string
-          description: DOKS node pool UUID
-        provider:
-          type: string
-        size:
-          type: string
-          description: Droplet size slug (e.g. s-2vcpu-4gb)
-        count:
-          type: integer
-        minNodes:
-          type: integer
-        maxNodes:
-          type: integer
-        autoScale:
-          type: boolean
-        state:
-          type: string
-        costPerHour:
-          type: integer
-          format: int64
-          description: Cost in cents per hour
-        orgId:
-          type: string
-        projectId:
-          type: string
-    CreateNodePoolSpec:
-      type: object
-      required:
-      - name
-      - size
-      - count
-      properties:
-        name:
-          type: string
-        size:
-          type: string
-          description: Droplet size slug
-        count:
-          type: integer
-        minNodes:
-          type: integer
-        maxNodes:
-          type: integer
-        autoScale:
-          type: boolean
-        tags:
-          type: array
-          items:
-            type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
+          description: When true, returns a LaunchQuote (price estimate) without provisioning or spending.
+      additionalProperties: true
