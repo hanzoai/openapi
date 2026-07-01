@@ -1275,6 +1275,173 @@ paths:
             application/json:
               schema:
                 type: object
+  /v1/kms/orgs/{org}/secrets:
+    description: >
+      Canonical (lux-native) org-scoped secrets API — the surface the Hanzo KMS
+      Go server actually serves (github.com/hanzoai/kms embed.go
+      registerSecretRoutes) and that console2 + the `kms` CLI use. Auth is an
+      IAM-issued Bearer token verified against the issuer JWKS (authorize +
+      canActOnOrg); the org in the path MUST match the token's owner claim
+      (or a global admin). Zero-knowledge: list returns KEYS ONLY (no value);
+      values are read one at a time via the {rest} path below.
+    get:
+      operationId: kmsListOrgSecrets
+      tags: [Secrets]
+      summary: List an org's secret metadata (names only, never values)
+      parameters:
+      - name: org
+        in: path
+        required: true
+        schema: { type: string }
+      - name: env
+        in: query
+        description: Environment slug (devnet, testnet, mainnet, production, …). Default "default".
+        schema: { type: string }
+      - name: prefix
+        in: query
+        description: Restrict the scan to a subpath within brand/{org}.
+        schema: { type: string }
+      responses:
+        '200':
+          description: Secret metadata rows (no values)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secrets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        path: { type: string }
+                        name: { type: string }
+                        env: { type: string }
+                        version: { type: integer, format: int64 }
+                        updatedTime: { type: string, format: date-time }
+                  count: { type: integer }
+                  truncated: { type: boolean }
+        '401': { description: Missing/invalid bearer token }
+        '403': { description: "Token org claim does not match the org path" }
+    post:
+      operationId: kmsPutOrgSecret
+      tags: [Secrets]
+      summary: Create or upsert a secret (value write-only; version bumps)
+      parameters:
+      - name: org
+        in: path
+        required: true
+        schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, value]
+              properties:
+                path: { type: string }
+                name: { type: string }
+                env: { type: string, default: default }
+                value: { type: string }
+      responses:
+        '200':
+          description: Stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  version: { type: integer, format: int64 }
+        '400': { description: Invalid path/name or missing name+value }
+        '403': { description: "Token org claim does not match the org path" }
+  /v1/kms/orgs/{org}/secrets/{rest}:
+    description: >
+      One secret addressed by its full path/name (e.g. providers/alpaca/api_key).
+      GET reveals the value (shown once, audited); PATCH rotates with a
+      compare-and-set on the current version (If-Match or body.version); DELETE
+      removes it. Same authorize()+canActOnOrg() gate as the list/create above.
+    parameters:
+    - name: org
+      in: path
+      required: true
+      schema: { type: string }
+    - name: rest
+      in: path
+      required: true
+      description: The secret's path + name joined (a/b/c/name).
+      schema: { type: string }
+    get:
+      operationId: kmsGetOrgSecret
+      tags: [Secrets]
+      summary: Reveal one secret value
+      parameters:
+      - name: env
+        in: query
+        schema: { type: string }
+      responses:
+        '200':
+          description: The secret value + current version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret:
+                    type: object
+                    properties:
+                      value: { type: string }
+                  version: { type: integer, format: int64 }
+        '404': { description: Not found }
+    patch:
+      operationId: kmsRotateOrgSecret
+      tags: [Secrets]
+      summary: Rotate a secret (compare-and-set on version)
+      parameters:
+      - name: If-Match
+        in: header
+        description: Current version for the compare-and-set (replay protection).
+        schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [value, version]
+              properties:
+                value: { type: string }
+                version: { type: integer, format: int64 }
+                env: { type: string }
+      responses:
+        '200':
+          description: Rotated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  version: { type: integer, format: int64 }
+        '409': { description: Version mismatch (replayed/stale rotate) }
+    delete:
+      operationId: kmsDeleteOrgSecret
+      tags: [Secrets]
+      summary: Delete a secret
+      parameters:
+      - name: env
+        in: query
+        schema: { type: string }
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
   /v1/kms/v4/secrets:
     get:
       operationId: listSecrets
