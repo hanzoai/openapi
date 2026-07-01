@@ -48,6 +48,17 @@ All 34 service specifications plus the master discovery spec
   plus a `Service` schema. Per-service detail lives in each service's own
   spec; there is no cross-file `$ref`.
 
+### 2026-06-30 — cloud product surface documented at /v1
+
+- Added the previously-undocumented cloud product/docs-RAG surface to
+  `cloud/openapi.yaml`, top-level per the lock-in (no `/api/`): `/v1/search-docs`,
+  `/v1/search-docs/indexes`, `/v1/search-docs/stats`, `/v1/chat-docs`,
+  `/v1/index-docs`, `/v1/vector/collections`, `/v1/vector/stats`. These are the
+  console Search/Vector panels + docs-RAG clients (python-sdk, hanzo-docs). The
+  routes served the residual `/api/<route>` form and were renamed to `/v1/<route>`
+  in hanzoai/cloud (productsvc) + hanzoai/ai; the spec now matches. New tag:
+  `Search API`. Whole-repo `/api/` sweep confirms zero remaining Hanzo paths.
+
 ### Coverage
 
 | Service     | Paths | Routes |

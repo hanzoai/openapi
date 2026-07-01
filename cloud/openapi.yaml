@@ -32,6 +32,7 @@ tags:
 - name: Pod API
 - name: Provider API
 - name: Record API
+- name: Search API
 - name: STT API
 - name: Storage Provider API
 - name: Store API
@@ -3441,6 +3442,249 @@ paths:
               schema:
                 type: string
       summary: Api Controller Upload Video
+  # ── Product surface (top-level /v1, fronted at api.hanzo.ai) ──────────────
+  # Docs-RAG (search / chat / index) + the console Search & Vector panels.
+  # Top-level per the v1.0.0 lock-in — NOT under /v1/cloud/* (that namespace
+  # is the casibase controller surface). No /api/ prefix.
+  /v1/search-docs:
+    post:
+      tags:
+      - Search API
+      description: Hybrid full-text + vector search over an indexed document store.
+      operationId: ProductController.SearchDocs
+      parameters:
+      - in: query
+        name: store
+        description: Optional store/index selector (e.g. bot-docs).
+        required: false
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                index:
+                  type: string
+                limit:
+                  type: integer
+                tags:
+                  type: array
+                  items:
+                    type: string
+              required:
+              - query
+      responses:
+        '200':
+          description: Ranked search hits.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /v1/search-docs/indexes:
+    get:
+      tags:
+      - Search API
+      description: List indexes with document counts and timestamps (Meilisearch-backed).
+      operationId: ProductController.SearchIndexes
+      responses:
+        '200':
+          description: Index list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  indexes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        docCount:
+                          type: integer
+                          format: int64
+                        lastIndexedAt:
+                          type: string
+                          nullable: true
+                        createdAt:
+                          type: string
+  /v1/search-docs/stats:
+    get:
+      tags:
+      - Search API
+      description: Aggregate search stats (total documents; per-day series when available).
+      operationId: ProductController.SearchStats
+      responses:
+        '200':
+          description: Search stats.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalDocuments:
+                    type: integer
+                    format: int64
+                  totalSearches:
+                    type: integer
+                    format: int64
+                  totalSessions:
+                    type: integer
+                    format: int64
+                  searchesPerDay:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                        count:
+                          type: integer
+                          format: int64
+  /v1/chat-docs:
+    post:
+      tags:
+      - Search API
+      description: RAG chat — retrieves relevant context from the document index and returns a grounded answer.
+      operationId: ProductController.ChatDocs
+      parameters:
+      - in: query
+        name: store
+        description: Optional store/index selector (e.g. bot-docs).
+        required: false
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                messages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                      content:
+                        type: string
+                index:
+                  type: string
+                stream:
+                  type: boolean
+              required:
+              - messages
+      responses:
+        '200':
+          description: Grounded chat completion.
+          content:
+            application/json:
+              schema:
+                type: object
+  /v1/index-docs:
+    post:
+      tags:
+      - Search API
+      description: Index (upsert) documents into the search backend. Write scope required.
+      operationId: ProductController.IndexDocs
+      parameters:
+      - in: query
+        name: store
+        description: Optional store/index selector (e.g. bot-docs).
+        required: false
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                index:
+                  type: string
+                documents:
+                  type: array
+                  items:
+                    type: object
+                replace:
+                  type: boolean
+              required:
+              - documents
+      responses:
+        '200':
+          description: Index result.
+          content:
+            application/json:
+              schema:
+                type: object
+  /v1/vector/collections:
+    get:
+      tags:
+      - Vector API
+      description: List vector collections with dimensions and point counts (Qdrant-backed).
+      operationId: ProductController.VectorCollections
+      responses:
+        '200':
+          description: Vector collections.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  collections:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        vectorCount:
+                          type: integer
+                          format: int64
+                        dimension:
+                          type: integer
+                          format: int64
+                        distanceMetric:
+                          type: string
+                        storageBytes:
+                          type: integer
+                          format: int64
+                        createdAt:
+                          type: string
+  /v1/vector/stats:
+    get:
+      tags:
+      - Vector API
+      description: Aggregate vector stats — collection count, total vectors, total storage bytes.
+      operationId: ProductController.VectorStats
+      responses:
+        '200':
+          description: Vector stats.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalCollections:
+                    type: integer
+                    format: int64
+                  totalVectors:
+                    type: integer
+                    format: int64
+                  totalStorageBytes:
+                    type: integer
+                    format: int64
 components:
   securitySchemes:
     BearerAuth:
