@@ -1,0 +1,226 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Evals API
+  description: |
+    LLM evaluation for Hanzo Cloud — the `/v1/evals/*` surface served by the
+    cloud `evals` subsystem (`hanzoai/cloud/clients/eval`). It composes the
+    Hanzo model gateway (LLM-as-a-Judge over any catalog / fine-tuned / BYOM /
+    router model) with a dataset + score store, into one OpenAI-style evals API.
+
+    Capabilities:
+    - Run LLM-as-a-Judge scoring across catalog models, fine-tuned models, BYOM
+      imports, and router setups — per-item rationale plus latency, token, and
+      cost tracking per run.
+    - Score against pre-built metrics (correctness, completeness, faithfulness,
+      PII, toxicity, bias) or a custom rubric.
+    - Save evaluation presets to reuse configurations across model versions.
+    - Upload, version, and reuse datasets (CSV or JSONL) with optional ground
+      truth for faithfulness scoring.
+    - Trigger evaluation jobs programmatically via MCP from CI or deploy events.
+
+    Backends are pluggable: the native Hanzo engine is the default; DigitalOcean
+    GenAI evaluations can be selected as an alternate backend per run.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway (via api.hanzo.ai/v1/evals/*)
+tags:
+  - name: Datasets
+    description: Evaluation datasets and items (CSV/JSONL, optional ground truth)
+  - name: Evaluators
+    description: Metric definitions and custom rubrics
+  - name: Runs
+    description: Evaluation runs (model-under-test + LLM-as-a-Judge)
+  - name: Scores
+    description: Per-item scores and rationale
+security:
+  - bearerAuth: []
+paths:
+  /v1/evals/health:
+    get:
+      tags: [Runs]
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema: { type: object, properties: { status: { type: string, example: ok } } }
+
+  /v1/evals/datasets:
+    post:
+      tags: [Datasets]
+      summary: Create a dataset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DatasetCreate' }
+      responses:
+        '200': { description: Dataset created, content: { application/json: { schema: { $ref: '#/components/schemas/Dataset' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/evals/dataset-items:
+    post:
+      tags: [Datasets]
+      summary: Add an item (input + optional expected output) to a dataset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DatasetItemCreate' }
+      responses:
+        '200': { description: Item added, content: { application/json: { schema: { $ref: '#/components/schemas/DatasetItem' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/evals/evaluators:
+    post:
+      tags: [Evaluators]
+      summary: Register an evaluator (pre-built metric or custom rubric)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Evaluator' }
+      responses:
+        '200': { description: Evaluator registered }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/evals/scores:
+    get:
+      tags: [Scores]
+      summary: List scores
+      parameters:
+        - { name: runName, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+      responses:
+        '200': { description: Scores, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Score' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/evals/runs:
+    post:
+      tags: [Runs]
+      summary: Run a dataset against a model with an LLM-as-a-Judge
+      description: |
+        For each dataset item: calls the model-under-test through the Hanzo
+        gateway, records a trace, then scores the output with the judge model
+        against the criteria/metrics. Returns a per-item + aggregate summary
+        with score, rationale, latency, tokens, and cost.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RunRequest' }
+      responses:
+        '200': { description: Run summary, content: { application/json: { schema: { $ref: '#/components/schemas/RunSummary' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { description: Dataset has no active items }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: IAM-issued JWT or `hk-` Cloud API key. The judge/model calls run with the caller's own entitlements.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+  schemas:
+    Metric:
+      type: string
+      description: A pre-built evaluation metric.
+      enum: [correctness, completeness, faithfulness, pii, toxicity, bias]
+    DatasetCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        format: { type: string, enum: [csv, jsonl], description: Source format when importing }
+    Dataset:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+    DatasetItemCreate:
+      type: object
+      required: [datasetName, input]
+      properties:
+        datasetName: { type: string }
+        input: { description: 'String, {messages:[...]}, or any JSON' }
+        expectedOutput: { description: 'Optional ground truth (for faithfulness/correctness)' }
+    DatasetItem:
+      type: object
+      properties:
+        id: { type: string }
+        datasetName: { type: string }
+        status: { type: string, enum: [ACTIVE, ARCHIVED] }
+        input: {}
+        expectedOutput: {}
+    Evaluator:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        metric: { $ref: '#/components/schemas/Metric' }
+        rubric: { type: string, description: Custom rubric (when not a pre-built metric) }
+        judgeModel: { type: string }
+    JudgeSpec:
+      type: object
+      properties:
+        model: { type: string, description: Judge model (defaults to the model-under-test) }
+        criteria: { type: string }
+        name: { type: string, default: llm-judge }
+    RunRequest:
+      type: object
+      required: [dataset, model]
+      properties:
+        dataset: { type: string }
+        model: { type: string, description: Model-under-test (catalog / fine-tuned / BYOM / router) }
+        runName: { type: string }
+        limit: { type: integer, default: 20, maximum: 100 }
+        judge: { $ref: '#/components/schemas/JudgeSpec' }
+        metrics: { type: array, items: { $ref: '#/components/schemas/Metric' } }
+        backend: { type: string, enum: [hanzo, do], default: hanzo, description: Evaluation backend — native Hanzo engine or DigitalOcean GenAI }
+        preset: { type: string, description: Named preset to reuse a saved configuration }
+    ItemResult:
+      type: object
+      properties:
+        itemId: { type: string }
+        traceId: { type: string }
+        score: { type: number, format: float, minimum: 0, maximum: 1 }
+        rationale: { type: string }
+        output: { type: string }
+        latencyMs: { type: integer }
+        tokens: { type: integer }
+        costCents: { type: integer }
+        error: { type: string }
+    RunSummary:
+      type: object
+      properties:
+        dataset: { type: string }
+        model: { type: string }
+        judgeModel: { type: string }
+        runName: { type: string }
+        items: { type: integer }
+        scored: { type: integer }
+        avgScore: { type: number, format: float }
+        results: { type: array, items: { $ref: '#/components/schemas/ItemResult' } }
+    Score:
+      type: object
+      properties:
+        name: { type: string }
+        value: { type: number, format: float }
+        comment: { type: string }
+        traceId: { type: string }
