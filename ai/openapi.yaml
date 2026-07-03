@@ -202,6 +202,70 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '402': { $ref: '#/components/responses/PaymentRequired' }
         '429': { $ref: '#/components/responses/RateLimited' }
+  /v1/images/generations:
+    post:
+      tags:
+      - OpenAI Compatible
+      summary: Create image
+      description: OpenAI-compatible text-to-image generation.
+      operationId: createImage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageGenerationRequest'
+      responses:
+        '200':
+          description: Generated image(s).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /v1/audio/speech:
+    post:
+      tags:
+      - OpenAI Compatible
+      summary: Create speech (text-to-speech)
+      description: OpenAI-compatible text-to-speech. Returns binary audio.
+      operationId: createSpeech
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpeechRequest'
+      responses:
+        '200':
+          description: Audio stream.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /v1/audio/transcriptions:
+    post:
+      tags:
+      - OpenAI Compatible
+      summary: Create transcription (speech-to-text)
+      description: OpenAI-compatible speech-to-text (Whisper interface).
+      operationId: createTranscription
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TranscriptionRequest'
+      responses:
+        '200':
+          description: Transcription result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranscriptionResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
 components:
   securitySchemes:
     BearerAuth:
@@ -356,6 +420,56 @@ components:
         prompt_tokens: { type: integer }
         completion_tokens: { type: integer }
         total_tokens: { type: integer }
+    ImageGenerationRequest:
+      title: ImageGenerationRequest
+      type: object
+      required: [prompt]
+      properties:
+        model: { type: string }
+        prompt: { type: string }
+        n: { type: integer, default: 1 }
+        size: { type: string, examples: ['1024x1024'] }
+        quality: { type: string, enum: [standard, hd] }
+        response_format: { type: string, enum: [url, b64_json] }
+    ImageResponse:
+      title: ImageResponse
+      type: object
+      properties:
+        created: { type: integer }
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              url: { type: string }
+              b64_json: { type: string }
+              revised_prompt: { type: string }
+    SpeechRequest:
+      title: SpeechRequest
+      type: object
+      required: [model, input, voice]
+      properties:
+        model: { type: string }
+        input: { type: string }
+        voice: { type: string }
+        response_format: { type: string, enum: [mp3, opus, aac, flac, wav, pcm] }
+        speed: { type: number }
+    TranscriptionRequest:
+      title: TranscriptionRequest
+      type: object
+      required: [file, model]
+      properties:
+        file: { type: string, format: binary }
+        model: { type: string }
+        language: { type: string }
+        prompt: { type: string }
+        response_format: { type: string, enum: [json, text, srt, verbose_json, vtt] }
+        temperature: { type: number }
+    TranscriptionResponse:
+      title: TranscriptionResponse
+      type: object
+      properties:
+        text: { type: string }
     Error:
       title: Error
       type: object
