@@ -38,7 +38,9 @@ OIDC discovery:
 |---------|------|----------|----------------|
 | ai | [ai/openapi.yaml](ai/openapi.yaml) | `api.hanzo.ai` | `/v1/{chat,completions,embeddings,models,rerank,messages}` (top-level — OpenAI/Claude-compatible) |
 | analytics | [analytics/openapi.yaml](analytics/openapi.yaml) | `analytics.hanzo.ai` | `/v1/analytics` |
+| app | [app/openapi.yaml](app/openapi.yaml) | `api.hanzo.ai` | `/v1/projects` (top-level — hanzo.app projects & deploy) |
 | auto | [auto/openapi.yaml](auto/openapi.yaml) | `auto.hanzo.ai` | `/v1/auto` |
+| base | [base/openapi.yaml](base/openapi.yaml) | `base.hanzo.ai` | `/v1/collections` (top-level — Base records store) |
 | bot | [bot/openapi.yaml](bot/openapi.yaml) | `app.hanzo.bot` | `/v1/bot` |
 | chat | [chat/openapi.yaml](chat/openapi.yaml) | `hanzo.chat` | `/v1/chat` |
 | cloud | [cloud/openapi.yaml](cloud/openapi.yaml) | `api.hanzo.ai` | `/v1/cloud` |

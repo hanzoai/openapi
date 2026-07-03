@@ -19,8 +19,12 @@ tags:
   description: "Hanzo AI \u2014 Inference API"
 - name: analytics
   description: Hanzo Analytics API
+- name: app
+  description: "Hanzo App \u2014 Projects & Deployments"
 - name: auto
   description: Hanzo Auto API
+- name: base
+  description: "Hanzo Base \u2014 Collections"
 - name: bot
   description: Hanzo Bot API
 - name: chat
@@ -2944,6 +2948,51 @@ paths:
                 type: array
                 items:
                   type: string
+  /v1/audio/speech:
+    post:
+      tags:
+      - OpenAI Compatible
+      summary: Create speech (text-to-speech)
+      description: OpenAI-compatible text-to-speech. Returns binary audio.
+      operationId: createSpeech
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ai_SpeechRequest'
+      responses:
+        '200':
+          description: Audio stream.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+  /v1/audio/transcriptions:
+    post:
+      tags:
+      - OpenAI Compatible
+      summary: Create transcription (speech-to-text)
+      description: OpenAI-compatible speech-to-text (Whisper interface).
+      operationId: createTranscription
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ai_TranscriptionRequest'
+      responses:
+        '200':
+          description: Transcription result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_TranscriptionResponse'
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
   /v1/auto/ai-providers:
     get:
       operationId: listAiProviders
@@ -13319,6 +13368,139 @@ paths:
               schema:
                 type: string
       summary: Api Controller Upload Video
+  /v1/collections/{collection}/records:
+    parameters:
+    - name: collection
+      in: path
+      required: true
+      description: Collection name or id (e.g. `site_drafts`).
+      schema:
+        type: string
+    get:
+      tags:
+      - Records
+      summary: List records
+      description: 'List rows in a collection. Supports a PocketBase-style `filter`
+
+        expression, `sort`, and page controls.
+
+        '
+      operationId: listRecords
+      parameters:
+      - name: filter
+        in: query
+        required: false
+        description: Filter expression, e.g. org='hanzo' && slug='home'.
+        schema:
+          type: string
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 1
+      - name: perPage
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 30
+      responses:
+        '200':
+          description: A page of records.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/base_RecordList'
+        '401':
+          $ref: '#/components/responses/base_Unauthorized'
+    post:
+      tags:
+      - Records
+      summary: Create a record
+      operationId: createRecord
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/base_Record'
+      responses:
+        '200':
+          description: The created record.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/base_Record'
+        '401':
+          $ref: '#/components/responses/base_Unauthorized'
+  /v1/collections/{collection}/records/{id}:
+    parameters:
+    - name: collection
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      tags:
+      - Records
+      summary: Get a record
+      operationId: getRecord
+      responses:
+        '200':
+          description: The record.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/base_Record'
+        '401':
+          $ref: '#/components/responses/base_Unauthorized'
+        '404':
+          $ref: '#/components/responses/base_NotFound'
+    patch:
+      tags:
+      - Records
+      summary: Update a record
+      operationId: updateRecord
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/base_Record'
+      responses:
+        '200':
+          description: The updated record.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/base_Record'
+        '401':
+          $ref: '#/components/responses/base_Unauthorized'
+        '404':
+          $ref: '#/components/responses/base_NotFound'
+    delete:
+      tags:
+      - Records
+      summary: Delete a record
+      operationId: deleteRecord
+      responses:
+        '204':
+          description: Deleted.
+        '401':
+          $ref: '#/components/responses/base_Unauthorized'
+        '404':
+          $ref: '#/components/responses/base_NotFound'
   /v1/commerce/access/{mode}/{id}:
     get:
       tags:
@@ -30413,6 +30595,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/iam_controllers.Response'
       summary: Api Controller Update Webhook
+  /v1/images/generations:
+    post:
+      tags:
+      - OpenAI Compatible
+      summary: Create image
+      description: OpenAI-compatible text-to-image generation.
+      operationId: createImage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ai_ImageGenerationRequest'
+      responses:
+        '200':
+          description: Generated image(s).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_ImageResponse'
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '402':
+          $ref: '#/components/responses/ai_PaymentRequired'
+        '429':
+          $ref: '#/components/responses/ai_RateLimited'
   /v1/index-docs:
     post:
       tags:
@@ -45357,6 +45565,173 @@ paths:
                 $ref: '#/components/schemas/pricing_ToolsResponse'
         '503':
           $ref: '#/components/responses/pricing_NotReady'
+  /v1/projects:
+    get:
+      tags:
+      - Projects
+      summary: List projects
+      description: List every project in the caller's org.
+      operationId: listProjects
+      responses:
+        '200':
+          description: Project list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/app_Project'
+        '401':
+          $ref: '#/components/responses/app_Unauthorized'
+    post:
+      tags:
+      - Projects
+      summary: Create a project
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/app_ProjectCreate'
+      responses:
+        '201':
+          description: Project created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/app_Project'
+        '401':
+          $ref: '#/components/responses/app_Unauthorized'
+        '409':
+          $ref: '#/components/responses/app_Conflict'
+  /v1/projects/{slug}:
+    parameters:
+    - name: slug
+      in: path
+      required: true
+      description: The project's URL-safe slug (unique within the org).
+      schema:
+        type: string
+    get:
+      tags:
+      - Projects
+      summary: Get a project
+      operationId: getProject
+      responses:
+        '200':
+          description: The project.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/app_Project'
+        '401':
+          $ref: '#/components/responses/app_Unauthorized'
+        '404':
+          $ref: '#/components/responses/app_NotFound'
+    patch:
+      tags:
+      - Projects
+      summary: Update a project
+      operationId: updateProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/app_ProjectUpdate'
+      responses:
+        '200':
+          description: The updated project.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/app_Project'
+        '401':
+          $ref: '#/components/responses/app_Unauthorized'
+        '404':
+          $ref: '#/components/responses/app_NotFound'
+    delete:
+      tags:
+      - Projects
+      summary: Delete a project
+      operationId: deleteProject
+      responses:
+        '204':
+          description: Deleted.
+        '401':
+          $ref: '#/components/responses/app_Unauthorized'
+        '404':
+          $ref: '#/components/responses/app_NotFound'
+  /v1/projects/{slug}/deploy:
+    parameters:
+    - name: slug
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      tags:
+      - Deployments
+      summary: Deploy a project
+      description: "Two ways to deploy, selected by `Content-Type`:\n  - `application/x-tar` \u2014 the request body is a\
+        \ USTAR tarball of the\n    browser-built site (`dist/`), deployed directly.\n  - `application/json` \u2014 queue\
+        \ a git/CI build from source\n    (`{ \"source\": \"git\", \"commit\": \"<sha>\" }`).\n"
+      operationId: deployProject
+      requestBody:
+        required: true
+        content:
+          application/x-tar:
+            schema:
+              type: string
+              format: binary
+              description: USTAR tarball of the built site.
+          application/json:
+            schema:
+              $ref: '#/components/schemas/app_DeployRequest'
+      responses:
+        '202':
+          description: Deployment accepted / queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/app_Deployment'
+        '401':
+          $ref: '#/components/responses/app_Unauthorized'
+        '404':
+          $ref: '#/components/responses/app_NotFound'
+  /v1/projects/{slug}/deployments:
+    parameters:
+    - name: slug
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      tags:
+      - Deployments
+      summary: List deployments
+      description: List the deployment history for a project, newest first.
+      operationId: listDeployments
+      responses:
+        '200':
+          description: Deployment list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/app_Deployment'
+        '401':
+          $ref: '#/components/responses/app_Unauthorized'
+        '404':
+          $ref: '#/components/responses/app_NotFound'
   /v1/pubsub/connz:
     get:
       operationId: getConnz
@@ -52259,6 +52634,50 @@ components:
               type: string
             code:
               type: string
+    ai_ImageGenerationRequest:
+      title: ImageGenerationRequest
+      type: object
+      required:
+      - prompt
+      properties:
+        model:
+          type: string
+        prompt:
+          type: string
+        n:
+          type: integer
+          default: 1
+        size:
+          type: string
+          examples:
+          - 1024x1024
+        quality:
+          type: string
+          enum:
+          - standard
+          - hd
+        response_format:
+          type: string
+          enum:
+          - url
+          - b64_json
+    ai_ImageResponse:
+      title: ImageResponse
+      type: object
+      properties:
+        created:
+          type: integer
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              b64_json:
+                type: string
+              revised_prompt:
+                type: string
     ai_MessageRequest:
       title: MessageRequest
       type: object
@@ -52335,6 +52754,63 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ai_Model'
+    ai_SpeechRequest:
+      title: SpeechRequest
+      type: object
+      required:
+      - model
+      - input
+      - voice
+      properties:
+        model:
+          type: string
+        input:
+          type: string
+        voice:
+          type: string
+        response_format:
+          type: string
+          enum:
+          - mp3
+          - opus
+          - aac
+          - flac
+          - wav
+          - pcm
+        speed:
+          type: number
+    ai_TranscriptionRequest:
+      title: TranscriptionRequest
+      type: object
+      required:
+      - file
+      - model
+      properties:
+        file:
+          type: string
+          format: binary
+        model:
+          type: string
+        language:
+          type: string
+        prompt:
+          type: string
+        response_format:
+          type: string
+          enum:
+          - json
+          - text
+          - srt
+          - verbose_json
+          - vtt
+        temperature:
+          type: number
+    ai_TranscriptionResponse:
+      title: TranscriptionResponse
+      type: object
+      properties:
+        text:
+          type: string
     ai_Usage:
       title: Usage
       type: object
@@ -52699,6 +53175,103 @@ components:
           type: string
           format: date-time
           nullable: true
+    app_DeployRequest:
+      title: DeployRequest
+      type: object
+      required:
+      - source
+      properties:
+        source:
+          type: string
+          enum:
+          - git
+          description: Deploy source. `git` queues a CI build from a commit.
+        commit:
+          type: string
+          description: Git commit SHA to build.
+    app_Deployment:
+      title: Deployment
+      type: object
+      properties:
+        id:
+          type: string
+        projectSlug:
+          type: string
+        status:
+          type: string
+          enum:
+          - queued
+          - building
+          - ready
+          - error
+          - canceled
+        source:
+          type: string
+          enum:
+          - tar
+          - git
+        commit:
+          type: string
+        url:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    app_Error:
+      title: Error
+      type: object
+      properties:
+        status:
+          type: string
+          examples:
+          - error
+        msg:
+          type: string
+    app_Project:
+      title: Project
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        org:
+          type: string
+          description: Org slug (from the JWT owner claim).
+        domain:
+          type: string
+          description: Custom or default hanzo.app domain.
+        url:
+          type: string
+          description: Live URL of the latest deployment.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    app_ProjectCreate:
+      title: ProjectCreate
+      type: object
+      required:
+      - slug
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        domain:
+          type: string
+    app_ProjectUpdate:
+      title: ProjectUpdate
+      type: object
+      properties:
+        name:
+          type: string
+        domain:
+          type: string
     auto_AppConnection:
       type: object
       properties:
@@ -52983,6 +53556,50 @@ components:
         updated:
           type: string
           format: date-time
+    base_Error:
+      title: Error
+      type: object
+      properties:
+        status:
+          type: string
+          examples:
+          - error
+        msg:
+          type: string
+    base_Record:
+      title: Record
+      description: 'A collection row. `id`, `created` and `updated` are managed by Base;
+
+        all other fields are collection-defined and passed through as-is.
+
+        '
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+    base_RecordList:
+      title: RecordList
+      type: object
+      properties:
+        page:
+          type: integer
+        perPage:
+          type: integer
+        totalItems:
+          type: integer
+        totalPages:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/base_Record'
     bot_ApiToken:
       type: object
       properties:
@@ -70633,6 +71250,36 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ai_Error'
+    app_Conflict:
+      description: A project with that slug already exists in the org.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/app_Error'
+    app_NotFound:
+      description: Project not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/app_Error'
+    app_Unauthorized:
+      description: Missing or invalid credentials.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/app_Error'
+    base_NotFound:
+      description: Record not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/base_Error'
+    base_Unauthorized:
+      description: Missing or invalid credentials.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/base_Error'
     commerce_BadRequest:
       description: Bad request
       content:
