@@ -52,6 +52,66 @@ components:
           type: string
         error:
           type: string
+    SdkEnvelopeIdentity:
+      type: object
+      description: The mnemonic-derived service identity block. Bound into the signature.
+      required: [scheme, node, digest, path, pubkey]
+      properties:
+        scheme:
+          type: integer
+          description: NodeID scheme. 0x42 = ML-DSA-65.
+          example: 66
+        node:
+          type: string
+          description: 20-byte canonical NodeID (cb58), the SHAKE256-384 digest prefix.
+        digest:
+          type: string
+          format: byte
+          description: 48-byte SHAKE256-384 FullDigest commitment (base64).
+        path:
+          type: string
+          description: BIP-44 service path the identity was derived from (e.g. hanzo/kms-operator).
+        pubkey:
+          type: string
+          format: byte
+          description: ML-DSA-65 public key (base64), for offline verification.
+    SdkEnvelope:
+      type: object
+      description: >
+        Canonical signed wrapper for every /v1/sdk operation. The signature is
+        ML-DSA-65 over SHAKE256("lux-svc-envelope-v1" || FullDigest ||
+        canonical(v,id,ts,nonce,op,req)). One source of truth in
+        luxfi/kms/pkg/envelope.
+      required: [v, id, ts, nonce, op, req, sig]
+      properties:
+        v:
+          type: integer
+          description: Envelope version. Only 1 is accepted.
+          example: 1
+        id:
+          $ref: '#/components/schemas/SdkEnvelopeIdentity'
+        ts:
+          type: integer
+          format: int64
+          description: Unix seconds at signing. Rejected outside ±5m of server time.
+        nonce:
+          type: string
+          description: Caller-fresh anti-replay nonce (typically 16 random bytes, base64). Reuse within the window is rejected.
+        op:
+          type: integer
+          description: >
+            Signed operation. 0x0040 get, 0x0041 put (also rotate), 0x0042 list,
+            0x0043 delete, 0x0050 sign, 0x0051 verify.
+          example: 64
+        req:
+          type: object
+          description: >
+            Inner request JSON. Shape by op — secrets:{path,name,env[,value]};
+            sign:{validator_id,key_type,message}; verify adds {signature}.
+        sig:
+          type: string
+          format: byte
+          description: ML-DSA-65 signature (base64) over the canonical digest.
     LoginRequest:
       type: object
       required:
@@ -940,6 +1000,58 @@ tags:
 - name: SSO
   description: Single sign-on configuration
 paths:
+  /v1/sdk/secrets:
+    post:
+      operationId: sdkSecretsOp
+      tags:
+      - SDK
+      summary: Enveloped secret + threshold-key operation
+      description: >
+        The SDK-facing native secrets plane. A single RPC endpoint: the body is
+        a signed Envelope (ML-DSA-65 over the request), and the OPERATION is the
+        signed `op` field — never the URL. Authorization is consensus-native:
+        the caller's mnemonic-derived NodeID must be in the validator authority
+        (reads: OpSecretGet 0x0040, OpSecretList 0x0042, OpVerify 0x0051) and,
+        for writes (OpSecretPut 0x0041 — also the rotate op, OpSecretDelete
+        0x0043, OpSign 0x0050), additionally in the operator authority. Every
+        envelope is verified for signature, wall-clock freshness (±5m), and
+        replay (per-(NodeID,nonce) ledger) before dispatch. There is NO bearer
+        token on this surface — the ML-DSA-65 envelope IS the credential.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SdkEnvelope'
+      responses:
+        '200':
+          description: Operation result (shape depends on the signed op).
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Malformed envelope, unsupported version/scheme, or bad inner request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: >
+            Forbidden — bad signature, stale timestamp, replayed nonce, or the
+            identity is not authorized for the signed op. Replay is masked as a
+            generic "forbidden" so the nonce ledger is unprobeable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Secret not found.
+        '413':
+          description: Envelope exceeds the 4 MiB cap.
+        '500':
+          description: Internal error (no internal detail is leaked to the client).
   /v1/kms/auth/login1:
     post:
       operationId: login1
