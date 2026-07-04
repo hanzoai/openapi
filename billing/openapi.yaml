@@ -1,0 +1,161 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Billing API
+  description: |
+    The customer-facing, org-scoped billing surface (`/v1/billing/*`) served by
+    the cloud `billing` subsystem (`hanzoai/cloud/clients/billing`). It is the
+    per-org READ twin of the admin god-view: a thin service-to-service proxy to
+    commerce, scoped to the caller's OWN org (the validated IAM owner claim). The
+    billing subject is pinned server-side — a client can never widen scope to
+    another tenant's wallet. Bodies + status codes are forwarded from commerce
+    verbatim (e.g. `402` on `gpu-charge` when a card is required or prepaid is
+    insufficient).
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+tags:
+  - name: Billing
+    description: Per-org usage, balance, GPU launch gate, and saved cards
+security:
+  - bearerAuth: []
+paths:
+  /v1/billing/usage:
+    get:
+      tags: [Billing]
+      summary: Per-request usage ledger
+      operationId: billingUsage
+      description: The raw per-request billing ledger (one row per billed call) for the caller's own org.
+      parameters:
+        - { name: start, in: query, schema: { type: string }, description: Optional server-side window start }
+        - { name: end, in: query, schema: { type: string }, description: Optional server-side window end }
+      responses:
+        '200': { description: Usage ledger, content: { application/json: { schema: { $ref: '#/components/schemas/UsageLedger' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/billing/balance:
+    get:
+      tags: [Billing]
+      summary: Prepaid credit balance
+      operationId: billingBalance
+      description: The org's prepaid credit balance in USD cents — the same wallet the gateway debits.
+      parameters:
+        - { name: currency, in: query, schema: { type: string }, description: Optional currency filter (default usd) }
+      responses:
+        '200': { description: Balance, content: { application/json: { schema: { $ref: '#/components/schemas/Balance' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/billing/gpu-eligibility:
+    get:
+      tags: [Billing]
+      summary: GPU launch eligibility gate
+      operationId: billingGpuEligibility
+      description: Read-only launch gate — reports prepaid availability and card-on-file so the launch UI can show the exact remedy.
+      parameters:
+        - { name: amountCents, in: query, schema: { type: integer, format: int64 }, description: Immediate charge to test against }
+        - { name: minPrepaidCents, in: query, schema: { type: integer, format: int64 }, description: 24h-minimum prepaid floor }
+        - { name: currency, in: query, schema: { type: string } }
+      responses:
+        '200': { description: Eligibility, content: { application/json: { schema: { $ref: '#/components/schemas/GpuEligibility' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/billing/gpu-charge:
+    post:
+      tags: [Billing]
+      summary: Prepay-only GPU charge
+      operationId: billingGpuCharge
+      description: |
+        The prepay-only, card-required GPU debit against the caller's own org
+        wallet. Commerce enforces both gates server-side; the subject is pinned
+        server-side, so only the charge params ride the body. Commerce's status is
+        forwarded verbatim.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GpuChargeRequest' }
+      responses:
+        '201': { description: Charge accepted, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { description: 'Payment required — card_required or insufficient_prepaid', content: { application/json: { schema: { type: object, properties: { reason: { type: string, enum: [card_required, insufficient_prepaid] } }, additionalProperties: true } } } }
+
+  /v1/billing/payment-methods:
+    get:
+      tags: [Billing]
+      summary: Saved payment methods (masked)
+      operationId: billingPaymentMethods
+      description: The org's saved cards as commerce's masked descriptor (brand + last4 + expiry) — never a PAN/CVV/token.
+      responses:
+        '200': { description: Saved cards, content: { application/json: { schema: { $ref: '#/components/schemas/PaymentMethods' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: IAM-issued JWT or `hk-` Cloud API key.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+  schemas:
+    UsageRecord:
+      type: object
+      properties:
+        transactionId: { type: string }
+        amount: { type: integer, format: int64, description: Billed amount in USD cents }
+        metadata: { type: object, additionalProperties: true }
+        createdAt: { type: string }
+      additionalProperties: true
+    UsageLedger:
+      type: object
+      properties:
+        usage: { type: array, items: { $ref: '#/components/schemas/UsageRecord' } }
+      additionalProperties: true
+    Balance:
+      type: object
+      description: Prepaid wallet balance in USD cents.
+      properties:
+        balance: { type: integer, format: int64 }
+        holds: { type: integer, format: int64 }
+        available: { type: integer, format: int64 }
+      additionalProperties: true
+    GpuEligibility:
+      type: object
+      properties:
+        eligible: { type: boolean }
+        reason: { type: string }
+        prepaidAvailable: { type: integer, format: int64 }
+        cardOnFile: { type: boolean }
+        requiredCents: { type: integer, format: int64 }
+      additionalProperties: true
+    GpuChargeRequest:
+      type: object
+      properties:
+        amountCents: { type: integer, format: int64 }
+        currency: { type: string }
+        requestId: { type: string }
+        tag: { type: string }
+    PaymentMethod:
+      type: object
+      description: Masked card descriptor — brand + last4 + expiry only.
+      properties:
+        brand: { type: string }
+        last4: { type: string }
+        expMonth: { type: integer }
+        expYear: { type: integer }
+      additionalProperties: true
+    PaymentMethods:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/PaymentMethod' } }
+      additionalProperties: true

@@ -1,0 +1,186 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Plans API
+  description: |
+    The `@hanzo/plans` catalog mounted into the unified cloud binary under
+    `/v1/plans/*` by `hanzoai/cloud/clients/plan`. A thin Go wrapper loads the
+    `hanzoai/plans` bundle into a goja runtime and dispatches each route through
+    it — the entitlement transforms (fromLegacy / toLicenseFeatures /
+    resolvePlan) run as real JS, not a Go reimplementation.
+
+    The catalog is read-only public content. Every route reads the
+    gateway-minted identity (`X-Org-Id`, HIP-0026) as the tenant so a reseller
+    org sees its own catalog overrides; an anonymous or forged org falls back to
+    the public `hanzo` default. Responses are the bundle's catalog JSON.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+tags:
+  - name: Plans
+    description: Plan catalog + entitlement resolution
+security:
+  - bearerAuth: []
+paths:
+  /v1/plans/health:
+    get:
+      tags: [Plans]
+      summary: Health check
+      operationId: plansHealth
+      security: []
+      responses:
+        '200': { description: Service healthy, content: { application/json: { schema: { type: object, properties: { status: { type: string, example: ok }, service: { type: string, example: plans } } } } } }
+
+  /v1/plans:
+    get:
+      tags: [Plans]
+      summary: The full plan catalog
+      operationId: listPlans
+      responses:
+        '200': { description: Plan catalog, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/plans/subscriptions:
+    get:
+      tags: [Plans]
+      summary: Subscription plans
+      operationId: listSubscriptionPlans
+      responses:
+        '200': { description: Subscription plans, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/plans/cloud:
+    get:
+      tags: [Plans]
+      summary: Cloud plans
+      operationId: listCloudPlans
+      responses:
+        '200': { description: Cloud plans, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/plans/blockchain:
+    get:
+      tags: [Plans]
+      summary: Blockchain plans
+      operationId: listBlockchainPlans
+      responses:
+        '200': { description: Blockchain plans, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/plans/dns:
+    get:
+      tags: [Plans]
+      summary: DNS plans
+      operationId: listDnsPlans
+      responses:
+        '200': { description: DNS plans, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/plans/gpu:
+    get:
+      tags: [Plans]
+      summary: GPU plans
+      operationId: listGpuPlans
+      responses:
+        '200': { description: GPU plans, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/plans/regions:
+    get:
+      tags: [Plans]
+      summary: Regions
+      operationId: listPlanRegions
+      responses:
+        '200': { description: Regions, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/plans/storage:
+    get:
+      tags: [Plans]
+      summary: Storage plans
+      operationId: listStoragePlans
+      responses:
+        '200': { description: Storage plans, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/plans/tools:
+    get:
+      tags: [Plans]
+      summary: Tools catalog
+      operationId: listPlanTools
+      responses:
+        '200': { description: Tools, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/plans/policy:
+    get:
+      tags: [Plans]
+      summary: Plan policy
+      operationId: getPlanPolicy
+      responses:
+        '200': { description: Policy, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/plans/schema:
+    get:
+      tags: [Plans]
+      summary: Entitlement schema
+      operationId: getPlanSchema
+      responses:
+        '200': { description: Schema, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/plans/vocab:
+    get:
+      tags: [Plans]
+      summary: Entitlement vocabulary
+      operationId: getPlanVocab
+      responses:
+        '200': { description: Vocabulary, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/plans/resolve/{id}:
+    get:
+      tags: [Plans]
+      summary: Resolve a plan by id
+      operationId: resolvePlan
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string }, description: Plan id }
+      responses:
+        '200': { description: Resolved plan, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/plans/entitlements/{id}:
+    get:
+      tags: [Plans]
+      summary: Entitlements for a plan
+      operationId: getPlanEntitlements
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string }, description: Plan id }
+      responses:
+        '200': { description: Entitlements, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: IAM-issued JWT or `hk-` Cloud API key.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+  schemas:
+    Catalog:
+      type: object
+      description: Opaque plan-catalog JSON emitted by the @hanzo/plans bundle (shape varies per route).
+      additionalProperties: true

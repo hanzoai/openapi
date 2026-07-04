@@ -1,0 +1,137 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Tasks API
+  description: |
+    Hanzo Tasks — the durable workflow/activity engine (event-sourced,
+    exactly-once, crash-recovering) mounted natively on the unified cloud binary
+    (`hanzoai/cloud/clients/tasksvc`), per HIP-0106. The subsystem mounts the ONE
+    shared in-process engine's HTTP surface under `/v1/tasks/*`; the Tasks
+    product reads the same durable state as the AI durable-ingest path.
+
+    Capability/probe routes (`/settings`, `/cluster`) are open; the data surface
+    (the engine JSON API, `/mcp`, `/events`) is identity-gated — a request
+    without a gateway-validated principal (X-User-Id) is refused (403). The
+    engine is resolved lazily, so requests before it is live return 503.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+tags:
+  - name: Tasks
+    description: Durable workflow/activity engine JSON API
+  - name: System
+    description: Liveness, settings and cluster probes
+security:
+  - bearerAuth: []
+paths:
+  /v1/tasks/health:
+    get:
+      tags: [System]
+      summary: Liveness probe
+      operationId: tasksHealth
+      security: []
+      responses:
+        '200': { description: Service healthy, content: { application/json: { schema: { type: object, properties: { status: { type: string, example: ok } } } } } }
+
+  /v1/tasks/settings:
+    get:
+      tags: [System]
+      summary: Capability flags (open bootstrap)
+      operationId: tasksSettings
+      security: []
+      responses:
+        '200': { description: Capability flags, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+
+  /v1/tasks/cluster:
+    get:
+      tags: [System]
+      summary: Cluster status (open probe)
+      operationId: tasksCluster
+      security: []
+      responses:
+        '200': { description: Cluster status, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+
+  /v1/tasks/cluster/health:
+    get:
+      tags: [System]
+      summary: Cluster health (open probe)
+      operationId: tasksClusterHealth
+      security: []
+      responses:
+        '200': { description: Cluster health, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+
+  /v1/tasks/mcp:
+    post:
+      tags: [Tasks]
+      summary: Tasks MCP tool surface (JSON-RPC, identity-gated)
+      operationId: tasksMcp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true, description: JSON-RPC 2.0 request }
+      responses:
+        '200': { description: JSON-RPC response, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        '403': { $ref: '#/components/responses/IdentityRequired' }
+        '503': { $ref: '#/components/responses/EngineNotReady' }
+
+  /v1/tasks/events:
+    get:
+      tags: [Tasks]
+      summary: Realtime event stream (SSE, identity-gated)
+      operationId: tasksEvents
+      responses:
+        '200': { description: Server-sent event stream, content: { text/event-stream: { schema: { type: string } } } }
+        '403': { $ref: '#/components/responses/IdentityRequired' }
+        '503': { $ref: '#/components/responses/EngineNotReady' }
+
+  /v1/tasks/{resource}:
+    get:
+      tags: [Tasks]
+      summary: Engine JSON API (namespaces, workflows, activities, …), identity-gated
+      operationId: tasksGet
+      parameters:
+        - { name: resource, in: path, required: true, schema: { type: string }, description: 'Engine resource path (e.g. namespaces, nexus)' }
+      responses:
+        '200': { description: Engine JSON, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        '403': { $ref: '#/components/responses/IdentityRequired' }
+        '503': { $ref: '#/components/responses/EngineNotReady' }
+    post:
+      tags: [Tasks]
+      summary: Engine JSON API write (identity-gated)
+      operationId: tasksPost
+      parameters:
+        - { name: resource, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Engine JSON, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        '403': { $ref: '#/components/responses/IdentityRequired' }
+        '503': { $ref: '#/components/responses/EngineNotReady' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: IAM-issued JWT or `hk-` Cloud API key. The gateway mints X-User-Id/X-Org-Id from the validated token.
+  responses:
+    IdentityRequired:
+      description: Identity required — no gateway-validated principal on the request
+      content:
+        application/json:
+          schema: { type: object, properties: { error: { type: string }, code: { type: integer, example: 403 } } }
+    EngineNotReady:
+      description: Tasks engine not ready (resolved lazily; retry once it is wired)
+      content:
+        application/json:
+          schema: { type: object, properties: { error: { type: string }, code: { type: integer, example: 503 } } }
