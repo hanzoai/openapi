@@ -44,12 +44,24 @@ def main():
         and d != "shared"
     )
 
+    HTTP_METHODS = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
+
     paths, schemas, responses, params, secschemes, tags = {}, {}, {}, {}, {}, []
     for svc in services:
         spec = yaml.safe_load(open(os.path.join(ROOT, svc, "openapi.yaml")))
         comps = spec.get("components", {}) or {}
         for p, item in (spec.get("paths", {}) or {}).items():
-            paths[p] = prefix(item, svc)
+            item = prefix(item, svc)
+            # operationIds are unique WITHIN a service but collide ACROSS services
+            # in the unified master (e.g. two services both expose `listRecords`).
+            # Namespace them by service — same discipline as schemas above — so the
+            # master is a single, globally-valid, generatable OpenAPI document.
+            if isinstance(item, dict):
+                for method, op in item.items():
+                    if method in HTTP_METHODS and isinstance(op, dict) \
+                            and isinstance(op.get("operationId"), str):
+                        op["operationId"] = f"{svc}_{op['operationId']}"
+            paths[p] = item
         for n, x in (comps.get("schemas", {}) or {}).items():
             schemas[f"{svc}_{n}"] = prefix(x, svc)
         for n, x in (comps.get("responses", {}) or {}).items():
