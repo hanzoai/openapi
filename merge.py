@@ -93,7 +93,7 @@ def main():
             ),
             "version": "1.0.0",
             "contact": {"name": "Hanzo AI", "url": "https://hanzo.ai", "email": "support@hanzo.ai"},
-            "license": {"name": "Proprietary"},
+            "license": {"name": "Proprietary", "identifier": "LicenseRef-Hanzo-Proprietary"},
         },
         "servers": [{"url": "https://api.hanzo.ai", "description": "Hanzo Gateway"}],
         "tags": tags,
