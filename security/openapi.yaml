@@ -1,0 +1,166 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Security API
+  description: |
+    Secret / vulnerability scanning (`/v1/security/*`) served by the cloud
+    `security` subsystem (`hanzoai/cloud/clients/security`). Submit source files,
+    the engine runs its detection ruleset over them in memory (raw content is
+    never stored), and persists a per-org scan summary plus redacted findings.
+    Every route is tenant-scoped to the caller's validated org.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+tags:
+  - name: Scans
+    description: Submit and read scans
+  - name: Findings
+    description: Redacted findings
+  - name: Rules
+    description: Detection ruleset
+security:
+  - bearerAuth: []
+paths:
+  /v1/security/health:
+    get:
+      tags: [Rules]
+      summary: Health check
+      operationId: securityHealth
+      security: []
+      responses:
+        '200': { description: Service healthy, content: { application/json: { schema: { type: object, properties: { status: { type: string, example: ok }, rules: { type: integer } } } } } }
+
+  /v1/security/rules:
+    get:
+      tags: [Rules]
+      summary: List the detection ruleset
+      operationId: securityListRules
+      responses:
+        '200': { description: Rules, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Rule' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/security/scans:
+    post:
+      tags: [Scans]
+      summary: Submit a scan
+      operationId: securitySubmitScan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScanRequest' }
+      responses:
+        '201': { description: Scan summary, content: { application/json: { schema: { $ref: '#/components/schemas/Scan' } } } }
+        '400': { description: Missing files, too many files, or scan too large }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    get:
+      tags: [Scans]
+      summary: List scans
+      operationId: securityListScans
+      parameters:
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Scans, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Scan' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/security/findings:
+    get:
+      tags: [Findings]
+      summary: List findings
+      operationId: securityListFindings
+      parameters:
+        - { name: scanId, in: query, schema: { type: string } }
+        - { name: minSeverity, in: query, schema: { type: string, enum: [critical, high, medium, low] } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Findings, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Finding' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/security/scans/{id}:
+    get:
+      tags: [Scans]
+      summary: Get a scan with its findings
+      operationId: securityGetScan
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Scan detail, content: { application/json: { schema: { type: object, properties: { scan: { $ref: '#/components/schemas/Scan' }, findings: { type: array, items: { $ref: '#/components/schemas/Finding' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Scan not found }
+
+  /v1/security/findings/{id}:
+    get:
+      tags: [Findings]
+      summary: Get a finding
+      operationId: securityGetFinding
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Finding, content: { application/json: { schema: { $ref: '#/components/schemas/Finding' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Finding not found }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: IAM-issued JWT or `hk-` Cloud API key.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+  schemas:
+    Rule:
+      type: object
+      description: One detection rule in the catalog.
+      properties:
+        ID: { type: string }
+        Name: { type: string }
+        Severity: { type: string, enum: [critical, high, medium, low] }
+        Description: { type: string }
+    FileInput:
+      type: object
+      required: [path, content]
+      properties:
+        path: { type: string }
+        content: { type: string }
+    ScanRequest:
+      type: object
+      required: [files]
+      properties:
+        project: { type: string, description: 'Optional sub-scope, ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$' }
+        files: { type: array, description: 'At least one file; max 500 files / 8 MiB total', items: { $ref: '#/components/schemas/FileInput' } }
+    Scan:
+      type: object
+      properties:
+        id: { type: string }
+        project: { type: string }
+        files: { type: integer }
+        findings: { type: integer }
+        critical: { type: integer }
+        high: { type: integer }
+        medium: { type: integer }
+        low: { type: integer }
+        createdAt: { type: integer, format: int64, description: Unix milliseconds }
+    Finding:
+      type: object
+      properties:
+        id: { type: string }
+        scanId: { type: string }
+        ruleId: { type: string }
+        ruleName: { type: string }
+        severity: { type: string, enum: [critical, high, medium, low] }
+        path: { type: string }
+        line: { type: integer }
+        preview: { type: string, description: Redacted preview — never the raw secret }
+        fingerprint: { type: string }
+        createdAt: { type: integer, format: int64, description: Unix milliseconds }

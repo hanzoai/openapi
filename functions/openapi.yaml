@@ -1,0 +1,259 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Functions API
+  description: |
+    Org-scoped serverless functions on the unified cloud binary — the
+    `/v1/functions/*` surface served by the cloud `functions` subsystem
+    (`hanzoai/cloud/clients/functions`). Define a function (runtime + code or
+    image + env), invoke it through the sandboxed code-execution runtime (each
+    invocation is real, metered compute against the org's balance), and read
+    its triggers, deployments, secrets, invocations, and metrics. Tenant
+    isolation is enforced server-side from the validated bearer `owner` claim
+    (HIP-0026).
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+tags:
+  - name: Functions
+    description: Function definitions and invocations
+  - name: Metrics
+    description: Invocation histograms and status breakdown
+security:
+  - bearerAuth: []
+paths:
+  /v1/functions:
+    get:
+      tags: [Functions]
+      summary: List functions
+      operationId: listFunctions
+      responses:
+        '200': { description: Functions, content: { application/json: { schema: { type: object, properties: { functions: { type: array, items: { $ref: '#/components/schemas/Function' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Functions]
+      summary: Create a function
+      operationId: createFunction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateFunctionRequest' }
+      responses:
+        '201': { description: Function created, content: { application/json: { schema: { $ref: '#/components/schemas/Function' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/functions/metrics:
+    get:
+      tags: [Metrics]
+      summary: Invocation histogram + status breakdown
+      operationId: functionMetrics
+      parameters:
+        - { name: range, in: query, schema: { type: string, enum: ['24H', '7D', '30D'], default: '24H' } }
+      responses:
+        '200': { description: Metrics, content: { application/json: { schema: { $ref: '#/components/schemas/Metrics' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/functions/triggers:
+    get:
+      tags: [Functions]
+      summary: List triggers across functions
+      operationId: listTriggers
+      responses:
+        '200': { description: Triggers, content: { application/json: { schema: { type: object, properties: { triggers: { type: array, items: { $ref: '#/components/schemas/Trigger' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/functions/deployments:
+    get:
+      tags: [Functions]
+      summary: List deployed functions
+      operationId: listDeployments
+      responses:
+        '200': { description: Deployments, content: { application/json: { schema: { type: object, properties: { functions: { type: array, items: { $ref: '#/components/schemas/Function' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/functions/secrets:
+    get:
+      tags: [Functions]
+      summary: List function secrets (names only)
+      operationId: listFunctionSecrets
+      responses:
+        '200': { description: Secrets, content: { application/json: { schema: { type: object, properties: { secrets: { type: array, items: { $ref: '#/components/schemas/Secret' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/functions/{name}:
+    parameters:
+      - { name: name, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Functions]
+      summary: Get a function (with triggers, recent invocations, secrets)
+      operationId: getFunction
+      responses:
+        '200': { description: Function detail, content: { application/json: { schema: { $ref: '#/components/schemas/FunctionDetail' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Function not found }
+    delete:
+      tags: [Functions]
+      summary: Delete a function
+      operationId: deleteFunction
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Function not found }
+
+  /v1/functions/{name}/invocations:
+    parameters:
+      - { name: name, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Functions]
+      summary: List a function's invocations
+      operationId: listInvocations
+      parameters:
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Invocations, content: { application/json: { schema: { type: object, properties: { invocations: { type: array, items: { $ref: '#/components/schemas/Invocation' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Function not found }
+
+  /v1/functions/{name}/logs:
+    parameters:
+      - { name: name, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Functions]
+      summary: Get the latest invocation logs
+      operationId: getFunctionLogs
+      responses:
+        '200': { description: Logs, content: { application/json: { schema: { type: object, properties: { logs: { type: string } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Function not found }
+
+  /v1/functions/{name}/invoke:
+    parameters:
+      - { name: name, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Functions]
+      summary: Invoke a function (metered compute)
+      operationId: invokeFunction
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvokeRequest' }
+      responses:
+        '200': { description: Invocation result, content: { application/json: { schema: { $ref: '#/components/schemas/Invocation' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { description: Insufficient balance }
+        '404': { description: Function not found }
+        '502': { description: Sandbox execution failed (invocation recorded with error status), content: { application/json: { schema: { $ref: '#/components/schemas/Invocation' } } } }
+        '503': { description: Code execution runtime not configured }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: IAM-issued JWT or `hk-` Cloud API key.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+  schemas:
+    Function:
+      type: object
+      properties:
+        name: { type: string }
+        namespace: { type: string }
+        environment: { type: string }
+        status: { type: string }
+        image: { type: string }
+        endpoint: { type: string }
+        envCount: { type: integer }
+        timeoutSec: { type: integer }
+        memoryLimit: { type: string }
+        invocations7d: { type: integer, nullable: true }
+        successRate: { type: number, nullable: true }
+        avgDurationMs: { type: number, nullable: true }
+        errors7d: { type: integer, nullable: true }
+        createdAt: { type: string }
+        lastDeployedAt: { type: string }
+    FunctionDetail:
+      allOf:
+        - { $ref: '#/components/schemas/Function' }
+        - type: object
+          properties:
+            triggers: { type: array, items: { $ref: '#/components/schemas/Trigger' } }
+            recentInvocations: { type: array, items: { $ref: '#/components/schemas/Invocation' } }
+            secrets: { type: array, items: { type: string } }
+    CreateFunctionRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        environment: { type: string }
+        runtime: { type: string }
+        namespace: { type: string }
+        image: { type: string }
+        code: { type: string }
+        handler: { type: string }
+        timeoutSec: { type: integer }
+        memoryLimit: { type: string }
+        envNames: { type: array, items: { type: string } }
+    Trigger:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string }
+        enabled: { type: boolean }
+        target: { type: string }
+        functionName: { type: string }
+    Invocation:
+      type: object
+      properties:
+        id: { type: string }
+        statusCode: { type: integer }
+        status: { type: string, enum: [ok, error] }
+        method: { type: string }
+        time: { type: string, description: RFC3339 UTC }
+        durationMs: { type: integer, format: int64 }
+    Secret:
+      type: object
+      properties:
+        name: { type: string }
+        namespace: { type: string }
+        mountedBy: { type: string }
+    InvokeRequest:
+      type: object
+      properties:
+        input: { type: string }
+    Metrics:
+      type: object
+      properties:
+        series:
+          type: array
+          items:
+            type: object
+            properties:
+              key: { type: string }
+              points:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    t: { type: string }
+                    v: { type: integer }
+        status:
+          type: object
+          properties:
+            success: { type: integer }
+            timeout: { type: integer }
+            error: { type: integer }
+        costCents: { type: integer, format: int64, nullable: true }

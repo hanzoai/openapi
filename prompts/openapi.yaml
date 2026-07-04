@@ -1,0 +1,156 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Prompts API
+  description: |
+    Per-org, versioned prompt library for Hanzo Cloud — the `/v1/prompts`
+    surface served by the cloud `prompts` subsystem
+    (`hanzoai/cloud/clients/prompts`). Every prompt belongs to exactly one org
+    (the validated bearer owner claim, HIP-0026); tenant isolation is enforced on
+    every query. Creating a prompt whose name already exists appends a new
+    version — real, inspectable history. The store holds template text + taxonomy
+    only, never a secret.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+tags:
+  - name: Prompts
+    description: Named, versioned prompt templates
+  - name: Catalog
+    description: Read-only Hanzo starter prompt library
+security:
+  - bearerAuth: []
+paths:
+  /v1/prompts:
+    get:
+      tags: [Prompts]
+      summary: List current prompts for the org
+      operationId: listPrompts
+      responses:
+        '200': { description: Prompts, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/PromptMeta' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Prompts]
+      summary: Create a prompt or append a new version
+      operationId: createPrompt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePrompt' }
+      responses:
+        '201': { description: Prompt detail (post-write), content: { application/json: { schema: { $ref: '#/components/schemas/PromptDetail' } } } }
+        '400': { description: Invalid name / content too large }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/prompts/metrics:
+    get:
+      tags: [Prompts]
+      summary: Real per-prompt statistics
+      operationId: promptMetrics
+      responses:
+        '200': { description: Metrics, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/PromptMetric' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/prompts/catalog:
+    get:
+      tags: [Catalog]
+      summary: Read-only starter prompt library
+      operationId: promptCatalog
+      responses:
+        '200': { description: Catalog, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/CatalogEntry' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/prompts/{name}:
+    parameters:
+      - { name: name, in: path, required: true, schema: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$' } }
+    get:
+      tags: [Prompts]
+      summary: Prompt detail + version history
+      operationId: getPrompt
+      responses:
+        '200': { description: Prompt detail, content: { application/json: { schema: { $ref: '#/components/schemas/PromptDetail' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Prompt not found }
+    delete:
+      tags: [Prompts]
+      summary: Delete a prompt and its version history
+      operationId: deletePrompt
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Prompt not found }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: IAM-issued JWT or `hk-` Cloud API key.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+  schemas:
+    CreatePrompt:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, description: 'Org-unique handle, ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ (not "metrics"/"new"/"catalog")' }
+        type: { type: string, default: text }
+        prompt: { type: string, description: Template body (max 64KiB) }
+        labels: { type: array, items: { type: string } }
+        tags: { type: array, items: { type: string } }
+    PromptMeta:
+      type: object
+      properties:
+        name: { type: string }
+        type: { type: string }
+        versions: { type: array, items: { type: integer }, description: Version numbers, newest first }
+        labels: { type: array, items: { type: string } }
+        tags: { type: array, items: { type: string } }
+        lastUpdatedAt: { type: string, format: date-time }
+    VersionMeta:
+      type: object
+      description: Version history metadata only — no per-version content.
+      properties:
+        version: { type: integer }
+        type: { type: string }
+        createdAt: { type: string, format: date-time }
+    PromptDetail:
+      type: object
+      properties:
+        name: { type: string }
+        type: { type: string }
+        prompt: { type: string, description: Current version content }
+        version: { type: integer, description: Current version number }
+        labels: { type: array, items: { type: string } }
+        tags: { type: array, items: { type: string } }
+        versionHistory: { type: array, items: { $ref: '#/components/schemas/VersionMeta' } }
+        createdAt: { type: string, format: date-time }
+        lastUpdatedAt: { type: string, format: date-time }
+    PromptMetric:
+      type: object
+      properties:
+        name: { type: string }
+        type: { type: string }
+        versions: { type: integer, description: True version count }
+        currentVersion: { type: integer }
+        createdAt: { type: string, format: date-time }
+        lastUpdatedAt: { type: string, format: date-time }
+    CatalogEntry:
+      type: object
+      properties:
+        name: { type: string }
+        type: { type: string }
+        prompt: { type: string }
+        tags: { type: array, items: { type: string } }
+        labels: { type: array, items: { type: string } }
