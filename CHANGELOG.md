@@ -7,8 +7,8 @@
 Authored per-service specs for the fused `api.hanzo.ai/v1` cloud-binary
 surface, route-accurate to the Go handlers in `hanzoai/cloud/clients/<x>`:
 
-- Added `agents/openapi.yaml` — `/v1/agents/*` (agents + runs + live session
-  tree) from `clients/agents`.
+- `/v1/agents/*` (agents + runs + live session tree) is covered by
+  `cloud/openapi.yaml` (landed on main); the 21 specs below are the rest.
 - Added `functions/openapi.yaml` — `/v1/functions/*` (serverless functions,
   metered invoke) from `clients/functions`.
 - Added `framework/openapi.yaml` — `/v1/framework/*` (doctypes, modules, roles,
@@ -84,6 +84,32 @@ surface, route-accurate to the Go handlers in `hanzoai/cloud/clients/<x>`:
   user-org control plane only.
 - `hanzo.yaml` discovery now lists `ai` (gateway_route `/v1/chat/completions`) and
   corrects `cloud` to `/v1/cloud`.
+
+### 2026-07-03 — agents + sessions control plane documented at /v1
+
+- Documented the previously-undocumented core agents surface in
+  `cloud/openapi.yaml` (grep `/v1/agents` returned nothing before this). Sourced
+  from the real handlers in `hanzoai/cloud` (`clients/agents/{agents,store,
+  sessions,sessions_store,sessions_stream}.go`), not guessed. Top-level per the
+  lock-in (no legacy prefix): `/v1/agents` (list/create), `/v1/agents/{ref}`
+  (get/patch/delete), `/v1/agents/{ref}/run` (+ credit drawdown metered
+  product=agent), `/v1/agents/{ref}/runs`, `/v1/agents/metrics`,
+  `/v1/agents/activity`.
+- Documented the live session/subagent control plane: `/v1/agents/sessions`
+  (register/list), `/v1/agents/sessions/{id}` (detail/patch),
+  `/v1/agents/sessions/{id}/tree` (subagent tree),
+  `/v1/agents/sessions/{id}/events`, the control commands
+  `.../{pause,resume,stop,message}`, and the SSE feed
+  `/v1/agents/sessions/stream` (streams over ZAP).
+- New tags: `Agents API`, `Agent Sessions API`. New self-contained schemas under
+  `components.schemas` (`agents.*`): Agent, AgentDetail, Run, CreateAgentRequest,
+  UpdateAgentRequest, RunRequest, Metrics, Activity, Session, SessionDetail,
+  Event, TreeNode, RegisterSessionRequest, PatchSessionRequest, EventRequest,
+  ControlRequest, ControlResult. Every route is org-scoped (X-Org-Id minted by
+  the gateway from the validated IAM token, HIP-0026).
+- `info.version` stays `1.0.0` per the lock-in (this repo tracks changes here,
+  not via per-spec version bumps). Whole-repo `/api/` sweep remains zero routes
+  (the two residual mentions were `#` comments, reworded away).
 
 ## v1.0.0 — 2026-05-31
 

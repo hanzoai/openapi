@@ -15,6 +15,8 @@ security:
 tags:
 - name: Account API
 - name: Activity API
+- name: Agent Sessions API
+- name: Agents API
 - name: Application API
 - name: Article API
 - name: Chat API
@@ -3667,6 +3669,598 @@ paths:
                   totalStorageBytes:
                     type: integer
                     format: int64
+  # ── Agents surface (top-level /v1/agents, fronted at api.hanzo.ai) ─────────
+  # Per-org autonomous agent definitions + their runs, and the live
+  # session/subagent control plane. Top-level per the v1.0.0 lock-in — NOT under
+  # /v1/cloud/* (that namespace is the casibase controller surface). No legacy
+  # path prefix. Every route is org-scoped: the org is the X-Org-Id the gateway mints
+  # from the validated IAM token (HIP-0026), enforced as the tenancy key on every
+  # query, so one tenant can never read, run, control, or delete another's.
+  /v1/agents:
+    get:
+      tags:
+      - Agents API
+      description: List the org's agents (most-recently-updated first).
+      operationId: AgentsController.List
+      responses:
+        '200':
+          description: The org's agents.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/agents.Agent'
+    post:
+      tags:
+      - Agents API
+      description: Create an agent (a model + instructions + tool names). A
+        long-running agent additionally requires a 5-field cron 'schedule' and is
+        invoked by the scheduler; a one-shot agent runs only when POSTed to /run.
+      operationId: AgentsController.Create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/agents.CreateAgentRequest'
+      responses:
+        '201':
+          description: The created agent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.Agent'
+        '400':
+          description: Invalid name, model, instructions, or lifecycle.
+        '409':
+          description: An agent with that name already exists, or the org's
+            long-running-agent limit is reached.
+  /v1/agents/{ref}:
+    get:
+      tags:
+      - Agents API
+      description: Get an agent by its public id (agent_...) or org-unique name,
+        with its instructions and up to 20 recent runs.
+      operationId: AgentsController.Get
+      parameters:
+      - in: path
+        name: ref
+        description: The agent's public id (agent_...) or org-unique name.
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The agent detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.AgentDetail'
+        '404':
+          description: No such agent in this org.
+    patch:
+      tags:
+      - Agents API
+      description: Update an agent's mutable fields. The resulting execution
+        mode + schedule are re-validated, so a partial update can never leave a
+        long-running agent without a valid cron.
+      operationId: AgentsController.Update
+      parameters:
+      - in: path
+        name: ref
+        description: The agent's public id (agent_...) or org-unique name.
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/agents.UpdateAgentRequest'
+      responses:
+        '200':
+          description: The updated agent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.Agent'
+        '400':
+          description: Invalid field or lifecycle.
+        '404':
+          description: No such agent in this org.
+        '409':
+          description: The org's long-running-agent limit is reached.
+    delete:
+      tags:
+      - Agents API
+      description: Delete an agent and its run history.
+      operationId: AgentsController.Delete
+      parameters:
+      - in: path
+        name: ref
+        description: The agent's public id (agent_...) or org-unique name.
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Deleted.
+        '404':
+          description: No such agent in this org.
+  /v1/agents/{ref}/run:
+    post:
+      tags:
+      - Agents API
+      description: Run the agent — composes its instructions with the caller
+        input and executes one real chat completion through the in-process AI
+        client, records the run, and returns the run view. Requires a validated
+        principal (money path). The org's credit balance is pre-authorized before
+        any inference (fail-closed); a successful run debits a flat per-run fee
+        metered as product=agent. Duration is recorded; the run is real.
+      operationId: AgentsController.Run
+      parameters:
+      - in: path
+        name: ref
+        description: The agent's public id (agent_...) or org-unique name.
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/agents.RunRequest'
+      responses:
+        '200':
+          description: The completed run (status ok).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.Run'
+        '402':
+          description: Insufficient org credit balance (run did not execute).
+        '403':
+          description: A validated principal is required to run an agent.
+        '404':
+          description: No such agent in this org.
+        '502':
+          description: The run executed but the upstream model failed; the
+            recorded error run is returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.Run'
+        '503':
+          description: Inference is not configured on this deployment, or the
+            credit ledger is unreachable.
+  /v1/agents/{ref}/runs:
+    get:
+      tags:
+      - Agents API
+      description: The agent's run history, newest first.
+      operationId: AgentsController.Runs
+      parameters:
+      - in: path
+        name: ref
+        description: The agent's public id (agent_...) or org-unique name.
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: limit
+        description: Max runs to return (default 50, max 200).
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: The run history.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/agents.Run'
+        '404':
+          description: No such agent in this org.
+  /v1/agents/metrics:
+    get:
+      tags:
+      - Agents API
+      description: Invocations-over-time histogram for the org's Agents
+        dashboard. Every point is a real count of recorded runs in that bucket,
+        one series line per agent that ran in the window. The Resource Usage
+        rollup is all-null (this store meters no CPU/memory/storage/cost).
+      operationId: AgentsController.Metrics
+      parameters:
+      - in: query
+        name: range
+        description: Window token; one of 24H, 7D, 30D (default 30D).
+        required: false
+        schema:
+          type: string
+          enum: [24H, 7D, 30D]
+      responses:
+        '200':
+          description: The metrics view.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.Metrics'
+  /v1/agents/activity:
+    get:
+      tags:
+      - Agents API
+      description: The org-wide recent-activity feed (newest first, capped at
+        50). Each recorded run is an invoked/failed event; each agent's own
+        create/update timestamps are created/updated events. Nothing is invented.
+      operationId: AgentsController.Activity
+      responses:
+        '200':
+          description: The activity feed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activity:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/agents.Activity'
+  /v1/agents/sessions:
+    post:
+      tags:
+      - Agent Sessions API
+      description: Register a live agent session. With no parentSessionId the
+        session is a root (the outer agent); with one it is a subagent child of
+        that parent (which must exist in the same org) and inherits its
+        rootSessionId — the tree key every node in one flow shares.
+      operationId: AgentSessionsController.Register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/agents.RegisterSessionRequest'
+      responses:
+        '201':
+          description: The registered session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.Session'
+        '400':
+          description: Missing agent, invalid status, or parentSessionId not
+            found in this org.
+    get:
+      tags:
+      - Agent Sessions API
+      description: List the org's live sessions, newest first. With no filter
+        only roots (the outer-agent view) are returned; root scopes to one tree,
+        parent to a session's direct children.
+      operationId: AgentSessionsController.List
+      parameters:
+      - in: query
+        name: root
+        description: Return every session in this tree (rootSessionId == root).
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: parent
+        description: Return the direct children of this session.
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: status
+        description: Filter by status.
+        required: false
+        schema:
+          type: string
+          enum: [running, paused, done, error]
+      - in: query
+        name: limit
+        description: Max sessions to return (default 100, max 500).
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: The matching sessions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/agents.Session'
+        '400':
+          description: Invalid status filter.
+  /v1/agents/sessions/stream:
+    get:
+      tags:
+      - Agent Sessions API
+      description: Server-Sent Events feed of live session + event updates for
+        the caller's org (streams natively over the ZAP machine transport as
+        well). Optional ?root scopes the feed to one subagent tree. Each frame
+        carries an event type (session or event) and a JSON data line; the GET
+        list/detail/tree endpoints remain the source of truth, the stream is a
+        live hint.
+      operationId: AgentSessionsController.Stream
+      parameters:
+      - in: query
+        name: root
+        description: Scope the feed to one subagent tree (rootSessionId).
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: An open SSE stream of session and event frames.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /v1/agents/sessions/{id}:
+    get:
+      tags:
+      - Agent Sessions API
+      description: Session detail — the session, its direct child sessions, and
+        up to 50 recent events.
+      operationId: AgentSessionsController.Get
+      parameters:
+      - in: path
+        name: id
+        description: The session id (sess_...).
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The session detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.SessionDetail'
+        '404':
+          description: No such session in this org.
+    patch:
+      tags:
+      - Agent Sessions API
+      description: Update a session's status and/or title. A terminal session
+        (done/error) is monotonic — it cannot be reopened.
+      operationId: AgentSessionsController.Patch
+      parameters:
+      - in: path
+        name: id
+        description: The session id (sess_...).
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/agents.PatchSessionRequest'
+      responses:
+        '200':
+          description: The updated session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.Session'
+        '400':
+          description: Invalid status or title.
+        '404':
+          description: No such session in this org.
+        '409':
+          description: The session is already finished; its status cannot change.
+  /v1/agents/sessions/{id}/tree:
+    get:
+      tags:
+      - Agent Sessions API
+      description: The full subagent-flow graph rooted at this session's tree —
+        each node is a session plus its children, recursively, with real per-node
+        event and fan-out counts.
+      operationId: AgentSessionsController.Tree
+      parameters:
+      - in: path
+        name: id
+        description: The session id (sess_...).
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The subagent tree.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.TreeNode'
+        '404':
+          description: No such session in this org.
+  /v1/agents/sessions/{id}/events:
+    post:
+      tags:
+      - Agent Sessions API
+      description: Append one event to a session's ordered log (a model message,
+        tool call, subagent spawn, free log line, status change, or control
+        command). Seq is allocated monotonically per session. The payload is an
+        opaque, size-bounded, well-formed JSON blob.
+      operationId: AgentSessionsController.AppendEvent
+      parameters:
+      - in: path
+        name: id
+        description: The session id (sess_...).
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/agents.EventRequest'
+      responses:
+        '201':
+          description: The appended event.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.Event'
+        '400':
+          description: Invalid kind or payload.
+        '404':
+          description: No such session in this org.
+  /v1/agents/sessions/{id}/pause:
+    post:
+      tags:
+      - Agent Sessions API
+      description: Pause a live session. Records a durable control event and, when
+        the session is backed by a hanzoai/tasks workflow and a tasks backend is
+        wired, forwards the command to the engine's signal API.
+      operationId: AgentSessionsController.Pause
+      parameters:
+      - in: path
+        name: id
+        description: The session id (sess_...).
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/agents.ControlRequest'
+      responses:
+        '200':
+          description: The recorded control command.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.ControlResult'
+        '404':
+          description: No such session in this org.
+        '409':
+          description: The session is finished; a finished session cannot be steered.
+        '502':
+          description: Control recorded but the tasks-engine forward failed.
+  /v1/agents/sessions/{id}/resume:
+    post:
+      tags:
+      - Agent Sessions API
+      description: Resume a paused session. Records a durable control event and
+        forwards to the tasks engine when the session is task-backed.
+      operationId: AgentSessionsController.Resume
+      parameters:
+      - in: path
+        name: id
+        description: The session id (sess_...).
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/agents.ControlRequest'
+      responses:
+        '200':
+          description: The recorded control command.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.ControlResult'
+        '404':
+          description: No such session in this org.
+        '409':
+          description: The session is finished; a finished session cannot be steered.
+        '502':
+          description: Control recorded but the tasks-engine forward failed.
+  /v1/agents/sessions/{id}/stop:
+    post:
+      tags:
+      - Agent Sessions API
+      description: Stop a session. Records a durable control event and, when
+        task-backed, cancels the underlying hanzoai/tasks workflow.
+      operationId: AgentSessionsController.Stop
+      parameters:
+      - in: path
+        name: id
+        description: The session id (sess_...).
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/agents.ControlRequest'
+      responses:
+        '200':
+          description: The recorded control command.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.ControlResult'
+        '404':
+          description: No such session in this org.
+        '409':
+          description: The session is finished; a finished session cannot be steered.
+        '502':
+          description: Control recorded but the tasks-engine cancel failed.
+  /v1/agents/sessions/{id}/message:
+    post:
+      tags:
+      - Agent Sessions API
+      description: Send a steering message to a live session. Requires a
+        'message' or 'payload'. Records a durable control event and forwards to
+        the tasks engine when the session is task-backed.
+      operationId: AgentSessionsController.Message
+      parameters:
+      - in: path
+        name: id
+        description: The session id (sess_...).
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/agents.ControlRequest'
+      responses:
+        '200':
+          description: The recorded control command.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agents.ControlResult'
+        '400':
+          description: A message or payload is required.
+        '404':
+          description: No such session in this org.
+        '409':
+          description: The session is finished; a finished session cannot be steered.
+        '502':
+          description: Control recorded but the tasks-engine forward failed.
 components:
   securitySchemes:
     BearerAuth:
@@ -5016,3 +5610,386 @@ components:
           format: int64
         version:
           type: string
+    agents.Agent:
+      title: Agent
+      type: object
+      description: A per-org autonomous agent — a model, a system prompt (instructions),
+        and a set of tool names. Never stores a secret; tool credentials live in KMS
+        by reference.
+      properties:
+        id:
+          type: string
+          description: Public handle (agent_...).
+        name:
+          type: string
+          description: Org-unique name matching ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$.
+        model:
+          type: string
+        description:
+          type: string
+        tools:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        executionMode:
+          type: string
+          enum: [one-shot, long-running]
+        schedule:
+          type: string
+          description: 5-field cron; required and evaluated only when long-running.
+        computeRef:
+          type: string
+          description: Optional visor machine id the bot is bound to.
+        serviceAccountId:
+          type: string
+          description: Optional IAM agent service-account (<org>-<agent>) recorded as
+            the actor on scheduled-run billing.
+        runs:
+          type: integer
+          description: Recorded run count.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    agents.AgentDetail:
+      title: AgentDetail
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/agents.Agent'
+      - type: object
+        properties:
+          instructions:
+            type: string
+          recentRuns:
+            type: array
+            items:
+              $ref: '#/components/schemas/agents.Run'
+    agents.Run:
+      title: Run
+      type: object
+      description: One execution of an agent — the input, produced output (or error),
+        the model that served it, and duration. Every row is a call that happened.
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          description: ok or error.
+        model:
+          type: string
+        input:
+          type: string
+        output:
+          type: string
+        error:
+          type: string
+        durationMs:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+    agents.CreateAgentRequest:
+      title: CreateAgentRequest
+      type: object
+      required:
+      - name
+      - model
+      properties:
+        name:
+          type: string
+          description: Org-unique name matching ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$.
+        model:
+          type: string
+        instructions:
+          type: string
+          description: System prompt (max 32 KiB).
+        description:
+          type: string
+        tools:
+          type: array
+          items:
+            type: string
+        executionMode:
+          type: string
+          enum: [one-shot, long-running]
+          description: Defaults to one-shot.
+        schedule:
+          type: string
+          description: 5-field cron; required when executionMode is long-running.
+        computeRef:
+          type: string
+        serviceAccountId:
+          type: string
+    agents.UpdateAgentRequest:
+      title: UpdateAgentRequest
+      type: object
+      description: Partial update; only the provided fields change. The resulting
+        executionMode + schedule are re-validated.
+      properties:
+        model:
+          type: string
+        instructions:
+          type: string
+        description:
+          type: string
+        tools:
+          type: array
+          items:
+            type: string
+        executionMode:
+          type: string
+          enum: [one-shot, long-running]
+        schedule:
+          type: string
+        computeRef:
+          type: string
+        serviceAccountId:
+          type: string
+    agents.RunRequest:
+      title: RunRequest
+      type: object
+      properties:
+        input:
+          type: string
+          description: Caller input appended to the agent's instructions (max 128 KiB).
+    agents.Metrics:
+      title: Metrics
+      type: object
+      description: Invocations-over-time histogram (real counts) plus an all-null
+        Resource Usage rollup (this store meters no CPU/memory/storage/cost).
+      properties:
+        range:
+          type: string
+          enum: [24H, 7D, 30D]
+        series:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+                description: Agent name.
+              points:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    t:
+                      type: string
+                      format: date-time
+                      description: Bucket start (RFC3339 UTC).
+                    v:
+                      type: integer
+                      description: Invocation count in the bucket.
+        resource:
+          type: object
+          properties:
+            cpuVcpuHours:
+              type: number
+              format: double
+              nullable: true
+            memGbHours:
+              type: number
+              format: double
+              nullable: true
+            storageIoBytes:
+              type: number
+              format: double
+              nullable: true
+            costCents:
+              type: number
+              format: double
+              nullable: true
+    agents.Activity:
+      title: Activity
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [invoked, failed, created, updated]
+        agent:
+          type: string
+        message:
+          type: string
+        at:
+          type: string
+          format: date-time
+    agents.Session:
+      title: Session
+      type: object
+      description: A live agent-session — a running invocation (cloud run, bot loop,
+        or a @hanzo/dev CLI run spawning subagents). Sessions linked by
+        parentSessionId form the subagent tree; rootSessionId is the shared tree key.
+      properties:
+        id:
+          type: string
+          description: Session id (sess_...).
+        agent:
+          type: string
+          description: Agent name/type label (need not be a cloud Agent row).
+        actor:
+          type: string
+          description: The principal that started it.
+        status:
+          type: string
+          enum: [running, paused, done, error]
+        parentSessionId:
+          type: string
+          description: Empty for a root (the outer agent).
+        rootSessionId:
+          type: string
+          description: The tree key; equals id for a root.
+        title:
+          type: string
+        taskWorkflowId:
+          type: string
+          description: The hanzoai/tasks workflow that executes this session, when
+            task-backed.
+        taskRunId:
+          type: string
+        events:
+          type: integer
+        children:
+          type: integer
+          description: Direct-child (subagent) fan-out count.
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          description: Set once a terminal status (done/error) is reached.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    agents.SessionDetail:
+      title: SessionDetail
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/agents.Session'
+      - type: object
+        properties:
+          childSessions:
+            type: array
+            items:
+              $ref: '#/components/schemas/agents.Session'
+          recentEvents:
+            type: array
+            items:
+              $ref: '#/components/schemas/agents.Event'
+    agents.Event:
+      title: Event
+      type: object
+      description: One entry in a session's ordered log. Seq is monotonic per session
+        so a subscriber can resume from its last-seen point.
+      properties:
+        id:
+          type: string
+        sessionId:
+          type: string
+        seq:
+          type: integer
+          format: int64
+        kind:
+          type: string
+          enum: [message, tool-call, spawn, log, status, control]
+        actor:
+          type: string
+        payload:
+          type: object
+          description: Opaque, well-formed, size-bounded JSON blob.
+        createdAt:
+          type: string
+          format: date-time
+    agents.TreeNode:
+      title: TreeNode
+      type: object
+      description: One node of the subagent-flow graph — a session plus its children,
+        recursively.
+      properties:
+        session:
+          $ref: '#/components/schemas/agents.Session'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/agents.TreeNode'
+    agents.RegisterSessionRequest:
+      title: RegisterSessionRequest
+      type: object
+      required:
+      - agent
+      properties:
+        agent:
+          type: string
+        actor:
+          type: string
+          description: Defaults to the validated principal when omitted.
+        title:
+          type: string
+        status:
+          type: string
+          enum: [running, paused, done, error]
+          description: Defaults to running.
+        parentSessionId:
+          type: string
+          description: Links this session as a subagent child of an existing same-org
+            session (inherits its rootSessionId).
+        taskWorkflowId:
+          type: string
+        taskRunId:
+          type: string
+    agents.PatchSessionRequest:
+      title: PatchSessionRequest
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [running, paused, done, error]
+        title:
+          type: string
+    agents.EventRequest:
+      title: EventRequest
+      type: object
+      required:
+      - kind
+      properties:
+        kind:
+          type: string
+          enum: [message, tool-call, spawn, log, status, control]
+        actor:
+          type: string
+        payload:
+          type: object
+          description: Opaque JSON blob (validated well-formed, size-bounded).
+    agents.ControlRequest:
+      title: ControlRequest
+      type: object
+      description: Optional control body. pause/resume/stop often carry none; message
+        requires a 'message' or 'payload'.
+      properties:
+        message:
+          type: string
+        payload:
+          type: object
+    agents.ControlResult:
+      title: ControlResult
+      type: object
+      properties:
+        command:
+          type: string
+          enum: [pause, resume, stop, message]
+        event:
+          $ref: '#/components/schemas/agents.Event'
+        forwarded:
+          type: boolean
+          description: True when the command was forwarded to the hanzoai/tasks engine.

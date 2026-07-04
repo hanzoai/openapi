@@ -119,14 +119,6 @@ official SDK derives from. One way per SDK:
 > to `hanzo.yaml` and close the ~28 missing product specs first. See the SDK
 > generation reconciliation section in `LLM.md`.
 
-| SDK | Repo | Generator | Regenerate |
-|-----|------|-----------|------------|
-| JS/TS | `hanzoai/js-sdk` | Stainless (`hanzo-ai`) | push spec → Stainless PR |
-| Python | `hanzoai/python-sdk` | Stainless (`hanzo-ai`) | push spec → Stainless PR |
-| Go | `hanzoai/go-sdk` | Stainless (`hanzo-ai`) | push spec → Stainless PR |
-| Rust | `hanzoai/rust-sdk` | hand-written crates | not generated from this spec |
-| C++ | `hanzoai/cpp-sdk` | openapi-generator `cpp-restsdk` (ARC) | push spec → CI regenerates |
-| Dart | `hanzoai/dart-sdk` | openapi-generator `dart-dio` (ARC) | push spec → CI regenerates |
 
 ### Regenerate the Stainless SDKs (canonical)
 
