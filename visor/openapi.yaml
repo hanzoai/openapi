@@ -1,1496 +1,416 @@
 openapi: 3.1.0
 info:
   title: Hanzo Visor API
-  description: 'Hanzo Visor is a VM and remote session management platform.
-
-    It manages cloud machines, remote desktop sessions via Guacamole (RDP/SSH/Telnet),
-
-    infrastructure providers, remote assets, audit records, and Kubernetes node pools.
-
-
-    All mutation endpoints use POST (not PUT/PATCH/DELETE), following the Beego
-
-    controller convention. Responses are wrapped in a standard envelope with
-
-    `status`, `msg`, `data`, and optional `data2` (pagination count) fields.
-
-    '
+  description: |
+    Hanzo Cloud COMPUTE surface — the tenant's machines, GPUs, DOKS clusters and
+    bots, served as clean org-scoped REST off the unified cloud binary
+    (`hanzoai/cloud/clients/visor`) fronting Visor (the cloud OS that owns
+    compute). Every resource is scoped to the caller's org from the validated IAM
+    owner claim; a caller only ever reads or mutates their OWN tenant's compute.
+    A Bot is a composition: a `kind=bot` machine plus an agent binding.
   version: 1.0.0
   contact:
     name: Hanzo AI
     url: https://hanzo.ai
     email: support@hanzo.ai
   license:
-    name: Apache-2.0
-    url: https://www.apache.org/licenses/LICENSE-2.0
+    name: Proprietary
 servers:
-- url: https://vm.hanzo.ai
-  description: Visor Production
-- url: https://api.hanzo.ai
-  description: Hanzo Gateway (via api.hanzo.ai/v1/visor/*)
-security:
-- BearerAuth: []
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
 tags:
-- name: Auth
-  description: Authentication and account management
-- name: Machines
-  description: Cloud machine lifecycle management
-- name: Records
-  description: Audit records and blockchain commit/query
-- name: Assets
-  description: Remote access assets (SSH/RDP/Telnet targets)
-- name: Providers
-  description: Cloud infrastructure providers
-- name: Sessions
-  description: Remote desktop sessions via Guacamole
-- name: Tunnels
-  description: WebSocket tunnels for remote desktop connections
-- name: NodePools
-  description: Kubernetes node pool management (DOKS)
+  - name: Machines
+    description: Per-org cloud machine lifecycle
+  - name: GPUs
+    description: Per-accelerator GPU inventory
+  - name: Clusters
+    description: DOKS clusters and node pools
+  - name: Catalog
+    description: Global compute regions and sizes
+  - name: Bindings
+    description: Agent↔machine bindings
+  - name: Bots
+    description: Bots (kind=bot machine + agent binding)
+security:
+  - bearerAuth: []
 paths:
-  /v1/visor/signin:
-    post:
-      operationId: signin
-      summary: Sign in via IAM OAuth
-      tags:
-      - Auth
-      security: []
-      parameters:
-      - name: code
-        in: query
-        required: true
-        schema:
-          type: string
-        description: OAuth authorization code
-      - name: state
-        in: query
-        required: true
-        schema:
-          type: string
-        description: OAuth state parameter
-      responses:
-        '200':
-          description: Authenticated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-  /v1/visor/signout:
-    post:
-      operationId: signout
-      summary: Sign out and clear session
-      tags:
-      - Auth
-      responses:
-        '200':
-          description: Signed out
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-  /v1/visor/get-account:
+  /v1/machines:
     get:
-      operationId: getAccount
-      summary: Get current authenticated account
-      tags:
-      - Auth
+      tags: [Machines]
+      summary: List the org's machines
+      operationId: listMachines
       responses:
-        '200':
-          description: Account claims
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-  /v1/visor/get-machines:
-    get:
-      operationId: getMachines
-      summary: List all machines
-      tags:
-      - Machines
-      parameters:
-      - $ref: '#/components/parameters/Owner'
-      - $ref: '#/components/parameters/PageSize'
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Field'
-      - $ref: '#/components/parameters/Value'
-      - $ref: '#/components/parameters/SortField'
-      - $ref: '#/components/parameters/SortOrder'
-      responses:
-        '200':
-          description: List of machines
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: '#/components/schemas/Machine'
-                    data2:
-                      type: integer
-                      description: Total count (when paginated)
-  /v1/visor/get-machine:
-    get:
-      operationId: getMachine
-      summary: Get a single machine
-      tags:
-      - Machines
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Machine ID in owner/name format
-      responses:
-        '200':
-          description: Machine details
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Machine'
-  /v1/visor/add-machine:
+        '200': { description: Machines, content: { application/json: { schema: { type: object, properties: { machines: { type: array, items: { $ref: '#/components/schemas/MachineView' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
     post:
-      operationId: addMachine
-      summary: Add a new machine
-      tags:
-      - Machines
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Machine'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/update-machine:
-    post:
-      operationId: updateMachine
-      summary: Update an existing machine
-      tags:
-      - Machines
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Machine ID in owner/name format
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Machine'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/delete-machine:
-    post:
-      operationId: deleteMachine
-      summary: Delete a machine
-      tags:
-      - Machines
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Machine'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/launch-machine:
-    post:
+      tags: [Machines]
+      summary: Launch a machine (or dryRun for a price quote)
       operationId: launchMachine
-      summary: Launch a new cloud machine via provider
-      tags:
-      - Machines
-      parameters:
-      - name: owner
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: provider
-        in: query
-        required: true
-        schema:
-          type: string
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/CreateMachineSpec'
+            schema: { $ref: '#/components/schemas/LaunchRequest' }
       responses:
-        '200':
-          description: Launched machine
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Machine'
-  /v1/visor/get-records:
-    get:
-      operationId: getRecords
-      summary: List all audit records
-      tags:
-      - Records
-      parameters:
-      - $ref: '#/components/parameters/Owner'
-      - $ref: '#/components/parameters/PageSize'
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Field'
-      - $ref: '#/components/parameters/Value'
-      - $ref: '#/components/parameters/SortField'
-      - $ref: '#/components/parameters/SortOrder'
-      responses:
-        '200':
-          description: List of records
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: '#/components/schemas/Record'
-  /v1/visor/get-record:
-    get:
-      operationId: getRecord
-      summary: Get a single record
-      tags:
-      - Records
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Record ID in owner/name format
-      responses:
-        '200':
-          description: Record details
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Record'
-  /v1/visor/add-record:
-    post:
-      operationId: addRecord
-      summary: Add an audit record
-      tags:
-      - Records
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Record'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/update-record:
-    post:
-      operationId: updateRecord
-      summary: Update a record
-      tags:
-      - Records
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Record'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/delete-record:
-    post:
-      operationId: deleteRecord
-      summary: Delete a record
-      tags:
-      - Records
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Record'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/commit-record:
-    post:
-      operationId: commitRecord
-      summary: Commit a record to the blockchain
-      tags:
-      - Records
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Record'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/query-record:
-    get:
-      operationId: queryRecord
-      summary: Query a record from the blockchain
-      tags:
-      - Records
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Record ID in owner/name format
-      responses:
-        '200':
-          description: Queried record
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-  /v1/visor/get-assets:
-    get:
-      operationId: getAssets
-      summary: List all remote access assets
-      tags:
-      - Assets
-      parameters:
-      - $ref: '#/components/parameters/Owner'
-      - $ref: '#/components/parameters/PageSize'
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Field'
-      - $ref: '#/components/parameters/Value'
-      - $ref: '#/components/parameters/SortField'
-      - $ref: '#/components/parameters/SortOrder'
-      responses:
-        '200':
-          description: List of assets
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: '#/components/schemas/Asset'
-  /v1/visor/get-asset:
-    get:
-      operationId: getAsset
-      summary: Get a single asset
-      tags:
-      - Assets
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Asset ID in owner/name format
-      responses:
-        '200':
-          description: Asset details
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Asset'
-  /v1/visor/add-asset:
-    post:
-      operationId: addAsset
-      summary: Add a remote access asset
-      tags:
-      - Assets
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Asset'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/update-asset:
-    post:
-      operationId: updateAsset
-      summary: Update an asset
-      tags:
-      - Assets
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Asset'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/delete-asset:
-    post:
-      operationId: deleteAsset
-      summary: Delete an asset
-      tags:
-      - Assets
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Asset'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/get-providers:
-    get:
-      operationId: getProviders
-      summary: List all infrastructure providers
-      tags:
-      - Providers
-      parameters:
-      - $ref: '#/components/parameters/Owner'
-      - $ref: '#/components/parameters/PageSize'
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Field'
-      - $ref: '#/components/parameters/Value'
-      - $ref: '#/components/parameters/SortField'
-      - $ref: '#/components/parameters/SortOrder'
-      responses:
-        '200':
-          description: List of providers
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: '#/components/schemas/Provider'
-  /v1/visor/get-provider:
-    get:
-      operationId: getProvider
-      summary: Get a single provider
-      tags:
-      - Providers
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Provider ID in owner/name format
-      responses:
-        '200':
-          description: Provider details
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Provider'
-  /v1/visor/add-provider:
-    post:
-      operationId: addProvider
-      summary: Add a cloud provider
-      tags:
-      - Providers
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Provider'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/update-provider:
-    post:
-      operationId: updateProvider
-      summary: Update a provider
-      tags:
-      - Providers
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Provider'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/delete-provider:
-    post:
-      operationId: deleteProvider
-      summary: Delete a provider
-      tags:
-      - Providers
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Provider'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/get-sessions:
-    get:
-      operationId: getSessions
-      summary: List all remote desktop sessions
-      tags:
-      - Sessions
-      parameters:
-      - $ref: '#/components/parameters/Owner'
-      - $ref: '#/components/parameters/PageSize'
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Field'
-      - $ref: '#/components/parameters/Value'
-      - $ref: '#/components/parameters/SortField'
-      - $ref: '#/components/parameters/SortOrder'
-      - name: status
-        in: query
-        schema:
-          type: string
-        description: Filter by session status
-      responses:
-        '200':
-          description: List of sessions
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: '#/components/schemas/Session'
-  /v1/visor/get-session:
-    get:
-      operationId: getSession
-      summary: Get a single session
-      tags:
-      - Sessions
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Session ID
-      responses:
-        '200':
-          description: Session details
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Session'
-  /v1/visor/add-session:
-    post:
-      operationId: addSession
-      summary: Add a session record
-      tags:
-      - Sessions
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Session'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/update-session:
-    post:
-      operationId: updateSession
-      summary: Update a session
-      tags:
-      - Sessions
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Session'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/delete-session:
-    post:
-      operationId: deleteSession
-      summary: Delete a session
-      tags:
-      - Sessions
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Session'
-      responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/start-session:
-    post:
-      operationId: startSession
-      summary: Start a session (set status to connected)
-      tags:
-      - Sessions
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Session started
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-  /v1/visor/stop-session:
-    post:
-      operationId: stopSession
-      summary: Forcibly stop a session
-      tags:
-      - Sessions
-      parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Session stopped
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-  /v1/visor/add-asset-tunnel:
-    post:
-      operationId: addAssetTunnel
-      summary: Create a Guacamole tunnel session for an asset
-      tags:
-      - Tunnels
-      parameters:
-      - name: assetId
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Asset ID to connect to
-      - name: mode
-        in: query
-        schema:
-          type: string
-        description: Connection mode
-      responses:
-        '200':
-          description: Tunnel session created
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/Session'
-  /v1/visor/get-asset-tunnel:
-    get:
-      operationId: getAssetTunnel
-      summary: Open a WebSocket tunnel to a remote desktop
-      description: 'Upgrades to a WebSocket connection using the Guacamole protocol.
+        '200': { description: 'Price quote (dryRun) — Visor authoritative quote, verbatim', content: { application/json: { schema: { type: object } } } }
+        '201': { description: Machine launched, content: { application/json: { schema: { $ref: '#/components/schemas/MachineView' } } } }
+        '400': { description: size is required }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 
-        The subprotocol is "guacamole". Requires an existing session from
-
-        add-asset-tunnel.
-
-        '
-      tags:
-      - Tunnels
-      parameters:
-      - name: sessionId
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: width
-        in: query
-        required: true
-        schema:
-          type: integer
-      - name: height
-        in: query
-        required: true
-        schema:
-          type: integer
-      - name: dpi
-        in: query
-        schema:
-          type: string
-          default: '96'
-      - name: username
-        in: query
-        schema:
-          type: string
-      - name: password
-        in: query
-        schema:
-          type: string
-      responses:
-        '101':
-          description: WebSocket upgrade (Guacamole protocol)
-  /v1/visor/get-node-pools:
+  /v1/machines/{id}:
     get:
-      operationId: getNodePools
-      summary: List all Kubernetes node pools
-      tags:
-      - NodePools
+      tags: [Machines]
+      summary: Get one machine by org-scoped name
+      operationId: getMachine
       parameters:
-      - $ref: '#/components/parameters/Owner'
-      - $ref: '#/components/parameters/PageSize'
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Field'
-      - $ref: '#/components/parameters/Value'
-      - $ref: '#/components/parameters/SortField'
-      - $ref: '#/components/parameters/SortOrder'
+        - { name: id, in: path, required: true, schema: { type: string }, description: Org-scoped machine name }
       responses:
-        '200':
-          description: List of node pools
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: '#/components/schemas/NodePool'
-  /v1/visor/get-node-pool:
+        '200': { description: Machine, content: { application/json: { schema: { $ref: '#/components/schemas/MachineView' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Machine not found }
+    delete:
+      tags: [Machines]
+      summary: Terminate a machine
+      operationId: deleteMachine
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Terminated }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/machines/{id}/bind-agent:
+    post:
+      tags: [Bindings]
+      summary: Bind a cloud Agent to a machine
+      operationId: bindMachineAgent
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BindAgentRequest' }
+      responses:
+        '200': { description: Agent binding, content: { application/json: { schema: { $ref: '#/components/schemas/AgentBinding' } } } }
+        '400': { description: agentName is required }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/machines/{id}/agent-binding:
     get:
-      operationId: getNodePool
-      summary: Get a single node pool
-      tags:
-      - NodePools
+      tags: [Bindings]
+      summary: Get a machine's agent binding
+      operationId: getMachineAgentBinding
       parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Node pool ID in owner/name format
+        - { name: id, in: path, required: true, schema: { type: string } }
       responses:
-        '200':
-          description: Node pool details
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/NodePool'
-  /v1/visor/create-node-pool:
-    post:
-      operationId: createNodePool
-      summary: Create a new node pool in DOKS
-      tags:
-      - NodePools
+        '200': { description: Agent binding, content: { application/json: { schema: { $ref: '#/components/schemas/AgentBinding' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: No agent binding for machine }
+    delete:
+      tags: [Bindings]
+      summary: Unbind the agent from a machine
+      operationId: unbindMachineAgent
       parameters:
-      - name: owner
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: provider
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: clusterId
-        in: query
-        schema:
-          type: string
-        description: DOKS cluster ID (optional, uses provider default)
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Unbound }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/agent-bindings:
+    get:
+      tags: [Bindings]
+      summary: List the org's agent bindings
+      operationId: listAgentBindings
+      responses:
+        '200': { description: Agent bindings, content: { application/json: { schema: { type: object, properties: { agentBindings: { type: array, items: { $ref: '#/components/schemas/AgentBinding' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/gpus:
+    get:
+      tags: [GPUs]
+      summary: List per-accelerator GPU inventory (derived from GPU machines)
+      operationId: listGPUs
+      responses:
+        '200': { description: GPUs, content: { application/json: { schema: { type: object, properties: { gpus: { type: array, items: { $ref: '#/components/schemas/GpuView' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/gpus/alerts:
+    get:
+      tags: [GPUs]
+      summary: List GPU alerts (honest empty — Visor carries no alert inventory)
+      operationId: listGpuAlerts
+      responses:
+        '200': { description: Alerts, content: { application/json: { schema: { type: object, properties: { alerts: { type: array, items: {} } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/clusters:
+    get:
+      tags: [Clusters]
+      summary: List DOKS clusters (projected from node pools)
+      operationId: listClusters
+      responses:
+        '200': { description: Clusters, content: { application/json: { schema: { type: object, properties: { clusters: { type: array, items: { $ref: '#/components/schemas/ClusterView' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/clusters/{clusterId}/pools:
+    post:
+      tags: [Clusters]
+      summary: Add a node pool to a cluster
+      operationId: createPool
+      parameters:
+        - { name: clusterId, in: path, required: true, schema: { type: string } }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/CreateNodePoolSpec'
+            schema: { $ref: '#/components/schemas/PoolRequest' }
       responses:
-        '200':
-          description: Created node pool
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/NodePool'
-  /v1/visor/update-node-pool:
+        '201': { description: Node pool created, content: { application/json: { schema: { $ref: '#/components/schemas/NodePoolView' } } } }
+        '400': { description: provider is required }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/clusters/{clusterId}/pools/{poolId}/scale:
     post:
-      operationId: updateNodePool
-      summary: Update a node pool
-      tags:
-      - NodePools
+      tags: [Clusters]
+      summary: Scale a node pool
+      operationId: scalePool
       parameters:
-      - name: id
-        in: query
-        required: true
-        schema:
-          type: string
+        - { name: clusterId, in: path, required: true, schema: { type: string } }
+        - { name: poolId, in: path, required: true, schema: { type: string } }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/NodePool'
+            schema: { $ref: '#/components/schemas/ScaleRequest' }
       responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/delete-node-pool:
+        '200': { description: Node pool scaled, content: { application/json: { schema: { $ref: '#/components/schemas/NodePoolView' } } } }
+        '400': { description: provider is required / count must be non-negative }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/clusters/{clusterId}/pools/{poolId}:
+    delete:
+      tags: [Clusters]
+      summary: Delete a node pool
+      operationId: deletePool
+      parameters:
+        - { name: clusterId, in: path, required: true, schema: { type: string } }
+        - { name: poolId, in: path, required: true, schema: { type: string } }
+        - { name: provider, in: query, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Deleted }
+        '400': { description: provider is required }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/compute/regions:
+    get:
+      tags: [Catalog]
+      summary: List the global compute region catalog
+      operationId: listRegions
+      responses:
+        '200': { description: 'Regions — Visor authoritative catalog, verbatim', content: { application/json: { schema: {} } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/compute/sizes:
+    get:
+      tags: [Catalog]
+      summary: List the global compute size catalog
+      operationId: listSizes
+      responses:
+        '200': { description: 'Sizes — Visor authoritative catalog, verbatim', content: { application/json: { schema: {} } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/bots:
+    get:
+      tags: [Bots]
+      summary: List the org's bots
+      operationId: listBots
+      responses:
+        '200': { description: Bots, content: { application/json: { schema: { type: object, properties: { bots: { type: array, items: { $ref: '#/components/schemas/BotView' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/bots/launch:
     post:
-      operationId: deleteNodePool
-      summary: Delete a node pool from DOKS and DB
-      tags:
-      - NodePools
+      tags: [Bots]
+      summary: Launch a bot (machine + agent binding), or dryRun for a quote
+      operationId: launchBot
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/NodePool'
+            schema: { $ref: '#/components/schemas/BotLaunchRequest' }
       responses:
-        '200':
-          description: Action result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActionResponse'
-  /v1/visor/scale-node-pool:
-    post:
-      operationId: scaleNodePool
-      summary: Scale a node pool to a desired count
-      tags:
-      - NodePools
+        '200': { description: Price quote (dryRun), content: { application/json: { schema: { type: object } } } }
+        '201': { description: Bot launched, content: { application/json: { schema: { $ref: '#/components/schemas/BotView' } } } }
+        '400': { description: size / name is required }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/bots/{id}:
+    get:
+      tags: [Bots]
+      summary: Get one bot by id
+      operationId: getBot
       parameters:
-      - name: owner
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: provider
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: clusterId
-        in: query
-        schema:
-          type: string
-      - name: poolId
-        in: query
-        required: true
-        schema:
-          type: string
-        description: DOKS node pool ID
-      - name: count
-        in: query
-        required: true
-        schema:
-          type: integer
-        description: Desired node count
+        - { name: id, in: path, required: true, schema: { type: string } }
       responses:
-        '200':
-          description: Scaled node pool
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/NodePool'
+        '200': { description: Bot, content: { application/json: { schema: { $ref: '#/components/schemas/BotView' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Bot not found }
+    delete:
+      tags: [Bots]
+      summary: Terminate a bot (unbind agent + delete machine)
+      operationId: deleteBot
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Terminated }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/bots/{id}/{action}:
+    post:
+      tags: [Bots]
+      summary: Act on a bot (stop, pause, or message)
+      description: |
+        `stop` and `pause` both halt the bot's agent runtime (one honest
+        capability). `message` runs the bot's bound agent via the agent runner
+        and returns that run's output verbatim.
+      operationId: botAction
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: action, in: path, required: true, schema: { type: string, enum: [stop, pause, message] } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, description: 'For message: the agent run body forwarded to /v1/agents/{ref}/run' }
+      responses:
+        '200': { description: 'Action result — {id,status} for stop/pause, or the agent run output for message', content: { application/json: { schema: { type: object } } } }
+        '400': { description: unknown bot action / bot has no bound agent }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
 components:
   securitySchemes:
-    BearerAuth:
+    bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
-      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
-        Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
-  parameters:
-    Owner:
-      name: owner
-      in: query
-      schema:
-        type: string
-      description: Owner (organization) name
-    PageSize:
-      name: pageSize
-      in: query
-      schema:
-        type: string
-      description: Number of items per page
-    Page:
-      name: p
-      in: query
-      schema:
-        type: string
-      description: Page number
-    Field:
-      name: field
-      in: query
-      schema:
-        type: string
-      description: Field name to filter by
-    Value:
-      name: value
-      in: query
-      schema:
-        type: string
-      description: Value to filter for
-    SortField:
-      name: sortField
-      in: query
-      schema:
-        type: string
-      description: Field to sort by
-    SortOrder:
-      name: sortOrder
-      in: query
-      schema:
-        type: string
-        enum:
-        - ascend
-        - descend
-      description: Sort direction
+      description: IAM-issued JWT or `hk-` Cloud API key. The org is taken from the validated owner claim.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
   schemas:
-    ApiResponse:
+    MachineView:
+      type: object
+      description: A machine, shaped for the console (org-scoped name as id).
+      properties:
+        id: { type: string, description: Org-scoped machine name (stable key the :id routes address) }
+        name: { type: string }
+        region: { type: string }
+        type: { type: string }
+        status: { type: string }
+        provider: { type: string }
+        publicIp: { type: string }
+        privateIp: { type: string }
+        createdTime: { type: string }
+        vcpu: { type: integer }
+        gpu: { type: string, description: GPU model when the size slug is a GPU accelerator }
+        image: { type: string }
+        os: { type: string }
+    GpuView:
+      type: object
+      description: One row per physical accelerator. Live telemetry is omitted (Visor carries none).
+      properties:
+        id: { type: string }
+        name: { type: string }
+        model: { type: string }
+        region: { type: string }
+        status: { type: string }
+        location: { type: string }
+        machine: { type: string }
+    NodePoolView:
       type: object
       properties:
-        status:
-          type: string
-          enum:
-          - ok
-          - error
-        msg:
-          type: string
-        data:
-          description: Primary response data
-        data2:
-          description: Secondary data (usually pagination total count)
-    ActionResponse:
+        poolId: { type: string }
+        name: { type: string }
+        size: { type: string }
+        count: { type: integer }
+        minNodes: { type: integer }
+        maxNodes: { type: integer }
+        autoScale: { type: boolean }
+    ClusterView:
       type: object
       properties:
-        status:
-          type: string
-          enum:
-          - ok
-          - error
-        msg:
-          type: string
-        data:
-          type: string
-          enum:
-          - Affected
-          - Unaffected
-    Machine:
+        doksClusterId: { type: string }
+        doClusterId: { type: string }
+        name: { type: string }
+        region: { type: string }
+        status: { type: string }
+        nodePools: { type: array, items: { $ref: '#/components/schemas/NodePoolView' } }
+        nodeSize: { type: string }
+        nodeCount: { type: integer }
+        createdAt: { type: string }
+    AgentBinding:
+      type: object
+      description: The record that a machine runs the @hanzo/bot runtime for a cloud Agent.
+      properties:
+        owner: { type: string }
+        name: { type: string }
+        machineId: { type: string }
+        org: { type: string }
+        agentName: { type: string }
+        provider: { type: string }
+        publicIp: { type: string }
+        botVersion: { type: string }
+        status: { type: string }
+        message: { type: string }
+        createdTime: { type: string }
+        updatedTime: { type: string }
+    BotView:
+      allOf:
+        - $ref: '#/components/schemas/MachineView'
+        - type: object
+          properties:
+            agent: { type: string, description: The bound agent name }
+            binding: { $ref: '#/components/schemas/AgentBinding' }
+    LaunchRequest:
       type: object
       properties:
-        owner:
-          type: string
-        name:
-          type: string
-        id:
-          type: string
-        provider:
-          type: string
-        createdTime:
-          type: string
-        updatedTime:
-          type: string
-        expireTime:
-          type: string
-        displayName:
-          type: string
-        region:
-          type: string
-        zone:
-          type: string
-        category:
-          type: string
-        type:
-          type: string
-        size:
-          type: string
-        tag:
-          type: string
-        state:
-          type: string
-        image:
-          type: string
-        os:
-          type: string
-        publicIp:
-          type: string
-        privateIp:
-          type: string
-        cpuSize:
-          type: string
-        memSize:
-          type: string
-        remoteProtocol:
-          type: string
-          enum:
-          - SSH
-          - RDP
-          - Telnet
-          - VNC
-        remotePort:
-          type: integer
-        remoteUsername:
-          type: string
-        remotePassword:
-          type: string
-          format: password
-    CreateMachineSpec:
+        name: { type: string }
+        size: { type: string, description: Machine size slug (or use instanceType) }
+        instanceType: { type: string }
+        region: { type: string }
+        dryRun: { type: boolean, description: When true, return a price quote and spend nothing }
+    PoolRequest:
       type: object
-      required:
-      - name
-      - instanceType
-      - imageId
-      - os
-      - region
+      required: [provider]
       properties:
-        name:
-          type: string
-        displayName:
-          type: string
-        instanceType:
-          type: string
-          description: Instance type (e.g. t3.medium, mac2.metal)
-        imageId:
-          type: string
-          description: AMI ID or image name
-        os:
-          type: string
-          enum:
-          - linux
-          - macos
-          - windows
-        region:
-          type: string
-        tags:
-          type: object
-          additionalProperties:
-            type: string
-    Record:
+        provider: { type: string }
+        name: { type: string }
+        size: { type: string }
+        count: { type: integer }
+        minNodes: { type: integer }
+        maxNodes: { type: integer }
+        autoScale: { type: boolean }
+    ScaleRequest:
+      type: object
+      required: [provider]
+      properties:
+        provider: { type: string }
+        count: { type: integer, minimum: 0 }
+    BindAgentRequest:
+      type: object
+      required: [agentName]
+      properties:
+        agentName: { type: string }
+        botVersion: { type: string }
+    BotLaunchRequest:
       type: object
       properties:
-        id:
-          type: integer
-        owner:
-          type: string
-        name:
-          type: string
-        createdTime:
-          type: string
-        organization:
-          type: string
-        clientIp:
-          type: string
-        userAgent:
-          type: string
-        user:
-          type: string
-        method:
-          type: string
-        requestUri:
-          type: string
-        action:
-          type: string
-        language:
-          type: string
-        object:
-          type: string
-        response:
-          type: string
-        provider:
-          type: string
-        block:
-          type: string
-          description: Blockchain block reference
-        transaction:
-          type: string
-          description: Blockchain transaction hash
-        isTriggered:
-          type: boolean
-    Asset:
-      type: object
-      properties:
-        owner:
-          type: string
-        name:
-          type: string
-        createdTime:
-          type: string
-        updatedTime:
-          type: string
-        displayName:
-          type: string
-        category:
-          type: string
-        type:
-          type: string
-        tag:
-          type: string
-        machineName:
-          type: string
-        os:
-          type: string
-        publicIp:
-          type: string
-        privateIp:
-          type: string
-        size:
-          type: string
-        cpuSize:
-          type: string
-        memSize:
-          type: string
-        remoteProtocol:
-          type: string
-          enum:
-          - SSH
-          - RDP
-          - Telnet
-          - VNC
-        remotePort:
-          type: integer
-        remoteUsername:
-          type: string
-        remotePassword:
-          type: string
-          format: password
-        autoQuery:
-          type: boolean
-        isPermanent:
-          type: boolean
-        language:
-          type: string
-    Provider:
-      type: object
-      properties:
-        owner:
-          type: string
-        name:
-          type: string
-        createdTime:
-          type: string
-        updatedTime:
-          type: string
-        displayName:
-          type: string
-        category:
-          type: string
-        type:
-          type: string
-        clientId:
-          type: string
-        clientSecret:
-          type: string
-          format: password
-        region:
-          type: string
-        network:
-          type: string
-        chain:
-          type: string
-        browserUrl:
-          type: string
-        state:
-          type: string
-        providerUrl:
-          type: string
-        clusterId:
-          type: string
-          description: DOKS cluster UUID
-    Session:
-      type: object
-      properties:
-        owner:
-          type: string
-        name:
-          type: string
-        createdTime:
-          type: string
-        startTime:
-          type: string
-        endTime:
-          type: string
-        protocol:
-          type: string
-          enum:
-          - rdp
-          - ssh
-          - telnet
-          - vnc
-        connectionId:
-          type: string
-        asset:
-          type: string
-          description: Asset ID (owner/name)
-        creator:
-          type: string
-        clientIp:
-          type: string
-        userAgent:
-          type: string
-        clientIpDesc:
-          type: string
-        userAgentDesc:
-          type: string
-        width:
-          type: integer
-        height:
-          type: integer
-        status:
-          type: string
-          enum:
-          - Connected
-          - Connecting
-          - Disconnected
-        recording:
-          type: string
-        code:
-          type: integer
-        message:
-          type: string
-        mode:
-          type: string
-        operations:
-          type: array
-          items:
-            type: string
-        reviewed:
-          type: boolean
-        commandCount:
-          type: integer
-          format: int64
-    NodePool:
-      type: object
-      properties:
-        owner:
-          type: string
-        name:
-          type: string
-        createdTime:
-          type: string
-        updatedTime:
-          type: string
-        clusterId:
-          type: string
-          description: DOKS cluster UUID
-        poolId:
-          type: string
-          description: DOKS node pool UUID
-        provider:
-          type: string
-        size:
-          type: string
-          description: Droplet size slug (e.g. s-2vcpu-4gb)
-        count:
-          type: integer
-        minNodes:
-          type: integer
-        maxNodes:
-          type: integer
-        autoScale:
-          type: boolean
-        state:
-          type: string
-        costPerHour:
-          type: integer
-          format: int64
-          description: Cost in cents per hour
-        orgId:
-          type: string
-        projectId:
-          type: string
-    CreateNodePoolSpec:
-      type: object
-      required:
-      - name
-      - size
-      - count
-      properties:
-        name:
-          type: string
-        size:
-          type: string
-          description: Droplet size slug
-        count:
-          type: integer
-        minNodes:
-          type: integer
-        maxNodes:
-          type: integer
-        autoScale:
-          type: boolean
-        tags:
-          type: array
-          items:
-            type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
+        name: { type: string, description: Required for a real launch (not dryRun) }
+        agent: { type: string, description: The cloud Agent the bot runs (defaults to the bot name) }
+        size: { type: string, description: Machine size slug (or use instanceType) }
+        instanceType: { type: string }
+        region: { type: string }
+        botVersion: { type: string }
+        dryRun: { type: boolean }
