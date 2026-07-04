@@ -1,0 +1,128 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Web Search API
+  description: |
+    Hanzo-native Web Search + Scrape on the unified cloud-api /v1 plane
+    (`hanzoai/cloud/clients/websearch`), per HIP-0106 — so chat's web_search
+    agent tool runs entirely on Hanzo infrastructure with NO external SaaS
+    provider. Two contracts under `/v1/websearch`, backed by Hanzo's own
+    services: a SearXNG-shaped search proxied to a Hanzo-operated metasearch
+    instance, and a Firecrawl-shaped scrape backed by Hanzo Crawl.
+
+    AUTH: both surfaces require the shared service key (KMS-sourced) and fail
+    closed — search via the `X-API-Key` header, scrape via `Authorization:
+    Bearer`. An unset key returns 503; a missing/mismatched key returns 401.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+tags:
+  - name: Search
+    description: SearXNG-shaped metasearch
+  - name: Scrape
+    description: Firecrawl-shaped URL scrape over Hanzo Crawl
+security:
+  - bearerAuth: []
+paths:
+  /v1/websearch/search:
+    get:
+      tags: [Search]
+      summary: Search the web (SearXNG JSON contract, proxied verbatim)
+      operationId: webSearch
+      security:
+        - serviceKey: []
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string }, description: Search query }
+        - { name: format, in: query, required: false, schema: { type: string, enum: [json], default: json } }
+      responses:
+        '200': { description: Search results (SearXNG JSON), content: { application/json: { schema: { $ref: '#/components/schemas/SearchResponse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/NotConfigured' }
+
+  /v1/websearch/v1/scrape:
+    post:
+      tags: [Scrape]
+      summary: Scrape a URL to markdown (Firecrawl response shape)
+      operationId: webScrape
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScrapeRequest' }
+      responses:
+        '200': { description: 'Scrape result (success may be false with an error; HTTP still 200)', content: { application/json: { schema: { $ref: '#/components/schemas/ScrapeResponse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/NotConfigured' }
+
+  /v1/websearch/scrape:
+    post:
+      tags: [Scrape]
+      summary: Scrape a URL to markdown (bare alias of /v1/websearch/v1/scrape)
+      operationId: webScrapeBare
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScrapeRequest' }
+      responses:
+        '200': { description: Scrape result, content: { application/json: { schema: { $ref: '#/components/schemas/ScrapeResponse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/NotConfigured' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Shared service key presented as an Authorization Bearer header (scrape). Not a user JWT.'
+    serviceKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Shared service key presented on `X-API-Key` (search). Not a user JWT.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: integer }, error: { type: string } } }
+    NotConfigured:
+      description: Web search not configured on this deployment (service key unset — fail-closed)
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: integer }, error: { type: string } } }
+  schemas:
+    SearchResponse:
+      type: object
+      description: SearXNG JSON, forwarded verbatim.
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              url: { type: string }
+              title: { type: string }
+              content: { type: string }
+              img_src: { type: string }
+    ScrapeRequest:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string }
+    ScrapeResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          type: object
+          properties:
+            markdown: { type: string }
+            metadata: { type: object, additionalProperties: true }
+        error: { type: string }
