@@ -1,0 +1,184 @@
+openapi: 3.1.0
+info:
+  title: Hanzo DigitalOcean Infra API
+  description: |
+    DigitalOcean-native infra surface served by `hanzoai/cloud/clients/do`:
+    VPCs (`/v1/vpcs`) and Load Balancers (`/v1/load-balancers`), a thin
+    org-scoped facade over the `digitalocean/godo` SDK. DigitalOcean is a single
+    account, so the org boundary is enforced by this subsystem: a resource's
+    physical DO name is derived from the caller's validated org, LIST filters to
+    the caller's namespace, and a cross-tenant id is reported 404 (an
+    existence-oracle guard, never 403).
+
+    Fail-closed: absent `DO_API_TOKEN` the surface mounts but every op returns
+    503; it never fabricates a resource.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+tags:
+  - name: VPCs
+    description: Virtual Private Cloud networks
+  - name: Load Balancers
+    description: Regional/global load balancers
+security:
+  - bearerAuth: []
+paths:
+  /v1/vpcs:
+    get:
+      tags: [VPCs]
+      summary: List the caller's VPCs
+      operationId: listVpcs
+      responses:
+        '200': { description: VPCs, content: { application/json: { schema: { type: object, properties: { vpcs: { type: array, items: { $ref: '#/components/schemas/Vpc' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '502': { description: DigitalOcean upstream error }
+        '503': { description: DigitalOcean not configured }
+    post:
+      tags: [VPCs]
+      summary: Create a VPC
+      operationId: createVpc
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VpcCreate' }
+      responses:
+        '201': { description: VPC created, content: { application/json: { schema: { $ref: '#/components/schemas/Vpc' } } } }
+        '400': { description: Invalid name or missing region }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { description: A VPC with that name already exists }
+        '502': { description: DigitalOcean upstream error }
+        '503': { description: DigitalOcean not configured }
+
+  /v1/vpcs/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string }, description: DO VPC id }
+    get:
+      tags: [VPCs]
+      summary: Get one VPC (owned)
+      operationId: getVpc
+      responses:
+        '200': { description: VPC, content: { application/json: { schema: { $ref: '#/components/schemas/Vpc' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: VPC not found }
+        '503': { description: DigitalOcean not configured }
+    delete:
+      tags: [VPCs]
+      summary: Delete one VPC (owned)
+      operationId: deleteVpc
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: VPC not found }
+        '503': { description: DigitalOcean not configured }
+
+  /v1/load-balancers:
+    get:
+      tags: [Load Balancers]
+      summary: List the caller's load balancers
+      operationId: listLoadBalancers
+      responses:
+        '200': { description: Load balancers, content: { application/json: { schema: { type: object, properties: { loadBalancers: { type: array, items: { $ref: '#/components/schemas/LoadBalancer' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '502': { description: DigitalOcean upstream error }
+        '503': { description: DigitalOcean not configured }
+    post:
+      tags: [Load Balancers]
+      summary: Create a load balancer
+      operationId: createLoadBalancer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoadBalancerCreate' }
+      responses:
+        '201': { description: Load balancer created, content: { application/json: { schema: { $ref: '#/components/schemas/LoadBalancer' } } } }
+        '400': { description: Invalid name or missing region }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { description: A load balancer with that name already exists }
+        '502': { description: DigitalOcean upstream error }
+        '503': { description: DigitalOcean not configured }
+
+  /v1/load-balancers/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string }, description: DO load balancer id }
+    get:
+      tags: [Load Balancers]
+      summary: Get one load balancer (owned)
+      operationId: getLoadBalancer
+      responses:
+        '200': { description: Load balancer, content: { application/json: { schema: { $ref: '#/components/schemas/LoadBalancer' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Load balancer not found }
+        '503': { description: DigitalOcean not configured }
+    delete:
+      tags: [Load Balancers]
+      summary: Delete one load balancer (owned)
+      operationId: deleteLoadBalancer
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Load balancer not found }
+        '503': { description: DigitalOcean not configured }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: IAM-issued JWT or `hk-` Cloud API key.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+  schemas:
+    VpcCreate:
+      type: object
+      required: [name, region]
+      properties:
+        name: { type: string, description: 'Friendly name; must match ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$' }
+        region: { type: string, description: DO region slug }
+        ip_range: { type: string, description: 'CIDR (empty → DO auto-assigns)' }
+    Vpc:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        cidr: { type: string }
+        region: { type: string }
+        subnets: { type: array, items: { type: string } }
+        status: { type: string, example: active }
+    ForwardingRule:
+      type: object
+      properties:
+        entry_protocol: { type: string }
+        entry_port: { type: integer }
+        target_protocol: { type: string }
+        target_port: { type: integer }
+    LoadBalancerCreate:
+      type: object
+      required: [name, region]
+      properties:
+        name: { type: string, description: 'Friendly name; must match ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$' }
+        region: { type: string, description: DO region slug }
+        type: { type: string, description: 'empty → DO default (REGIONAL)' }
+        size: { type: string, description: DO size slug }
+        forwarding_rules: { type: array, items: { $ref: '#/components/schemas/ForwardingRule' }, description: 'empty → default http 80→80' }
+    LoadBalancer:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string }
+        targets: { type: integer, description: Count of attached backend droplets }
+        ip: { type: string }
+        status: { type: string }
