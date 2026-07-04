@@ -1,0 +1,93 @@
+name: Regenerate SDKs
+# The ONE way: hanzo.yaml (merge.py) is the single source of truth. On every
+# change, validate it is codegen-clean, then regenerate every SDK from it —
+# Stainless for python/go/js, openapi-generator on ARC for cpp/dart.
+on:
+  push:
+    branches: [main]
+    paths: ['**/openapi.yaml', 'hanzo.yaml', 'merge.py']
+  workflow_dispatch:
+
+concurrency:
+  group: regen-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate spec (merge.py + codegen gate)
+    runs-on: hanzo-build-linux-amd64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install pyyaml
+      - name: Regenerate + assert deterministic
+        run: |
+          python3 merge.py
+          git diff --exit-code hanzo.yaml || { echo "::error::hanzo.yaml is stale — run merge.py and commit"; exit 1; }
+      - name: Codegen gate (unique operationIds, no dangling refs)
+        run: |
+          python3 - <<'PY'
+          import yaml, json, re, collections
+          s = yaml.safe_load(open('hanzo.yaml')); p, c = s['paths'], s['components']
+          methods = {"get","put","post","delete","options","head","patch","trace"}
+          ids = collections.Counter(op['operationId'] for it in p.values() if isinstance(it,dict)
+                                    for m,op in it.items() if m in methods and isinstance(op,dict) and 'operationId' in op)
+          dup = {k:v for k,v in ids.items() if v>1}
+          txt = json.dumps(s); pool = {k:set(c.get(k,{})) for k in ('schemas','responses','parameters')}
+          miss = [f"{k}/{n}" for k,n in set(re.findall(r'#/components/(schemas|responses|parameters)/([^"]+)', txt)) if n not in pool[k]]
+          print(f"paths={len(p)} ops={sum(ids.values())} dupIds={len(dup)} dangling={len(miss)}")
+          assert not dup, f"duplicate operationIds: {list(dup)[:5]}"
+          assert not miss, f"dangling refs: {miss[:5]}"
+          print("GATE PASS")
+          PY
+
+  stainless:
+    name: Regenerate python/go/js (Stainless)
+    needs: validate
+    runs-on: hanzo-build-linux-amd64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Install Stainless CLI
+        run: npm i -g @stainless-api/cli
+      - name: Build (repoints hanzo-ai project -> hanzo.yaml, opens PRs on the 3 SDK repos)
+        # STAINLESS_API_KEY: source of truth is KMS (kms.hanzo.ai secret
+        # sdk/STAINLESS_API_KEY). Set it as a repo/org secret synced from KMS.
+        # The Stainless project's spec SOURCE must also be repointed from the
+        # legacy LLM spec to this hanzo.yaml in Stainless Studio (one-time).
+        env:
+          STAINLESS_API_KEY: ${{ secrets.STAINLESS_API_KEY }}
+        run: |
+          [ -n "$STAINLESS_API_KEY" ] || { echo "::error::STAINLESS_API_KEY not set — provision it in KMS then sync to this repo's secrets"; exit 1; }
+          stl builds create --project hanzo-ai --branch main hanzo.yaml
+
+  openapi-generator:
+    name: Regenerate ${{ matrix.lang }} (openapi-generator)
+    needs: validate
+    runs-on: hanzo-build-linux-amd64
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { lang: cpp,  generator: cpp-restsdk, repo: hanzoai/cpp-sdk,  props: 'packageName=hanzo' }
+          - { lang: dart, generator: dart-dio,    repo: hanzoai/dart-sdk, props: 'pubName=hanzo' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - name: Generate ${{ matrix.lang }} client from hanzo.yaml
+        run: |
+          npx -y @openapitools/openapi-generator-cli@2.20.0 generate \
+            -i hanzo.yaml -g ${{ matrix.generator }} \
+            --additional-properties=${{ matrix.props }} \
+            -o out/${{ matrix.lang }}
+      - name: Push to ${{ matrix.repo }}
+        env:
+          GH_TOKEN: ${{ secrets.UNIVERSE_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          cd out/${{ matrix.lang }}
+          git init -q && git add -A
+          git -c user.name=hanzo-bot -c user.email=dev@hanzo.ai commit -q -m "regen from openapi ${{ github.sha }}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${{ matrix.repo }}.git" HEAD:generated
