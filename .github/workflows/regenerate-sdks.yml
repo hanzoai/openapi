@@ -36,9 +36,18 @@ jobs:
           dup = {k:v for k,v in ids.items() if v>1}
           txt = json.dumps(s); pool = {k:set(c.get(k,{})) for k in ('schemas','responses','parameters')}
           miss = [f"{k}/{n}" for k,n in set(re.findall(r'#/components/(schemas|responses|parameters)/([^"]+)', txt)) if n not in pool[k]]
-          print(f"paths={len(p)} ops={sum(ids.values())} dupIds={len(dup)} dangling={len(miss)}")
+          # Response objects may only carry OpenAPI-legal fields (catches unquoted
+          # commas in flow-style descriptions that split into phantom keys).
+          allowed = {'description','headers','content','links','$ref'}
+          badresp = [f"{path} {code} {sorted(set(r)-allowed)}"
+                     for path,it in p.items() if isinstance(it,dict)
+                     for m,op in it.items() if isinstance(op,dict)
+                     for code,r in (op.get('responses') or {}).items()
+                     if isinstance(r,dict) and set(r)-allowed]
+          print(f"paths={len(p)} ops={sum(ids.values())} dupIds={len(dup)} dangling={len(miss)} badResponses={len(badresp)}")
           assert not dup, f"duplicate operationIds: {list(dup)[:5]}"
           assert not miss, f"dangling refs: {miss[:5]}"
+          assert not badresp, f"malformed response objects: {badresp[:5]}"
           print("GATE PASS")
           PY
 
