@@ -1,0 +1,298 @@
+openapi: 3.1.0
+info:
+  title: Hanzo CRM API
+  description: |
+    Per-org CRM for Hanzo Cloud — the `/v1/crm/*` surface served by the cloud
+    `crm` subsystem (`hanzoai/cloud/clients/crm`). A native-Go port of the
+    Twenty CRM core model (company / person / opportunity) on Base/SQLite, NOT a
+    proxy to a NestJS backend. Tenant isolation is enforced server-side on every
+    request from the validated bearer owner claim; one tenant can never read or
+    mutate another's records.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+tags:
+  - name: Companies
+    description: Account records (Twenty `company` standard object)
+  - name: Contacts
+    description: Person records (Twenty `person` standard object)
+  - name: Opportunities
+    description: Deal records (Twenty `opportunity` standard object)
+  - name: Summary
+    description: Per-org row counts
+security:
+  - bearerAuth: []
+paths:
+  /v1/crm/summary:
+    get:
+      tags: [Summary]
+      summary: Per-org row counts (companies / contacts / opportunities)
+      operationId: crmSummary
+      responses:
+        '200': { description: Counts, content: { application/json: { schema: { $ref: '#/components/schemas/Summary' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/crm/companies:
+    get:
+      tags: [Companies]
+      summary: List companies
+      operationId: listCompanies
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 200, maximum: 1000 } }
+      responses:
+        '200': { description: Companies, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Company' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Companies]
+      summary: Create a company
+      operationId: createCompany
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompanyInput' }
+      responses:
+        '201': { description: Company created, content: { application/json: { schema: { $ref: '#/components/schemas/Company' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/crm/companies/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Companies]
+      summary: Company detail
+      operationId: getCompany
+      responses:
+        '200': { description: Company, content: { application/json: { schema: { $ref: '#/components/schemas/Company' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Company not found }
+    put:
+      tags: [Companies]
+      summary: Update a company
+      operationId: updateCompany
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompanyInput' }
+      responses:
+        '200': { description: Company updated, content: { application/json: { schema: { $ref: '#/components/schemas/Company' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Company not found }
+    delete:
+      tags: [Companies]
+      summary: Delete a company (clears dangling contact/opportunity refs)
+      operationId: deleteCompany
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Company not found }
+
+  /v1/crm/contacts:
+    get:
+      tags: [Contacts]
+      summary: List contacts
+      operationId: listContacts
+      parameters:
+        - { name: companyId, in: query, schema: { type: string }, description: Filter to one company }
+        - { name: limit, in: query, schema: { type: integer, default: 200, maximum: 1000 } }
+      responses:
+        '200': { description: Contacts, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Contact' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Contacts]
+      summary: Create a contact
+      operationId: createContact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContactInput' }
+      responses:
+        '201': { description: Contact created, content: { application/json: { schema: { $ref: '#/components/schemas/Contact' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { description: Referenced company not found in org }
+
+  /v1/crm/contacts/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Contacts]
+      summary: Contact detail
+      operationId: getContact
+      responses:
+        '200': { description: Contact, content: { application/json: { schema: { $ref: '#/components/schemas/Contact' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Contact not found }
+    put:
+      tags: [Contacts]
+      summary: Update a contact
+      operationId: updateContact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContactInput' }
+      responses:
+        '200': { description: Contact updated, content: { application/json: { schema: { $ref: '#/components/schemas/Contact' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Contact not found }
+    delete:
+      tags: [Contacts]
+      summary: Delete a contact (clears opportunity point-of-contact refs)
+      operationId: deleteContact
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Contact not found }
+
+  /v1/crm/opportunities:
+    get:
+      tags: [Opportunities]
+      summary: List opportunities
+      operationId: listOpportunities
+      parameters:
+        - { name: stage, in: query, schema: { $ref: '#/components/schemas/Stage' }, description: Filter to one pipeline stage }
+        - { name: limit, in: query, schema: { type: integer, default: 200, maximum: 1000 } }
+      responses:
+        '200': { description: Opportunities, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Opportunity' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Opportunities]
+      summary: Create an opportunity
+      operationId: createOpportunity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpportunityInput' }
+      responses:
+        '201': { description: Opportunity created, content: { application/json: { schema: { $ref: '#/components/schemas/Opportunity' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { description: Referenced company/contact not found in org }
+
+  /v1/crm/opportunities/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Opportunities]
+      summary: Opportunity detail
+      operationId: getOpportunity
+      responses:
+        '200': { description: Opportunity, content: { application/json: { schema: { $ref: '#/components/schemas/Opportunity' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Opportunity not found }
+    put:
+      tags: [Opportunities]
+      summary: Update an opportunity
+      operationId: updateOpportunity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpportunityInput' }
+      responses:
+        '200': { description: Opportunity updated, content: { application/json: { schema: { $ref: '#/components/schemas/Opportunity' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Opportunity not found }
+    delete:
+      tags: [Opportunities]
+      summary: Delete an opportunity
+      operationId: deleteOpportunity
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Opportunity not found }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: IAM-issued JWT or `hk-` Cloud API key.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+  schemas:
+    Stage:
+      type: string
+      description: Opportunity pipeline stage (default NEW).
+      enum: [NEW, SCREENING, MEETING, PROPOSAL, CUSTOMER]
+    Summary:
+      type: object
+      properties:
+        companies: { type: integer }
+        contacts: { type: integer }
+        opportunities: { type: integer }
+    CompanyInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        domainName: { type: string }
+        employees: { type: integer, format: int64 }
+        city: { type: string }
+        country: { type: string }
+        arr: { type: integer, format: int64, description: Annual recurring revenue in minor units (cents) of currency }
+        currency: { type: string, default: USD }
+        idealCustomerProfile: { type: boolean }
+        linkedinLink: { type: string }
+        xLink: { type: string }
+    Company:
+      allOf:
+        - $ref: '#/components/schemas/CompanyInput'
+        - type: object
+          properties:
+            id: { type: string }
+            createdAt: { type: integer, format: int64, description: Unix seconds }
+            updatedAt: { type: integer, format: int64, description: Unix seconds }
+    ContactInput:
+      type: object
+      description: One of firstName, lastName, or email is required.
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        jobTitle: { type: string }
+        city: { type: string }
+        companyId: { type: string, description: Optional in-org relation to a Company }
+        linkedinLink: { type: string }
+        xLink: { type: string }
+    Contact:
+      allOf:
+        - $ref: '#/components/schemas/ContactInput'
+        - type: object
+          properties:
+            id: { type: string }
+            createdAt: { type: integer, format: int64, description: Unix seconds }
+            updatedAt: { type: integer, format: int64, description: Unix seconds }
+    OpportunityInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        amount: { type: integer, format: int64, description: Deal size in minor units (cents) of currency }
+        currency: { type: string, default: USD }
+        stage: { $ref: '#/components/schemas/Stage' }
+        closeDate: { type: integer, format: int64, description: Unix seconds (0 = unset) }
+        companyId: { type: string, description: Optional in-org relation to a Company }
+        pointOfContactId: { type: string, description: Optional in-org relation to a Contact }
+    Opportunity:
+      allOf:
+        - $ref: '#/components/schemas/OpportunityInput'
+        - type: object
+          properties:
+            id: { type: string }
+            createdAt: { type: integer, format: int64, description: Unix seconds }
+            updatedAt: { type: integer, format: int64, description: Unix seconds }

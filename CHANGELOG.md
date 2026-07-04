@@ -2,6 +2,58 @@
 
 ## v1.0.0
 
+### Cloud product-surface specs (clients/* → live /v1 flat prefixes)
+
+Authored per-service specs for the fused `api.hanzo.ai/v1` cloud-binary
+surface, route-accurate to the Go handlers in `hanzoai/cloud/clients/<x>`:
+
+- `/v1/agents/*` (agents + runs + live session tree) is covered by
+  `cloud/openapi.yaml` (landed on main); the 21 specs below are the rest.
+- Added `functions/openapi.yaml` — `/v1/functions/*` (serverless functions,
+  metered invoke) from `clients/functions`.
+- Added `framework/openapi.yaml` — `/v1/framework/*` (doctypes, modules, roles,
+  generic document CRUD) from `clients/framework`.
+- Added `tracker/openapi.yaml` — `/v1/tracker/*` (projects + issues) from
+  `clients/tracker`.
+- Added `crm/openapi.yaml` — `/v1/crm/*` (companies, contacts, opportunities)
+  from `clients/crm`.
+- Added `automations/openapi.yaml` — `/v1/automations/*` (flows, versions,
+  runs, pieces, MCP) from `clients/automations`.
+- Added `integrations/openapi.yaml` — `/v1/integrations/*` (provider connect
+  + Slack events/commands/link) from `clients/integrations`.
+- Added `admin/openapi.yaml` — `/v1/admin/*` (god-view overview, orgs, users,
+  customers, finance, revenue, audit) from `clients/admin`.
+- Added `plan/openapi.yaml` — `/v1/plans/*` (plan catalog, resolve,
+  entitlements) from `clients/plan`.
+- Added `kb/openapi.yaml` — `/v1/kb/*` (search + connectors) from `clients/kb`.
+- Added `prompts/openapi.yaml` — `/v1/prompts/*` (prompt library, catalog,
+  metrics) from `clients/prompts`.
+- Added `templates/openapi.yaml` — `/v1/templates/*` (template gallery) from
+  `clients/templates`.
+- Added `git/openapi.yaml` — `/v1/git/*` (repos + Git smart-HTTP transport)
+  from `clients/git`.
+- Added `billing/openapi.yaml` — `/v1/billing/*` (usage, balance,
+  gpu-eligibility, gpu-charge, payment-methods) from `clients/billing`.
+- Added `security/openapi.yaml` — `/v1/security/*` (rules, scans, findings)
+  from `clients/security`.
+- Added `graph/openapi.yaml` — `/v1/indexers`, `/v1/oracles` from
+  `clients/graph` (flat prefixes, not `/v1/graph`).
+- Added `do/openapi.yaml` — `/v1/vpcs`, `/v1/load-balancers` from `clients/do`
+  (flat prefixes, not `/v1/do`).
+- Added `exec/openapi.yaml` — `/v1/exec`, `/v1/upload`, `/v1/download`,
+  `/v1/files` (code interpreter, `X-API-Key` service auth) from `clients/exec`.
+- Added `websearch/openapi.yaml` — `/v1/websearch/{search,scrape}` (SearXNG +
+  Firecrawl-shaped over Hanzo Crawl) from `clients/websearch`.
+- Added `tasks/openapi.yaml` — `/v1/tasks/*` (durable workflow engine surface,
+  identity-gated) from `clients/tasksvc`.
+- Re-based `visor/openapi.yaml` onto its live flat prefixes `/v1/machines`,
+  `/v1/gpus`, `/v1/clusters`, `/v1/bots`, `/v1/compute/*`, `/v1/agent-bindings`
+  from `clients/visor` (was wrongly under `/v1/visor/*`).
+- Re-based `zt/openapi.yaml` onto its live flat prefixes `/v1/networks`,
+  `/v1/mesh/services`, `/v1/edge/nodes` from `clients/zt` (was wrongly under
+  `/v1/zt/*`).
+- `hanzo.yaml` regenerated: 58 services, 1698 paths.
+
 ### Frontend surface completeness (hanzo.app + hanzo.chat)
 
 - Added the `app` service spec (`app/openapi.yaml`): the hanzo.app projects &

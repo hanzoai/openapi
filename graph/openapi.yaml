@@ -1,0 +1,87 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Graph API
+  description: |
+    Chain-data surface served by `hanzoai/cloud/clients/graph`: the deployment's
+    blockchain indexing (`/v1/indexers`) and on-chain oracle feeds
+    (`/v1/oracles`), re-shaped as principal-gated REST off the unified cloud
+    binary. It fronts the Lux chain-data plane — `luxfi/indexer` (per-network
+    block/event indexer) and `luxfi/graph` (GraphQL oracle price-feed registry).
+
+    The subsystem owns no chain state; it is a thin translator that never
+    fabricates a row. An unreachable upstream surfaces an honest 502; a
+    reachable-but-empty upstream returns an empty list. Every route requires a
+    validated IAM principal (HIP-0026).
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+tags:
+  - name: Indexers
+    description: Per-network chain indexers + status
+  - name: Oracles
+    description: On-chain price/data oracle feeds
+security:
+  - bearerAuth: []
+paths:
+  /v1/indexers:
+    get:
+      tags: [Indexers]
+      summary: List the deployment's chain indexer(s)
+      operationId: listIndexers
+      responses:
+        '200': { description: Indexers, content: { application/json: { schema: { type: object, properties: { indexers: { type: array, items: { $ref: '#/components/schemas/Indexer' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '502': { description: Indexer upstream unreachable }
+
+  /v1/oracles:
+    get:
+      tags: [Oracles]
+      summary: List on-chain price/data oracles
+      operationId: listOracles
+      responses:
+        '200': { description: Oracles, content: { application/json: { schema: { type: object, properties: { oracles: { type: array, items: { $ref: '#/components/schemas/Oracle' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '502': { description: Graph upstream unreachable }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: IAM-issued JWT or `hk-` Cloud API key.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+  schemas:
+    Indexer:
+      type: object
+      description: 'One chain indexer row. `lag` is omitted when the chain HEAD is not derivable (never fabricated).'
+      properties:
+        id: { type: string }
+        chain: { type: string }
+        network: { type: string, description: mainnet | testnet | devnet }
+        height: { type: string, description: Latest indexed block height }
+        lag: { type: string }
+        status: { type: string, enum: [active, degraded] }
+        updatedAt: { type: string, format: date-time }
+    Oracle:
+      type: object
+      description: One on-chain price feed.
+      properties:
+        id: { type: string }
+        name: { type: string, description: Trading pair (e.g. LUX/USD) }
+        feed: { type: string }
+        value: { type: string, description: Feed price verbatim }
+        source: { type: string, example: O-Chain }
+        status: { type: string, enum: [active] }
+        updatedAt: { type: string, format: date-time }

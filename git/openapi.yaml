@@ -1,0 +1,192 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Git API
+  description: |
+    S3-backed Git hosting native to the Hanzo Cloud binary — the `/v1/git/*`
+    surface served by `hanzoai/cloud/clients/git`. A repo is the Git layer
+    (source code) scoped under an org (gateway-minted `X-Org-Id`, HIP-0026) and
+    an optional project sub-scope (`X-Project-Id`); tenancy is enforced on every
+    query so one tenant can never read, clone, push to, or delete another's.
+
+    The control plane (`/v1/git/repos`, `/v1/git/usage`) is JSON. The
+    smart-HTTP transport routes (`.../info/refs`, `.../git-upload-pack`,
+    `.../git-receive-pack`) speak the native Git wire protocol so
+    `git clone` / `git fetch` / `git push` work against
+    `https://api.hanzo.ai/v1/git/<org>/<repo>.git`.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+tags:
+  - name: Repos
+    description: Repository lifecycle (create, list, detail, delete)
+  - name: Usage
+    description: Per-repo + total storage bytes (metering)
+  - name: Smart HTTP
+    description: Native Git wire protocol (clone / fetch / push)
+security:
+  - bearerAuth: []
+paths:
+  /v1/git/repos:
+    post:
+      tags: [Repos]
+      summary: Create a bare repo
+      operationId: createRepo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRepo' }
+      responses:
+        '201': { description: Repo created, content: { application/json: { schema: { $ref: '#/components/schemas/Repo' } } } }
+        '400': { description: Invalid name/project/description }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { description: Repo name already exists in this scope }
+    get:
+      tags: [Repos]
+      summary: List the tenant's repos
+      operationId: listRepos
+      responses:
+        '200': { description: Repos, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Repo' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/git/usage:
+    get:
+      tags: [Usage]
+      summary: Per-repo + total storage bytes for the tenant
+      operationId: getGitUsage
+      responses:
+        '200': { description: Usage rollup, content: { application/json: { schema: { $ref: '#/components/schemas/Usage' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/git/repos/{name}:
+    parameters:
+      - { name: name, in: path, required: true, schema: { type: string }, description: 'Repo name (a trailing ".git" is stripped)' }
+    get:
+      tags: [Repos]
+      summary: Repo detail (branches + resolved HEAD)
+      operationId: getRepo
+      responses:
+        '200': { description: Repo, content: { application/json: { schema: { $ref: '#/components/schemas/Repo' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Repo not found }
+    delete:
+      tags: [Repos]
+      summary: Delete a repo and purge its storage
+      operationId: deleteRepo
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Repo not found }
+
+  /v1/git/{org}/{repo}/info/refs:
+    get:
+      tags: [Smart HTTP]
+      summary: Git smart-HTTP ref advertisement
+      description: The ref-advertisement phase. `?service=` selects git-upload-pack (fetch) or git-receive-pack (push).
+      operationId: gitInfoRefs
+      parameters:
+        - { name: org, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: service, in: query, required: true, schema: { type: string, enum: [git-upload-pack, git-receive-pack] } }
+      responses:
+        '200':
+          description: pkt-line ref advertisement
+          content:
+            application/x-git-upload-pack-advertisement: { schema: { type: string, format: binary } }
+            application/x-git-receive-pack-advertisement: { schema: { type: string, format: binary } }
+        '400': { description: service must be git-upload-pack or git-receive-pack }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Repo not found }
+
+  /v1/git/{org}/{repo}/git-upload-pack:
+    post:
+      tags: [Smart HTTP]
+      summary: Git upload-pack (clone / fetch)
+      operationId: gitUploadPack
+      parameters:
+        - { name: org, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/x-git-upload-pack-request: { schema: { type: string, format: binary } }
+      responses:
+        '200': { description: Packfile result, content: { application/x-git-upload-pack-result: { schema: { type: string, format: binary } } } }
+        '400': { description: Malformed upload-pack request }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Repo not found }
+        '413': { description: Request body exceeds 256 MiB }
+
+  /v1/git/{org}/{repo}/git-receive-pack:
+    post:
+      tags: [Smart HTTP]
+      summary: Git receive-pack (push)
+      operationId: gitReceivePack
+      parameters:
+        - { name: org, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/x-git-receive-pack-request: { schema: { type: string, format: binary } }
+      responses:
+        '200': { description: report-status, content: { application/x-git-receive-pack-result: { schema: { type: string, format: binary } } } }
+        '400': { description: Malformed receive-pack request }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Repo not found }
+        '413': { description: Request body exceeds 256 MiB }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: IAM-issued JWT or `hk-` Cloud API key.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+  schemas:
+    CreateRepo:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, description: 'Repo name; must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$' }
+        project: { type: string, description: Optional project sub-scope (else the X-Project-Id header) }
+        description: { type: string, maxLength: 4096 }
+    Repo:
+      type: object
+      properties:
+        id: { type: string }
+        org: { type: string }
+        project: { type: string }
+        name: { type: string }
+        description: { type: string }
+        defaultBranch: { type: string, example: main }
+        branches: { type: array, items: { type: string } }
+        head: { type: string, description: Resolved HEAD commit hash }
+        cloneUrl: { type: string, format: uri }
+        sizeBytes: { type: integer, format: int64 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    UsageRepo:
+      type: object
+      properties:
+        name: { type: string }
+        project: { type: string }
+        sizeBytes: { type: integer, format: int64 }
+    Usage:
+      type: object
+      properties:
+        org: { type: string }
+        totalBytes: { type: integer, format: int64 }
+        repos: { type: array, items: { $ref: '#/components/schemas/UsageRepo' } }
