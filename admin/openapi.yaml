@@ -1,0 +1,718 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Admin API
+  description: |
+    The god-mode admin surface (`/v1/admin/*`) the Hanzo Admin Console
+    (admin.hanzo.ai / apps/operator) calls — served by the cloud `admin`
+    subsystem (`hanzoai/cloud/clients/admin`).
+
+    It is an AGGREGATOR, not a store: identity (orgs/users/roles/applications/
+    audit/me) is read from IAM, the money panels (spend/tokens/credits, revenue,
+    finance/COGS) from commerce, System Health from o11y, and the compute/o11y
+    fleet lenses from the shared datastore. Every route is GLOBAL-ADMIN ONLY and
+    fail-closed: a non-global-admin principal is refused 403 before any upstream
+    is touched.
+
+    Reads use the `/v1` envelope `{ status, msg, data, data2 }` — `data` is the
+    payload, `data2` the total for list endpoints.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+tags:
+  - name: Identity
+    description: Operator identity, orgs, users, roles, applications
+  - name: Overview
+    description: Fleet overview, usage, products, sync
+  - name: Customers
+    description: Customer cockpit — list, detail, credit, suspend/reactivate
+  - name: Money
+    description: Revenue, finance (COGS/margin), analytics
+  - name: Observability
+    description: Fleet compute and o11y aggregates
+  - name: Audit
+    description: Tamper-evident audit trail
+security:
+  - bearerAuth: []
+paths:
+  /v1/admin/me:
+    get:
+      tags: [Identity]
+      summary: Validated operator identity
+      operationId: adminMe
+      responses:
+        '200': { description: Operator identity, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/AdminMe' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/overview:
+    get:
+      tags: [Overview]
+      summary: Fleet overview tiles
+      operationId: adminOverview
+      responses:
+        '200': { description: Overview, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/OverviewData' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/orgs:
+    get:
+      tags: [Identity]
+      summary: Tenant directory
+      operationId: adminListOrgs
+      responses:
+        '200': { description: Org rows, content: { application/json: { schema: { $ref: '#/components/schemas/OrgList' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/users:
+    get:
+      tags: [Identity]
+      summary: Cross-org user directory
+      operationId: adminListUsers
+      parameters:
+        - { name: org, in: query, schema: { type: string }, description: Filter to one org (owner) }
+        - { name: p, in: query, schema: { type: integer }, description: 1-based page }
+        - { name: pageSize, in: query, schema: { type: integer } }
+        - { name: q, in: query, schema: { type: string }, description: Free-text name filter }
+      responses:
+        '200': { description: User rows, content: { application/json: { schema: { $ref: '#/components/schemas/UserList' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/roles:
+    get:
+      tags: [Identity]
+      summary: IAM roles (verbatim passthrough)
+      operationId: adminListRoles
+      parameters:
+        - { name: owner, in: query, schema: { type: string } }
+        - { name: p, in: query, schema: { type: integer } }
+        - { name: pageSize, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Role rows (raw IAM shape), content: { application/json: { schema: { $ref: '#/components/schemas/RawList' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/applications:
+    get:
+      tags: [Identity]
+      summary: IAM applications (verbatim passthrough)
+      operationId: adminListApplications
+      parameters:
+        - { name: owner, in: query, schema: { type: string } }
+        - { name: p, in: query, schema: { type: integer } }
+        - { name: pageSize, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Application rows (raw IAM shape), content: { application/json: { schema: { $ref: '#/components/schemas/RawList' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/audit:
+    get:
+      tags: [Audit]
+      summary: Query the tamper-evident audit trail
+      operationId: adminListAudit
+      parameters:
+        - { name: org, in: query, schema: { type: string } }
+        - { name: sub, in: query, schema: { type: string } }
+        - { name: action, in: query, schema: { type: string } }
+        - { name: resource, in: query, schema: { type: string } }
+        - { name: result, in: query, schema: { type: string } }
+        - { name: since, in: query, schema: { type: string, format: date-time } }
+        - { name: until, in: query, schema: { type: string, format: date-time } }
+        - { name: pageSize, in: query, schema: { type: integer, default: 100 } }
+        - { name: p, in: query, schema: { type: integer, default: 1 } }
+      responses:
+        '200': { description: Audit rows, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { type: array, items: { $ref: '#/components/schemas/AuditRow' } }, data2: { type: integer }, integrity: { $ref: '#/components/schemas/AuditIntegrity' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/audit/verify:
+    get:
+      tags: [Audit]
+      summary: Verify audit-chain integrity
+      operationId: adminVerifyAudit
+      responses:
+        '200': { description: Integrity result, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/AuditIntegrity' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/usage:
+    get:
+      tags: [Overview]
+      summary: Fleet usage roll-up
+      operationId: adminUsage
+      parameters:
+        - { name: org, in: query, schema: { type: string }, description: Scope to one org (default fleet) }
+      responses:
+        '200': { description: Usage data, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/UsageData' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/products:
+    get:
+      tags: [Overview]
+      summary: Product / workload registry
+      operationId: adminProducts
+      responses:
+        '200': { description: Product rows, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { type: array, items: { $ref: '#/components/schemas/ProductRow' } }, data2: { type: integer } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/finance:
+    get:
+      tags: [Money]
+      summary: COGS / gross-margin / runway dashboard
+      operationId: adminFinance
+      responses:
+        '200': { description: Finance data, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/FinanceData' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/compute:
+    get:
+      tags: [Observability]
+      summary: Cross-tenant compute analytics
+      operationId: adminCompute
+      parameters:
+        - { name: kind, in: query, schema: { type: string }, description: 'bot | machine | cluster | nodepool | container | function | …' }
+        - { name: org, in: query, schema: { type: string } }
+        - { name: range, in: query, schema: { type: string, enum: [24h, 7d, 30d], default: 30d } }
+      responses:
+        '200': { description: Compute leaves, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { type: array, items: { $ref: '#/components/schemas/ComputeLeaf' } }, data2: { type: integer } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/o11y:
+    get:
+      tags: [Observability]
+      summary: Fleet-wide observability board
+      operationId: adminO11y
+      parameters:
+        - { name: range, in: query, schema: { type: string, enum: [24h, 7d, 30d], default: 30d } }
+      responses:
+        '200': { description: Fleet o11y, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/O11yGlobal' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/sync:
+    post:
+      tags: [Overview]
+      summary: Trigger a fleet re-read
+      operationId: adminSync
+      responses:
+        '200': { description: Started, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { type: object, properties: { started: { type: boolean } } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/customers:
+    get:
+      tags: [Customers]
+      summary: Fleet customer list
+      operationId: adminListCustomers
+      responses:
+        '200': { description: Customer rows, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { type: array, items: { $ref: '#/components/schemas/CustomerRow' } }, data2: { type: integer } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/customers/{org}:
+    get:
+      tags: [Customers]
+      summary: One customer's detail
+      operationId: adminCustomerDetail
+      parameters:
+        - { name: org, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Customer detail, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/CustomerDetail' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Customer not found }
+
+  /v1/admin/customers/{org}/credit:
+    post:
+      tags: [Customers]
+      summary: Grant credit (commerce deposit)
+      operationId: adminGrantCredit
+      parameters:
+        - { name: org, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreditRequest' }
+      responses:
+        '200': { description: Grant result, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/CreditResult' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Customer not found }
+
+  /v1/admin/customers/{org}/suspend:
+    post:
+      tags: [Customers]
+      summary: Suspend a customer (IAM isForbidden=true)
+      operationId: adminSuspendCustomer
+      parameters:
+        - { name: org, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Suspend result, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/AccessResult' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Customer not found }
+
+  /v1/admin/customers/{org}/reactivate:
+    post:
+      tags: [Customers]
+      summary: Reactivate a customer (IAM isForbidden=false)
+      operationId: adminReactivateCustomer
+      parameters:
+        - { name: org, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Reactivate result, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/AccessResult' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Customer not found }
+
+  /v1/admin/revenue:
+    get:
+      tags: [Money]
+      summary: Fleet revenue aggregate
+      operationId: adminRevenue
+      responses:
+        '200': { description: Revenue data, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/RevenueData' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/analytics:
+    get:
+      tags: [Money]
+      summary: Native SaaS analytics (retention/growth/churn)
+      operationId: adminAnalytics
+      parameters:
+        - { name: range, in: query, schema: { type: string, enum: [7d, 30d, 90d, all], default: 30d } }
+      responses:
+        '200': { description: Analytics data, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/AnalyticsData' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: IAM-issued JWT or `hk-` Cloud API key.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+  schemas:
+    RawList:
+      type: object
+      description: Verbatim IAM list envelope — `data` carries the raw upstream rows.
+      properties:
+        status: { type: string }
+        msg: { type: string }
+        data: { type: array, items: { type: object, additionalProperties: true } }
+        data2: { type: integer }
+    AdminMe:
+      type: object
+      properties:
+        owner: { type: string }
+        name: { type: string }
+        email: { type: string }
+        displayName: { type: string }
+        isGlobalAdmin: { type: boolean }
+    SourceStatus:
+      type: object
+      properties:
+        name: { type: string }
+        ok: { type: boolean }
+        rows: { type: integer }
+        error: { type: string }
+        at: { type: string }
+    OverviewData:
+      type: object
+      properties:
+        orgs: { type: integer }
+        users: { type: integer }
+        products: { type: integer }
+        activeProducts: { type: integer }
+        drift: { type: integer }
+        spendCents30d: { type: integer, format: int64 }
+        tokens30d: { type: integer, format: int64 }
+        creditsCents: { type: integer, format: int64 }
+        lastSync: { type: string }
+        sources: { type: array, items: { $ref: '#/components/schemas/SourceStatus' } }
+    OrgRow:
+      type: object
+      properties:
+        org: { type: string }
+        display: { type: string }
+        users: { type: integer }
+        products: { type: integer }
+        spendCents: { type: integer, format: int64 }
+        creditsCents: { type: integer, format: int64 }
+        tokens: { type: integer, format: int64 }
+        created: { type: string }
+    OrgList:
+      type: object
+      properties:
+        status: { type: string }
+        msg: { type: string }
+        data: { type: array, items: { $ref: '#/components/schemas/OrgRow' } }
+        data2: { type: integer }
+    OperatorUser:
+      type: object
+      properties:
+        owner: { type: string }
+        name: { type: string }
+        email: { type: string }
+        displayName: { type: string }
+        isAdmin: { type: boolean }
+        isGlobalAdmin: { type: boolean }
+        tag: { type: string }
+        created: { type: string }
+        lastSignin: { type: string }
+        forbidden: { type: boolean }
+    UserList:
+      type: object
+      properties:
+        status: { type: string }
+        msg: { type: string }
+        data: { type: array, items: { $ref: '#/components/schemas/OperatorUser' } }
+        data2: { type: integer }
+    UsageTotals:
+      type: object
+      properties:
+        spendCents: { type: integer, format: int64 }
+        tokens: { type: integer, format: int64 }
+        requests: { type: integer, format: int64 }
+    UsagePoint:
+      type: object
+      properties:
+        date: { type: string }
+        spendCents: { type: integer, format: int64 }
+        tokens: { type: integer, format: int64 }
+        requests: { type: integer, format: int64 }
+    UsageByProduct:
+      type: object
+      properties:
+        product: { type: string }
+        spendCents: { type: integer, format: int64 }
+        tokens: { type: integer, format: int64 }
+    UsageData:
+      type: object
+      properties:
+        totals: { $ref: '#/components/schemas/UsageTotals' }
+        series: { type: array, items: { $ref: '#/components/schemas/UsagePoint' } }
+        byProduct: { type: array, items: { $ref: '#/components/schemas/UsageByProduct' } }
+    ProductRow:
+      type: object
+      properties:
+        name: { type: string }
+        kind: { type: string }
+        org: { type: string }
+        cluster: { type: string }
+        declaredTag: { type: string }
+        runningTag: { type: string }
+        health: { type: string }
+        drift: { type: boolean }
+        updated: { type: string }
+    CustomerRow:
+      type: object
+      properties:
+        org: { type: string }
+        display: { type: string }
+        ownerEmail: { type: string }
+        plan: { type: string }
+        status: { type: string, enum: [active, suspended] }
+        users: { type: integer }
+        balanceCents: { type: integer, format: int64 }
+        spendCents: { type: integer, format: int64 }
+        mrrCents: { type: integer, format: int64 }
+        created: { type: string }
+        lastActive: { type: string }
+    CustomerUser:
+      type: object
+      properties:
+        name: { type: string }
+        email: { type: string }
+        isAdmin: { type: boolean }
+        forbidden: { type: boolean }
+        hasApiKey: { type: boolean }
+        lastSignin: { type: string }
+        created: { type: string }
+    CustomerTxn:
+      type: object
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [deposit, withdraw] }
+        cents: { type: integer, format: int64 }
+        currency: { type: string }
+        notes: { type: string }
+        time: { type: string }
+    CustomerDetail:
+      type: object
+      properties:
+        org: { type: string }
+        display: { type: string }
+        ownerEmail: { type: string }
+        plan: { type: string }
+        status: { type: string }
+        created: { type: string }
+        balanceCents: { type: integer, format: int64 }
+        spendCents: { type: integer, format: int64 }
+        mrrCents: { type: integer, format: int64 }
+        apiKeys: { type: integer }
+        users: { type: array, items: { $ref: '#/components/schemas/CustomerUser' } }
+        transactions: { type: array, items: { $ref: '#/components/schemas/CustomerTxn' } }
+    CreditRequest:
+      type: object
+      required: [amountCents]
+      properties:
+        amountCents: { type: integer, format: int64, description: Positive credit to add (capped at 10,000,000 cents per grant) }
+        currency: { type: string, default: usd }
+        reason: { type: string, description: Operator justification (recorded in the audit trail) }
+    CreditResult:
+      type: object
+      properties:
+        org: { type: string }
+        grantedCents: { type: integer, format: int64 }
+        currency: { type: string }
+        balanceCents: { type: integer, format: int64 }
+        transactionId: { type: string }
+    AccessResult:
+      type: object
+      properties:
+        org: { type: string }
+        suspended: { type: boolean }
+        affected: { type: array, items: { type: string } }
+        failed: { type: array, items: { type: string } }
+    VendorCost:
+      type: object
+      properties:
+        vendor: { type: string }
+        service: { type: string }
+        amountCents: { type: integer, format: int64 }
+        source: { type: string, enum: [actual, estimated] }
+        note: { type: string }
+    DoHistoryPoint:
+      type: object
+      properties:
+        date: { type: string }
+        amountCents: { type: integer, format: int64 }
+        type: { type: string }
+        description: { type: string }
+    DoCost:
+      type: object
+      properties:
+        configured: { type: boolean }
+        error: { type: string }
+        creditRemainingCents: { type: integer, format: int64 }
+        monthToDateSpendCents: { type: integer, format: int64 }
+        avgDailyBurnCents: { type: integer, format: int64 }
+        accountBalanceCents: { type: integer, format: int64 }
+        generatedAt: { type: string }
+        history: { type: array, items: { $ref: '#/components/schemas/DoHistoryPoint' } }
+    FinanceCost:
+      type: object
+      properties:
+        configured: { type: boolean }
+        error: { type: string }
+        period: { type: string }
+        totalCents: { type: integer, format: int64 }
+        vendors: { type: array, items: { $ref: '#/components/schemas/VendorCost' } }
+        digitalocean: { $ref: '#/components/schemas/DoCost' }
+    FinanceRevenue:
+      type: object
+      properties:
+        configured: { type: boolean }
+        totalRevenueCents: { type: integer, format: int64 }
+        mrrCents: { type: integer, format: int64 }
+        creditsConsumedCents: { type: integer, format: int64 }
+    FinanceDerived:
+      type: object
+      properties:
+        grossMarginCents: { type: integer, format: int64 }
+        grossMarginPct: { type: number, format: double }
+        runwayDays: { type: number, format: double, nullable: true }
+        profitable: { type: boolean }
+    FinanceData:
+      type: object
+      properties:
+        cost: { $ref: '#/components/schemas/FinanceCost' }
+        revenue: { $ref: '#/components/schemas/FinanceRevenue' }
+        derived: { $ref: '#/components/schemas/FinanceDerived' }
+        generatedAt: { type: string }
+        sources: { type: array, items: { $ref: '#/components/schemas/SourceStatus' } }
+    SeriesPoint:
+      type: object
+      properties:
+        t: { type: string }
+        value: { type: integer, format: int64 }
+    RevenueCustomer:
+      type: object
+      properties:
+        org: { type: string }
+        display: { type: string }
+        plan: { type: string }
+        balanceCents: { type: integer, format: int64 }
+        spendCents: { type: integer, format: int64 }
+        mrrCents: { type: integer, format: int64 }
+    RevenueData:
+      type: object
+      properties:
+        totalBalancesCents: { type: integer, format: int64 }
+        totalSpendCents: { type: integer, format: int64 }
+        mrrCents: { type: integer, format: int64 }
+        customers: { type: integer }
+        payingCustomers: { type: integer }
+        arpuCents: { type: integer, format: int64 }
+        perCustomer: { type: array, items: { $ref: '#/components/schemas/RevenueCustomer' } }
+        spendTrend: { type: array, items: { $ref: '#/components/schemas/SeriesPoint' } }
+        generatedAt: { type: string }
+        sources: { type: array, items: { $ref: '#/components/schemas/SourceStatus' } }
+    RetentionCohort:
+      type: object
+      properties:
+        cohort: { type: string }
+        size: { type: integer }
+        values: { type: array, items: { type: number, format: double } }
+    RetentionGrid:
+      type: object
+      properties:
+        interval: { type: string }
+        periods: { type: integer }
+        cohorts: { type: array, items: { $ref: '#/components/schemas/RetentionCohort' } }
+    AnalyticsSlice:
+      type: object
+      properties:
+        label: { type: string }
+        value: { type: integer, format: int64 }
+        hint: { type: string }
+    AnalyticsData:
+      type: object
+      properties:
+        range: { type: string }
+        interval: { type: string }
+        generatedAt: { type: string }
+        signups: { type: array, items: { $ref: '#/components/schemas/SeriesPoint' } }
+        cumulativeCustomers: { type: array, items: { $ref: '#/components/schemas/SeriesPoint' } }
+        totalCustomers: { type: integer }
+        newCustomers: { type: integer }
+        growthRatePct: { type: number, format: double }
+        activeCustomers: { type: array, items: { $ref: '#/components/schemas/SeriesPoint' } }
+        dau: { type: integer }
+        wau: { type: integer }
+        mau: { type: integer }
+        retention: { $ref: '#/components/schemas/RetentionGrid' }
+        churn: { type: array, items: { $ref: '#/components/schemas/SeriesPoint' } }
+        churnRatePct: { type: number, format: double }
+        mrrCents: { type: integer, format: int64 }
+        revenue: { type: array, items: { $ref: '#/components/schemas/SeriesPoint' } }
+        arpuCents: { type: integer, format: int64 }
+        ltvCents: { type: integer, format: int64, nullable: true }
+        nrrPct: { type: number, format: double, nullable: true }
+        usage: { type: array, items: { $ref: '#/components/schemas/SeriesPoint' } }
+        topCustomers: { type: array, items: { $ref: '#/components/schemas/AnalyticsSlice' } }
+        computed: { type: object, additionalProperties: { type: boolean } }
+        sources: { type: array, items: { $ref: '#/components/schemas/SourceStatus' } }
+    ComputeLeaf:
+      type: object
+      properties:
+        org: { type: string }
+        app: { type: string }
+        project: { type: string }
+        kind: { type: string }
+        machines: { type: integer, format: int64 }
+        active: { type: integer, format: int64 }
+        spendCents: { type: integer, format: int64 }
+        lastTs: { type: string }
+    O11yTotals:
+      type: object
+      properties:
+        requests: { type: integer, format: int64 }
+        tokens: { type: integer, format: int64 }
+        promptTokens: { type: integer, format: int64 }
+        completionTokens: { type: integer, format: int64 }
+        costCents: { type: integer, format: int64 }
+        errors: { type: integer, format: int64 }
+        orgs: { type: integer, format: int64 }
+        models: { type: integer, format: int64 }
+        traceCount: { type: integer, format: int64 }
+        latencyP50Ms: { type: number, format: double }
+        latencyP95Ms: { type: number, format: double }
+        latencyP99Ms: { type: number, format: double }
+        traceErrorRate: { type: number, format: double }
+        services: { type: integer, format: int64 }
+        logVolume: { type: integer, format: int64 }
+    O11ySeries:
+      type: object
+      properties:
+        ts: { type: string }
+        requests: { type: integer, format: int64 }
+        tokens: { type: integer, format: int64 }
+        costCents: { type: integer, format: int64 }
+        errors: { type: integer, format: int64 }
+    O11yLogPoint:
+      type: object
+      properties:
+        ts: { type: string }
+        count: { type: integer, format: int64 }
+    O11yOrgStat:
+      type: object
+      properties:
+        org: { type: string }
+        requests: { type: integer, format: int64 }
+        tokens: { type: integer, format: int64 }
+        costCents: { type: integer, format: int64 }
+    O11yModelStat:
+      type: object
+      properties:
+        model: { type: string }
+        requests: { type: integer, format: int64 }
+        tokens: { type: integer, format: int64 }
+        costCents: { type: integer, format: int64 }
+    O11ySvcStat:
+      type: object
+      properties:
+        service: { type: string }
+        requests: { type: integer, format: int64 }
+        errorRate: { type: number, format: double }
+        latencyP95Ms: { type: number, format: double }
+    O11yLLM:
+      type: object
+      properties:
+        generations: { type: integer, format: int64 }
+        costUsd: { type: number, format: double }
+    O11yGlobal:
+      type: object
+      properties:
+        range: { type: string }
+        start: { type: string }
+        end: { type: string }
+        totals: { $ref: '#/components/schemas/O11yTotals' }
+        series: { type: array, items: { $ref: '#/components/schemas/O11ySeries' } }
+        logSeries: { type: array, items: { $ref: '#/components/schemas/O11yLogPoint' } }
+        topOrgs: { type: array, items: { $ref: '#/components/schemas/O11yOrgStat' } }
+        topModels: { type: array, items: { $ref: '#/components/schemas/O11yModelStat' } }
+        topServices: { type: array, items: { $ref: '#/components/schemas/O11ySvcStat' } }
+        llm: { $ref: '#/components/schemas/O11yLLM' }
+    AuditRow:
+      type: object
+      properties:
+        seq: { type: integer, format: int64 }
+        time: { type: string }
+        org: { type: string }
+        sub: { type: string }
+        email: { type: string }
+        action: { type: string }
+        resource: { type: string }
+        resourceId: { type: string }
+        method: { type: string }
+        path: { type: string }
+        result: { type: string }
+        status: { type: integer }
+        reason: { type: string }
+        sourceIp: { type: string }
+        userAgent: { type: string }
+        requestId: { type: string }
+        isAdmin: { type: boolean }
+        authMethod: { type: string }
+        hash: { type: string }
+        prevHash: { type: string }
+    AuditIntegrity:
+      type: object
+      description: Hash-chain verification summary.
+      properties:
+        ok: { type: boolean }
+        count: { type: integer, format: int64 }
+        head: { type: string }
+        brokenAt: { type: integer, format: int64 }

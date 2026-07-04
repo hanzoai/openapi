@@ -17,6 +17,14 @@ surface, route-accurate to the Go handlers in `hanzoai/cloud/clients/<x>`:
   `clients/tracker`.
 - Added `crm/openapi.yaml` — `/v1/crm/*` (companies, contacts, opportunities)
   from `clients/crm`.
+- Added `automations/openapi.yaml` — `/v1/automations/*` (flows, versions,
+  runs, pieces, MCP) from `clients/automations`.
+- Added `integrations/openapi.yaml` — `/v1/integrations/*` (provider connect
+  + Slack events/commands/link) from `clients/integrations`.
+- Added `admin/openapi.yaml` — `/v1/admin/*` (god-view overview, orgs, users,
+  customers, finance, revenue, audit) from `clients/admin`.
+- Added `plan/openapi.yaml` — `/v1/plans/*` (plan catalog, resolve,
+  entitlements) from `clients/plan`.
 
 ### Frontend surface completeness (hanzo.app + hanzo.chat)
 
