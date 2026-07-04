@@ -1,0 +1,261 @@
+openapi: 3.1.0
+info:
+  title: Hanzo App — Projects & Deployments
+  summary: Site/app projects, builds and deployments for hanzo.app.
+  description: |
+    The app-builder and static-site hosting surface behind hanzo.app, served
+    through the gateway at `api.hanzo.ai`.
+
+    NAMESPACE EXCEPTION — these routes are TOP-LEVEL `/v1/projects/*`, NOT
+    `/v1/app/*`. hanzo.app addresses projects at the bare `/v1/projects` path,
+    so the path IS the contract (same rationale as the top-level inference
+    surface). A `project` is a named site/app scoped to the caller's org
+    (resolved server-side from the IAM JWT `owner` claim — never sent by the
+    browser). Deploying uploads a built artifact (a USTAR tarball of the site's
+    `dist/`) or queues a git/CI build.
+
+    Authentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`).
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+servers:
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
+security:
+- BearerAuth: []
+tags:
+- name: Projects
+  description: Create, list, update and delete site/app projects.
+- name: Deployments
+  description: Deploy a project and inspect its deployment history.
+paths:
+  /v1/projects:
+    get:
+      tags:
+      - Projects
+      summary: List projects
+      description: List every project in the caller's org.
+      operationId: listProjects
+      responses:
+        '200':
+          description: Project list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Project' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags:
+      - Projects
+      summary: Create a project
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProjectCreate' }
+      responses:
+        '201':
+          description: Project created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /v1/projects/{slug}:
+    parameters:
+    - name: slug
+      in: path
+      required: true
+      description: The project's URL-safe slug (unique within the org).
+      schema: { type: string }
+    get:
+      tags:
+      - Projects
+      summary: Get a project
+      operationId: getProject
+      responses:
+        '200':
+          description: The project.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags:
+      - Projects
+      summary: Update a project
+      operationId: updateProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProjectUpdate' }
+      responses:
+        '200':
+          description: The updated project.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags:
+      - Projects
+      summary: Delete a project
+      operationId: deleteProject
+      responses:
+        '204': { description: Deleted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/projects/{slug}/deploy:
+    parameters:
+    - name: slug
+      in: path
+      required: true
+      schema: { type: string }
+    post:
+      tags:
+      - Deployments
+      summary: Deploy a project
+      description: |
+        Two ways to deploy, selected by `Content-Type`:
+          - `application/x-tar` — the request body is a USTAR tarball of the
+            browser-built site (`dist/`), deployed directly.
+          - `application/json` — queue a git/CI build from source
+            (`{ "source": "git", "commit": "<sha>" }`).
+      operationId: deployProject
+      requestBody:
+        required: true
+        content:
+          application/x-tar:
+            schema:
+              type: string
+              format: binary
+              description: USTAR tarball of the built site.
+          application/json:
+            schema: { $ref: '#/components/schemas/DeployRequest' }
+      responses:
+        '202':
+          description: Deployment accepted / queued.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Deployment' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/projects/{slug}/deployments:
+    parameters:
+    - name: slug
+      in: path
+      required: true
+      schema: { type: string }
+    get:
+      tags:
+      - Deployments
+      summary: List deployments
+      description: List the deployment history for a project, newest first.
+      operationId: listDeployments
+      responses:
+        '200':
+          description: Deployment list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Deployment' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id).'
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Project not found.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: A project with that slug already exists in the org.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Project:
+      title: Project
+      type: object
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        name: { type: string }
+        org: { type: string, description: Org slug (from the JWT owner claim). }
+        domain: { type: string, description: Custom or default hanzo.app domain. }
+        url: { type: string, description: Live URL of the latest deployment. }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ProjectCreate:
+      title: ProjectCreate
+      type: object
+      required: [slug]
+      properties:
+        slug: { type: string }
+        name: { type: string }
+        domain: { type: string }
+    ProjectUpdate:
+      title: ProjectUpdate
+      type: object
+      properties:
+        name: { type: string }
+        domain: { type: string }
+    DeployRequest:
+      title: DeployRequest
+      type: object
+      required: [source]
+      properties:
+        source:
+          type: string
+          enum: [git]
+          description: Deploy source. `git` queues a CI build from a commit.
+        commit: { type: string, description: Git commit SHA to build. }
+    Deployment:
+      title: Deployment
+      type: object
+      properties:
+        id: { type: string }
+        projectSlug: { type: string }
+        status:
+          type: string
+          enum: [queued, building, ready, error, canceled]
+        source:
+          type: string
+          enum: [tar, git]
+        commit: { type: string }
+        url: { type: string }
+        createdAt: { type: string, format: date-time }
+    Error:
+      title: Error
+      type: object
+      properties:
+        status: { type: string, examples: [error] }
+        msg: { type: string }
