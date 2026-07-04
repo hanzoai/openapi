@@ -79,15 +79,16 @@ jobs:
         with: { distribution: temurin, java-version: '21' }
       - name: Generate ${{ matrix.lang }} client from hanzo.yaml
         run: |
-          npx -y @openapitools/openapi-generator-cli@2.20.0 generate \
+          curl -sSL -o /tmp/openapi-generator-cli.jar \
+            https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/7.14.0/openapi-generator-cli-7.14.0.jar
+          java -jar /tmp/openapi-generator-cli.jar generate \
             -i hanzo.yaml -g ${{ matrix.generator }} \
             --additional-properties=${{ matrix.props }} \
             -o out/${{ matrix.lang }}
-      - name: Push to ${{ matrix.repo }}
-        env:
-          GH_TOKEN: ${{ secrets.UNIVERSE_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
-        run: |
-          cd out/${{ matrix.lang }}
-          git init -q && git add -A
-          git -c user.name=hanzo-bot -c user.email=dev@hanzo.ai commit -q -m "regen from openapi ${{ github.sha }}"
-          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${{ matrix.repo }}.git" HEAD:generated
+          echo "generated $(find out/${{ matrix.lang }} -type f | wc -l) files for ${{ matrix.lang }}"
+      - name: Upload ${{ matrix.lang }} SDK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hanzo-${{ matrix.lang }}-sdk
+          path: out/${{ matrix.lang }}
+          if-no-files-found: error
