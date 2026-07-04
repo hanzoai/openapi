@@ -11,6 +11,12 @@ surface, route-accurate to the Go handlers in `hanzoai/cloud/clients/<x>`:
   tree) from `clients/agents`.
 - Added `functions/openapi.yaml` — `/v1/functions/*` (serverless functions,
   metered invoke) from `clients/functions`.
+- Added `framework/openapi.yaml` — `/v1/framework/*` (doctypes, modules, roles,
+  generic document CRUD) from `clients/framework`.
+- Added `tracker/openapi.yaml` — `/v1/tracker/*` (projects + issues) from
+  `clients/tracker`.
+- Added `crm/openapi.yaml` — `/v1/crm/*` (companies, contacts, opportunities)
+  from `clients/crm`.
 
 ### Frontend surface completeness (hanzo.app + hanzo.chat)
 
