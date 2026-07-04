@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.0.0
+
+### Frontend surface completeness (hanzo.app + hanzo.chat)
+
+- Added the `app` service spec (`app/openapi.yaml`): the hanzo.app projects &
+  deployments surface at top-level `/v1/projects/*` — `GET/POST /v1/projects`,
+  `GET/PATCH/DELETE /v1/projects/{slug}`, `POST /v1/projects/{slug}/deploy`
+  (tar artifact or git build), `GET /v1/projects/{slug}/deployments`.
+- Added the `base` service spec (`base/openapi.yaml`): the Hanzo Base records
+  store at top-level `/v1/collections/{collection}/records[/{id}]` (CRUD),
+  backing hanzo.app's `site_drafts` working-draft store.
+- `ai` spec: defined the image and audio operations its own description already
+  advertised — `POST /v1/images/generations`, `POST /v1/audio/speech`,
+  `POST /v1/audio/transcriptions` (OpenAI-compatible).
+- Confirmed zero `/api/` paths across every spec; the only non-`/v1` routes are
+  the unversioned infra probes `/health`, `/healthz`, `/metrics`.
+- `hanzo.yaml` regenerated: 38 services, 1590 paths.
+
 ## v1.0.0 — 2026-06-30
 
 ### AI inference namespace

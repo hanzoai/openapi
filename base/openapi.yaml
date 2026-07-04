@@ -1,0 +1,190 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Base — Collections
+  summary: Schema-driven records store (Hanzo Base) over IAM-native collections.
+  description: |
+    Hanzo Base is the embedded records/backend service (`hanzoai/base`). It
+    exposes each collection's rows through a uniform REST surface at
+    `/v1/collections/{collection}/records`. Auth is Hanzo IAM-native; rows are
+    scoped by the collection's own access rules plus the caller's org.
+
+    NAMESPACE EXCEPTION — routes are TOP-LEVEL `/v1/collections/*`, NOT
+    `/v1/base/*`: Base clients address collections at the bare `/v1/collections`
+    path, so the path IS the contract. Base runs on its own host
+    (`base.hanzo.ai`) and behind the gateway at `api.hanzo.ai`.
+
+    Example — hanzo.app stores each site's working draft as a row in the
+    `site_drafts` collection keyed by `(org, slug)`.
+
+    Authentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`).
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+servers:
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
+security:
+- BearerAuth: []
+tags:
+- name: Records
+  description: CRUD over the rows of a Base collection.
+paths:
+  /v1/collections/{collection}/records:
+    parameters:
+    - name: collection
+      in: path
+      required: true
+      description: Collection name or id (e.g. `site_drafts`).
+      schema: { type: string }
+    get:
+      tags:
+      - Records
+      summary: List records
+      description: |
+        List rows in a collection. Supports a PocketBase-style `filter`
+        expression, `sort`, and page controls.
+      operationId: listRecords
+      parameters:
+      - name: filter
+        in: query
+        required: false
+        description: "Filter expression, e.g. org='hanzo' && slug='home'."
+        schema: { type: string }
+      - name: sort
+        in: query
+        required: false
+        schema: { type: string }
+      - name: page
+        in: query
+        required: false
+        schema: { type: integer, default: 1 }
+      - name: perPage
+        in: query
+        required: false
+        schema: { type: integer, default: 30 }
+      responses:
+        '200':
+          description: A page of records.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecordList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags:
+      - Records
+      summary: Create a record
+      operationId: createRecord
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Record' }
+      responses:
+        '200':
+          description: The created record.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Record' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /v1/collections/{collection}/records/{id}:
+    parameters:
+    - name: collection
+      in: path
+      required: true
+      schema: { type: string }
+    - name: id
+      in: path
+      required: true
+      schema: { type: string }
+    get:
+      tags:
+      - Records
+      summary: Get a record
+      operationId: getRecord
+      responses:
+        '200':
+          description: The record.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Record' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags:
+      - Records
+      summary: Update a record
+      operationId: updateRecord
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Record' }
+      responses:
+        '200':
+          description: The updated record.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Record' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags:
+      - Records
+      summary: Delete a record
+      operationId: deleteRecord
+      responses:
+        '204': { description: Deleted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id).'
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Record not found.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Record:
+      title: Record
+      description: |
+        A collection row. `id`, `created` and `updated` are managed by Base;
+        all other fields are collection-defined and passed through as-is.
+      type: object
+      additionalProperties: true
+      properties:
+        id: { type: string }
+        created: { type: string, format: date-time }
+        updated: { type: string, format: date-time }
+    RecordList:
+      title: RecordList
+      type: object
+      properties:
+        page: { type: integer }
+        perPage: { type: integer }
+        totalItems: { type: integer }
+        totalPages: { type: integer }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Record' }
+    Error:
+      title: Error
+      type: object
+      properties:
+        status: { type: string, examples: [error] }
+        msg: { type: string }
