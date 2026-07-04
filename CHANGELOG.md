@@ -2,6 +2,16 @@
 
 ## v1.0.0
 
+### Cloud product-surface specs (clients/* → live /v1 flat prefixes)
+
+Authored per-service specs for the fused `api.hanzo.ai/v1` cloud-binary
+surface, route-accurate to the Go handlers in `hanzoai/cloud/clients/<x>`:
+
+- Added `agents/openapi.yaml` — `/v1/agents/*` (agents + runs + live session
+  tree) from `clients/agents`.
+- Added `functions/openapi.yaml` — `/v1/functions/*` (serverless functions,
+  metered invoke) from `clients/functions`.
+
 ### Frontend surface completeness (hanzo.app + hanzo.chat)
 
 - Added the `app` service spec (`app/openapi.yaml`): the hanzo.app projects &
