@@ -1,0 +1,233 @@
+openapi: 3.1.0
+info:
+  title: Hanzo KB API
+  description: |
+    Knowledge Base retrieval + ingestion control-plane — the `/v1/kb/*` surface
+    served by the cloud `kb` subsystem (`hanzoai/cloud/clients/kb`). It is the thin
+    RAG + connector layer on top of the framework DocType store (KB content lives as
+    `kb-page`/`kb-memory`/`kb-source` documents at `/v1/framework/*`) and the per-org
+    vector index.
+
+    - Semantic search over the caller org's own knowledge namespace (the RAG entry
+      point an agent/chat calls) — human wiki + AI memory in one store.
+    - Per-org app connectors (GitHub/Slack/Google/Notion): OAuth in, sync external
+      documents INTO the same store + index.
+
+    Every route is org-scoped to the validated tenant — a caller can only search or
+    connect its own knowledge.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+tags:
+  - name: Search
+    description: Org-scoped semantic retrieval (RAG)
+  - name: Connectors
+    description: Per-org app connectors (OAuth ingestion)
+security:
+  - bearerAuth: []
+paths:
+  /v1/kb/search:
+    post:
+      tags: [Search]
+      summary: Semantic search over the org's knowledge
+      operationId: kbSearch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SearchRequest' }
+      responses:
+        '200':
+          description: Hits (an unreachable/disabled index returns an empty degraded result, never a 5xx)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hits: { type: array, items: { $ref: '#/components/schemas/Hit' } }
+                  degraded: { type: boolean, description: true when the index was unreachable and no context was retrieved }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/kb/connectors:
+    get:
+      tags: [Connectors]
+      summary: List this org's connectors and connection state
+      operationId: listConnectors
+      responses:
+        '200':
+          description: Connectors
+          content:
+            application/json:
+              schema: { type: object, properties: { connectors: { type: array, items: { $ref: '#/components/schemas/ConnectorState' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/kb/connectors/catalog:
+    get:
+      tags: [Connectors]
+      summary: List every connectable source (native + long-tail pieces)
+      operationId: listCatalog
+      responses:
+        '200':
+          description: Catalog
+          content:
+            application/json:
+              schema: { type: object, properties: { connectors: { type: array, items: { $ref: '#/components/schemas/CatalogEntry' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/kb/connectors/{provider}/connect:
+    parameters:
+      - { name: provider, in: path, required: true, schema: { type: string, enum: [github, slack, google, notion] } }
+    get:
+      tags: [Connectors]
+      summary: Begin an OAuth connection (returns the provider authorize URL)
+      operationId: connectStart
+      responses:
+        '200':
+          description: Authorize URL for the console to open
+          content:
+            application/json:
+              schema: { type: object, properties: { authorizeUrl: { type: string, format: uri } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { description: Connector not configured on this deployment }
+
+  /v1/kb/connectors/{provider}/callback:
+    parameters:
+      - { name: provider, in: path, required: true, schema: { type: string, enum: [github, slack, google, notion] } }
+    get:
+      tags: [Connectors]
+      summary: OAuth callback (provider redirect — org recovered from signed state)
+      operationId: connectCallback
+      security: []
+      parameters:
+        - { name: code, in: query, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: error, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Connected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider: { type: string }
+                  status: { type: string, example: connected }
+                  account: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { description: Invalid OAuth state }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/kb/connectors/{provider}/sync:
+    parameters:
+      - { name: provider, in: path, required: true, schema: { type: string, enum: [github, slack, google, notion] } }
+    post:
+      tags: [Connectors]
+      summary: Sync the provider's documents into this org's knowledge store
+      operationId: syncConnector
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider: { type: string }
+                  ingested: { type: integer }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { description: Sync failed }
+
+  /v1/kb/connectors/{provider}:
+    parameters:
+      - { name: provider, in: path, required: true, schema: { type: string, enum: [github, slack, google, notion] } }
+    delete:
+      tags: [Connectors]
+      summary: Disconnect a connector (tombstone token, purge its vector points)
+      operationId: disconnectConnector
+      responses:
+        '200':
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider: { type: string }
+                  status: { type: string, example: disconnected }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: IAM-issued JWT or `hk-` Cloud API key.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+  schemas:
+    SearchRequest:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string, description: Natural-language question }
+        limit: { type: integer, default: 10, maximum: 50 }
+        project: { type: string, description: Optional project scope }
+        doctypes:
+          type: array
+          items: { type: string, enum: [kb-page, kb-memory, kb-source] }
+          description: Optional restriction to a subset of indexed knowledge doctypes
+    Hit:
+      type: object
+      properties:
+        doctype: { type: string }
+        name: { type: string }
+        title: { type: string }
+        project: { type: string }
+        provider: { type: string }
+        url: { type: string }
+        score: { type: number, format: double }
+    ConnectorState:
+      type: object
+      properties:
+        provider: { type: string }
+        configured: { type: boolean, description: Deployment has OAuth credentials for it }
+        status: { type: string, enum: [disconnected, connected, syncing, error] }
+        docCount: { type: integer, description: Ingested kb-source documents from this provider }
+        kind: { type: string, enum: [native, piece] }
+        account: { type: string }
+        lastSync: { type: string }
+        error: { type: string }
+    CatalogEntry:
+      type: object
+      properties:
+        provider: { type: string }
+        displayName: { type: string }
+        description: { type: string }
+        kind: { type: string, enum: [native, piece] }
+        configured: { type: boolean }

@@ -1,0 +1,75 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Templates API
+  description: |
+    Read-only starter-kit gallery for Hanzo Cloud — the `/v1/templates` surface
+    served by the cloud `templates` subsystem
+    (`hanzoai/cloud/clients/templates`). Deployable app/site scaffolds (source of
+    truth: `hanzoai/gallery`), vendored so the unified cloud binary ships the
+    catalog with no external dependency. Reference content, not org data — a user
+    forks a template into a project via the deploy flow, not by mutating this
+    catalog.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+tags:
+  - name: Templates
+    description: Deployable starter-kit scaffolds
+security:
+  - bearerAuth: []
+paths:
+  /v1/templates:
+    get:
+      tags: [Templates]
+      summary: List the starter-kit catalog
+      operationId: listTemplates
+      responses:
+        '200': { description: Catalog, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Template' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/templates/{slug}:
+    parameters:
+      - { name: slug, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Templates]
+      summary: One template by slug
+      operationId: getTemplate
+      responses:
+        '200': { description: Template, content: { application/json: { schema: { $ref: '#/components/schemas/Template' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Template not found }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: IAM-issued JWT or `hk-` Cloud API key.
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
+  schemas:
+    Template:
+      type: object
+      properties:
+        slug: { type: string }
+        title: { type: string }
+        category: { type: string }
+        description: { type: string }
+        framework: { type: string }
+        features: { type: array, items: { type: string } }
+        useCase: { type: string }
+        tier: { type: integer, description: Optional pricing tier }
+        rating: { type: number, format: double, description: Optional gallery rating }
+        source: { type: string, description: Live gallery fork/deploy URL }
+        preview: { type: string, description: Live gallery screenshot/preview URL }
