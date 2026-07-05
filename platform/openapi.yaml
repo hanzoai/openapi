@@ -3172,108 +3172,130 @@ components:
                   type: array
                   items:
                     type: string
+    DeployJobApplication:
+      type: object
+      required:
+      - applicationId
+      - applicationType
+      - type
+      - serverId
+      properties:
+        applicationId:
+          type: string
+        titleLog:
+          type: string
+        descriptionLog:
+          type: string
+        server:
+          type: boolean
+        type:
+          type: string
+          enum:
+          - deploy
+          - redeploy
+        applicationType:
+          type: string
+          enum:
+          - application
+        serverId:
+          type: string
+    DeployJobCompose:
+      type: object
+      required:
+      - composeId
+      - applicationType
+      - type
+      - serverId
+      properties:
+        composeId:
+          type: string
+        titleLog:
+          type: string
+        descriptionLog:
+          type: string
+        server:
+          type: boolean
+        type:
+          type: string
+          enum:
+          - deploy
+          - redeploy
+        applicationType:
+          type: string
+          enum:
+          - compose
+        serverId:
+          type: string
+    DeployJobApplicationPreview:
+      type: object
+      required:
+      - applicationId
+      - previewDeploymentId
+      - applicationType
+      - type
+      - serverId
+      properties:
+        applicationId:
+          type: string
+        previewDeploymentId:
+          type: string
+        titleLog:
+          type: string
+        descriptionLog:
+          type: string
+        server:
+          type: boolean
+        type:
+          type: string
+          enum:
+          - deploy
+        applicationType:
+          type: string
+          enum:
+          - application-preview
+        serverId:
+          type: string
     DeployJob:
       oneOf:
-      - type: object
-        required:
-        - applicationId
-        - applicationType
-        - type
-        - serverId
-        properties:
-          applicationId:
-            type: string
-          titleLog:
-            type: string
-          descriptionLog:
-            type: string
-          server:
-            type: boolean
-          type:
-            type: string
-            enum:
-            - deploy
-            - redeploy
-          applicationType:
-            type: string
-            const: application
-          serverId:
-            type: string
-      - type: object
-        required:
-        - composeId
-        - applicationType
-        - type
-        - serverId
-        properties:
-          composeId:
-            type: string
-          titleLog:
-            type: string
-          descriptionLog:
-            type: string
-          server:
-            type: boolean
-          type:
-            type: string
-            enum:
-            - deploy
-            - redeploy
-          applicationType:
-            type: string
-            const: compose
-          serverId:
-            type: string
-      - type: object
-        required:
-        - applicationId
-        - previewDeploymentId
-        - applicationType
-        - type
-        - serverId
-        properties:
-          applicationId:
-            type: string
-          previewDeploymentId:
-            type: string
-          titleLog:
-            type: string
-          descriptionLog:
-            type: string
-          server:
-            type: boolean
-          type:
-            type: string
-            enum:
-            - deploy
-          applicationType:
-            type: string
-            const: application-preview
-          serverId:
-            type: string
+      - $ref: '#/components/schemas/DeployJobApplication'
+      - $ref: '#/components/schemas/DeployJobCompose'
+      - $ref: '#/components/schemas/DeployJobApplicationPreview'
       discriminator:
         propertyName: applicationType
+        mapping:
+          application: '#/components/schemas/DeployJobApplication'
+          compose: '#/components/schemas/DeployJobCompose'
+          application-preview: '#/components/schemas/DeployJobApplicationPreview'
+    CancelDeploymentJobApplication:
+      type: object
+      required:
+      - applicationId
+      - applicationType
+      properties:
+        applicationId:
+          type: string
+        applicationType:
+          type: string
+          enum:
+          - application
+    CancelDeploymentJobCompose:
+      type: object
+      required:
+      - composeId
+      - applicationType
+      properties:
+        composeId:
+          type: string
+        applicationType:
+          type: string
+          enum:
+          - compose
     CancelDeploymentJob:
       oneOf:
-      - type: object
-        required:
-        - applicationId
-        - applicationType
-        properties:
-          applicationId:
-            type: string
-          applicationType:
-            type: string
-            const: application
-      - type: object
-        required:
-        - composeId
-        - applicationType
-        properties:
-          composeId:
-            type: string
-          applicationType:
-            type: string
-            const: compose
+      - $ref: '#/components/schemas/CancelDeploymentJobApplication'
+      - $ref: '#/components/schemas/CancelDeploymentJobCompose'
       discriminator:
         propertyName: applicationType
+        mapping:
+          application: '#/components/schemas/CancelDeploymentJobApplication'
+          compose: '#/components/schemas/CancelDeploymentJobCompose'
