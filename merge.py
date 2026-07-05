@@ -29,6 +29,16 @@ def prefix(node, svc):
                     name = "/".join(v.split("/")[3:])
                     out[k] = f"#/components/{kind}/{svc}_{name}"
                     continue
+            if k == "mapping" and isinstance(v, dict):
+                # discriminator.mapping values are component pointers too, but not
+                # under a `$ref` key — namespace them the same way.
+                out[k] = {
+                    mk: (f"#/components/schemas/{svc}_{'/'.join(mv.split('/')[3:])}"
+                         if isinstance(mv, str) and mv.startswith("#/components/schemas/")
+                         else mv)
+                    for mk, mv in v.items()
+                }
+                continue
             out[k] = prefix(v, svc)
         return out
     if isinstance(node, list):
@@ -58,9 +68,24 @@ def main():
             # master is a single, globally-valid, generatable OpenAPI document.
             if isinstance(item, dict):
                 for method, op in item.items():
-                    if method in HTTP_METHODS and isinstance(op, dict) \
-                            and isinstance(op.get("operationId"), str):
-                        op["operationId"] = f"{svc}_{op['operationId']}"
+                    if method in HTTP_METHODS and isinstance(op, dict):
+                        if isinstance(op.get("operationId"), str):
+                            op["operationId"] = f"{svc}_{op['operationId']}"
+                        # Namespace tags by service too. Codegen groups operations
+                        # into one API class per tag, so two services sharing a tag
+                        # name (even case-only variants like `MCP`/`mcp`) would fuse
+                        # into a single, cross-contaminated class — and collide on
+                        # case-insensitive filesystems. Prefixing keeps each
+                        # service's operations in their own class (same discipline
+                        # as schemas/operationIds).
+                        # Collapse to a single primary tag: codegen puts one
+                        # operation in exactly one API class. A multi-tagged op
+                        # would otherwise be emitted (with its request model) in
+                        # every class, colliding on the shared model name.
+                        if isinstance(op.get("tags"), list) and op["tags"]:
+                            op["tags"] = [f"{svc}_{op['tags'][0]}"]
+                        else:
+                            op["tags"] = [svc]
             paths[p] = item
         for n, x in (comps.get("schemas", {}) or {}).items():
             schemas[f"{svc}_{n}"] = prefix(x, svc)

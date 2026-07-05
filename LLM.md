@@ -38,53 +38,42 @@ python3 -c "import yaml, glob; [yaml.safe_load(open(s)) for s in glob.glob('*/op
 5. Update `CHANGELOG.md` with a dated entry under the v1.0.0 heading.
 6. Run `python3 merge.py` (regenerates `hanzo.yaml`) and commit both.
 
-## SDK generation — the ONE way, and its current drift (READ THIS)
+## SDK generation — the ONE way (Stainless RETIRED, 2026-07)
 
-The one interface is `hanzo.yaml`; the generator backend is an orthogonal
-per-language concern (one interface, orthogonal backends):
+The one interface is `hanzo.yaml`; the generator backend is
+**openapi-generator** for EVERY language — no Stainless, no API key. Each
+language repo owns its generation via a `scripts/generate.sh` that runs
+openapi-generator against this `hanzo.yaml`, plus a `generate.yml` workflow
+that regenerates + opens a PR on the `spec-update` repository_dispatch fired
+by this repo's `regenerate-sdks.yml`.
 
-| Lang | Repo | Backend | Why |
-|------|------|---------|-----|
-| Python/Go/JS | `hanzoai/{python,go,js}-sdk` | Stainless project `hanzo-ai` | best DX, already published |
-| Rust | `hanzoai/rust-sdk` | hand-written crates | Stainless emits no Rust |
-| C++ | `hanzoai/cpp-sdk` | openapi-generator `cpp-restsdk` on ARC | Stainless emits no C++ |
-| Dart (if wanted) | `hanzoai/dart-sdk` | openapi-generator `dart-dio` on ARC | Stainless emits no Dart |
+| Lang | Repo | Generator | Package | Publish |
+|------|------|-----------|---------|---------|
+| Python | `hanzoai/python-sdk` (`pkg/hanzoai`) | `python` (urllib3, pydantic v2) | `hanzoai` on PyPI | tag `v*` → twine |
+| Go | `hanzoai/go-sdk` | `go` (package `hanzoai`) | `github.com/hanzoai/go-sdk` | tag `v*` → pkg.go.dev |
+| TypeScript | `hanzoai/js-sdk` | `typescript-axios` | `hanzoai` on npm | tag `v*` → npm publish |
+| C++ | `hanzoai/cpp-sdk` | `cpp-restsdk` | — | artifact (this repo's matrix) |
+| Dart | `hanzoai/dart-sdk` | `dart-dio` | — | artifact (this repo's matrix) |
+| Rust | `hanzoai/rust-sdk` | hand-written | `hanzo` crate | reconcile (openapi-generator emits no Rust) |
 
-One repo per language, each derives from `hanzo.yaml`. There is NO unified
-`hanzoai/sdk` multi-lang monorepo generator — that repo's `gen/` (openapi-
-generator over all 10 langs, "replaces Stainless") is the retired SECOND way;
-`hanzoai/sdk` is CLI-only now.
+Generator version pinned to **7.14.0** everywhere. The merged surface is
+verified codegen-clean AND compile-clean for go / python / typescript-axios
+(spec fixes that made it so: pubsub `ack_wait` int64; platform DeployJob /
+CancelDeploymentJob oneOf → named subschemas; merge.py namespaces operation
+tags + discriminator mappings per-service and collapses to one primary tag).
 
-### Known drift (2026-07 audit — must be fixed for the SDKs to be truthful)
+There is NO unified `hanzoai/sdk` multi-lang monorepo generator — that repo's
+`gen/` is the retired SECOND way; `hanzoai/sdk` is CLI-only now.
 
-1. **Stainless points at the LEGACY LLM-gateway spec, not `hanzo.yaml`.** The
-   published python/go/js SDKs expose only the LiteLLM inference + gateway-admin
-   surface (188 endpoints / 49 resources: chat, models, embeddings, Key, User,
-   Team, Spend, Budget, Guardrails, provider passthrough). They cover NONE of
-   the cloud product surface. Fix = repoint the Stainless `hanzo-ai` project's
-   spec source to `hanzo.yaml` and expand its resource tree to the full surface.
-   `python-sdk/.stats.yml` (spec `87bc62c…`) is also diverged from go/js
-   (`9b3181f…`) — the repoint resyncs all three.
-2. **~28 LIVE `/v1` product prefixes have no usable spec** (so even after the
-   repoint they'd be uncovered). The cloud binary (`hanzoai/cloud`
-   `subsystems.go`) mounts these flat; they need per-service specs authored from
-   the Go routes in `cloud/clients/<x>/*.go`:
-   `agents, tracker, crm, framework(+cms/erp/help/kb), kb, prompts, tasks,
-   functions, git, templates, security, integrations, notify, automations,
-   billing, plans, graph(indexers/oracles), exec, websearch, admin, do
-   (vpcs/load-balancers), provisioning(sql/datastore/docdb), memory, vfs,
-   licensing, authz, ml(train)`.
-3. **Prefix-mismatch specs — re-base onto the live flat prefix:** `visor` →
-   `/v1/machines,/v1/gpus,/v1/clusters`; `zt` → `/v1/networks,/v1/mesh,/v1/edge`;
-   `flow` → `/v1/automations`; `guard` → `/v1/security`.
-4. **Stale specs (legacy monolith, NOT fused into the cloud binary):**
-   `cloud/` (157) and `nexus/` (151) are the retired RPC monolith — only the
-   `/v1/search-docs` + `/v1/vector` slices survive (via `clients/product`).
-   `mq, pubsub, stream, registry, db, did, engine` are not live. Separate
-   deployments that legitimately keep their spec: `iam, chat, gateway,
-   operative, dns, flow`.
+### Remaining spec-coverage gaps (SDKs cover the spec faithfully; the spec
+lacks these live prefixes — author from the Go routes, then the SDKs pick
+them up automatically on the next regeneration):
 
-The SDK-generation surface is the FUSED `api.hanzo.ai/v1` binary, not the union
-of every deployment. `merge.py` currently unions all per-service specs; the
-correct target is the live cloud surface (add the 28, re-base the 4, drop the
-stale monolith).
+- **`/v1/memory`** and **`/v1/videos`** are LIVE (cloud binary) but have no
+  paths in `hanzo.yaml` yet.
+- The broader "author the remaining `/v1` product specs from
+  `cloud/clients/<x>/*.go`" backlog still applies for any prefix not yet
+  present in the per-service specs.
+
+The SDK-generation surface is the FUSED `api.hanzo.ai/v1` binary. `merge.py`
+unions the per-service specs into it.
