@@ -1,7 +1,9 @@
 name: Regenerate SDKs
 # The ONE way: hanzo.yaml (merge.py) is the single source of truth. On every
 # change, validate it is codegen-clean, then regenerate every SDK from it —
-# Stainless for python/go/js, openapi-generator on ARC for cpp/dart.
+# openapi-generator for ALL languages, no Stainless. python/go/js own their
+# generation (each repo has scripts/generate.sh + a generate.yml that runs on
+# the spec-update dispatch below); cpp/dart generate here as artifacts.
 on:
   push:
     branches: [main]
@@ -51,26 +53,24 @@ jobs:
           print("GATE PASS")
           PY
 
-  stainless:
-    name: Regenerate python/go/js (Stainless)
+  dispatch:
+    name: Trigger regeneration (python/go/js)
     needs: validate
     runs-on: hanzo-build-linux-amd64
+    strategy:
+      matrix:
+        repo: [python-sdk, go-sdk, js-sdk]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '22' }
-      - name: Install Stainless CLI
-        run: npm i -g @stainless-api/cli
-      - name: Build (repoints hanzo-ai project -> hanzo.yaml, opens PRs on the 3 SDK repos)
-        # STAINLESS_API_KEY: source of truth is KMS (kms.hanzo.ai secret
-        # sdk/STAINLESS_API_KEY). Set it as a repo/org secret synced from KMS.
-        # The Stainless project's spec SOURCE must also be repointed from the
-        # legacy LLM spec to this hanzo.yaml in Stainless Studio (one-time).
-        env:
-          STAINLESS_API_KEY: ${{ secrets.STAINLESS_API_KEY }}
-        run: |
-          [ -n "$STAINLESS_API_KEY" ] || { echo "::error::STAINLESS_API_KEY not set — provision it in KMS then sync to this repo's secrets"; exit 1; }
-          stl builds create --project hanzo-ai --branch main hanzo.yaml
+      - name: Fire spec-update to hanzoai/${{ matrix.repo }}
+        # Each SDK repo's generate.yml regenerates from this hanzo.yaml with
+        # openapi-generator and opens a PR. No Stainless, no API key.
+        # SDK_DISPATCH_TOKEN: a PAT (or GitHub App token) with `repo` scope on
+        # the three SDK repos, synced from KMS.
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.SDK_DISPATCH_TOKEN }}
+          repository: hanzoai/${{ matrix.repo }}
+          event-type: spec-update
 
   openapi-generator:
     name: Regenerate ${{ matrix.lang }} (openapi-generator)
