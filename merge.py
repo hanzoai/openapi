@@ -41,7 +41,7 @@ GROUPS = {
                  "kv", "vector"],
     "Applications": ["console", "projects", "git", "templates", "integrations",
                      "bot", "kb", "search", "websearch", "s3", "authors",
-                     "automations", "chat", "auto", "app", "flow"],
+                     "automations", "chat", "auto", "app", "flow", "world"],
     "Core": ["admin", "plugin", "cloud"],
 }
 
