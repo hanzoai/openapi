@@ -92,8 +92,6 @@ tags:
   description: Hanzo KB API
 - name: kms
   description: Hanzo KMS API
-- name: kmssvc
-  description: Hanzo KMS API
 - name: kv
   description: Hanzo KV API
 - name: ml
@@ -112,8 +110,6 @@ tags:
   description: Hanzo Operative API
 - name: paas
   description: Hanzo PaaS API
-- name: paassvc
-  description: Hanzo PaaS API
 - name: plan
   description: Hanzo Plans API
 - name: platform
@@ -124,7 +120,7 @@ tags:
   description: Hanzo Pricing API
 - name: product
   description: Hanzo Product API
-- name: projectsvc
+- name: projects
   description: Hanzo Projects API
 - name: prompts
   description: Hanzo Prompts API
@@ -36046,78 +36042,6 @@ paths:
                 properties:
                   approvalPolicy:
                     $ref: '#/components/schemas/kms_ApprovalPolicy'
-  /v1/kms/auth/login:
-    post:
-      tags:
-      - kmssvc_Auth
-      operationId: kmssvc_kmsLogin
-      summary: Broker a machine credential for an owner-scoped IAM JWT
-      description: "The credential-exchange broker used by the kms-operator's universalAuth\ntransport. POST `{clientId, clientSecret}`;\
-        \ the broker exchanges them at\nIAM's `client_credentials` endpoint and returns IAM's own JWT verbatim as\n`{accessToken,\
-        \ expiresIn, tokenType}`. The returned token's `owner` claim\nscopes it to exactly one org, re-checked by the secret-CRUD\
-        \ guard.\n\nPublic and unauthenticated (it IS the credential exchange), so it is\nrate-limited PER SOURCE IP. Fail-closed:\
-        \ no IAM issuer configured \u2192 503;\nmalformed input \u2192 400; a bad credential \u2192 401; an IAM outage \u2192\
-        \ 502. Never\nlogs or echoes the secret; carries no IAM internals in error bodies.\n"
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/kmssvc_LoginRequest'
-      responses:
-        '200':
-          description: Owner-scoped IAM JWT.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kmssvc_LoginResponse'
-              examples:
-                ok:
-                  value:
-                    accessToken: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
-                    expiresIn: 3600
-                    tokenType: Bearer
-        '400':
-          $ref: '#/components/responses/kmssvc_BadRequest'
-        '401':
-          description: Authentication failed (bad or unknown credential).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kmssvc_Error'
-              examples:
-                loginFailed:
-                  value:
-                    status: error
-                    msg: kms login failed
-                    code: 401
-        '429':
-          $ref: '#/components/responses/kmssvc_TooManyRequests'
-        '502':
-          description: Upstream IAM is unavailable.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kmssvc_Error'
-              examples:
-                iamDown:
-                  value:
-                    status: error
-                    msg: kms login failed
-                    code: 502
-        '503':
-          description: No IAM issuer configured; login is disabled.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kmssvc_Error'
-              examples:
-                noIssuer:
-                  value:
-                    status: error
-                    msg: 'kms login unavailable: no IAM issuer configured'
-                    code: 503
   /v1/kms/auth/login1:
     post:
       operationId: kms_login1
@@ -36547,32 +36471,6 @@ paths:
             application/json:
               schema:
                 type: object
-  /v1/kms/config:
-    get:
-      tags:
-      - kmssvc_Health
-      operationId: kmssvc_kmsConfig
-      summary: KMS console runtime config
-      description: 'Serves the KMS console SPA''s runtime config (the OIDC issuer the console
-
-        logs in against + the KMS API base). No secrets, so it is public.
-
-        '
-      security: []
-      responses:
-        '200':
-          description: Runtime config.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kmssvc_ConfigResponse'
-              examples:
-                config:
-                  value:
-                    brand: hanzo
-                    issuer: https://hanzo.id
-                    apiBase: /v1/kms
-                    loginPath: /v1/kms/auth/login
   /v1/kms/dashboard/{projectId}/secrets-overview:
     get:
       operationId: kms_getDashboardSecretsOverview
@@ -36786,49 +36684,6 @@ paths:
             application/json:
               schema:
                 type: object
-  /v1/kms/health:
-    get:
-      tags:
-      - kmssvc_Health
-      operationId: kmssvc_kmsHealth
-      summary: KMS health probe
-      description: "Real liveness probe. Returns 200 only when the store is open AND a master\nkey is configured; 503 with\
-        \ the honest reason in health-only/degraded\nmode. Not JWT-gated \u2014 liveness must be probe-able without a token.\n"
-      security: []
-      responses:
-        '200':
-          description: KMS is open and a master key is configured.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kmssvc_HealthResponse'
-              examples:
-                ok:
-                  value:
-                    service: kms
-                    status: ok
-                    signing: true
-                    ready: true
-        '503':
-          description: "Degraded \u2014 no in-process KMS client, or the master key is missing.\n"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kmssvc_HealthResponse'
-              examples:
-                noClient:
-                  value:
-                    service: kms
-                    status: degraded
-                    ready: false
-                    error: no in-process KMS client (secrets served out-of-process or disabled)
-                masterKeyMissing:
-                  value:
-                    service: kms
-                    status: degraded
-                    signing: false
-                    ready: false
-                    error: master key not configured
   /v1/kms/identities:
     post:
       operationId: kms_createIdentity
@@ -37263,89 +37118,112 @@ paths:
                   organization:
                     $ref: '#/components/schemas/kms_Organization'
   /v1/kms/orgs/{org}/secrets:
-    parameters:
-    - $ref: '#/components/parameters/kmssvc_Org'
+    description: "Canonical (lux-native) org-scoped secrets API \u2014 the surface the Hanzo KMS Go server actually serves\
+      \ (github.com/hanzoai/kms embed.go registerSecretRoutes) and that console2 + the `kms` CLI use. Auth is an IAM-issued\
+      \ Bearer token verified against the issuer JWKS (authorize + canActOnOrg); the org in the path MUST match the token's\
+      \ owner claim (or a global admin). Zero-knowledge: list returns KEYS ONLY (no value); values are read one at a time\
+      \ via the {rest} path below.\n"
     get:
+      operationId: kms_kmsListOrgSecrets
       tags:
-      - kmssvc_Secrets
-      operationId: kmssvc_kmsListSecrets
-      summary: List a path's secret metadata
-      description: 'Returns the non-sensitive metadata (never ciphertext or plaintext) of the
-
-        org''s secrets at a path/env. `?path=` narrows to a subpath; `?env=`
-
-        selects the environment (default `default`).
-
-        '
+      - kms_Secrets
+      summary: List an org's secret metadata (names only, never values)
       parameters:
-      - $ref: '#/components/parameters/kmssvc_Env'
-      - $ref: '#/components/parameters/kmssvc_PathQuery'
+      - name: org
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: env
+        in: query
+        description: "Environment slug (devnet, testnet, mainnet, production, \u2026). Default \"default\"."
+        schema:
+          type: string
+      - name: prefix
+        in: query
+        description: Restrict the scan to a subpath within brand/{org}.
+        schema:
+          type: string
       responses:
         '200':
-          description: Secret metadata list.
+          description: Secret metadata rows (no values)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/kmssvc_ListSecretsResponse'
-              examples:
-                list:
-                  value:
-                    secrets:
-                    - name: DB_PASSWORD
-                      path: /orgs/acme/ci
-                      env: production
-                      scheme: v1
-                    total: 1
-        '400':
-          $ref: '#/components/responses/kmssvc_BadRequest'
+                type: object
+                properties:
+                  secrets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        path:
+                          type: string
+                        name:
+                          type: string
+                        env:
+                          type: string
+                        version:
+                          type: integer
+                          format: int64
+                        updatedTime:
+                          type: string
+                          format: date-time
+                  count:
+                    type: integer
+                  truncated:
+                    type: boolean
+        '401':
+          description: Missing/invalid bearer token
         '403':
-          $ref: '#/components/responses/kmssvc_Forbidden'
-        '502':
-          description: Backing store error (Bad Gateway).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kmssvc_Error'
-        '503':
-          $ref: '#/components/responses/kmssvc_ServiceUnavailable'
+          description: Token org claim does not match the org path
     post:
+      operationId: kms_kmsPutOrgSecret
       tags:
-      - kmssvc_Secrets
-      operationId: kmssvc_kmsPutSecret
-      summary: Upsert (seal + store) a secret
-      description: "Seals + upserts a secret. The value is sealed under a fresh per-secret DEK\n(master-key-wrapped) before\
-        \ storage \u2014 plaintext never touches disk.\n"
+      - kms_Secrets
+      summary: Create or upsert a secret (value write-only; version bumps)
+      parameters:
+      - name: org
+        in: path
+        required: true
+        schema:
+          type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/kmssvc_SecretPutRequest'
+              type: object
+              required:
+              - name
+              - value
+              properties:
+                path:
+                  type: string
+                name:
+                  type: string
+                env:
+                  type: string
+                  default: default
+                value:
+                  type: string
       responses:
         '200':
-          description: Secret stored.
+          description: Stored
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/kmssvc_PutSecretResponse'
-              examples:
-                stored:
-                  value:
-                    stored: true
-                    name: DB_PASSWORD
-                    env: production
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  version:
+                    type: integer
+                    format: int64
         '400':
-          $ref: '#/components/responses/kmssvc_BadRequest'
+          description: Invalid path/name or missing name+value
         '403':
-          $ref: '#/components/responses/kmssvc_Forbidden'
-        '502':
-          description: Backing store error (Bad Gateway).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kmssvc_Error'
-        '503':
-          $ref: '#/components/responses/kmssvc_ServiceUnavailable'
+          description: Token org claim does not match the org path
   /v1/kms/orgs/{org}/secrets/{rest}:
     description: 'One secret addressed by its full path/name (e.g. providers/alpaca/api_key). GET reveals the value (shown
       once, audited); PATCH rotates with a compare-and-set on the current version (If-Match or body.version); DELETE removes
@@ -37455,90 +37333,6 @@ paths:
                 properties:
                   ok:
                     type: boolean
-  /v1/kms/orgs/{org}/secrets/{secretPath}:
-    parameters:
-    - $ref: '#/components/parameters/kmssvc_Org'
-    - $ref: '#/components/parameters/kmssvc_SecretPath'
-    get:
-      tags:
-      - kmssvc_Secrets
-      operationId: kmssvc_kmsGetSecret
-      summary: Read one secret value
-      description: 'Reads one secret value. The trailing wildcard path is the sub-path + name
-
-        under the org (last segment is the name, the rest is the sub-path);
-
-        `?env=` selects the environment. Returns the opened plaintext.
-
-        '
-      parameters:
-      - $ref: '#/components/parameters/kmssvc_Env'
-      responses:
-        '200':
-          description: Opened secret value.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kmssvc_GetSecretResponse'
-              examples:
-                value:
-                  value:
-                    name: DB_PASSWORD
-                    env: production
-                    value: s3cr3t-plaintext
-        '400':
-          $ref: '#/components/responses/kmssvc_BadRequest'
-        '403':
-          $ref: '#/components/responses/kmssvc_Forbidden'
-        '404':
-          $ref: '#/components/responses/kmssvc_NotFound'
-        '502':
-          description: Backing store error (Bad Gateway).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kmssvc_Error'
-        '503':
-          $ref: '#/components/responses/kmssvc_ServiceUnavailable'
-    delete:
-      tags:
-      - kmssvc_Secrets
-      operationId: kmssvc_kmsDeleteSecret
-      summary: Delete one secret
-      description: 'Removes one secret. The trailing wildcard path is the sub-path + name;
-
-        `?env=` selects the environment.
-
-        '
-      parameters:
-      - $ref: '#/components/parameters/kmssvc_Env'
-      responses:
-        '200':
-          description: Secret deleted.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kmssvc_DeleteSecretResponse'
-              examples:
-                deleted:
-                  value:
-                    deleted: true
-                    name: DB_PASSWORD
-                    env: production
-        '400':
-          $ref: '#/components/responses/kmssvc_BadRequest'
-        '403':
-          $ref: '#/components/responses/kmssvc_Forbidden'
-        '404':
-          $ref: '#/components/responses/kmssvc_NotFound'
-        '502':
-          description: Backing store error (Bad Gateway).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kmssvc_Error'
-        '503':
-          $ref: '#/components/responses/kmssvc_ServiceUnavailable'
   /v1/kms/projects:
     post:
       operationId: kms_createProject
@@ -47048,186 +46842,6 @@ paths:
           $ref: '#/components/responses/graph_Unauthorized'
         '502':
           description: Graph upstream unreachable
-  /v1/paas/apps:
-    get:
-      tags:
-      - paassvc_Drift Board
-      summary: List the fleet drift board
-      description: "Returns the whole fleet's drift board \u2014 every operator Service CR across\nthe scanned platform namespaces\
-        \ (`hanzo`, `hanzo-testnet`, `hanzo-devnet`),\nmapped to an `AppView` with observed declared/running tags, health,\
-        \ phase,\nendpoints, and the derived drift verdict. Ordered deterministically by\n(org, app, env). Global-admin only.\n"
-      operationId: paassvc_listApps
-      parameters:
-      - name: env
-        in: query
-        required: false
-        description: Narrow to one lifecycle env.
-        schema:
-          type: string
-          enum:
-          - main
-          - test
-          - dev
-      - name: health
-        in: query
-        required: false
-        description: Narrow to rows with this health value.
-        schema:
-          type: string
-          enum:
-          - green
-          - yellow
-          - red
-      - name: org
-        in: query
-        required: false
-        description: Narrow to one image namespace ("org"), e.g. `hanzoai`.
-        schema:
-          type: string
-      - name: drift
-        in: query
-        required: false
-        description: "When `1` or `true`, return only rows that are actually drifting (drift severity \u2260 ok)."
-        schema:
-          type: string
-          enum:
-          - '1'
-          - 'true'
-      responses:
-        '200':
-          description: The drift board plus a per-severity summary.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  apps:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/paassvc_AppView'
-                  summary:
-                    type: object
-                    properties:
-                      total:
-                        type: integer
-                        description: Number of rows after filtering.
-                      byDrift:
-                        type: object
-                        properties:
-                          ok:
-                            type: integer
-                          yellow:
-                            type: integer
-                          red:
-                            type: integer
-        '401':
-          $ref: '#/components/responses/paassvc_Unauthorized'
-        '403':
-          $ref: '#/components/responses/paassvc_Forbidden'
-        '502':
-          description: "Bad Gateway \u2014 a kubernetes list/RBAC error while reading Service CRs."
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/paassvc_Error'
-        '503':
-          $ref: '#/components/responses/paassvc_ServiceUnavailable'
-  /v1/paas/apps/{app}:
-    get:
-      tags:
-      - paassvc_Drift Board
-      summary: Get one service row by CR name
-      description: "Returns one service row by Service CR name. Scans the platform namespaces\nin env order (`main` \u2192\
-        \ `test` \u2192 `dev`) and returns the first match, so a\nbare app name resolves to production by default. Global-admin\
-        \ only.\n"
-      operationId: paassvc_getApp
-      parameters:
-      - name: app
-        in: path
-        required: true
-        description: The Service CR name. Must be a DNS-1123 label (`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`).
-        schema:
-          type: string
-          pattern: ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$
-      responses:
-        '200':
-          description: The observed service row.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/paassvc_AppView'
-        '400':
-          $ref: '#/components/responses/paassvc_BadRequest'
-        '401':
-          $ref: '#/components/responses/paassvc_Unauthorized'
-        '403':
-          $ref: '#/components/responses/paassvc_Forbidden'
-        '404':
-          $ref: '#/components/responses/paassvc_NotFound'
-        '502':
-          description: "Bad Gateway \u2014 a kubernetes get/RBAC error while reading the Service CR."
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/paassvc_Error'
-        '503':
-          $ref: '#/components/responses/paassvc_ServiceUnavailable'
-  /v1/paas/apps/{app}/deploy:
-    post:
-      tags:
-      - paassvc_Deploy
-      summary: Deploy a new image tag
-      description: 'Rolls a new image tag onto a service by merge-patching ONLY the Service
-
-        CR''s `.spec.image`. The operator reconciles the rollout (Deployment
-
-        update, rolling restart). When `repository` is omitted, only the tag +
-
-        pullPolicy are patched, preserving the CR''s existing repository.
-
-        Global-admin only.
-
-        '
-      operationId: paassvc_deployApp
-      parameters:
-      - name: app
-        in: path
-        required: true
-        description: The Service CR name. Must be a DNS-1123 label.
-        schema:
-          type: string
-          pattern: ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/paassvc_DeployRequest'
-      responses:
-        '200':
-          description: The patch was accepted; the operator will reconcile the rollout.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/paassvc_DeployResponse'
-        '400':
-          $ref: '#/components/responses/paassvc_BadRequest'
-        '401':
-          $ref: '#/components/responses/paassvc_Unauthorized'
-        '403':
-          $ref: '#/components/responses/paassvc_Forbidden'
-        '404':
-          $ref: '#/components/responses/paassvc_NotFound'
-        '422':
-          $ref: '#/components/responses/paassvc_UnprocessableEntity'
-        '502':
-          description: "Bad Gateway \u2014 a kubernetes patch/RBAC error while patching the Service CR."
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/paassvc_Error'
-        '503':
-          $ref: '#/components/responses/paassvc_ServiceUnavailable'
   /v1/paas/auth/login:
     post:
       tags:
@@ -47710,40 +47324,6 @@ paths:
                 properties:
                   status:
                     type: boolean
-  /v1/paas/health:
-    get:
-      tags:
-      - paassvc_Health
-      summary: PaaS control-plane health probe
-      description: "A real probe: verifies the API server is reachable and that the Service\nCRD is served. Returns `200`\
-        \ only when everything is ok; `503` + the real\nreason otherwise. NOT admin-gated \u2014 liveness must be probe-able\
-        \ by the\nplatform/operator without a JWT.\n"
-      operationId: paassvc_paasHealth
-      security: []
-      responses:
-        '200':
-          description: "The control plane is healthy \u2014 k8s reachable and the Service CRD is served."
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/paassvc_Health'
-              example:
-                service: paas
-                status: ok
-                k8s: true
-                crd: true
-        '503':
-          description: "Degraded \u2014 either the kubernetes client is unconfigured (`k8s: false`\nwith the init error) or\
-            \ the Service CRD is unreachable (`crd: false`).\n"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/paassvc_Health'
-              example:
-                service: paas
-                status: degraded
-                k8s: false
-                error: no in-cluster config and no kubeconfig
   /v1/paas/org:
     get:
       tags:
@@ -52156,7 +51736,7 @@ paths:
   /v1/projects:
     post:
       tags:
-      - projectsvc_Projects
+      - projects_Projects
       summary: Create a project
       description: 'Create an org-scoped project. When `slug` is omitted it is derived from
 
@@ -52169,34 +51749,34 @@ paths:
         must be one of the known build hints.
 
         '
-      operationId: projectsvc_createProject
+      operationId: projects_createProject
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/projectsvc_CreateProjectRequest'
+              $ref: '#/components/schemas/projects_CreateProjectRequest'
       responses:
         '201':
           description: Project created.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/projectsvc_Project'
+                $ref: '#/components/schemas/projects_Project'
         '400':
-          $ref: '#/components/responses/projectsvc_BadRequest'
+          $ref: '#/components/responses/projects_BadRequest'
         '403':
-          $ref: '#/components/responses/projectsvc_Forbidden'
+          $ref: '#/components/responses/projects_Forbidden'
         '409':
-          $ref: '#/components/responses/projectsvc_Conflict'
+          $ref: '#/components/responses/projects_Conflict'
         '500':
-          $ref: '#/components/responses/projectsvc_InternalServerError'
+          $ref: '#/components/responses/projects_InternalServerError'
     get:
       tags:
-      - projectsvc_Projects
+      - projects_Projects
       summary: List projects
       description: List all projects for the caller's org.
-      operationId: projectsvc_listProjects
+      operationId: projects_listProjects
       responses:
         '200':
           description: Projects for the org.
@@ -52205,15 +51785,15 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/projectsvc_Project'
+                  $ref: '#/components/schemas/projects_Project'
         '403':
-          $ref: '#/components/responses/projectsvc_Forbidden'
+          $ref: '#/components/responses/projects_Forbidden'
         '500':
-          $ref: '#/components/responses/projectsvc_InternalServerError'
+          $ref: '#/components/responses/projects_InternalServerError'
   /v1/projects/fork:
     post:
       tags:
-      - projectsvc_Projects
+      - projects_Projects
       summary: Fork a starter template into a new project
       description: 'Create a project seeded from a starter-kit gallery template. `slug` is
 
@@ -52226,54 +51806,54 @@ paths:
         apply identically.
 
         '
-      operationId: projectsvc_forkProject
+      operationId: projects_forkProject
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/projectsvc_ForkProjectRequest'
+              $ref: '#/components/schemas/projects_ForkProjectRequest'
       responses:
         '201':
           description: Project created from template.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/projectsvc_Project'
+                $ref: '#/components/schemas/projects_Project'
         '400':
-          $ref: '#/components/responses/projectsvc_BadRequest'
+          $ref: '#/components/responses/projects_BadRequest'
         '403':
-          $ref: '#/components/responses/projectsvc_Forbidden'
+          $ref: '#/components/responses/projects_Forbidden'
         '404':
-          $ref: '#/components/responses/projectsvc_NotFound'
+          $ref: '#/components/responses/projects_NotFound'
         '409':
-          $ref: '#/components/responses/projectsvc_Conflict'
+          $ref: '#/components/responses/projects_Conflict'
         '500':
-          $ref: '#/components/responses/projectsvc_InternalServerError'
+          $ref: '#/components/responses/projects_InternalServerError'
   /v1/projects/{slug}:
     parameters:
-    - $ref: '#/components/parameters/projectsvc_Slug'
+    - $ref: '#/components/parameters/projects_Slug'
     get:
       tags:
-      - projectsvc_Projects
+      - projects_Projects
       summary: Get a project
-      operationId: projectsvc_getProject
+      operationId: projects_getProject
       responses:
         '200':
           description: The project.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/projectsvc_Project'
+                $ref: '#/components/schemas/projects_Project'
         '403':
-          $ref: '#/components/responses/projectsvc_Forbidden'
+          $ref: '#/components/responses/projects_Forbidden'
         '404':
-          $ref: '#/components/responses/projectsvc_NotFound'
+          $ref: '#/components/responses/projects_NotFound'
         '500':
-          $ref: '#/components/responses/projectsvc_InternalServerError'
+          $ref: '#/components/responses/projects_InternalServerError'
     patch:
       tags:
-      - projectsvc_Projects
+      - projects_Projects
       summary: Update a project
       description: 'Partial update. Only supplied fields change. `name` may not be blanked.
 
@@ -52282,53 +51862,53 @@ paths:
         256 chars and must not contain newlines.
 
         '
-      operationId: projectsvc_updateProject
+      operationId: projects_updateProject
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/projectsvc_UpdateProjectRequest'
+              $ref: '#/components/schemas/projects_UpdateProjectRequest'
       responses:
         '200':
           description: The updated project.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/projectsvc_Project'
+                $ref: '#/components/schemas/projects_Project'
         '400':
-          $ref: '#/components/responses/projectsvc_BadRequest'
+          $ref: '#/components/responses/projects_BadRequest'
         '403':
-          $ref: '#/components/responses/projectsvc_Forbidden'
+          $ref: '#/components/responses/projects_Forbidden'
         '404':
-          $ref: '#/components/responses/projectsvc_NotFound'
+          $ref: '#/components/responses/projects_NotFound'
         '500':
-          $ref: '#/components/responses/projectsvc_InternalServerError'
+          $ref: '#/components/responses/projects_InternalServerError'
     delete:
       tags:
-      - projectsvc_Projects
+      - projects_Projects
       summary: Delete a project
       description: 'Delete the project and purge its S3 site, release the subdomain binding,
 
         and purge the edge cache (site purge/host unbind are best-effort).
 
         '
-      operationId: projectsvc_deleteProject
+      operationId: projects_deleteProject
       responses:
         '204':
           description: Project deleted.
         '403':
-          $ref: '#/components/responses/projectsvc_Forbidden'
+          $ref: '#/components/responses/projects_Forbidden'
         '404':
-          $ref: '#/components/responses/projectsvc_NotFound'
+          $ref: '#/components/responses/projects_NotFound'
         '500':
-          $ref: '#/components/responses/projectsvc_InternalServerError'
+          $ref: '#/components/responses/projects_InternalServerError'
   /v1/projects/{slug}/deploy:
     parameters:
-    - $ref: '#/components/parameters/projectsvc_Slug'
+    - $ref: '#/components/parameters/projects_Slug'
     post:
       tags:
-      - projectsvc_Deployments
+      - projects_Deployments
       summary: Deploy a project live
       description: "Two modes on one endpoint, selected by Content-Type:\n\n- Artifact (default): the request body is a tar\
         \ or tar.gz of the BUILT\n  site (must contain `index.html` at the root). The site is unpacked to\n  S3 under `<org>/<slug>/`,\
@@ -52336,13 +51916,13 @@ paths:
         \ (`Content-Type: application/json`, body `{\"source\":\"git\",...}`):\n  records a `queued` deployment and responds\
         \ `202`. CI builds the linked\n  repo and later calls the completion hook to flip it live. Requires the\n  project\
         \ to have a linked repo.\n"
-      operationId: projectsvc_deployProject
+      operationId: projects_deployProject
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/projectsvc_GitDeployRequest'
+              $ref: '#/components/schemas/projects_GitDeployRequest'
           application/octet-stream:
             schema:
               type: string
@@ -52354,37 +51934,37 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/projectsvc_Deployment'
+                $ref: '#/components/schemas/projects_Deployment'
         '202':
           description: Git deployment queued for CI build.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/projectsvc_Deployment'
+                $ref: '#/components/schemas/projects_Deployment'
         '400':
-          $ref: '#/components/responses/projectsvc_BadRequest'
+          $ref: '#/components/responses/projects_BadRequest'
         '403':
-          $ref: '#/components/responses/projectsvc_Forbidden'
+          $ref: '#/components/responses/projects_Forbidden'
         '404':
-          $ref: '#/components/responses/projectsvc_NotFound'
+          $ref: '#/components/responses/projects_NotFound'
         '500':
-          $ref: '#/components/responses/projectsvc_InternalServerError'
+          $ref: '#/components/responses/projects_InternalServerError'
         '502':
           description: Upload to object storage failed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/projectsvc_Error'
+                $ref: '#/components/schemas/projects_Error'
         '503':
-          $ref: '#/components/responses/projectsvc_ServiceUnavailable'
+          $ref: '#/components/responses/projects_ServiceUnavailable'
   /v1/projects/{slug}/deployments:
     parameters:
-    - $ref: '#/components/parameters/projectsvc_Slug'
+    - $ref: '#/components/parameters/projects_Slug'
     get:
       tags:
-      - projectsvc_Deployments
+      - projects_Deployments
       summary: List deployments for a project
-      operationId: projectsvc_listDeployments
+      operationId: projects_listDeployments
       responses:
         '200':
           description: Deployment history for the project.
@@ -52393,42 +51973,42 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/projectsvc_Deployment'
+                  $ref: '#/components/schemas/projects_Deployment'
         '403':
-          $ref: '#/components/responses/projectsvc_Forbidden'
+          $ref: '#/components/responses/projects_Forbidden'
         '404':
-          $ref: '#/components/responses/projectsvc_NotFound'
+          $ref: '#/components/responses/projects_NotFound'
         '500':
-          $ref: '#/components/responses/projectsvc_InternalServerError'
+          $ref: '#/components/responses/projects_InternalServerError'
   /v1/projects/{slug}/deployments/{id}:
     parameters:
-    - $ref: '#/components/parameters/projectsvc_Slug'
-    - $ref: '#/components/parameters/projectsvc_DeploymentId'
+    - $ref: '#/components/parameters/projects_Slug'
+    - $ref: '#/components/parameters/projects_DeploymentId'
     get:
       tags:
-      - projectsvc_Deployments
+      - projects_Deployments
       summary: Get a deployment
-      operationId: projectsvc_getDeployment
+      operationId: projects_getDeployment
       responses:
         '200':
           description: The deployment.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/projectsvc_Deployment'
+                $ref: '#/components/schemas/projects_Deployment'
         '403':
-          $ref: '#/components/responses/projectsvc_Forbidden'
+          $ref: '#/components/responses/projects_Forbidden'
         '404':
-          $ref: '#/components/responses/projectsvc_NotFound'
+          $ref: '#/components/responses/projects_NotFound'
         '500':
-          $ref: '#/components/responses/projectsvc_InternalServerError'
+          $ref: '#/components/responses/projects_InternalServerError'
   /v1/projects/{slug}/deployments/{id}/complete:
     parameters:
-    - $ref: '#/components/parameters/projectsvc_Slug'
-    - $ref: '#/components/parameters/projectsvc_DeploymentId'
+    - $ref: '#/components/parameters/projects_Slug'
+    - $ref: '#/components/parameters/projects_DeploymentId'
     post:
       tags:
-      - projectsvc_Deployments
+      - projects_Deployments
       summary: CI completion hook for a git deployment
       description: 'After CI syncs the built site to S3 it flips the queued deployment to
 
@@ -52437,28 +52017,28 @@ paths:
         is omitted on a live completion it defaults to the project''s S3 live URL.
 
         '
-      operationId: projectsvc_completeDeployment
+      operationId: projects_completeDeployment
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/projectsvc_CompleteDeploymentRequest'
+              $ref: '#/components/schemas/projects_CompleteDeploymentRequest'
       responses:
         '200':
           description: The updated deployment.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/projectsvc_Deployment'
+                $ref: '#/components/schemas/projects_Deployment'
         '400':
-          $ref: '#/components/responses/projectsvc_BadRequest'
+          $ref: '#/components/responses/projects_BadRequest'
         '403':
-          $ref: '#/components/responses/projectsvc_Forbidden'
+          $ref: '#/components/responses/projects_Forbidden'
         '404':
-          $ref: '#/components/responses/projectsvc_NotFound'
+          $ref: '#/components/responses/projects_NotFound'
         '500':
-          $ref: '#/components/responses/projectsvc_InternalServerError'
+          $ref: '#/components/responses/projects_InternalServerError'
   /v1/prompts:
     get:
       tags:
@@ -73473,277 +73053,6 @@ components:
         updatedAt:
           type: string
           format: date-time
-    kmssvc_ConfigResponse:
-      type: object
-      description: KMS console SPA runtime config.
-      properties:
-        brand:
-          type: string
-          description: The white-label brand (e.g. hanzo).
-        issuer:
-          type: string
-          description: The OIDC issuer the console logs in against.
-        apiBase:
-          type: string
-          const: /v1/kms
-        loginPath:
-          type: string
-          const: /v1/kms/auth/login
-    kmssvc_DeleteSecretResponse:
-      type: object
-      properties:
-        deleted:
-          type: boolean
-        name:
-          type: string
-        env:
-          type: string
-    kmssvc_Error:
-      type: object
-      required:
-      - status
-      - msg
-      properties:
-        status:
-          type: string
-          enum:
-          - error
-          description: Always "error" for error responses
-        msg:
-          type: string
-          description: Human-readable error message
-        code:
-          type: integer
-          description: Application-specific error code
-        data:
-          type: object
-          description: Additional error context
-        data2:
-          type: object
-          description: Additional error details
-        requestId:
-          type: string
-          description: Request ID for debugging
-    kmssvc_GetSecretResponse:
-      type: object
-      properties:
-        name:
-          type: string
-        env:
-          type: string
-        value:
-          type: string
-          description: The opened plaintext secret value.
-    kmssvc_HealthResponse:
-      type: object
-      description: KMS health probe result.
-      required:
-      - service
-      - status
-      properties:
-        service:
-          type: string
-          const: kms
-        status:
-          type: string
-          enum:
-          - ok
-          - degraded
-        ready:
-          type: boolean
-          description: True only when the store is open and a master key is configured.
-        signing:
-          type: boolean
-          description: Whether a signing key is configured (present when a KMS client exists).
-        error:
-          type: string
-          description: Honest failure reason when degraded.
-    kmssvc_ListSecretsResponse:
-      type: object
-      properties:
-        secrets:
-          type: array
-          items:
-            $ref: '#/components/schemas/kmssvc_SecretMeta'
-        total:
-          type: integer
-    kmssvc_LoginRequest:
-      type: object
-      description: The kms-operator's universalAuth machine credential.
-      required:
-      - clientId
-      - clientSecret
-      properties:
-        clientId:
-          type: string
-          maxLength: 512
-        clientSecret:
-          type: string
-          maxLength: 512
-    kmssvc_LoginResponse:
-      type: object
-      description: IAM's owner-scoped JWT, relayed verbatim.
-      required:
-      - accessToken
-      - tokenType
-      properties:
-        accessToken:
-          type: string
-          description: The owner-scoped IAM JWT bearer.
-        expiresIn:
-          type: integer
-          format: int64
-          description: Token lifetime in seconds (from IAM's expires_in).
-        tokenType:
-          type: string
-          const: Bearer
-    kmssvc_PutSecretResponse:
-      type: object
-      properties:
-        stored:
-          type: boolean
-        name:
-          type: string
-        env:
-          type: string
-    kmssvc_SecretMeta:
-      type: object
-      description: A secret's non-sensitive descriptor (never any ciphertext or plaintext).
-      properties:
-        name:
-          type: string
-        path:
-          type: string
-        env:
-          type: string
-        scheme:
-          type: string
-    kmssvc_SecretPutRequest:
-      type: object
-      description: The upsert body. `value` is sealed before storage.
-      required:
-      - name
-      - value
-      properties:
-        path:
-          type: string
-          description: Optional subpath under the org, e.g. "/ci".
-        name:
-          type: string
-          maxLength: 253
-          description: Required. Must not contain '/', control characters, or exceed 253 bytes.
-        env:
-          type: string
-          maxLength: 63
-          default: default
-          description: Optional; defaults to "default".
-        value:
-          type: string
-          description: Required; sealed under a per-secret DEK before storage.
-    kmssvc_TokenResponse:
-      type: object
-      properties:
-        access_token:
-          type: string
-          description: JWT access token
-        token_type:
-          type: string
-          enum:
-          - Bearer
-        expires_in:
-          type: integer
-          description: Token lifetime in seconds
-        refresh_token:
-          type: string
-          description: Refresh token for obtaining new access tokens
-        scope:
-          type: string
-          description: Space-separated list of granted scopes
-        id_token:
-          type: string
-          description: OpenID Connect ID token (JWT)
-    kmssvc_UserInfo:
-      type: object
-      description: OIDC UserInfo response
-      properties:
-        sub:
-          type: string
-          description: Subject identifier (user ID)
-        name:
-          type: string
-        given_name:
-          type: string
-        family_name:
-          type: string
-        preferred_username:
-          type: string
-        email:
-          type: string
-          format: email
-        email_verified:
-          type: boolean
-        phone_number:
-          type: string
-        phone_number_verified:
-          type: boolean
-        picture:
-          type: string
-          format: uri
-        updated_at:
-          type: integer
-          description: Unix timestamp
-    kmssvc_ValidationError:
-      type: object
-      properties:
-        status:
-          type: string
-          enum:
-          - error
-        msg:
-          type: string
-        errors:
-          type: array
-          items:
-            type: object
-            properties:
-              field:
-                type: string
-              message:
-                type: string
-              code:
-                type: string
-    kmssvc_Web3AuthRequest:
-      type: object
-      description: Web3 wallet authentication request
-      required:
-      - address
-      - nonce
-      - signature
-      properties:
-        address:
-          type: string
-          description: Ethereum wallet address
-          pattern: ^0x[a-fA-F0-9]{40}$
-        nonce:
-          type: string
-          description: Nonce obtained from /v1/iam/auth/web3-nonce
-        createAt:
-          type: integer
-          description: Timestamp when signature was created
-        typedData:
-          type: string
-          description: The message that was signed
-        signature:
-          type: string
-          description: Wallet signature
-        walletType:
-          type: string
-          description: Type of wallet used
-          enum:
-          - MetaMask
-          - WalletConnect
-          - Coinbase
-          - Rainbow
     kv_Cluster:
       type: object
       properties:
@@ -78017,295 +77326,6 @@ components:
         createdAt:
           type: string
           format: date-time
-    paassvc_AppView:
-      type: object
-      description: 'One service row on the drift board: observed tags + topology + the derived
-
-        drift verdict. Fields map directly to the Go `AppView` struct.
-
-        '
-      properties:
-        id:
-          type: string
-          description: '`<org>/<app>/<env>`, e.g. `hanzoai/iam/main`.'
-        org:
-          type: string
-          description: Image namespace, e.g. `hanzoai`.
-        app:
-          type: string
-          description: Service / CR name, e.g. `iam`.
-        env:
-          type: string
-          description: Lifecycle env.
-          enum:
-          - main
-          - test
-          - dev
-        repo:
-          type: string
-          description: owner/repo GitHub coordinate, e.g. `hanzoai/iam`.
-        registry:
-          type: string
-          description: The full image repository path (registry host + namespace + name).
-        declaredTag:
-          type: string
-          description: Declared image tag from `spec.image.tag` on the Service CR.
-        runningTag:
-          type: string
-          description: Running image tag observed from the live Deployment container. Empty when unknown.
-        latestTag:
-          type: string
-          description: Newest released tag. Currently always empty (GH-release reader is a follow-up phase).
-        health:
-          type: string
-          description: Rolled-up health from the operator-reconciled Service status. Empty when no replica signal yet.
-          enum:
-          - green
-          - yellow
-          - red
-          - ''
-        phase:
-          type: string
-          description: Operator `status.phase` (e.g. `Running`).
-        cluster:
-          type: string
-          description: Cluster name (currently always `hanzo-k8s`).
-        namespace:
-          type: string
-          description: The kubernetes namespace the Service CR lives in.
-        endpoints:
-          type: array
-          items:
-            type: string
-          description: Endpoints from the operator-reconciled `status.endpoints`.
-        drift:
-          $ref: '#/components/schemas/paassvc_Drift'
-    paassvc_DeployRequest:
-      type: object
-      required:
-      - tag
-      properties:
-        tag:
-          type: string
-          description: "Required \u2014 the new image tag to deploy (e.g. `v1.1.3`). Must be a\nsingle image tag: no whitespace\
-            \ or `/`, max 128 chars.\n"
-          maxLength: 128
-        repository:
-          type: string
-          description: "Optional \u2014 override the image repository. When omitted, the CR's\nexisting repository is preserved.\
-            \ Must match\n`^[a-z0-9][a-z0-9._/-]*[a-z0-9]$`.\n"
-          pattern: ^[a-z0-9][a-z0-9._/-]*[a-z0-9]$
-        namespace:
-          type: string
-          description: "Optional \u2014 target namespace. When omitted, the CR is resolved in env\norder (`main` \u2192 `test`\
-            \ \u2192 `dev`). Must be a platform namespace.\n"
-          enum:
-          - hanzo
-          - hanzo-testnet
-          - hanzo-devnet
-    paassvc_DeployResponse:
-      type: object
-      properties:
-        rolledOut:
-          type: boolean
-          description: Always `true` on a successful patch.
-        target:
-          type: string
-          description: '`<namespace>/<app>` the patch was applied to.'
-        reason:
-          type: string
-          description: Human-readable summary of the patch, e.g. `patched Service/iam image to v1.1.3`.
-        app:
-          $ref: '#/components/schemas/paassvc_AppView'
-    paassvc_Drift:
-      type: object
-      description: "The drift verdict for one observed service row \u2014 ordered flags plus the rolled-up severity."
-      properties:
-        severity:
-          $ref: '#/components/schemas/paassvc_DriftSeverity'
-        flags:
-          type: array
-          description: The drift findings (always present, never null).
-          items:
-            $ref: '#/components/schemas/paassvc_DriftFlag'
-    paassvc_DriftFlag:
-      type: object
-      description: A single drift finding.
-      properties:
-        kind:
-          type: string
-          description: The kind of drift.
-          enum:
-          - stale
-          - un-rolled
-          - floating-declared
-          - floating-running
-          - no-release
-          - zero-assets
-        severity:
-          $ref: '#/components/schemas/paassvc_DriftSeverity'
-        message:
-          type: string
-          description: Human-readable reason for the finding.
-    paassvc_DriftSeverity:
-      type: string
-      description: Aggregate drift severity. `ok` = no flags; otherwise the max over flags.
-      enum:
-      - ok
-      - yellow
-      - red
-    paassvc_Error:
-      type: object
-      required:
-      - status
-      - msg
-      properties:
-        status:
-          type: string
-          enum:
-          - error
-          description: Always "error" for error responses
-        msg:
-          type: string
-          description: Human-readable error message
-        code:
-          type: integer
-          description: Application-specific error code
-        data:
-          type: object
-          description: Additional error context
-        data2:
-          type: object
-          description: Additional error details
-        requestId:
-          type: string
-          description: Request ID for debugging
-    paassvc_Health:
-      type: object
-      description: The PaaS control-plane health probe result.
-      properties:
-        service:
-          type: string
-          enum:
-          - paas
-        status:
-          type: string
-          enum:
-          - ok
-          - degraded
-        k8s:
-          type: boolean
-          description: Whether the kubernetes client is configured and the API server is reachable.
-        crd:
-          type: boolean
-          description: Whether the Service CRD is served (present only once k8s is reachable).
-        error:
-          type: string
-          description: The real failure reason, present only when degraded.
-    paassvc_TokenResponse:
-      type: object
-      properties:
-        access_token:
-          type: string
-          description: JWT access token
-        token_type:
-          type: string
-          enum:
-          - Bearer
-        expires_in:
-          type: integer
-          description: Token lifetime in seconds
-        refresh_token:
-          type: string
-          description: Refresh token for obtaining new access tokens
-        scope:
-          type: string
-          description: Space-separated list of granted scopes
-        id_token:
-          type: string
-          description: OpenID Connect ID token (JWT)
-    paassvc_UserInfo:
-      type: object
-      description: OIDC UserInfo response
-      properties:
-        sub:
-          type: string
-          description: Subject identifier (user ID)
-        name:
-          type: string
-        given_name:
-          type: string
-        family_name:
-          type: string
-        preferred_username:
-          type: string
-        email:
-          type: string
-          format: email
-        email_verified:
-          type: boolean
-        phone_number:
-          type: string
-        phone_number_verified:
-          type: boolean
-        picture:
-          type: string
-          format: uri
-        updated_at:
-          type: integer
-          description: Unix timestamp
-    paassvc_ValidationError:
-      type: object
-      properties:
-        status:
-          type: string
-          enum:
-          - error
-        msg:
-          type: string
-        errors:
-          type: array
-          items:
-            type: object
-            properties:
-              field:
-                type: string
-              message:
-                type: string
-              code:
-                type: string
-    paassvc_Web3AuthRequest:
-      type: object
-      description: Web3 wallet authentication request
-      required:
-      - address
-      - nonce
-      - signature
-      properties:
-        address:
-          type: string
-          description: Ethereum wallet address
-          pattern: ^0x[a-fA-F0-9]{40}$
-        nonce:
-          type: string
-          description: Nonce obtained from /v1/iam/auth/web3-nonce
-        createAt:
-          type: integer
-          description: Timestamp when signature was created
-        typedData:
-          type: string
-          description: The message that was signed
-        signature:
-          type: string
-          description: Wallet signature
-        walletType:
-          type: string
-          description: Type of wallet used
-          enum:
-          - MetaMask
-          - WalletConnect
-          - Coinbase
-          - Rainbow
     plan_Catalog:
       type: object
       description: Opaque plan-catalog JSON emitted by the @hanzo/plans bundle (shape varies per route).
@@ -79338,7 +78358,7 @@ components:
           - WalletConnect
           - Coinbase
           - Rainbow
-    projectsvc_CompleteDeploymentRequest:
+    projects_CompleteDeploymentRequest:
       type: object
       required:
       - status
@@ -79361,7 +78381,7 @@ components:
         bytes:
           type: integer
           format: int64
-    projectsvc_CreateProjectRequest:
+    projects_CreateProjectRequest:
       type: object
       required:
       - name
@@ -79395,7 +78415,7 @@ components:
               type: string
             branch:
               type: string
-    projectsvc_Deployment:
+    projects_Deployment:
       type: object
       description: A single deploy record.
       required:
@@ -79443,7 +78463,7 @@ components:
         updatedAt:
           type: integer
           format: int64
-    projectsvc_Error:
+    projects_Error:
       type: object
       required:
       - status
@@ -79463,7 +78483,7 @@ components:
         requestId:
           type: string
           description: Request ID for debugging.
-    projectsvc_ForkProjectRequest:
+    projects_ForkProjectRequest:
       type: object
       required:
       - slug
@@ -79477,7 +78497,7 @@ components:
         target:
           type: string
           description: Overrides the derived project slug; defaults to the template slug.
-    projectsvc_GitDeployRequest:
+    projects_GitDeployRequest:
       type: object
       description: Body for the git deploy mode (Content-Type application/json).
       properties:
@@ -79488,7 +78508,7 @@ components:
           type: string
         branch:
           type: string
-    projectsvc_Project:
+    projects_Project:
       type: object
       description: The published project view (json shape console2 consumes).
       required:
@@ -79513,7 +78533,7 @@ components:
         description:
           type: string
         repo:
-          $ref: '#/components/schemas/projectsvc_RepoRef'
+          $ref: '#/components/schemas/projects_RepoRef'
         framework:
           type: string
           description: Build hint.
@@ -79549,7 +78569,7 @@ components:
         updatedAt:
           type: integer
           format: int64
-    projectsvc_RepoRef:
+    projects_RepoRef:
       type: object
       description: Linked git repository for the project.
       properties:
@@ -79559,7 +78579,7 @@ components:
         branch:
           type: string
           description: Branch to build (defaults to "main" when a url is set).
-    projectsvc_UpdateProjectRequest:
+    projects_UpdateProjectRequest:
       type: object
       description: Partial update; only supplied fields change.
       properties:
@@ -83410,145 +82430,6 @@ components:
                 type: string
               msg:
                 type: string
-    kmssvc_BadRequest:
-      description: Bad Request - Invalid input parameters
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/kmssvc_Error'
-          examples:
-            invalidParameter:
-              value:
-                status: error
-                msg: 'Invalid parameter: email format is incorrect'
-                code: 400
-    kmssvc_Conflict:
-      description: Conflict - Resource already exists
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/kmssvc_Error'
-          examples:
-            alreadyExists:
-              value:
-                status: error
-                msg: Resource with this ID already exists
-                code: 409
-    kmssvc_Forbidden:
-      description: Forbidden - Insufficient permissions
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/kmssvc_Error'
-          examples:
-            insufficientPermissions:
-              value:
-                status: error
-                msg: You don't have permission to access this resource
-                code: 403
-    kmssvc_InternalServerError:
-      description: Internal Server Error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/kmssvc_Error'
-          examples:
-            serverError:
-              value:
-                status: error
-                msg: An internal error occurred
-                code: 500
-                requestId: req_abc123
-    kmssvc_NotFound:
-      description: Not Found - Resource does not exist
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/kmssvc_Error'
-          examples:
-            resourceNotFound:
-              value:
-                status: error
-                msg: Resource not found
-                code: 404
-    kmssvc_ServiceUnavailable:
-      description: Service Unavailable - Temporary outage
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-          description: Seconds to wait before retry
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/kmssvc_Error'
-          examples:
-            maintenance:
-              value:
-                status: error
-                msg: Service temporarily unavailable
-                code: 503
-    kmssvc_TooManyRequests:
-      description: Too Many Requests - Rate limit exceeded
-      headers:
-        X-RateLimit-Limit:
-          schema:
-            type: integer
-          description: Request limit per window
-        X-RateLimit-Remaining:
-          schema:
-            type: integer
-          description: Remaining requests in window
-        X-RateLimit-Reset:
-          schema:
-            type: integer
-          description: Unix timestamp when window resets
-        Retry-After:
-          schema:
-            type: integer
-          description: Seconds to wait before retry
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/kmssvc_Error'
-          examples:
-            rateLimited:
-              value:
-                status: error
-                msg: Rate limit exceeded. Please retry after 60 seconds
-                code: 429
-    kmssvc_Unauthorized:
-      description: Unauthorized - Authentication required
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/kmssvc_Error'
-          examples:
-            missingToken:
-              value:
-                status: error
-                msg: Authentication required
-                code: 401
-            invalidToken:
-              value:
-                status: error
-                msg: Invalid or expired token
-                code: 401
-    kmssvc_UnprocessableEntity:
-      description: Unprocessable Entity - Validation failed
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/kmssvc_ValidationError'
-          examples:
-            validationFailed:
-              value:
-                status: error
-                msg: Validation failed
-                errors:
-                - field: email
-                  message: Invalid email format
-                  code: invalid_format
     kv_BadRequest:
       description: Bad Request
       content:
@@ -83832,145 +82713,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/paas_Error'
-    paassvc_BadRequest:
-      description: Bad Request - Invalid input parameters
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/paassvc_Error'
-          examples:
-            invalidParameter:
-              value:
-                status: error
-                msg: 'Invalid parameter: email format is incorrect'
-                code: 400
-    paassvc_Conflict:
-      description: Conflict - Resource already exists
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/paassvc_Error'
-          examples:
-            alreadyExists:
-              value:
-                status: error
-                msg: Resource with this ID already exists
-                code: 409
-    paassvc_Forbidden:
-      description: Forbidden - Insufficient permissions
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/paassvc_Error'
-          examples:
-            insufficientPermissions:
-              value:
-                status: error
-                msg: You don't have permission to access this resource
-                code: 403
-    paassvc_InternalServerError:
-      description: Internal Server Error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/paassvc_Error'
-          examples:
-            serverError:
-              value:
-                status: error
-                msg: An internal error occurred
-                code: 500
-                requestId: req_abc123
-    paassvc_NotFound:
-      description: Not Found - Resource does not exist
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/paassvc_Error'
-          examples:
-            resourceNotFound:
-              value:
-                status: error
-                msg: Resource not found
-                code: 404
-    paassvc_ServiceUnavailable:
-      description: Service Unavailable - Temporary outage
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-          description: Seconds to wait before retry
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/paassvc_Error'
-          examples:
-            maintenance:
-              value:
-                status: error
-                msg: Service temporarily unavailable
-                code: 503
-    paassvc_TooManyRequests:
-      description: Too Many Requests - Rate limit exceeded
-      headers:
-        X-RateLimit-Limit:
-          schema:
-            type: integer
-          description: Request limit per window
-        X-RateLimit-Remaining:
-          schema:
-            type: integer
-          description: Remaining requests in window
-        X-RateLimit-Reset:
-          schema:
-            type: integer
-          description: Unix timestamp when window resets
-        Retry-After:
-          schema:
-            type: integer
-          description: Seconds to wait before retry
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/paassvc_Error'
-          examples:
-            rateLimited:
-              value:
-                status: error
-                msg: Rate limit exceeded. Please retry after 60 seconds
-                code: 429
-    paassvc_Unauthorized:
-      description: Unauthorized - Authentication required
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/paassvc_Error'
-          examples:
-            missingToken:
-              value:
-                status: error
-                msg: Authentication required
-                code: 401
-            invalidToken:
-              value:
-                status: error
-                msg: Invalid or expired token
-                code: 401
-    paassvc_UnprocessableEntity:
-      description: Unprocessable Entity - Validation failed
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/paassvc_ValidationError'
-          examples:
-            validationFailed:
-              value:
-                status: error
-                msg: Validation failed
-                errors:
-                - field: email
-                  message: Invalid email format
-                  code: invalid_format
     plan_Unauthorized:
       description: Missing or invalid credentials
       content:
@@ -84133,42 +82875,42 @@ components:
                 - field: email
                   message: Invalid email format
                   code: invalid_format
-    projectsvc_BadRequest:
+    projects_BadRequest:
       description: "Bad Request \u2014 invalid input."
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/projectsvc_Error'
-    projectsvc_Conflict:
+            $ref: '#/components/schemas/projects_Error'
+    projects_Conflict:
       description: "Conflict \u2014 a project with this slug already exists in the org."
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/projectsvc_Error'
-    projectsvc_Forbidden:
+            $ref: '#/components/schemas/projects_Error'
+    projects_Forbidden:
       description: "Forbidden \u2014 a validated org (X-Org-Id) is required."
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/projectsvc_Error'
-    projectsvc_InternalServerError:
+            $ref: '#/components/schemas/projects_Error'
+    projects_InternalServerError:
       description: Internal Server Error.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/projectsvc_Error'
-    projectsvc_NotFound:
+            $ref: '#/components/schemas/projects_Error'
+    projects_NotFound:
       description: "Not Found \u2014 the project or deployment does not exist."
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/projectsvc_Error'
-    projectsvc_ServiceUnavailable:
+            $ref: '#/components/schemas/projects_Error'
+    projects_ServiceUnavailable:
       description: "Service Unavailable \u2014 object storage is not configured."
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/projectsvc_Error'
+            $ref: '#/components/schemas/projects_Error'
     prompts_Unauthorized:
       description: Missing or invalid credentials
       content:
@@ -84597,49 +83339,6 @@ components:
       schema:
         type: string
         format: uuid
-    kmssvc_Env:
-      name: env
-      in: query
-      required: false
-      description: 'The secret environment. Defaults to `default` when omitted. Must not
-
-        contain `/`, control characters, or exceed 63 bytes.
-
-        '
-      schema:
-        type: string
-        default: default
-        maxLength: 63
-    kmssvc_Org:
-      name: org
-      in: path
-      required: true
-      description: "The tenant org. Must equal the caller's validated org (or the caller must\nbe a global admin). Validated\
-        \ as a DNS-1123-ish label (\u226463 chars,\n`[A-Za-z0-9_-]`). Match is EXACT (case-sensitive).\n"
-      schema:
-        type: string
-        maxLength: 63
-        pattern: ^[A-Za-z0-9_-]+$
-    kmssvc_PathQuery:
-      name: path
-      in: query
-      required: false
-      description: 'Optional subpath (relative to the org root) to narrow the listing. Must be
-
-        `/`-separated non-empty segments without `.`, `..`, or control characters.
-
-        '
-      schema:
-        type: string
-    kmssvc_SecretPath:
-      name: secretPath
-      in: path
-      required: true
-      description: "The trailing wildcard segment (`/secrets/*`): the secret's sub-path + name\nunder the org. The last segment\
-        \ is the secret NAME; any preceding segments\nare the sub-path folded under `/orgs/{org}`. E.g. `DB` \u2192\n`(/orgs/{org},\
-        \ DB)`; `ci/DB` \u2192 `(/orgs/{org}/ci, DB)`.\n"
-      schema:
-        type: string
     mq_AccountId:
       name: id
       in: path
@@ -84739,14 +83438,14 @@ components:
       description: URL-encoded JSON input for tRPC queries
       schema:
         type: string
-    projectsvc_DeploymentId:
+    projects_DeploymentId:
       name: id
       in: path
       required: true
       description: Deployment id (e.g. dep_...).
       schema:
         type: string
-    projectsvc_Slug:
+    projects_Slug:
       name: slug
       in: path
       required: true
