@@ -6,7 +6,11 @@ references.
 
 ## Layout
 
-- `hanzo.yaml` — master discovery spec (3 routes).
+- `CAPABILITIES.md` — the CANONICAL capability index: one name per
+  capability, grouped into the eight categories, each with its `/v1/<name>`
+  prefix. Authoritative — every spec, the cloud binary, and the console
+  reconcile to it.
+- `hanzo.yaml` — unified master, aggregated + grouped by `merge.py`.
 - `<service>/openapi.yaml` — one self-contained spec per service.
 - `shared/` — shared schemas usable by individual specs in their `components`.
 - `README.md` — service index and usage.
@@ -21,6 +25,9 @@ references.
 - No cross-file `$ref`. Each spec is self-contained.
 - No `deprecated: true`. Forward-only.
 - No `/api/` prefix anywhere.
+- Master grouping: `merge.py` emits `x-tagGroups` (the eight canonical
+  categories from `CAPABILITIES.md`); every present spec must belong to
+  exactly one group or the merge fails.
 
 ## Validate
 
