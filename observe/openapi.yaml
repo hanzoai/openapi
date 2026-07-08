@@ -1,0 +1,468 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Observe API
+  summary: Per-org console product-detail data plane — live logs, RED metrics, health status, and per-product settings (hanzoai/cloud observe subsystem).
+  description: |
+    The Hanzo Observe API served by the `observe` subsystem of the unified cloud
+    binary (HIP-0106), reached through the gateway at `api.hanzo.ai`.
+
+    It powers the REAL, per-org Settings / Status / Logs / Metrics behind every
+    product's detail view in `console.hanzo.ai`, backed by the platform o11y stack
+    (SigNoz ClickHouse + VictoriaMetrics) and a per-org SQLite settings store.
+
+    ROUTES:
+      - `/v1/o11y/{logs,metrics,status}` — scoped o11y reads, registered BEFORE the
+        hanzoai/o11y reverse-proxy wildcard so these tenant-scoped handlers win.
+      - `/v1/settings/{product}` — per-(org,product) config CRUD (secrets → KMS).
+
+    TENANT ISOLATION is enforced SERVER-SIDE on every request. The org is derived
+    from the VALIDATED bearer owner (HIP-0026) and is NEVER read from a query param,
+    body, or client header. It is bound as a positional ClickHouse parameter (never
+    interpolated) and is the mandatory predicate on every SQLite statement. The
+    client chooses a validated PRODUCT slug and a bounded range — never a raw query.
+    Only the platform admin org (IAM_ADMIN_ORG) sees unattributed infra logs; every
+    other org sees only rows carrying its own org.
+
+    Authentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`). The same
+    token authenticates every Hanzo service.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+servers:
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
+security:
+- BearerAuth: []
+tags:
+- name: Logs
+  description: Live, org-scoped log stream per product.
+- name: Metrics
+  description: Per-org RED (rate/errors/latency) and LLM usage per product.
+- name: Status
+  description: Live health probe + scrape gauge per product.
+- name: Settings
+  description: Per-(org,product) config, with secret fields routed to KMS.
+paths:
+  /v1/o11y/logs:
+    get:
+      tags:
+      - Logs
+      summary: Live org-scoped log stream for a product
+      description: |
+        Returns a live, org-scoped log stream for a product. The admin org
+        (`IAM_ADMIN_ORG`) receives the product's raw infra stdout stream
+        (`view: infra`); every other org receives its OWN request log stream
+        derived from org-tagged spans (`view: request`). Live-tail by polling
+        with `sinceNs` set to the prior response's `nextCursor`; absent a cursor,
+        the last `window` seconds are returned. Every query is LIMIT-bounded.
+      operationId: getLogs
+      parameters:
+      - name: product
+        in: query
+        required: true
+        description: 'Console product slug. Must match `^[a-z0-9][a-z0-9._-]{0,62}$`.'
+        schema:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9._-]{0,62}$'
+      - name: sinceNs
+        in: query
+        required: false
+        description: Nanosecond cursor from the prior response's `nextCursor`; 0/absent starts a fresh window.
+        schema:
+          type: integer
+          format: int64
+          minimum: 0
+      - name: window
+        in: query
+        required: false
+        description: Initial look-back window in seconds when no cursor is supplied (default 900, max 86400).
+        schema:
+          type: integer
+          default: 900
+          minimum: 1
+          maximum: 86400
+      - name: limit
+        in: query
+        required: false
+        description: Max lines returned (default 200, max 1000).
+        schema:
+          type: integer
+          default: 200
+          minimum: 1
+          maximum: 1000
+      responses:
+        '200':
+          description: Log stream page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogsResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /v1/o11y/metrics:
+    get:
+      tags:
+      - Metrics
+      summary: Per-org RED metrics and LLM usage for a product
+      description: |
+        Returns REAL per-org RED (rate / errors / latency) series for a product
+        from org-tagged request spans, plus the org's LLM usage (calls / tokens /
+        cost) from the usage ledger. The bucket width is `stepSec` (explicit or
+        derived as ~60 buckets across the range, clamped to [30, 3600]). Usage is
+        a secondary signal — its absence never fails the response.
+      operationId: getMetrics
+      parameters:
+      - name: product
+        in: query
+        required: true
+        description: 'Console product slug. Must match `^[a-z0-9][a-z0-9._-]{0,62}$`.'
+        schema:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9._-]{0,62}$'
+      - name: range
+        in: query
+        required: false
+        description: Look-back range in seconds (default 3600, max 604800).
+        schema:
+          type: integer
+          default: 3600
+          minimum: 1
+          maximum: 604800
+      - name: stepSec
+        in: query
+        required: false
+        description: Explicit bucket width in seconds (clamped to [30, 3600]). Omit to auto-derive.
+        schema:
+          type: integer
+          minimum: 30
+          maximum: 3600
+      responses:
+        '200':
+          description: RED series, usage, and summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /v1/o11y/status:
+    get:
+      tags:
+      - Status
+      summary: Live health status for a product
+      description: |
+        Returns a live health signal for a product: an in-cluster health probe
+        (measured latency, `/health` then `/healthz`) corroborated by the
+        VictoriaMetrics `up{service}` scrape gauge. `up` is set by the probe when
+        it succeeds, else by the scrape gauge, else false. Status is infra-level
+        (no per-org data) but still requires a validated principal.
+      operationId: getStatus
+      parameters:
+      - name: product
+        in: query
+        required: true
+        description: 'Console product slug. Must match `^[a-z0-9][a-z0-9._-]{0,62}$`.'
+        schema:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9._-]{0,62}$'
+      responses:
+        '200':
+          description: Health status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/settings/{product}:
+    get:
+      tags:
+      - Settings
+      summary: Read per-(org,product) settings
+      description: |
+        Returns the org's persisted config document for a product, plus the NAMES
+        of set secret fields (values are never returned). When the org has never
+        written config for the product, an honest empty config (`{}`) is returned
+        with 200 — not a 404.
+      operationId: getSettings
+      parameters:
+      - name: product
+        in: path
+        required: true
+        description: 'Console product slug. Must match `^[a-z0-9][a-z0-9._-]{0,62}$`.'
+        schema:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9._-]{0,62}$'
+      responses:
+        '200':
+          description: Settings view.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettingsView'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags:
+      - Settings
+      summary: Write per-(org,product) settings
+      description: |
+        Upserts the org's non-secret config document for a product. Secret fields
+        are routed to KMS and NEVER stored in SQLite; a secret whose value is
+        empty or the mask sentinel (`••••••••`) is treated as unchanged. If KMS is
+        unavailable, a request carrying secrets fails closed (503) rather than
+        persisting plaintext. Returns the updated settings view.
+      operationId: putSettings
+      parameters:
+      - name: product
+        in: path
+        required: true
+        description: 'Console product slug. Must match `^[a-z0-9][a-z0-9._-]{0,62}$`.'
+        schema:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9._-]{0,62}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettingsRequest'
+      responses:
+        '200':
+          description: Updated settings view.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettingsView'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.'
+  responses:
+    BadRequest:
+      description: Invalid or missing parameters.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Missing or invalid credentials.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: No validated org — tenant could not be resolved.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    BadGateway:
+      description: Upstream o11y datastore query failed.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ServiceUnavailable:
+      description: Datastore not connected, or KMS not configured for a secret write.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InternalError:
+      description: Internal error.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    LogLine:
+      title: LogLine
+      type: object
+      properties:
+        ts:
+          type: string
+          description: RFC3339 timestamp (UTC).
+        tsNano:
+          type: integer
+          format: int64
+          description: Nanosecond cursor.
+        severity:
+          type: string
+          description: 'INFO | WARN | ERROR | ...'
+        body:
+          type: string
+        source:
+          type: string
+          description: '"infra" (stdout) or "request" (org request log).'
+          enum: [infra, request]
+    LogsResponse:
+      title: LogsResponse
+      type: object
+      properties:
+        product:
+          type: string
+        view:
+          type: string
+          description: '"infra" (admin) or "request" (per-org).'
+          enum: [infra, request]
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/LogLine' }
+        nextCursor:
+          type: integer
+          format: int64
+          description: Pass back as `sinceNs` for the next tail poll.
+    Point:
+      title: Point
+      type: object
+      properties:
+        t:
+          type: string
+          description: RFC3339 bucket start (UTC).
+        v:
+          type: number
+    UsagePoint:
+      title: UsagePoint
+      type: object
+      properties:
+        t:
+          type: string
+          description: RFC3339 bucket start (UTC).
+        calls:
+          type: integer
+          format: int64
+        tokens:
+          type: integer
+          format: int64
+        costCents:
+          type: integer
+          format: int64
+    MetricsResponse:
+      title: MetricsResponse
+      type: object
+      properties:
+        product:
+          type: string
+        range:
+          type: object
+          properties:
+            sinceSec: { type: integer }
+            stepSec: { type: integer }
+        series:
+          type: object
+          properties:
+            requests:
+              type: array
+              items: { $ref: '#/components/schemas/Point' }
+            errors:
+              type: array
+              items: { $ref: '#/components/schemas/Point' }
+            latencyP50Ms:
+              type: array
+              items: { $ref: '#/components/schemas/Point' }
+            latencyP95Ms:
+              type: array
+              items: { $ref: '#/components/schemas/Point' }
+        usage:
+          type: object
+          properties:
+            calls: { type: integer, format: int64 }
+            tokens: { type: integer, format: int64 }
+            costCents: { type: integer, format: int64 }
+            series:
+              type: array
+              items: { $ref: '#/components/schemas/UsagePoint' }
+        summary:
+          type: object
+          properties:
+            requests: { type: integer, format: int64 }
+            errors: { type: integer, format: int64 }
+            errorRate: { type: number }
+            p95Ms: { type: number }
+    StatusResponse:
+      title: StatusResponse
+      type: object
+      properties:
+        product:
+          type: string
+        up:
+          type: boolean
+        latencyMs:
+          type: number
+          description: Health-probe round trip; -1 when the probe did not complete.
+        httpCode:
+          type: integer
+          description: Health-probe status code (0 = no response).
+        scrapeUp:
+          type: [integer, "null"]
+          description: 'VictoriaMetrics up{service}: 1/0, or null when no scrape target.'
+        probeUrl:
+          type: string
+        source:
+          type: string
+          description: Which signal set `up`.
+          enum: [probe, scrape, none]
+        checkedAt:
+          type: string
+          description: RFC3339 timestamp (UTC).
+    SettingsView:
+      title: SettingsView
+      type: object
+      properties:
+        product:
+          type: string
+        config:
+          type: object
+          description: Non-secret config document (opaque JSON object), stored verbatim.
+        secretKeys:
+          type: array
+          description: Names of set secret fields (values masked, never returned).
+          items: { type: string }
+        updatedAt:
+          type: string
+          description: RFC3339 timestamp (UTC); empty when unset.
+        createdAt:
+          type: string
+          description: RFC3339 timestamp (UTC); empty when unset.
+    SettingsRequest:
+      title: SettingsRequest
+      type: object
+      properties:
+        config:
+          type: object
+          description: Non-secret config; stored verbatim (bounded at 64KiB).
+          additionalProperties: true
+        secrets:
+          type: object
+          description: |
+            Secret fields; VALUES routed to KMS, never SQLite. Each key must match
+            `^[a-z0-9][a-z0-9._-]{0,62}$`; each value is bounded at 8KiB. An empty
+            value or the mask sentinel (`••••••••`) means "unchanged". Max 64 fields.
+          additionalProperties:
+            type: string
+    Error:
+      title: Error
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message: { type: string }
+            type: { type: string }
+            code: { type: string }

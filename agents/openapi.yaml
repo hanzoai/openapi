@@ -1,0 +1,855 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Agents API
+  summary: Per-org autonomous agent definitions, runs, and the live session control plane (hanzoai/cloud clients/agents).
+  description: |
+    The Hanzo Cloud agents surface served by the `clients/agents` subsystem of
+    the unified cloud binary, reached through the gateway at `api.hanzo.ai`.
+
+    An agent is a model + a system prompt (instructions) + a set of tool names.
+    Running one executes a real chat completion through the in-process AI client
+    (the same gateway path the rest of the console uses) and records the run.
+    Agents may be one-shot or long-running (cron-scheduled).
+
+    A second, orthogonal surface under `/v1/agents/sessions` is the LIVE
+    agent-session control plane: the registry every surface (the @hanzo/dev CLI
+    outer agent, hanzo.bot, console, chat, app) hangs off. It is the view +
+    control + stream layer over durable execution; the durable run itself is a
+    hanzoai/tasks workflow.
+
+    Tenant isolation: the gateway-minted `X-Org-Id` (HIP-0026) is enforced as
+    the org column on every query, so one tenant can never read, run, or delete
+    another's agents or sessions. The store is SQLite (Base/SQLite-only); it
+    holds definitions and run/session I/O only — never a secret. Tool
+    credentials live in KMS by reference.
+
+    Authentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`). The same
+    token authenticates every Hanzo service.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+servers:
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
+security:
+- BearerAuth: []
+tags:
+- name: Agents
+  description: Per-org agent definitions and their runs.
+- name: Overview
+  description: Org-wide agents dashboard (metrics + activity feed).
+- name: Sessions
+  description: Live agent-session registry, control plane, and stream.
+paths:
+  /v1/agents:
+    get:
+      tags: [Agents]
+      operationId: listAgents
+      summary: List agents for the org.
+      responses:
+        '200':
+          description: Agents in the caller's org.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agents:
+                    type: array
+                    items: { $ref: '#/components/schemas/AgentView' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Agents]
+      operationId: createAgent
+      summary: Create an agent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAgentRequest' }
+      responses:
+        '201':
+          description: The created agent.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentView' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Name conflict, or the org's long-running agent cap is reached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /v1/agents/metrics:
+    get:
+      tags: [Overview]
+      operationId: agentsMetrics
+      summary: Invocations-over-time histogram for the org's Agents dashboard.
+      description: |
+        Every point is a real count of recorded runs in that time bucket — one
+        series line per agent that ran in the window. The Resource Usage rollup
+        is all-null (this store meters no CPU/memory/storage/cost).
+      parameters:
+      - name: range
+        in: query
+        description: Window token. Unknown/empty defaults to 30D.
+        schema:
+          type: string
+          enum: [24H, 7D, 30D]
+          default: 30D
+      responses:
+        '200':
+          description: Per-agent invocation series plus the (all-null) resource rollup.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MetricsView' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/agents/activity:
+    get:
+      tags: [Overview]
+      operationId: agentsActivity
+      summary: Org-wide recent-activity feed.
+      description: |
+        Each recorded run is an invoked (ok) or failed (error) event; each
+        agent's own create/update timestamps are created/updated events. Merged,
+        newest first, capped at 50.
+      responses:
+        '200':
+          description: Recent activity events.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activity:
+                    type: array
+                    items: { $ref: '#/components/schemas/ActivityView' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/agents/{ref}:
+    parameters:
+    - $ref: '#/components/parameters/Ref'
+    get:
+      tags: [Agents]
+      operationId: getAgent
+      summary: Agent detail plus recent runs.
+      responses:
+        '200':
+          description: Agent detail (includes instructions and up to 20 recent runs).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Agents]
+      operationId: updateAgent
+      summary: Update an agent.
+      description: |
+        Partial update; every field is optional. Omitted fields keep their
+        stored value. The lifecycle is re-validated from the resulting
+        mode+schedule.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAgentRequest' }
+      responses:
+        '200':
+          description: The updated agent.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentView' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Transition into long-running exceeds the org's cap.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Agents]
+      operationId: deleteAgent
+      summary: Delete an agent and its runs.
+      responses:
+        '204':
+          description: Deleted.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/agents/{ref}/run:
+    parameters:
+    - $ref: '#/components/parameters/Ref'
+    post:
+      tags: [Agents]
+      operationId: runAgent
+      summary: Run the agent.
+      description: |
+        Composes the agent's instructions with the caller input and runs a real
+        chat completion via the in-process AI client, then records the run. A
+        run moves money (debits the org's commerce ledger), so a validated
+        principal is required and the org balance is pre-authorized fail-closed.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RunRequest' }
+      responses:
+        '200':
+          description: The completed run (status "ok").
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RunView' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: Balance gate denied — insufficient funds. No run happened.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502':
+          description: The run executed but the model failed; a recorded error-status run is returned.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RunView' }
+        '503':
+          description: Inference is not configured on this deployment, or commerce is unreachable.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /v1/agents/{ref}/runs:
+    parameters:
+    - $ref: '#/components/parameters/Ref'
+    get:
+      tags: [Agents]
+      operationId: listAgentRuns
+      summary: Run history for the agent.
+      parameters:
+      - name: limit
+        in: query
+        description: Max runs to return. Defaults to 50.
+        schema:
+          type: integer
+          default: 50
+      responses:
+        '200':
+          description: Recorded runs, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items: { $ref: '#/components/schemas/RunView' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/agents/sessions:
+    post:
+      tags: [Sessions]
+      operationId: registerSession
+      summary: Register a live session.
+      description: |
+        Optionally links to a parent session (must exist in the same org). A
+        session with no parent is itself a root.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterSessionRequest' }
+      responses:
+        '201':
+          description: The registered session.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionView' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    get:
+      tags: [Sessions]
+      operationId: listSessions
+      summary: List live sessions.
+      parameters:
+      - name: root
+        in: query
+        description: Filter to one subagent tree by root session id.
+        schema: { type: string }
+      - name: parent
+        in: query
+        description: Filter to direct children of a parent session id.
+        schema: { type: string }
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [running, paused, done, error]
+      - name: limit
+        in: query
+        schema: { type: integer }
+      responses:
+        '200':
+          description: Matching sessions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items: { $ref: '#/components/schemas/SessionView' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/agents/sessions/stream:
+    get:
+      tags: [Sessions]
+      operationId: sessionsStream
+      summary: SSE feed of live session and event updates (rides ZAP).
+      description: |
+        Server-Sent Events stream of session lifecycle changes and appended
+        events for the caller's org. Optional `?root=<id>` scopes the feed to a
+        single subagent tree.
+      parameters:
+      - name: root
+        in: query
+        description: Scope the stream to one subagent tree by root session id.
+        schema: { type: string }
+      responses:
+        '200':
+          description: An open `text/event-stream` of session/event frames.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE frames, each a JSON object with a `session` or `event` field.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/agents/sessions/{id}:
+    parameters:
+    - $ref: '#/components/parameters/SessionID'
+    get:
+      tags: [Sessions]
+      operationId: getSession
+      summary: Session detail plus direct children and recent events.
+      responses:
+        '200':
+          description: Session detail.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Sessions]
+      operationId: patchSession
+      summary: Update session status or title.
+      description: |
+        A finished (done/error) session stays finished — its terminal state is
+        monotonic and cannot be reopened.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PatchSessionRequest' }
+      responses:
+        '200':
+          description: The updated session.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionView' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Session is terminal; status cannot change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /v1/agents/sessions/{id}/tree:
+    parameters:
+    - $ref: '#/components/parameters/SessionID'
+    get:
+      tags: [Sessions]
+      operationId: sessionTree
+      summary: The full subagent-flow graph rooted at this session.
+      responses:
+        '200':
+          description: The recursively-assembled session tree.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TreeNode' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/agents/sessions/{id}/events:
+    parameters:
+    - $ref: '#/components/parameters/SessionID'
+    post:
+      tags: [Sessions]
+      operationId: appendSessionEvent
+      summary: Append an event to a session's ordered log.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EventRequest' }
+      responses:
+        '201':
+          description: The appended event.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EventView' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/agents/sessions/{id}/pause:
+    parameters:
+    - $ref: '#/components/parameters/SessionID'
+    post:
+      tags: [Sessions]
+      operationId: pauseSession
+      summary: Pause a session (control command).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ControlRequest' }
+      responses:
+        '200':
+          description: The recorded control result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ControlResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Session is finished; cannot control it.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '502':
+          description: Control recorded but the tasks-engine forward failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /v1/agents/sessions/{id}/resume:
+    parameters:
+    - $ref: '#/components/parameters/SessionID'
+    post:
+      tags: [Sessions]
+      operationId: resumeSession
+      summary: Resume a session (control command).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ControlRequest' }
+      responses:
+        '200':
+          description: The recorded control result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ControlResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Session is finished; cannot control it.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '502':
+          description: Control recorded but the tasks-engine forward failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /v1/agents/sessions/{id}/stop:
+    parameters:
+    - $ref: '#/components/parameters/SessionID'
+    post:
+      tags: [Sessions]
+      operationId: stopSession
+      summary: Stop a session (control command).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ControlRequest' }
+      responses:
+        '200':
+          description: The recorded control result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ControlResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Session is finished; cannot control it.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '502':
+          description: Control recorded but the tasks-engine forward failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /v1/agents/sessions/{id}/message:
+    parameters:
+    - $ref: '#/components/parameters/SessionID'
+    post:
+      tags: [Sessions]
+      operationId: messageSession
+      summary: Send a message to a session (control command).
+      description: A message requires a non-empty `message` or a `payload`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ControlRequest' }
+      responses:
+        '200':
+          description: The recorded control result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ControlResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Session is finished; cannot control it.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '502':
+          description: Control recorded but the tasks-engine forward failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery:
+        https://hanzo.id/.well-known/openid-configuration.'
+  parameters:
+    Ref:
+      name: ref
+      in: path
+      required: true
+      description: The agent's public id (the `agent_...` handle) OR its org-unique name.
+      schema: { type: string }
+    SessionID:
+      name: id
+      in: path
+      required: true
+      description: The session id (the `sess_...` handle).
+      schema: { type: string }
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Missing or invalid credentials.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: X-Org-Id required, or a validated principal is required.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    CreateAgentRequest:
+      title: CreateAgentRequest
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: Org-unique name; must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$.
+        model:
+          type: string
+          description: Served model id. Validated against the gateway catalog; omit to use the deployment default.
+        instructions:
+          type: string
+          description: System prompt (capped at 32 KiB).
+        description: { type: string }
+        tools:
+          type: array
+          items: { type: string }
+        executionMode:
+          type: string
+          enum: [one-shot, long-running]
+          description: Defaults to one-shot when empty.
+        schedule:
+          type: string
+          description: Required 5-field cron for a long-running agent; cleared for one-shot.
+        computeRef: { type: string }
+        serviceAccountId: { type: string }
+    UpdateAgentRequest:
+      title: UpdateAgentRequest
+      type: object
+      description: All fields optional; only present fields are applied.
+      properties:
+        model: { type: string }
+        instructions: { type: string }
+        description: { type: string }
+        tools:
+          type: array
+          items: { type: string }
+        executionMode:
+          type: string
+          enum: [one-shot, long-running]
+        schedule: { type: string }
+        computeRef: { type: string }
+        serviceAccountId: { type: string }
+    RunRequest:
+      title: RunRequest
+      type: object
+      properties:
+        input:
+          type: string
+          description: Caller input appended to the agent's instructions (capped at 128 KiB).
+    AgentView:
+      title: AgentView
+      type: object
+      properties:
+        id: { type: string, examples: ['agent_1f3a...'] }
+        name: { type: string }
+        model: { type: string }
+        description: { type: string }
+        tools:
+          type: array
+          items: { type: string }
+        status: { type: string, examples: [ready] }
+        executionMode:
+          type: string
+          enum: [one-shot, long-running]
+        schedule: { type: string }
+        computeRef: { type: string }
+        serviceAccountId: { type: string }
+        runs: { type: integer, description: Recorded run count. }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AgentDetail:
+      title: AgentDetail
+      allOf:
+      - $ref: '#/components/schemas/AgentView'
+      - type: object
+        properties:
+          instructions: { type: string }
+          recentRuns:
+            type: array
+            items: { $ref: '#/components/schemas/RunView' }
+    RunView:
+      title: RunView
+      type: object
+      properties:
+        id: { type: string, examples: ['run_9c2e...'] }
+        status:
+          type: string
+          enum: [ok, error]
+        model: { type: string }
+        input: { type: string }
+        output: { type: string }
+        error: { type: string }
+        durationMs: { type: integer, format: int64 }
+        createdAt: { type: string, format: date-time }
+    MetricsView:
+      title: MetricsView
+      type: object
+      properties:
+        range:
+          type: string
+          enum: [24H, 7D, 30D]
+        series:
+          type: array
+          items: { $ref: '#/components/schemas/SeriesLine' }
+        resource: { $ref: '#/components/schemas/ResourceUsage' }
+    SeriesLine:
+      title: SeriesLine
+      type: object
+      properties:
+        key: { type: string, description: Agent name. }
+        points:
+          type: array
+          items: { $ref: '#/components/schemas/SeriesPoint' }
+    SeriesPoint:
+      title: SeriesPoint
+      type: object
+      properties:
+        t: { type: string, format: date-time, description: Bucket start (RFC3339 UTC). }
+        v: { type: integer, description: Invocation count in the bucket. }
+    ResourceUsage:
+      title: ResourceUsage
+      description: |
+        All fields are null — this store meters no CPU/memory/storage/cost; the
+        console renders "—".
+      type: object
+      properties:
+        cpuVcpuHours: { type: [number, 'null'] }
+        memGbHours: { type: [number, 'null'] }
+        storageIoBytes: { type: [number, 'null'] }
+        costCents: { type: [number, 'null'] }
+    ActivityView:
+      title: ActivityView
+      type: object
+      properties:
+        id: { type: string }
+        kind:
+          type: string
+          enum: [invoked, failed, created, updated]
+        agent: { type: string, description: Agent name. }
+        message: { type: string }
+        at: { type: string, format: date-time }
+    RegisterSessionRequest:
+      title: RegisterSessionRequest
+      type: object
+      required: [agent]
+      properties:
+        agent: { type: string, description: Agent label (max 128 chars). }
+        actor: { type: string, description: Defaults to the validated principal (org/sub). }
+        title: { type: string }
+        status:
+          type: string
+          enum: [running, paused, done, error]
+          description: Defaults to running.
+        parentSessionId: { type: string, description: Parent session id in the same org (for subagent linkage). }
+        taskWorkflowId: { type: string }
+        taskRunId: { type: string }
+    PatchSessionRequest:
+      title: PatchSessionRequest
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [running, paused, done, error]
+        title: { type: string }
+    EventRequest:
+      title: EventRequest
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [message, tool-call, spawn, log, status, control]
+        actor: { type: string, description: Defaults to the validated principal (org/sub). }
+        payload:
+          description: Arbitrary JSON payload (max 64 KiB); must be valid JSON.
+    ControlRequest:
+      title: ControlRequest
+      type: object
+      properties:
+        message: { type: string, description: Optional steering text (max 16 KiB). Required for the message command when no payload is given. }
+        payload:
+          description: Optional arbitrary JSON payload (max 64 KiB); must be valid JSON.
+    ControlResult:
+      title: ControlResult
+      type: object
+      properties:
+        command:
+          type: string
+          enum: [pause, resume, stop, message]
+        event: { $ref: '#/components/schemas/EventView' }
+        forwarded:
+          type: boolean
+          description: True when the command was forwarded to the hanzoai/tasks engine.
+    SessionView:
+      title: SessionView
+      type: object
+      properties:
+        id: { type: string, examples: ['sess_4b7d...'] }
+        agent: { type: string }
+        actor: { type: string }
+        status:
+          type: string
+          enum: [running, paused, done, error]
+        parentSessionId: { type: string }
+        rootSessionId: { type: string }
+        title: { type: string }
+        taskWorkflowId: { type: string }
+        taskRunId: { type: string }
+        events: { type: integer }
+        children: { type: integer, description: Direct fan-out count. }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    SessionDetail:
+      title: SessionDetail
+      allOf:
+      - $ref: '#/components/schemas/SessionView'
+      - type: object
+        properties:
+          childSessions:
+            type: array
+            items: { $ref: '#/components/schemas/SessionView' }
+          recentEvents:
+            type: array
+            items: { $ref: '#/components/schemas/EventView' }
+    EventView:
+      title: EventView
+      type: object
+      properties:
+        id: { type: string, examples: ['evt_2a91...'] }
+        sessionId: { type: string }
+        seq: { type: integer, format: int64 }
+        kind:
+          type: string
+          enum: [message, tool-call, spawn, log, status, control]
+        actor: { type: string }
+        payload:
+          description: Arbitrary JSON payload.
+        createdAt: { type: string, format: date-time }
+    TreeNode:
+      title: TreeNode
+      type: object
+      description: One node of the subagent-flow graph — a session plus its children, recursively.
+      properties:
+        session: { $ref: '#/components/schemas/SessionView' }
+        children:
+          type: array
+          items: { $ref: '#/components/schemas/TreeNode' }
+    Error:
+      title: Error
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message: { type: string }
+            type: { type: string }
+            code: { type: string }

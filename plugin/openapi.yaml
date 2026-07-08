@@ -1,0 +1,121 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Plugin API
+  summary: Runtime plugin loader and introspection for the unified cloud binary (hanzoai/cloud).
+  description: |
+    The plugin subsystem of the unified Hanzo cloud binary. `cloud` is a thin
+    host: its native Go subsystems are compiled in, but everything else mounts at
+    RUNTIME from a JSON manifest (`CLOUD_PLUGINS`) — no cloud rebuild to add or
+    update a service.
+
+    Two plugin kinds, both reduced to "produce an `http.Handler`, then
+    `app.Mount(prefix, h)`":
+      - `wasm`  — a polyglot service (Rust/WASM, or Python/TS via goa) loaded
+                  in-process through `github.com/hanzoai/goa`.
+      - `proxy` — a standalone server reached over a pluggable transport
+                  (`http` default, or `zap`).
+
+    Because plugins mount at arbitrary manifest-defined prefixes, their routes are
+    NOT part of this fixed contract. The ONLY static HTTP surface this subsystem
+    registers is the introspection endpoint `GET /v1/plugins`, which lists what is
+    currently mounted. If `CLOUD_PLUGINS` is unset, zero plugins mount and the
+    list is empty.
+
+    Authentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`). The same
+    token authenticates every Hanzo service.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+servers:
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
+security:
+- BearerAuth: []
+tags:
+- name: Plugins
+  description: Runtime plugin introspection.
+paths:
+  /v1/plugins:
+    get:
+      tags:
+      - Plugins
+      summary: List mounted plugins
+      description: |
+        Returns every plugin currently mounted from the runtime manifest, as a
+        flat list of `{name, kind, prefix}`. This is introspection only — it does
+        not expose the plugins' own routes, which live at each plugin's `prefix`.
+        The list is empty when no manifest is configured (`CLOUD_PLUGINS` unset).
+      operationId: listPlugins
+      responses:
+        '200':
+          description: The set of mounted plugins.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token issued by Hanzo IAM (https://hanzo.id). The same token
+        authenticates every Hanzo service.
+  responses:
+    Unauthorized:
+      description: Missing or invalid bearer token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    PluginList:
+      type: object
+      description: The set of plugins mounted from the runtime manifest.
+      required:
+      - plugins
+      properties:
+        plugins:
+          type: array
+          items:
+            $ref: '#/components/schemas/PluginInfo'
+    PluginInfo:
+      type: object
+      description: |
+        Introspection view of one mounted plugin. Derived from the manifest
+        `Plugin` entry; only the three public identity fields are surfaced.
+      properties:
+        name:
+          type: string
+          description: Plugin name from the manifest entry.
+        kind:
+          type: string
+          description: Plugin kind selecting how it was built and mounted.
+          enum:
+          - wasm
+          - proxy
+        prefix:
+          type: string
+          description: Mount point at which the plugin's routes are served.
+          example: /v1/pricing
+    Error:
+      type: object
+      description: Standard error envelope.
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            type:
+              type: string
+            code:
+              type: string

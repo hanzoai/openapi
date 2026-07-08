@@ -1,0 +1,609 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Product API
+  summary: Read-only Search and Vector product surfaces backing the Hanzo console panels (hanzoai/cloud
+    productsvc).
+  description: 'The `product` subsystem of the unified Hanzo cloud binary (HIP-0106),
+
+    reached through the gateway at `api.hanzo.ai`. It is the single edge that
+
+    owns the console''s Search/Indexes and Vector panel paths and proxies them,
+
+    as a shape-translating read-only proxy, to the in-cluster Meilisearch
+
+    (`search.hanzo.svc`) and Qdrant (`vector.hanzo.svc`) services. No
+
+    search/vector logic is reimplemented here; the subsystem holds no
+
+    index/collection state.
+
+
+    Read-only and degradation-tolerant: when an upstream is unreachable each
+
+    handler returns an honest empty-but-valid body (HTTP 200) rather than a 5xx,
+
+    so the console panels degrade to an empty state instead of erroring.
+
+
+    AUTHENTICATION NOTE — these routes are the deliberate exception to the
+
+    Hanzo IAM JWT convention. The gateway middleware bypasses these paths via
+
+    `AUTH_PUBLIC_PATHS`; the bearer credential is an OPAQUE SERVICE KEY
+
+    (`HANZO_SEARCH_API_KEY` for `/v1/search-docs/*`, `HANZO_VECTOR_API_KEY` for
+
+    `/v1/vector/*`), NOT a Hanzo IAM JWT. The subsystem enforces the key itself
+
+    with a constant-time compare against the configured upstream master key. An
+
+    unset key fails closed with HTTP 503.
+
+    '
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+servers:
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
+security:
+- bearerAuth: []
+tags:
+- name: Search
+  description: Meilisearch-backed document index discovery and statistics.
+- name: Vector
+  description: Qdrant-backed vector collection discovery and statistics.
+paths:
+  /v1/search-docs/indexes:
+    get:
+      tags:
+      - Search
+      summary: List search indexes
+      description: 'Returns every Meilisearch index with its document count and, on a
+
+        best-effort basis, its created/last-indexed timestamps. If the upstream
+
+        Meilisearch is unreachable, returns HTTP 200 with an empty `indexes`
+
+        array. Authenticated with the opaque search service key.
+
+        '
+      operationId: listSearchIndexes
+      responses:
+        '200':
+          description: Index list (empty array if upstream unreachable).
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - indexes
+                properties:
+                  indexes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SearchIndex'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /v1/search-docs/stats:
+    get:
+      tags:
+      - Search
+      summary: Get aggregate search statistics
+      description: 'Returns the total document count across all Meilisearch indexes.
+
+        Meilisearch keeps no query-history counters, so `totalSearches`,
+
+        `totalSessions`, and the `searchesPerDay` series are reported as an
+
+        honest zero/empty rather than a fabricated number. If the upstream is
+
+        unreachable, returns HTTP 200 with all counters zeroed. Authenticated
+
+        with the opaque search service key.
+
+        '
+      operationId: getSearchStats
+      responses:
+        '200':
+          description: Aggregate search statistics.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchStats'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /v1/vector/collections:
+    get:
+      tags:
+      - Vector
+      summary: List vector collections
+      description: 'Returns every Qdrant collection with its vector count, dimension, and
+
+        distance metric (best-effort per-collection detail). If the upstream
+
+        Qdrant is unreachable, returns HTTP 200 with an empty `collections`
+
+        array. Authenticated with the opaque vector service key.
+
+        '
+      operationId: listVectorCollections
+      responses:
+        '200':
+          description: Collection list (empty array if upstream unreachable).
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - collections
+                properties:
+                  collections:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VectorCollection'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /v1/vector/stats:
+    get:
+      tags:
+      - Vector
+      summary: Get aggregate vector statistics
+      description: 'Returns totals aggregated across all Qdrant collections: collection
+
+        count, vector count, and storage bytes. If the upstream is unreachable,
+
+        returns HTTP 200 with all counters zeroed. Authenticated with the opaque
+
+        vector service key.
+
+        '
+      operationId: getVectorStats
+      responses:
+        '200':
+          description: Aggregate vector statistics.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VectorStats'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+components:
+  securitySchemes:
+    bearerAuth:
+      $ref: '#/components/securitySchemes/bearerAuth'
+    oauth2:
+      type: oauth2
+      description: OAuth2 authentication via Hanzo IAM
+      flows:
+        authorizationCode:
+          authorizationUrl: https://iam.hanzo.ai/oauth/authorize
+          tokenUrl: https://iam.hanzo.ai/oauth/token
+          refreshUrl: https://iam.hanzo.ai/oauth/token
+          scopes:
+            openid: OpenID Connect identity
+            profile: User profile information
+            email: Email address
+            read: Read access to resources
+            write: Write access to resources
+            admin: Administrative access
+        clientCredentials:
+          tokenUrl: https://iam.hanzo.ai/oauth/token
+          scopes:
+            read: Read access to resources
+            write: Write access to resources
+            admin: Administrative access
+        password:
+          tokenUrl: https://iam.hanzo.ai/oauth/token
+          scopes:
+            openid: OpenID Connect identity
+            profile: User profile information
+            email: Email address
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: 'API key for service-to-service authentication.
+
+
+        Generate keys via the Hanzo Gateway /key/generate endpoint.
+
+        '
+  schemas:
+    SearchIndex:
+      type: object
+      description: A single Meilisearch index as decoded by the console's search panel.
+      required:
+      - name
+      - docCount
+      - lastIndexedAt
+      - createdAt
+      properties:
+        name:
+          type: string
+          description: Index UID.
+        docCount:
+          type: integer
+          format: int64
+          description: Number of documents in the index.
+        lastIndexedAt:
+          type: string
+          nullable: true
+          description: Last-indexed timestamp (RFC 3339); null if unknown.
+        createdAt:
+          type: string
+          description: Created timestamp (RFC 3339); falls back to now() if the upstream omits it.
+    DayCount:
+      type: object
+      description: A single day's search count in a time series.
+      required:
+      - date
+      - count
+      properties:
+        date:
+          type: string
+          description: Day (date string).
+        count:
+          type: integer
+          format: int64
+          description: Count for that day.
+    SearchStats:
+      type: object
+      description: Aggregate search statistics across all indexes.
+      required:
+      - totalDocuments
+      - totalSearches
+      - totalSessions
+      - searchesPerDay
+      properties:
+        totalDocuments:
+          type: integer
+          format: int64
+          description: Total documents across all indexes.
+        totalSearches:
+          type: integer
+          format: int64
+          description: Always 0 — Meilisearch keeps no query-history counters.
+        totalSessions:
+          type: integer
+          format: int64
+          description: Always 0 — not derivable from the index.
+        searchesPerDay:
+          type: array
+          description: Always empty — no per-day query history is available.
+          items:
+            $ref: '#/components/schemas/DayCount'
+    VectorCollection:
+      type: object
+      description: A single Qdrant collection as decoded by the console's vector panel.
+      required:
+      - name
+      - vectorCount
+      - dimension
+      - distanceMetric
+      - createdAt
+      properties:
+        name:
+          type: string
+          description: Collection name.
+        vectorCount:
+          type: integer
+          format: int64
+          description: Number of points/vectors in the collection.
+        dimension:
+          type: integer
+          format: int64
+          description: Vector dimension.
+        distanceMetric:
+          type: string
+          description: Distance metric (defaults to "cosine" when the upstream omits it).
+        storageBytes:
+          type: integer
+          format: int64
+          description: Storage size in bytes (omitted when zero).
+        createdAt:
+          type: string
+          description: Created timestamp (RFC 3339).
+    VectorStats:
+      type: object
+      description: Aggregate vector statistics across all collections.
+      required:
+      - totalCollections
+      - totalVectors
+      - totalStorageBytes
+      properties:
+        totalCollections:
+          type: integer
+          format: int64
+          description: Total number of collections.
+        totalVectors:
+          type: integer
+          format: int64
+          description: Total vectors across all collections.
+        totalStorageBytes:
+          type: integer
+          format: int64
+          description: Total storage bytes across all collections.
+    Error:
+      type: object
+      required:
+      - status
+      - msg
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+          description: Always "error" for error responses
+        msg:
+          type: string
+          description: Human-readable error message
+        code:
+          type: integer
+          description: Application-specific error code
+        data:
+          type: object
+          description: Additional error context
+        data2:
+          type: object
+          description: Additional error details
+        requestId:
+          type: string
+          description: Request ID for debugging
+    ValidationError:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+        msg:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              code:
+                type: string
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+        token_type:
+          type: string
+          enum:
+          - Bearer
+        expires_in:
+          type: integer
+          description: Token lifetime in seconds
+        refresh_token:
+          type: string
+          description: Refresh token for obtaining new access tokens
+        scope:
+          type: string
+          description: Space-separated list of granted scopes
+        id_token:
+          type: string
+          description: OpenID Connect ID token (JWT)
+    UserInfo:
+      type: object
+      description: OIDC UserInfo response
+      properties:
+        sub:
+          type: string
+          description: Subject identifier (user ID)
+        name:
+          type: string
+        given_name:
+          type: string
+        family_name:
+          type: string
+        preferred_username:
+          type: string
+        email:
+          type: string
+          format: email
+        email_verified:
+          type: boolean
+        phone_number:
+          type: string
+        phone_number_verified:
+          type: boolean
+        picture:
+          type: string
+          format: uri
+        updated_at:
+          type: integer
+          description: Unix timestamp
+    Web3AuthRequest:
+      type: object
+      description: Web3 wallet authentication request
+      required:
+      - address
+      - nonce
+      - signature
+      properties:
+        address:
+          type: string
+          description: Ethereum wallet address
+          pattern: ^0x[a-fA-F0-9]{40}$
+        nonce:
+          type: string
+          description: Nonce obtained from /v1/iam/auth/web3-nonce
+        createAt:
+          type: integer
+          description: Timestamp when signature was created
+        typedData:
+          type: string
+          description: The message that was signed
+        signature:
+          type: string
+          description: Wallet signature
+        walletType:
+          type: string
+          description: Type of wallet used
+          enum:
+          - MetaMask
+          - WalletConnect
+          - Coinbase
+          - Rainbow
+  responses:
+    BadRequest:
+      description: Bad Request - Invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalidParameter:
+              value:
+                status: error
+                msg: 'Invalid parameter: email format is incorrect'
+                code: 400
+    Unauthorized:
+      description: Unauthorized - Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missingToken:
+              value:
+                status: error
+                msg: Authentication required
+                code: 401
+            invalidToken:
+              value:
+                status: error
+                msg: Invalid or expired token
+                code: 401
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            insufficientPermissions:
+              value:
+                status: error
+                msg: You don't have permission to access this resource
+                code: 403
+    NotFound:
+      description: Not Found - Resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            resourceNotFound:
+              value:
+                status: error
+                msg: Resource not found
+                code: 404
+    Conflict:
+      description: Conflict - Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            alreadyExists:
+              value:
+                status: error
+                msg: Resource with this ID already exists
+                code: 409
+    UnprocessableEntity:
+      description: Unprocessable Entity - Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          examples:
+            validationFailed:
+              value:
+                status: error
+                msg: Validation failed
+                errors:
+                - field: email
+                  message: Invalid email format
+                  code: invalid_format
+    TooManyRequests:
+      description: Too Many Requests - Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per window
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests in window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when window resets
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retry
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            rateLimited:
+              value:
+                status: error
+                msg: Rate limit exceeded. Please retry after 60 seconds
+                code: 429
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            serverError:
+              value:
+                status: error
+                msg: An internal error occurred
+                code: 500
+                requestId: req_abc123
+    ServiceUnavailable:
+      description: Service Unavailable - Temporary outage
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retry
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            maintenance:
+              value:
+                status: error
+                msg: Service temporarily unavailable
+                code: 503
