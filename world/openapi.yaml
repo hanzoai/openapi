@@ -418,6 +418,40 @@ paths:
         - { name: videoId, in: query, required: true, schema: { type: string } }
       responses:
         '200': { description: HTML player page, content: { text/html: { schema: { type: string } } } }
+  /v1/world/limits:
+    get:
+      tags: [Plan]
+      summary: "Resolved World plan limits (contract echo)"
+      description: >
+        Returns the Hanzo World enforcement limits for a plan, resolved from the
+        @hanzo/plans catalog (the single source of truth) via the world.*
+        entitlement vocabulary. Agents and the dashboard read this to self-config
+        against the live catalog instead of hardcoding tier numbers. Defaults to
+        world-free; degrades to the fail-closed Free floor on a catalog outage.
+      operationId: world_limits
+      parameters:
+        - name: plan
+          in: query
+          required: false
+          description: "Plan id (world-free | world-pro | world-team | world-enterprise). Defaults to world-free."
+          schema: { type: string, default: world-free }
+      responses:
+        '200':
+          description: Resolved plan limits
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan: { type: string, example: world-pro }
+                  unit: { type: string, example: requests/minute }
+                  limits:
+                    type: object
+                    properties:
+                      apiRateLimit: { type: integer, description: "world.api_rate_limit, req/min; -1 = unlimited", example: 6000 }
+                      mcpRateLimit: { type: integer, description: "world.mcp_rate_limit, req/min; -1 = unlimited", example: 3000 }
+                      maxAlerts: { type: integer, description: "world.max_alerts; -1 = unlimited", example: -1 }
+                      modelApi: { type: boolean, description: "world.model_api — /v1/world/model + SSE stream access", example: true }
   /v1/world/health:
     get:
       tags: [Meta]
