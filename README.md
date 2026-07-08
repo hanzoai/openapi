@@ -32,6 +32,8 @@ curl -H "Authorization: Bearer ${HANZO_TOKEN}" \
 OIDC discovery:
 `https://hanzo.id/.well-known/openid-configuration`
 
+**Canonical capability index:** [CAPABILITIES.md](CAPABILITIES.md) — one name per capability, grouped into eight categories. The master `hanzo.yaml` is grouped by those categories via `x-tagGroups`.
+
 ## Service Index
 
 | Service | Spec | Hostname | Gateway prefix |

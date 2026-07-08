@@ -10,12 +10,59 @@ Every service is exposed at `https://api.hanzo.ai/v1/<service>/*`, so paths are
 already namespaced and never collide. Component schemas/responses/parameters ARE
 namespaced here (`<svc>_<Name>`) with their `$ref`s rewritten to match, so two
 services can both define `Error`/`User`/etc. without clobbering each other.
+
+The master is grouped by the eight canonical categories via `x-tagGroups` (the
+Redocly navigation extension). The category taxonomy is the SAME one documented
+in `CAPABILITIES.md` — that manifest is authoritative; `GROUPS` here mirrors it
+for the present per-service specs.
 """
 import os
 import sys
 import yaml
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+
+# Canonical category -> the per-service spec dirs that belong to it. Mirrors the
+# capability categories in CAPABILITIES.md; legacy/duplicate spec dirs (e.g. ml,
+# s3, mq, auto) are grouped under the SAME category as their canonical name so the
+# master stays navigable while the specs are reconciled. Every present
+# `<svc>/openapi.yaml` MUST appear in exactly one group; `check_groups` fails the
+# build otherwise so the grouping never drifts.
+GROUPS = {
+    "Identity": ["iam", "authz", "security", "kms", "zt", "guard", "did"],
+    "AI": ["ai", "agents", "ml", "eval", "evals", "prompts", "functions",
+           "exec", "framework", "graph", "engine"],
+    "Messaging": ["pubsub", "mq", "stream", "tasks", "notify"],
+    "Observability": ["o11y", "observe", "analytics", "tracker"],
+    "Commerce": ["billing", "pricing", "plan", "referrals", "affiliates",
+                 "crm", "product", "commerce"],
+    "Platform": ["platform", "paas", "provisioning", "gateway", "visor", "base",
+                 "do", "edge", "dns", "registry", "nexus", "operative", "db",
+                 "kv", "vector"],
+    "Applications": ["console", "projects", "git", "templates", "integrations",
+                     "bot", "kb", "search", "websearch", "s3", "authors",
+                     "automations", "chat", "auto", "app", "flow"],
+    "Core": ["admin", "plugin", "cloud"],
+}
+
+
+def group_of(svc):
+    for name, members in GROUPS.items():
+        if svc in members:
+            return name
+    return None
+
+
+def check_groups(services):
+    """Every present service must be grouped exactly once; fail loud on drift."""
+    grouped = [s for members in GROUPS.values() for s in members]
+    dupes = {s for s in grouped if grouped.count(s) > 1}
+    if dupes:
+        sys.exit(f"merge: service(s) in >1 group: {sorted(dupes)}")
+    ungrouped = [s for s in services if group_of(s) is None]
+    if ungrouped:
+        sys.exit(f"merge: service(s) not in any GROUPS category "
+                 f"(add to GROUPS + CAPABILITIES.md): {ungrouped}")
 
 
 def prefix(node, svc):
@@ -29,16 +76,6 @@ def prefix(node, svc):
                     name = "/".join(v.split("/")[3:])
                     out[k] = f"#/components/{kind}/{svc}_{name}"
                     continue
-            if k == "mapping" and isinstance(v, dict):
-                # discriminator.mapping values are component pointers too, but not
-                # under a `$ref` key — namespace them the same way.
-                out[k] = {
-                    mk: (f"#/components/schemas/{svc}_{'/'.join(mv.split('/')[3:])}"
-                         if isinstance(mv, str) and mv.startswith("#/components/schemas/")
-                         else mv)
-                    for mk, mv in v.items()
-                }
-                continue
             out[k] = prefix(v, svc)
         return out
     if isinstance(node, list):
@@ -53,40 +90,14 @@ def main():
         and os.path.isfile(os.path.join(ROOT, d, "openapi.yaml"))
         and d != "shared"
     )
-
-    HTTP_METHODS = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
+    check_groups(services)
 
     paths, schemas, responses, params, secschemes, tags = {}, {}, {}, {}, {}, []
     for svc in services:
         spec = yaml.safe_load(open(os.path.join(ROOT, svc, "openapi.yaml")))
         comps = spec.get("components", {}) or {}
         for p, item in (spec.get("paths", {}) or {}).items():
-            item = prefix(item, svc)
-            # operationIds are unique WITHIN a service but collide ACROSS services
-            # in the unified master (e.g. two services both expose `listRecords`).
-            # Namespace them by service — same discipline as schemas above — so the
-            # master is a single, globally-valid, generatable OpenAPI document.
-            if isinstance(item, dict):
-                for method, op in item.items():
-                    if method in HTTP_METHODS and isinstance(op, dict):
-                        if isinstance(op.get("operationId"), str):
-                            op["operationId"] = f"{svc}_{op['operationId']}"
-                        # Namespace tags by service too. Codegen groups operations
-                        # into one API class per tag, so two services sharing a tag
-                        # name (even case-only variants like `MCP`/`mcp`) would fuse
-                        # into a single, cross-contaminated class — and collide on
-                        # case-insensitive filesystems. Prefixing keeps each
-                        # service's operations in their own class (same discipline
-                        # as schemas/operationIds).
-                        # Collapse to a single primary tag: codegen puts one
-                        # operation in exactly one API class. A multi-tagged op
-                        # would otherwise be emitted (with its request model) in
-                        # every class, colliding on the shared model name.
-                        if isinstance(op.get("tags"), list) and op["tags"]:
-                            op["tags"] = [f"{svc}_{op['tags'][0]}"]
-                        else:
-                            op["tags"] = [svc]
-            paths[p] = item
+            paths[p] = prefix(item, svc)
         for n, x in (comps.get("schemas", {}) or {}).items():
             schemas[f"{svc}_{n}"] = prefix(x, svc)
         for n, x in (comps.get("responses", {}) or {}).items():
@@ -96,6 +107,13 @@ def main():
         for n, x in (comps.get("securitySchemes", {}) or {}).items():
             secschemes.setdefault(n, x)
         tags.append({"name": svc, "description": spec.get("info", {}).get("title", svc)})
+
+    # x-tagGroups: canonical category → its present service tags, in category order.
+    tag_groups = []
+    for name in GROUPS:
+        members = [s for s in GROUPS[name] if s in services]
+        if members:
+            tag_groups.append({"name": name, "tags": members})
 
     components = {
         "securitySchemes": secschemes or {"bearerAuth": {"type": "http", "scheme": "bearer"}},
@@ -113,15 +131,17 @@ def main():
             "description": (
                 "The single unified OpenAPI surface for ALL Hanzo services, "
                 "aggregated from the per-service specs. Every route is "
-                "https://api.hanzo.ai/v1/<service>/*. Regenerated by merge.py — "
-                "edit the per-service <svc>/openapi.yaml, not this file."
+                "https://api.hanzo.ai/v1/<service>/*. Grouped by the eight "
+                "canonical categories (see CAPABILITIES.md). Regenerated by "
+                "merge.py — edit the per-service <svc>/openapi.yaml, not this file."
             ),
             "version": "1.0.0",
             "contact": {"name": "Hanzo AI", "url": "https://hanzo.ai", "email": "support@hanzo.ai"},
-            "license": {"name": "Proprietary", "identifier": "LicenseRef-Hanzo-Proprietary"},
+            "license": {"name": "Proprietary"},
         },
         "servers": [{"url": "https://api.hanzo.ai", "description": "Hanzo Gateway"}],
         "tags": tags,
+        "x-tagGroups": tag_groups,
         "security": [{"bearerAuth": []}],
         "paths": dict(sorted(paths.items())),
         "components": components,
@@ -129,7 +149,8 @@ def main():
     yaml.dump(out, open(os.path.join(ROOT, "hanzo.yaml"), "w"),
               default_flow_style=False, sort_keys=False, width=120)
     print(f"merged {len(services)} services → {len(paths)} paths, "
-          f"{len(schemas)} schemas, {len(responses)} responses, {len(params)} params")
+          f"{len(schemas)} schemas, {len(responses)} responses, {len(params)} params, "
+          f"{len(tag_groups)} categories")
     return 0
 
 

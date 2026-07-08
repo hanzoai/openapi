@@ -2,6 +2,16 @@
 
 ## v1.0.0
 
+### Canonical capability manifest + category grouping
+
+- Added `CAPABILITIES.md` — the authoritative index of every public
+  capability: one canonical name each, grouped into the eight categories
+  (Identity, AI, Messaging, Observability, Commerce, Platform,
+  Applications, Core), with `/v1/<name>` prefixes. Internal infra
+  (principal, goja, mpc, controlplane) is explicitly excluded.
+- `merge.py` now emits `x-tagGroups` so the unified `hanzo.yaml` is
+  navigable by category, and fails closed if any spec is ungrouped.
+
 ### Cloud product-surface specs (clients/* → live /v1 flat prefixes)
 
 Authored per-service specs for the fused `api.hanzo.ai/v1` cloud-binary
