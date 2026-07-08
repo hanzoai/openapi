@@ -1,0 +1,84 @@
+# capabilities.yaml — the ONE registry of Hanzo public capabilities.
+#
+# One and one way, by construction:
+#   • every openapi/<name>/openapi.yaml MUST appear here exactly once, in exactly
+#     one domain — merge.py FAILS the build on an orphan spec, an unlisted spec,
+#     or a name in two domains.  Orthogonality is a build invariant, not a hope.
+#   • the route IS the identity: one capability = one name = one /v1/<name> = one
+#     <name>/openapi.yaml.  No svc suffix, no singular/plural twins, no facade.
+#   • merge.py emits x-tagGroups from `domains` so Redoc/Scalar render the eight
+#     movements automatically.  Docs + SDKs derive from hanzo.yaml — never hand-kept.
+#
+# version: the API path stays /v1 (the compatibility contract, immutable).  The
+# release/generation is V8 — info.version: 8.0.0 on hanzo.yaml + every spec.
+
+edition: "V8 · Open Edition"
+version: "8.0.0"
+
+domains:
+  - id: identity
+    title: "Identity & Trust"
+    role: "who you are · what you may touch · where secrets live"
+    services: [iam, authz, kms, security, did, zt, guard]
+
+  - id: intelligence
+    title: "Intelligence"
+    role: "models · agents · evaluation — the mind of the cloud"
+    services: [ai, ml, engine, agents, evals, prompts, functions, exec, graph]
+
+  - id: data
+    title: "Data"
+    role: "the stores every capability writes to and reads from"
+    services: [storage, base, db, kv, vector]
+
+  - id: streams
+    title: "Streams"
+    role: "messaging · durable tasks · async orchestration"
+    services: [pubsub, mq, stream, tasks, notify, automations, flow, auto]
+
+  - id: observability
+    title: "Observability"
+    role: "see everything — telemetry · analytics · usage"
+    services: [o11y, analytics]
+
+  - id: commerce
+    title: "Commerce"
+    role: "the economy — meter · price · bill · reward"
+    services: [commerce, billing, pricing, plan, product, crm, referrals, affiliates, licensing, treasury, wallets]
+
+  - id: platform
+    title: "Platform"
+    role: "the cloud fabric — deploy · provision · route · host"
+    services: [cloud, platform, paas, provisioning, gateway, visor, edge, dns, registry, nexus]
+
+  - id: applications
+    title: "Applications"
+    role: "the user-facing surfaces built on all of the above"
+    services: [console, projects, git, team, templates, integrations, bot, chat, kb, search, websearch, authors, sites, tracker, framework]
+
+# Core — governance that owns no single domain.
+core: [admin, plugin]
+
+# Internal — power the music, are not instruments. Excluded from /v1, SDKs, docs.
+internal: [principal, goja, mpc, controlplane, metrics, audit]
+
+# Collapsed — resolved duplicates / consolidations. merge.py asserts these have
+# NO spec dir (they were removed), and records where the capability now lives.
+collapsed:
+  eval:      evals                     # pure dup — same /v1/evals
+  observe:   o11y + console/settings   # /v1/o11y facet → o11y; /v1/settings → console
+  operative: bot + visor              # computer-using-agent split: bot = the CUA (@hanzo/bot), visor = the VM it runs on
+  s3:        storage                   # renamed: storage is the capability, s3 the implementation
+  plans:     plan                      # singular canonical
+  plugins:   plugin
+
+# Not-yet-scored — LIVE surfaces missing a spec. Author these to complete the set.
+pending: [team, wallets, treasury, usage, fleet]
+
+# Braids under review — same concern, different names? Verify before merging;
+# do NOT silently consolidate (would lose capability). merge.py warns, not fails.
+review:
+  app_vs_projects: "app (hanzo.app builds/deploys) vs projects (buildable/deployable sites) — likely ONE concern; fold app→projects?"
+  do_is_a_provider: "do (DigitalOcean VPCs/LBs) is a PROVIDER, not a capability — fold into provisioning/platform?"
+  workflow_cluster: "auto (Hanzo Auto engine) · automations (connector pieces) · flow — three workflow surfaces; decomplect to one?"
+  retrieval_cluster: "search vs kb (semantic) vs vector (store) — overlapping retrieval; is search distinct from kb?"
