@@ -1,0 +1,580 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Provisioning API
+  summary: Managed-resource control plane (hanzoai/cloud clients/provisioning, HIP-0106).
+  description: |
+    The Hanzo Cloud provisioning control plane. It turns "create a database" into
+    a real logical resource inside an already-live, shared product backend — or,
+    for the dedicated kinds, launches the org's OWN isolated instance via the
+    cluster operator (HIP-0106). Served by the `clients/provisioning` subsystem of
+    the unified cloud binary, reached through the gateway at `api.hanzo.ai`.
+
+    NAMESPACE NOTE — these routes are keyed by RESOURCE KIND at top-level `/v1/`,
+    NOT under `/v1/provisioning/`. `Mount` registers one CRUD quartet per kind:
+    `/v1/sql`, `/v1/vector`, `/v1/datastore`, `/v1/kv`, `/v1/search`, `/v1/s3`,
+    `/v1/docdb`. The kind string is the Hanzo product name, never the upstream OSS
+    backend name (so `sql`/`s3`, not `postgres`/`minio`). This spec documents the
+    surface exactly as the Go code registers it.
+
+    Seven kinds, one Provisioner each:
+      - sql       -> Postgres    CREATE DATABASE + ROLE
+      - vector    -> Qdrant      collection
+      - datastore -> ClickHouse  dedicated per-org instance
+      - kv        -> Redis       ACL SETUSER (keyspace scope)
+      - search    -> Meilisearch index
+      - s3        -> S3/MinIO     bucket
+      - docdb     -> FerretDB    dedicated per-org instance (MongoDB wire)
+
+    Tenancy: every request is scoped to the gateway-minted org (`X-Org-Id` /
+    validated principal). A request without a validated principal, or with an
+    empty org and no admin claim, is refused 403. The physical backend resource is
+    namespaced by a fixed-width org hash so two tenants can never fold onto one
+    resource.
+
+    Secrets: generated per-resource passwords are sealed in Hanzo KMS and only a
+    `secret_ref` is persisted. When KMS is not configured the service degrades
+    safely — it returns the password ONCE in the create response and stores
+    nothing in plaintext.
+
+    Authentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`). The same
+    token authenticates every Hanzo service.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+servers:
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
+security:
+- BearerAuth: []
+tags:
+- name: sql
+  description: Managed SQL (Postgres) database resources.
+- name: vector
+  description: Managed vector (Qdrant) collection resources.
+- name: datastore
+  description: Managed analytics datastore (ClickHouse) — dedicated per-org instance.
+- name: kv
+  description: Managed key-value (Redis) resources.
+- name: search
+  description: Managed search (Meilisearch) index resources.
+- name: s3
+  description: Managed object storage (S3/MinIO) bucket resources.
+- name: docdb
+  description: Managed document database (FerretDB / MongoDB wire) — dedicated per-org instance.
+
+paths:
+  /v1/sql:
+    post:
+      tags: [sql]
+      operationId: createSql
+      summary: Provision a SQL resource
+      requestBody:
+        $ref: '#/components/requestBodies/CreateResource'
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+    get:
+      tags: [sql]
+      operationId: listSql
+      summary: List SQL resources for the caller's org
+      responses:
+        '200': { $ref: '#/components/responses/ResourceList' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/sql/{name}:
+    parameters:
+    - $ref: '#/components/parameters/Name'
+    get:
+      tags: [sql]
+      operationId: getSql
+      summary: Get one SQL resource
+      responses:
+        '200': { $ref: '#/components/responses/Resource' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [sql]
+      operationId: deleteSql
+      summary: Deprovision a SQL resource
+      responses:
+        '204': { $ref: '#/components/responses/Deleted' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+
+  /v1/vector:
+    post:
+      tags: [vector]
+      operationId: createVector
+      summary: Provision a vector resource
+      requestBody:
+        $ref: '#/components/requestBodies/CreateResource'
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+    get:
+      tags: [vector]
+      operationId: listVector
+      summary: List vector resources for the caller's org
+      responses:
+        '200': { $ref: '#/components/responses/ResourceList' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/vector/{name}:
+    parameters:
+    - $ref: '#/components/parameters/Name'
+    get:
+      tags: [vector]
+      operationId: getVector
+      summary: Get one vector resource
+      responses:
+        '200': { $ref: '#/components/responses/Resource' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [vector]
+      operationId: deleteVector
+      summary: Deprovision a vector resource
+      responses:
+        '204': { $ref: '#/components/responses/Deleted' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+
+  /v1/datastore:
+    post:
+      tags: [datastore]
+      operationId: createDatastore
+      summary: Provision a datastore resource (dedicated per-org instance)
+      requestBody:
+        $ref: '#/components/requestBodies/CreateResource'
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+    get:
+      tags: [datastore]
+      operationId: listDatastore
+      summary: List datastore resources for the caller's org
+      responses:
+        '200': { $ref: '#/components/responses/ResourceList' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/datastore/{name}:
+    parameters:
+    - $ref: '#/components/parameters/Name'
+    get:
+      tags: [datastore]
+      operationId: getDatastore
+      summary: Get one datastore resource (reconciles live instance status)
+      responses:
+        '200': { $ref: '#/components/responses/Resource' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [datastore]
+      operationId: deleteDatastore
+      summary: Deprovision a datastore instance
+      responses:
+        '204': { $ref: '#/components/responses/Deleted' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+
+  /v1/kv:
+    post:
+      tags: [kv]
+      operationId: createKv
+      summary: Provision a key-value resource
+      requestBody:
+        $ref: '#/components/requestBodies/CreateResource'
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+    get:
+      tags: [kv]
+      operationId: listKv
+      summary: List key-value resources for the caller's org
+      responses:
+        '200': { $ref: '#/components/responses/ResourceList' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/kv/{name}:
+    parameters:
+    - $ref: '#/components/parameters/Name'
+    get:
+      tags: [kv]
+      operationId: getKv
+      summary: Get one key-value resource
+      responses:
+        '200': { $ref: '#/components/responses/Resource' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [kv]
+      operationId: deleteKv
+      summary: Deprovision a key-value resource
+      responses:
+        '204': { $ref: '#/components/responses/Deleted' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+
+  /v1/search:
+    post:
+      tags: [search]
+      operationId: createSearch
+      summary: Provision a search resource
+      requestBody:
+        $ref: '#/components/requestBodies/CreateResource'
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+    get:
+      tags: [search]
+      operationId: listSearch
+      summary: List search resources for the caller's org
+      responses:
+        '200': { $ref: '#/components/responses/ResourceList' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/search/{name}:
+    parameters:
+    - $ref: '#/components/parameters/Name'
+    get:
+      tags: [search]
+      operationId: getSearch
+      summary: Get one search resource
+      responses:
+        '200': { $ref: '#/components/responses/Resource' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [search]
+      operationId: deleteSearch
+      summary: Deprovision a search resource
+      responses:
+        '204': { $ref: '#/components/responses/Deleted' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+
+  /v1/s3:
+    post:
+      tags: [s3]
+      operationId: createS3
+      summary: Provision an object-storage bucket
+      requestBody:
+        $ref: '#/components/requestBodies/CreateResource'
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+    get:
+      tags: [s3]
+      operationId: listS3
+      summary: List object-storage buckets for the caller's org
+      responses:
+        '200': { $ref: '#/components/responses/ResourceList' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/s3/{name}:
+    parameters:
+    - $ref: '#/components/parameters/Name'
+    get:
+      tags: [s3]
+      operationId: getS3
+      summary: Get one object-storage bucket
+      responses:
+        '200': { $ref: '#/components/responses/Resource' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [s3]
+      operationId: deleteS3
+      summary: Deprovision an object-storage bucket
+      responses:
+        '204': { $ref: '#/components/responses/Deleted' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+
+  /v1/docdb:
+    post:
+      tags: [docdb]
+      operationId: createDocdb
+      summary: Provision a document-database resource (dedicated per-org instance)
+      requestBody:
+        $ref: '#/components/requestBodies/CreateResource'
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+    get:
+      tags: [docdb]
+      operationId: listDocdb
+      summary: List document-database resources for the caller's org
+      responses:
+        '200': { $ref: '#/components/responses/ResourceList' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/docdb/{name}:
+    parameters:
+    - $ref: '#/components/parameters/Name'
+    get:
+      tags: [docdb]
+      operationId: getDocdb
+      summary: Get one document-database resource (reconciles live instance status)
+      responses:
+        '200': { $ref: '#/components/responses/Resource' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [docdb]
+      operationId: deleteDocdb
+      summary: Deprovision a document-database instance
+      responses:
+        '204': { $ref: '#/components/responses/Deleted' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token issued by Hanzo IAM (https://hanzo.id). The same token
+        authenticates every Hanzo service. The org is resolved from the validated
+        principal (X-Org-Id); a request without a validated principal is refused.
+
+  parameters:
+    Name:
+      name: name
+      in: path
+      required: true
+      description: |
+        The user-supplied resource name (slug). Lowercased and trimmed server-side;
+        must match `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`.
+      schema:
+        type: string
+        pattern: '^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$'
+
+  requestBodies:
+    CreateResource:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CreateRequest'
+
+  responses:
+    Created:
+      description: Resource provisioned. Password (if any) is returned ONCE here.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CreateResponse'
+    Resource:
+      description: Resource metadata (never a password).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetResponse'
+    ResourceList:
+      description: The caller's org resources of this kind (never a password).
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/ListItem'
+    Deleted:
+      description: Resource deprovisioned. No content.
+    BadRequest:
+      description: Invalid name or malformed request body.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    PaymentRequired:
+      description: Org balance gate failed (unfunded org).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: No validated principal, or empty org without admin claim.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: A resource with this name (or physical name) already exists.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    BadGateway:
+      description: The backend provisioner or dedicated-instance operation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ServiceUnavailable:
+      description: |
+        Kind is honestly gated (cannot grant a per-tenant-safe credential), or the
+        cluster orchestrator is unavailable for a dedicated kind, or commerce is
+        unreachable in the fail-closed posture.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    CreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          pattern: '^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$'
+          description: Resource name (lowercased/trimmed server-side).
+          example: analytics
+
+    CreateResponse:
+      type: object
+      description: |
+        Returned on 201. `password` and `username` are present only for secretful
+        kinds (sql, kv, and the dedicated datastore/docdb admin credential). The
+        password is returned ONCE and is never retrievable again.
+      required: [id, kind, name, status, host, port, database, connectionString]
+      properties:
+        id:
+          type: string
+          description: Server-generated resource id.
+        kind:
+          type: string
+          enum: [sql, vector, datastore, kv, search, s3, docdb]
+        name:
+          type: string
+        status:
+          type: string
+          description: Resource status (e.g. "ready", or "provisioning" for a dedicated instance still coming up).
+          example: ready
+        host:
+          type: string
+          description: Customer-facing host (public gateway host, or dedicated instance service).
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
+        connectionString:
+          type: string
+          description: Public, routable DSN (internal admin host is remapped out).
+        password:
+          type: string
+          description: Present only for secretful kinds; returned ONCE.
+
+    GetResponse:
+      type: object
+      required: [id, name, kind, status, host, port, database]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [sql, vector, datastore, kv, search, s3, docdb]
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
+
+    ListItem:
+      type: object
+      required: [id, name, kind, status, host, port, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [sql, vector, datastore, kv, search, s3, docdb]
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        createdAt:
+          type: integer
+          format: int64
+          description: Unix seconds.
+
+    Error:
+      type: object
+      required: [status, msg]
+      properties:
+        status:
+          type: string
+          enum: [error]
+        msg:
+          type: string
+          description: Human-readable error message.
+        code:
+          type: integer
+        requestId:
+          type: string

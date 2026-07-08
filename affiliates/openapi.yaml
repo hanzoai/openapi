@@ -1,0 +1,629 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Affiliates API
+  summary: Per-org affiliate program paying partners an ongoing commission on referred customers' metered spend (hanzoai/cloud).
+  description: |
+    The Hanzo Cloud affiliates surface (`hanzoai/cloud` subsystem, HIP-0106),
+    reached through the gateway at `api.hanzo.ai`. It is a native-Go, per-org
+    affiliate program on Base/SQLite that pays partners an ONGOING COMMISSION on
+    the metered spend of the customers they refer.
+
+    The loop, end to end:
+      1. An org APPLIES to be an affiliate (`POST /v1/affiliates/apply`), optionally
+         requesting a vanity code. Staff APPROVE it
+         (`POST /v1/admin/affiliates/{id}/approve`), which mints the code and sets a
+         commission rate (default 20% = 2000 bps). The affiliate gets a link
+         `https://<brand>/?aff=<code>`.
+      2. A new org signs up via the link → the console posts
+         `POST /v1/affiliates/attribute` with the code → an affiliate↔referred-org
+         edge is recorded (first-touch, one per referred org, self-attribution blocked).
+      3. The ACCRUAL SWEEP (`POST /v1/admin/affiliates/sweep`, the cron path; also
+         lazy on the affiliate's own dashboard read) folds over each affiliate's
+         referred orgs: commission = the referred org's metered spend this period ×
+         the rate, latched at-most-once per (affiliate, referred_org, period).
+      4. Staff PAY OUT accrued commission
+         (`POST /v1/admin/affiliates/{id}/payout`): a `credits` method issues a
+         commerce grant into the affiliate's wallet; cash methods (wire/paypal/…)
+         are record-only. A payout can never exceed pending (accrued − paid).
+
+    Two surfaces share this spec:
+      - Customer (`/v1/affiliates*`): org-scoped, returns bare JSON.
+      - Admin (`/v1/admin/affiliates*`): global-admin only, returns the
+        `{ status, msg, data }` envelope.
+
+    All monetary amounts are USD minor units (cents).
+
+    Authentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`). The same
+    token authenticates every Hanzo service.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+servers:
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
+security:
+- BearerAuth: []
+tags:
+- name: Affiliate
+  description: Customer-facing affiliate program (org-scoped).
+- name: Admin
+  description: Global-admin affiliate management, payouts, and accrual sweep.
+paths:
+  /v1/affiliates:
+    get:
+      tags:
+      - Affiliate
+      summary: Get my affiliate status
+      description: |
+        Returns the caller org's affiliate dashboard. If the org is not enrolled,
+        returns an honest "not enrolled" shape (`isAffiliate: false`) so the console
+        can show the apply form. For an APPROVED affiliate it also opportunistically
+        runs the accrual sweep over the org's own referred orgs (bounded,
+        best-effort), so the dashboard is self-updating.
+      operationId: getMyAffiliate
+      responses:
+        '200':
+          description: The affiliate dashboard, or a not-enrolled shape.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/NotEnrolled'
+                - $ref: '#/components/schemas/AffiliateDashboard'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/affiliates/apply:
+    post:
+      tags:
+      - Affiliate
+      summary: Apply to the affiliate program
+      description: |
+        Enrolls the caller org as an affiliate at `status=applied`. Idempotent (one
+        affiliate per org, first apply wins). A malformed vanity code is refused.
+        Returns `201` on first creation, `200` if the org was already enrolled.
+      operationId: applyAffiliate
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyRequest'
+      responses:
+        '200':
+          description: Already enrolled (idempotent).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplyResponse'
+        '201':
+          description: Newly enrolled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/affiliates/attribute:
+    post:
+      tags:
+      - Affiliate
+      summary: Record affiliate attribution
+      description: |
+        Records an affiliate↔referred-org edge. The REFERRED org is the validated
+        caller (never client-supplied); the affiliate is resolved from `code`
+        (approved affiliates only). Idempotent (one per referred org, first-touch
+        wins); self-attribution is blocked; an unknown code is rejected. Returns
+        `201` on first attribution, `200` if already attributed.
+      operationId: attributeAffiliate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttributeRequest'
+      responses:
+        '200':
+          description: Already attributed (idempotent).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttributeResponse'
+        '201':
+          description: Attribution recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttributeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/admin/affiliates:
+    get:
+      tags:
+      - Admin
+      summary: List all affiliates
+      description: |
+        Returns every affiliate (org exposed) plus a fleet summary. Global-admin
+        only. Wrapped in the admin `{ status, msg, data }` envelope.
+      operationId: adminListAffiliates
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        description: Max rows to return (default 500, max 1000).
+        schema:
+          type: integer
+          default: 500
+          maximum: 1000
+      responses:
+        '200':
+          description: Affiliate directory and summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminListEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/admin/affiliates/sweep:
+    post:
+      tags:
+      - Admin
+      summary: Run the accrual sweep
+      description: |
+        The periodic accrual path (cron/o11y hits it, or an operator on demand). It
+        folds over every approved affiliate's referred orgs and accrues this period's
+        commission, at-most-once per period. Global-admin only.
+      operationId: adminSweepAffiliates
+      responses:
+        '200':
+          description: Sweep result (edges checked and accruals created).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSweepEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/admin/affiliates/{id}/approve:
+    post:
+      tags:
+      - Admin
+      summary: Approve an affiliate and mint its code
+      description: |
+        Approves the affiliate and mints its code. The body may carry an explicit
+        `code` override; else the requested vanity code; else a derived slug.
+        Global-admin only.
+      operationId: adminApproveAffiliate
+      parameters:
+      - $ref: '#/components/parameters/AffiliateId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveRequest'
+      responses:
+        '200':
+          description: The approved affiliate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAffiliateEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/admin/affiliates/{id}/suspend:
+    post:
+      tags:
+      - Admin
+      summary: Suspend an affiliate
+      description: Suspends the affiliate. Global-admin only.
+      operationId: adminSuspendAffiliate
+      parameters:
+      - $ref: '#/components/parameters/AffiliateId'
+      responses:
+        '200':
+          description: The suspended affiliate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAffiliateEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/admin/affiliates/{id}/payout:
+    post:
+      tags:
+      - Admin
+      summary: Record a payout
+      description: |
+        Records a payout of accrued commission. A `credits` method issues a commerce
+        grant into the affiliate's wallet; a cash method (wire/paypal/…) is
+        record-only. The amount can never exceed pending (accrued − paid), reserved
+        atomically before any grant. Global-admin only.
+      operationId: adminPayoutAffiliate
+      parameters:
+      - $ref: '#/components/parameters/AffiliateId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayoutRequest'
+      responses:
+        '200':
+          description: The recorded payout and the updated affiliate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPayoutEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer JWT issued by Hanzo IAM (https://hanzo.id). The same token authenticates every Hanzo service.
+  parameters:
+    AffiliateId:
+      name: id
+      in: path
+      required: true
+      description: The affiliate id (e.g. `aff_<hex>`).
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Not signed in, or global admin required.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Affiliate or code not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: The requested code is already taken.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      description: Standard Hanzo error envelope.
+      properties:
+        error:
+          type: string
+          description: Human-readable error message.
+    NotEnrolled:
+      type: object
+      description: Returned when the caller org is not (yet) an affiliate.
+      properties:
+        isAffiliate:
+          type: boolean
+          const: false
+        defaultRateBps:
+          type: integer
+          format: int64
+          description: The default commission rate a new affiliate gets, in basis points (2000 = 20%).
+          example: 2000
+    AffiliateDashboard:
+      type: object
+      description: The caller org's affiliate dashboard.
+      properties:
+        isAffiliate:
+          type: boolean
+          const: true
+        id:
+          type: string
+        status:
+          $ref: '#/components/schemas/AffiliateStatus'
+        code:
+          type: string
+          description: The minted affiliate code (empty until approved).
+        requestedCode:
+          type: string
+          description: The vanity code requested at apply, pending approval.
+        link:
+          type: string
+          description: The `?aff` referral link (empty until the affiliate has a code).
+          example: https://hanzo.ai/?aff=acme
+        rateBps:
+          type: integer
+          format: int64
+          description: Commission rate in basis points.
+        referredCount:
+          type: integer
+          description: Number of referred orgs attributed to this affiliate.
+        accruedCents:
+          type: integer
+          format: int64
+          description: Lifetime commission accrued (USD cents).
+        pendingCents:
+          type: integer
+          format: int64
+          description: Commission accrued but not yet paid (accrued − paid, never negative).
+        paidCents:
+          type: integer
+          format: int64
+          description: Lifetime commission paid out (USD cents).
+        payouts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payout'
+    ApplyRequest:
+      type: object
+      description: Body for POST /v1/affiliates/apply.
+      properties:
+        requestedCode:
+          type: string
+          description: Optional requested vanity code (3–32 chars of a–z, 0–9, hyphen). Staff approves and mints it.
+    ApplyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          $ref: '#/components/schemas/AffiliateStatus'
+        code:
+          type: string
+        requestedCode:
+          type: string
+        rateBps:
+          type: integer
+          format: int64
+        created:
+          type: boolean
+          description: True if this apply created a new affiliate record.
+    AttributeRequest:
+      type: object
+      required:
+      - code
+      description: Body for POST /v1/affiliates/attribute.
+      properties:
+        code:
+          type: string
+          description: The affiliate code the referred org arrived with (from an `?aff=` link).
+    AttributeResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The attribution edge id (e.g. `afr_<hex>`).
+        code:
+          type: string
+        created:
+          type: boolean
+          description: True if this call created a new attribution edge.
+        createdAt:
+          type: integer
+          format: int64
+          description: Unix timestamp (seconds).
+    ApproveRequest:
+      type: object
+      description: Optional body for POST /v1/admin/affiliates/{id}/approve.
+      properties:
+        code:
+          type: string
+          description: Explicit code override. If omitted, the requested vanity code or a derived slug is used.
+    PayoutRequest:
+      type: object
+      required:
+      - amountCents
+      - method
+      description: Body for POST /v1/admin/affiliates/{id}/payout.
+      properties:
+        amountCents:
+          type: integer
+          format: int64
+          description: Payout amount in USD cents (must be positive; cannot exceed pending commission).
+        method:
+          type: string
+          description: Payout method. `credits` issues a commerce grant; any other value (wire/paypal/check/…) is record-only.
+          example: credits
+        reference:
+          type: string
+          description: Optional external reference for a cash payout.
+    AffiliateStatus:
+      type: string
+      description: Affiliate lifecycle status. An affiliate advances applied → approved (and can be suspended).
+      enum:
+      - applied
+      - approved
+      - suspended
+    AdminAffiliateView:
+      type: object
+      description: One row in the global-admin directory (org exposed).
+      properties:
+        id:
+          type: string
+        org:
+          type: string
+        code:
+          type: string
+        requestedCode:
+          type: string
+        status:
+          $ref: '#/components/schemas/AffiliateStatus'
+        rateBps:
+          type: integer
+          format: int64
+        referredCount:
+          type: integer
+        accruedCents:
+          type: integer
+          format: int64
+        pendingCents:
+          type: integer
+          format: int64
+        paidCents:
+          type: integer
+          format: int64
+        createdAt:
+          type: integer
+          format: int64
+        approvedAt:
+          type: integer
+          format: int64
+        suspendedAt:
+          type: integer
+          format: int64
+    AdminSummary:
+      type: object
+      description: Fleet tally for the admin directory.
+      properties:
+        total:
+          type: integer
+        applied:
+          type: integer
+        approved:
+          type: integer
+        suspended:
+          type: integer
+        accruedCents:
+          type: integer
+          format: int64
+        pendingCents:
+          type: integer
+          format: int64
+        paidCents:
+          type: integer
+          format: int64
+    Payout:
+      type: object
+      description: One recorded disbursement of accrued commission.
+      properties:
+        id:
+          type: string
+        amountCents:
+          type: integer
+          format: int64
+        method:
+          type: string
+        reference:
+          type: string
+        txn:
+          type: string
+          description: Commerce transaction id for a credits payout (absent for cash payouts).
+        createdAt:
+          type: integer
+          format: int64
+    AdminListEnvelope:
+      type: object
+      description: Admin `{ status, msg, data }` envelope for the affiliate directory.
+      properties:
+        status:
+          type: string
+          example: ok
+        msg:
+          type: string
+        data:
+          type: object
+          properties:
+            affiliates:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminAffiliateView'
+            summary:
+              $ref: '#/components/schemas/AdminSummary'
+    AdminAffiliateEnvelope:
+      type: object
+      description: Admin envelope wrapping a single affiliate.
+      properties:
+        status:
+          type: string
+          example: ok
+        msg:
+          type: string
+        data:
+          type: object
+          properties:
+            affiliate:
+              $ref: '#/components/schemas/AdminAffiliateView'
+    AdminPayoutEnvelope:
+      type: object
+      description: Admin envelope wrapping a recorded payout and the updated affiliate.
+      properties:
+        status:
+          type: string
+          example: ok
+        msg:
+          type: string
+        data:
+          type: object
+          properties:
+            payout:
+              $ref: '#/components/schemas/Payout'
+            affiliate:
+              $ref: '#/components/schemas/AdminAffiliateView'
+    AdminSweepEnvelope:
+      type: object
+      description: Admin envelope wrapping the accrual sweep result.
+      properties:
+        status:
+          type: string
+          example: ok
+        msg:
+          type: string
+        data:
+          type: object
+          properties:
+            swept:
+              type: integer
+              description: Total referred-org edges checked across all approved affiliates.
+            accrued:
+              type: integer
+              description: Total new accrual events created this sweep.

@@ -1,0 +1,615 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Authors API
+  summary: OSS-author royalty program (hanzoai/cloud clients/authors).
+  description: |
+    The Hanzo Authors surface served by the `clients/authors` subsystem of the
+    unified cloud binary (HIP-0106), reached through the gateway at `api.hanzo.ai`.
+
+    A native-Go, per-org program on Base/SQLite that pays open-source AUTHORS a
+    royalty on the metered platform spend of the orgs who DEPLOY their projects on
+    Hanzo — the CREATOR growth loop, alongside referrals and affiliates.
+
+    The loop, end to end:
+      1. An author CONNECTS GitHub (`POST /v1/authors/connect`): links the caller's
+         org to a GitHub login (from IAM's linked account when available, else a
+         supplied login) and mints a stable verify code for the file method.
+      2. The author VERIFIES a repo (`POST /v1/authors/repos/verify`): ownership is
+         proven by an IAM-linked GitHub token (admin/push) or a `hanzo.json` on the
+         default branch carrying the verify code.
+      3. When a published project whose sourceRepo matches a verified author repo is
+         DEPLOYED by any org, the deploy path records it
+         (`POST /v1/authors/deploys/record`), idempotent per (repo, project, org).
+      4. The ACCRUAL SWEEP (`POST /v1/admin/authors/sweep`, cron; also lazy on the
+         author's own dashboard read) accrues royalty = deploying org's metered spend
+         this period × the author's share (default 5%), at-most-once per period.
+      5. Staff PAY OUT accrued royalty (`POST /v1/admin/authors/:id/payout`):
+         `credits` issues a commerce grant into the author's wallet; cash methods are
+         record-only. A payout can never exceed pending (accrued − paid).
+
+    Envelope: the customer `/v1/authors*` routes return bare JSON. The admin
+    `/v1/admin/authors*` routes wrap their payload in `{ status, msg, data }`.
+
+    Authentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`). The same
+    token authenticates every Hanzo service. Admin routes require a global-admin
+    identity (fail-closed).
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+servers:
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
+security:
+- BearerAuth: []
+tags:
+- name: Authors
+  description: Author enrollment, repo verification, and dashboard (org surface).
+- name: Deploys
+  description: Deploy-attribution recording (deploying-org surface).
+- name: Admin
+  description: Author directory, accrual sweep, approval, suspension, and payout (global-admin only).
+paths:
+  /v1/authors:
+    get:
+      tags:
+      - Authors
+      summary: Get my author program
+      description: |
+        Returns the caller org's author dashboard. If the org has not connected, a
+        "not enrolled" shape is returned (`isAuthor: false`) so the console shows the
+        connect form. For an APPROVED author, an opportunistic accrual sweep runs
+        first so the dashboard is self-updating.
+      operationId: getMyAuthors
+      responses:
+        '200':
+          description: Author dashboard, or the not-enrolled shape.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/NotEnrolled'
+                - $ref: '#/components/schemas/AuthorDashboard'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /v1/authors/connect:
+    post:
+      tags:
+      - Authors
+      summary: Connect GitHub
+      description: |
+        Enrolls the caller's org as an author at status `connected`, idempotently.
+        Links a GitHub login — from IAM's linked account (identity verified) when
+        present, else the supplied `githubLogin` — and mints a stable verify code.
+        Returns 201 when newly created, 200 when already connected.
+      operationId: connectAuthor
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectRequest'
+      responses:
+        '200':
+          description: Already connected (idempotent).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectResponse'
+        '201':
+          description: Newly enrolled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /v1/authors/repos/verify:
+    post:
+      tags:
+      - Authors
+      summary: Verify a repo
+      description: |
+        Verifies the caller owns a repo and records it as a verified author repo.
+        Ownership is proven by an IAM-linked GitHub token (admin/push) OR a
+        `hanzo.json` on the default branch carrying the author's verify code. The
+        author must have connected first. Returns 201 when newly verified, 200 when
+        already recorded.
+      operationId: verifyRepo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRepoRequest'
+      responses:
+        '200':
+          description: Repo already verified (idempotent).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyRepoResponse'
+        '201':
+          description: Repo newly verified.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyRepoResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: That repo is already verified by another author.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Ownership could not be verified (grant the GitHub app or add the verify file).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /v1/authors/deploys/record:
+    post:
+      tags:
+      - Deploys
+      summary: Record a deploy
+      description: |
+        Records a deploy-attribution edge for the caller (the DEPLOYING org). When
+        `repoUrl` matches a verified author repo, the edge is recorded (idempotent
+        per repo+project+org) and becomes eligible for royalty. A deploy of a repo
+        that is not a verified author repo is NOT an error — it returns
+        `recorded: false` so the deploy path can fire this unconditionally. A
+        self-deploy is recorded (provenance) but excluded from accrual.
+      operationId: recordDeploy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordDeployRequest'
+      responses:
+        '200':
+          description: Not recorded (no source repo, or repo is not a verified author repo), or already-recorded edge.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/DeployNotRecorded'
+                - $ref: '#/components/schemas/DeployRecorded'
+        '201':
+          description: New deploy edge recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeployRecorded'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /v1/admin/authors:
+    get:
+      tags:
+      - Admin
+      summary: List all authors
+      description: Every author (org exposed) plus a fleet summary. Global-admin only.
+      operationId: adminListAuthors
+      parameters:
+      - name: limit
+        in: query
+        description: Max rows (default 500, capped at 1000).
+        schema: { type: integer, minimum: 1, maximum: 1000, default: 500 }
+      responses:
+        '200':
+          description: Author directory and summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminListEnvelope'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /v1/admin/authors/sweep:
+    post:
+      tags:
+      - Admin
+      summary: Run accrual sweep
+      description: |
+        The periodic accrual path. Folds over every approved author's distinct
+        deploying orgs and accrues this period's royalty, at-most-once per period.
+        Global-admin only.
+      operationId: adminSweepAuthors
+      responses:
+        '200':
+          description: Sweep counts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSweepEnvelope'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /v1/admin/authors/{id}/approve:
+    post:
+      tags:
+      - Admin
+      summary: Approve an author
+      description: |
+        Admits an author to earning. An optional `{shareBps}` body overrides the
+        royalty share (0–10000 basis points). Global-admin only.
+      operationId: adminApproveAuthor
+      parameters:
+      - $ref: '#/components/parameters/AuthorId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveRequest'
+      responses:
+        '200':
+          description: Approved author.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuthorEnvelope'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /v1/admin/authors/{id}/suspend:
+    post:
+      tags:
+      - Admin
+      summary: Suspend an author
+      description: Suspends an author. Global-admin only.
+      operationId: adminSuspendAuthor
+      parameters:
+      - $ref: '#/components/parameters/AuthorId'
+      responses:
+        '200':
+          description: Suspended author.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuthorEnvelope'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /v1/admin/authors/{id}/payout:
+    post:
+      tags:
+      - Admin
+      summary: Record a payout
+      description: |
+        Records a payout of accrued royalty. A `credits` method issues a commerce
+        grant into the author's wallet; a cash method (wire, paypal, check, …) is
+        record-only. The amount can never exceed pending (accrued − paid), reserved
+        atomically before any grant. Global-admin only.
+      operationId: adminPayoutAuthor
+      parameters:
+      - $ref: '#/components/parameters/AuthorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayoutRequest'
+      responses:
+        '200':
+          description: Recorded payout and updated author.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPayoutEnvelope'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id) or an hk- API
+        key. Discovery: https://hanzo.id/.well-known/openid-configuration. Admin
+        routes require a global-admin identity.'
+  parameters:
+    AuthorId:
+      name: id
+      in: path
+      required: true
+      description: Author id (e.g. aut_...).
+      schema: { type: string }
+  responses:
+    BadRequest:
+      description: Invalid input parameters.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Insufficient permissions (sign in, or global-admin required).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Author not found.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InternalServerError:
+      description: Internal server error.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      title: Error
+      type: object
+      description: Error body emitted by zip's error helpers.
+      properties:
+        error:
+          oneOf:
+          - type: string
+          - type: object
+        message: { type: string }
+        status: { type: integer }
+    ConnectRequest:
+      title: ConnectRequest
+      type: object
+      description: |
+        Optional GitHub login, used only when IAM has no linked GitHub account for
+        the caller.
+      properties:
+        githubLogin: { type: string }
+    VerifyRepoRequest:
+      title: VerifyRepoRequest
+      type: object
+      required: [repoUrl]
+      properties:
+        repoUrl:
+          type: string
+          description: A GitHub repo (github.com/owner/name).
+    RecordDeployRequest:
+      title: RecordDeployRequest
+      type: object
+      required: [project]
+      properties:
+        repoUrl:
+          type: string
+          description: The sourceRepo the project was built from. Empty → honest no-op.
+        project:
+          type: string
+          description: The published project id.
+    ApproveRequest:
+      title: ApproveRequest
+      type: object
+      description: Optional royalty-share override.
+      properties:
+        shareBps:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          description: Royalty share in basis points (500 = 5%).
+    PayoutRequest:
+      title: PayoutRequest
+      type: object
+      required: [amountCents, method]
+      properties:
+        amountCents:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Payout amount in USD minor units (cents). Must be positive and not exceed pending.
+        method:
+          type: string
+          description: Payout method. 'credits' issues a commerce grant; any other value (wire, paypal, check, …) is record-only.
+          examples: [credits]
+        reference:
+          type: string
+          description: Optional external reference for a cash disbursement.
+    NotEnrolled:
+      title: NotEnrolled
+      type: object
+      description: Returned when the caller org has not connected.
+      properties:
+        isAuthor: { type: boolean, examples: [false] }
+        defaultShareBps: { type: integer, format: int64, examples: [500] }
+        badgeBase: { type: string, examples: ['https://hanzo.app'] }
+    AuthorDashboard:
+      title: AuthorDashboard
+      type: object
+      description: The connected author's dashboard.
+      properties:
+        isAuthor: { type: boolean, examples: [true] }
+        id: { type: string }
+        status:
+          type: string
+          enum: [connected, approved, suspended]
+        githubLogin: { type: string }
+        verified: { type: boolean }
+        verifyCode: { type: string }
+        verifyFile: { type: string, examples: [hanzo.json] }
+        verifySnippet:
+          type: string
+          description: The hanzo.json body to place on the default branch for file verification.
+        shareBps: { type: integer, format: int64 }
+        badgeBase: { type: string }
+        repos:
+          type: array
+          items: { $ref: '#/components/schemas/RepoView' }
+        deploys:
+          type: array
+          items: { $ref: '#/components/schemas/DeployView' }
+        accruedCents: { type: integer, format: int64 }
+        pendingCents: { type: integer, format: int64 }
+        paidCents: { type: integer, format: int64 }
+        payouts:
+          type: array
+          items: { $ref: '#/components/schemas/PayoutView' }
+    ConnectResponse:
+      title: ConnectResponse
+      type: object
+      properties:
+        id: { type: string }
+        status:
+          type: string
+          enum: [connected, approved, suspended]
+        githubLogin: { type: string }
+        verified: { type: boolean }
+        verifyCode: { type: string }
+        verifyFile: { type: string, examples: [hanzo.json] }
+        verifySnippet: { type: string }
+        shareBps: { type: integer, format: int64 }
+        created: { type: boolean }
+    VerifyRepoResponse:
+      title: VerifyRepoResponse
+      type: object
+      properties:
+        repo: { $ref: '#/components/schemas/RepoView' }
+        created: { type: boolean }
+    DeployNotRecorded:
+      title: DeployNotRecorded
+      type: object
+      properties:
+        recorded: { type: boolean, examples: [false] }
+        reason:
+          type: string
+          examples: ['repo is not a verified author repo']
+    DeployRecorded:
+      title: DeployRecorded
+      type: object
+      properties:
+        recorded: { type: boolean, examples: [true] }
+        created: { type: boolean }
+        self:
+          type: boolean
+          description: Whether the deploying org is the author's own org (excluded from accrual).
+        deployId: { type: string }
+        createdAt: { type: integer, format: int64 }
+    RepoView:
+      title: RepoView
+      type: object
+      properties:
+        repoUrl: { type: string }
+        verified: { type: boolean }
+        method:
+          type: string
+          description: Verification method that succeeded (oauth or file).
+        badgeMarkdown:
+          type: string
+          description: Ready-to-paste "Deploy on Hanzo" README snippet.
+        verifiedAt: { type: integer, format: int64 }
+        createdAt: { type: integer, format: int64 }
+    DeployView:
+      title: DeployView
+      type: object
+      properties:
+        repoUrl: { type: string }
+        project: { type: string }
+        deployingOrg: { type: string }
+        createdAt: { type: integer, format: int64 }
+    PayoutView:
+      title: PayoutView
+      type: object
+      properties:
+        id: { type: string }
+        amountCents: { type: integer, format: int64 }
+        method: { type: string }
+        reference: { type: string }
+        txn:
+          type: string
+          description: Commerce transaction id for a credits payout.
+        createdAt: { type: integer, format: int64 }
+    AdminAuthorView:
+      title: AdminAuthorView
+      type: object
+      description: One row in the global-admin directory (org exposed).
+      properties:
+        id: { type: string }
+        org: { type: string }
+        githubLogin: { type: string }
+        status:
+          type: string
+          enum: [connected, approved, suspended]
+        verified: { type: boolean }
+        shareBps: { type: integer, format: int64 }
+        repoCount: { type: integer }
+        deployCount: { type: integer }
+        accruedCents: { type: integer, format: int64 }
+        pendingCents: { type: integer, format: int64 }
+        paidCents: { type: integer, format: int64 }
+        createdAt: { type: integer, format: int64 }
+        approvedAt: { type: integer, format: int64 }
+        suspendedAt: { type: integer, format: int64 }
+    AdminSummary:
+      title: AdminSummary
+      type: object
+      description: Fleet tally for the admin directory.
+      properties:
+        total: { type: integer }
+        connected: { type: integer }
+        approved: { type: integer }
+        suspended: { type: integer }
+        accruedCents: { type: integer, format: int64 }
+        pendingCents: { type: integer, format: int64 }
+        paidCents: { type: integer, format: int64 }
+    AdminEnvelope:
+      title: AdminEnvelope
+      type: object
+      description: The { status, msg, data } envelope wrapping every admin response.
+      properties:
+        status: { type: string, examples: [ok] }
+        msg: { type: string }
+        data: { type: object }
+    AdminListEnvelope:
+      title: AdminListEnvelope
+      allOf:
+      - $ref: '#/components/schemas/AdminEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            properties:
+              authors:
+                type: array
+                items: { $ref: '#/components/schemas/AdminAuthorView' }
+              summary: { $ref: '#/components/schemas/AdminSummary' }
+    AdminSweepEnvelope:
+      title: AdminSweepEnvelope
+      allOf:
+      - $ref: '#/components/schemas/AdminEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            properties:
+              swept:
+                type: integer
+                description: Deploying-org checks performed across all approved authors.
+              accrued:
+                type: integer
+                description: Accruals newly created.
+    AdminAuthorEnvelope:
+      title: AdminAuthorEnvelope
+      allOf:
+      - $ref: '#/components/schemas/AdminEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            properties:
+              author: { $ref: '#/components/schemas/AdminAuthorView' }
+    AdminPayoutEnvelope:
+      title: AdminPayoutEnvelope
+      allOf:
+      - $ref: '#/components/schemas/AdminEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            properties:
+              payout: { $ref: '#/components/schemas/PayoutView' }
+              author: { $ref: '#/components/schemas/AdminAuthorView' }
