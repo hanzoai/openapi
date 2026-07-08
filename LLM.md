@@ -6,15 +6,25 @@ references.
 
 ## Layout
 
-- `CAPABILITIES.md` — the CANONICAL capability index: one name per
-  capability, grouped into the eight categories, each with its `/v1/<name>`
-  prefix. Authoritative — every spec, the cloud binary, and the console
-  reconcile to it.
-- `hanzo.yaml` — unified master, aggregated + grouped by `merge.py`.
+- `capabilities.yaml` — the ONE canonical registry: every capability name, in
+  exactly one domain (or `core`), plus `internal` / `collapsed` / `pending` /
+  `review`. This is the single source of truth — `merge.py` READS it. Edit
+  this, then run `python3 merge.py`.
+- `CAPABILITIES.md` — GENERATED from `capabilities.yaml` by `merge.py`. A
+  derived human index; never hand-edit (it carries a `GENERATED — DO NOT EDIT`
+  header).
+- `hanzo.yaml` — unified master, aggregated from the per-service specs and
+  grouped (`x-tagGroups`) by `merge.py` straight from `capabilities.yaml`.
 - `<service>/openapi.yaml` — one self-contained spec per service.
 - `shared/` — shared schemas usable by individual specs in their `components`.
 - `README.md` — service index and usage.
 - `CHANGELOG.md` — v1 lock-in entry.
+
+`merge.py` enforces one-and-one-way as a build invariant: every present
+`<service>/openapi.yaml` dir MUST map to exactly one entry across
+`domains ∪ core` in `capabilities.yaml` (orphan / unlisted / double-listed →
+build fails); a `collapsed` name must have NO spec dir; `internal` services are
+excluded from the master and `x-tagGroups`.
 
 ## Conventions
 
@@ -25,9 +35,9 @@ references.
 - No cross-file `$ref`. Each spec is self-contained.
 - No `deprecated: true`. Forward-only.
 - No `/api/` prefix anywhere.
-- Master grouping: `merge.py` emits `x-tagGroups` (the eight canonical
-  categories from `CAPABILITIES.md`); every present spec must belong to
-  exactly one group or the merge fails.
+- Master grouping: `merge.py` emits `x-tagGroups` from the domains in
+  `capabilities.yaml` (their `title`) plus a `Core` group; every present spec
+  must belong to exactly one group or the merge fails.
 
 ## Validate
 
@@ -42,8 +52,12 @@ python3 -c "import yaml, glob; [yaml.safe_load(open(s)) for s in glob.glob('*/op
 3. Add components in the spec's own `components.schemas`. No `$ref` to
    other service yamls.
 4. Examples must come from real responses.
-5. Update `CHANGELOG.md` with a dated entry under the v1.0.0 heading.
-6. Run `python3 merge.py` (regenerates `hanzo.yaml`) and commit both.
+5. If you add or remove a `<service>/openapi.yaml` dir, add/remove its name in
+   `capabilities.yaml` (exactly one domain, or `core`) — the merge FAILS
+   otherwise.
+6. Update `CHANGELOG.md` with a dated entry under the v1.0.0 heading.
+7. Run `python3 merge.py` (regenerates `hanzo.yaml` AND `CAPABILITIES.md`) and
+   commit all three.
 
 ## SDK generation — the ONE way (Stainless RETIRED, 2026-07)
 
