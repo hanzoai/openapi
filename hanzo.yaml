@@ -17524,6 +17524,53 @@ paths:
                 type: object
         '400':
           $ref: '#/components/responses/commerce_BadRequest'
+  /v1/commerce/metrics/saas:
+    get:
+      tags:
+      - Metrics
+      summary: SaaS operations snapshot (platform god-view)
+      operationId: getSaaSMetrics
+      description: "The whole-business SaaS operations snapshot \u2014 recurring revenue (MRR/ARR,\nnew/churned MRR, MRR by\
+        \ plan category), subscription mix (per plan, trials,\nseats, a recent create/cancel events feed), metered pay-as-you-go\
+        \ revenue\ntotals, and the top customers by revenue \u2014 computed in commerce (the system\nof record for subscriptions\
+        \ + the usage ledger) from ONE cross-org walk.\nMoney is USD cents end to end.\n\nPLATFORM god-view: gated on a global\
+        \ admin OR the trusted internal service\ntoken (the console's global-admin-gated proxy forwards COMMERCE_SERVICE_TOKEN\n\
+        with no user identity). An org-level admin is refused (403) \u2014 this is\ncross-tenant data.\n\nPer-model LLM tokens/latency/error\
+        \ and the per-org AI-spend ranking are\ndeliberately NOT here: the canonical fleet LLM-observability aggregate is\n\
+        GET /v1/admin/o11y. The `gaps` array names what is not instrumented (e.g.\nplan-change upgrade/downgrade counts, per-model\
+        \ latency) rather than\nfabricating it.\n"
+      parameters:
+      - name: window
+        in: query
+        description: 'Usage + new/churn window: 7d | 30d | 90d | mtd | all (default 30d)'
+        schema:
+          type: string
+          enum:
+          - 7d
+          - 30d
+          - 90d
+          - mtd
+          - all
+          default: 30d
+      - name: limit
+        in: query
+        description: Cap for the customers list (1-200, default 20)
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 20
+      responses:
+        '200':
+          description: SaaS operations snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/commerce_SaaSMetrics'
+        '401':
+          $ref: '#/components/responses/commerce_Unauthorized'
+        '403':
+          description: Caller is not a platform administrator (cross-tenant data withheld)
   /v1/commerce/order:
     get:
       tags:
@@ -64637,6 +64684,17 @@ components:
           type: string
           format: date-time
           readOnly: true
+    commerce_CategoryMRR:
+      type: object
+      properties:
+        category:
+          type: string
+          example: world
+        mrrCents:
+          type: integer
+          format: int64
+        subscriptions:
+          type: integer
     commerce_CheckoutRequest:
       type: object
       properties:
@@ -64714,6 +64772,30 @@ components:
           type: string
         phone:
           type: string
+    commerce_CustomerRow:
+      type: object
+      properties:
+        org:
+          type: string
+        plan:
+          type: string
+          description: plan slug
+        category:
+          type: string
+        status:
+          type: string
+          example: active
+        mrrCents:
+          type: integer
+          format: int64
+        usageCents:
+          type: integer
+          format: int64
+        seats:
+          type: integer
+        since:
+          type: string
+          format: date-time
     commerce_Error:
       type: object
       properties:
@@ -65168,6 +65250,25 @@ components:
           type: integer
         trialPeriodDays:
           type: integer
+    commerce_PlanBreakdown:
+      type: object
+      properties:
+        plan:
+          type: string
+          description: plan slug
+        name:
+          type: string
+        category:
+          type: string
+        active:
+          type: integer
+        trialing:
+          type: integer
+        seats:
+          type: integer
+        mrrCents:
+          type: integer
+          format: int64
     commerce_Product:
       type: object
       properties:
@@ -65284,6 +65385,65 @@ components:
         createdAt:
           type: string
           format: date-time
+    commerce_RevenueMetrics:
+      type: object
+      properties:
+        mrrCents:
+          type: integer
+          format: int64
+        arrCents:
+          type: integer
+          format: int64
+        activeSubscriptions:
+          type: integer
+        payingCustomers:
+          type: integer
+        trials:
+          type: integer
+        newMrrCents:
+          type: integer
+          format: int64
+        churnedMrrCents:
+          type: integer
+          format: int64
+        netNewMrrCents:
+          type: integer
+          format: int64
+        byCategory:
+          type: array
+          items:
+            $ref: '#/components/schemas/commerce_CategoryMRR'
+    commerce_SaaSMetrics:
+      type: object
+      description: The whole-business SaaS operations snapshot returned by GET /v1/commerce/metrics/saas.
+      properties:
+        asOf:
+          type: string
+          format: date-time
+        currency:
+          type: string
+          example: usd
+        window:
+          type: string
+          example: 30d
+        revenue:
+          $ref: '#/components/schemas/commerce_RevenueMetrics'
+        subscriptions:
+          $ref: '#/components/schemas/commerce_SubscriptionMetrics'
+        usage:
+          $ref: '#/components/schemas/commerce_UsageMetrics'
+        customers:
+          type: array
+          items:
+            $ref: '#/components/schemas/commerce_CustomerRow'
+        orgs:
+          type: integer
+          description: Total tenant organizations walked
+        gaps:
+          type: array
+          items:
+            type: string
+          description: "Honest \"not instrumented yet\" notes \u2014 never fabricated figures"
     commerce_Store:
       type: object
       properties:
@@ -65309,6 +65469,26 @@ components:
           type: string
           format: date-time
           readOnly: true
+    commerce_SubEvent:
+      type: object
+      properties:
+        at:
+          type: string
+          format: date-time
+        org:
+          type: string
+        type:
+          type: string
+          enum:
+          - created
+          - canceled
+        plan:
+          type: string
+        category:
+          type: string
+        mrrDeltaCents:
+          type: integer
+          format: int64
     commerce_Subscription:
       type: object
       properties:
@@ -65362,6 +65542,31 @@ components:
           type: string
           format: date-time
           readOnly: true
+    commerce_SubscriptionMetrics:
+      type: object
+      properties:
+        byPlan:
+          type: array
+          items:
+            $ref: '#/components/schemas/commerce_PlanBreakdown'
+        trialsActive:
+          type: integer
+        new:
+          type: integer
+        canceled:
+          type: integer
+        upgrades:
+          type: integer
+          nullable: true
+          description: "null \u2014 plan-change events are not instrumented"
+        downgrades:
+          type: integer
+          nullable: true
+          description: "null \u2014 plan-change events are not instrumented"
+        recent:
+          type: array
+          items:
+            $ref: '#/components/schemas/commerce_SubEvent'
     commerce_SubscriptionRequest:
       type: object
       required:
@@ -65426,6 +65631,22 @@ components:
           type: integer
         available:
           type: integer
+    commerce_UsageMetrics:
+      type: object
+      description: Metered pay-as-you-go REVENUE totals (billed wallet ledger). Per-model tokens / latency / error live in
+        the fleet god-view GET /v1/admin/o11y.
+      properties:
+        instrumented:
+          type: boolean
+        windowUsageCents:
+          type: integer
+          format: int64
+        requests:
+          type: integer
+          format: int64
+        untaggedRequests:
+          type: integer
+          format: int64
     commerce_User:
       type: object
       properties:
