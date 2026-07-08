@@ -57702,6 +57702,31 @@ paths:
             application/json:
               schema:
                 type: object
+  /v1/world/indicators:
+    get:
+      tags:
+      - Markets
+      summary: Trader indicator suite (VIX/VVIX/MOVE, yield curve + 2s10s, crypto/equity fear-greed, momentum, sector breadth,
+        BTC dominance + perp funding, DXY/metals, risk-on/off composite)
+      description: 'The classic trader dashboard in one call, every field from a free/no-key
+
+        upstream (Yahoo charts, alternative.me, CoinGecko global, exchange funding).
+
+        Each field degrades to null when its source is down; the equity fear/greed
+
+        and risk-on/off composites recompute over surviving inputs and ship their
+
+        formulas inline. Cached ~2 min. Always 200 (never 5xx).
+
+        '
+      operationId: world_indicators
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
   /v1/world/macro-signals:
     get:
       tags:
@@ -57943,6 +57968,24 @@ paths:
         required: true
         schema:
           type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /v1/world/sentiment:
+    get:
+      tags:
+      - Markets
+      summary: 'Realtime news-sentiment index (GDELT tone: global + per-topic + per-region, 24h sparkline + velocity)'
+      description: "Realtime news sentiment aggregated from GDELT article tone. Returns a\nglobal sentiment index (0-100 =\
+        \ clamp(50 + tone\xB75)), per-topic\n(markets/conflict/energy/tech) and per-region breakdowns, each with a 24h\ntone\
+        \ sparkline and velocity (rate of change). GDELT rate-limits to 1 req/5s,\nso the endpoint serves a cached value instantly\
+        \ and refreshes in the\nbackground at a paced cadence; until the first refresh lands it returns a\nclean `status:\"\
+        warming\"` body. Always 200 (never 5xx).\n"
+      operationId: world_sentiment
       responses:
         '200':
           description: OK
