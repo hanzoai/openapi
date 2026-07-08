@@ -57715,6 +57715,116 @@ paths:
             application/json:
               schema:
                 type: object
+  /v1/world/model/changes:
+    get:
+      tags:
+      - Intel
+      summary: "World model \u2014 what changed since a timestamp (the inform-our-AI hook)"
+      operationId: world_model_changes
+      parameters:
+      - name: since
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /v1/world/model/country/{iso}:
+    get:
+      tags:
+      - Intel
+      summary: "World model \u2014 one country's full state vector + recent deltas"
+      operationId: world_model_country
+      parameters:
+      - name: iso
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: No such country
+  /v1/world/model/state:
+    get:
+      tags:
+      - Intel
+      summary: "World model \u2014 full compact world-state snapshot (all entities, instability-ranked)"
+      operationId: world_model_state
+      parameters:
+      - name: kind
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - country
+          - theater
+          - market
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /v1/world/model/stream:
+    get:
+      tags:
+      - Intel
+      summary: "World model \u2014 SSE stream of state deltas as folds land"
+      operationId: world_model_stream
+      responses:
+        '200':
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /v1/world/model/top:
+    get:
+      tags:
+      - Intel
+      summary: "World model \u2014 top entities by metric"
+      operationId: world_model_top
+      parameters:
+      - name: metric
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - instability
+          - velocity
+          - sentiment
+      - name: kind
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: n
+        in: query
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
   /v1/world/nga-warnings:
     get:
       tags:
