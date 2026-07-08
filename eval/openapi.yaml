@@ -1,0 +1,1186 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Eval API
+  summary: Native, org-scoped LLM evaluation surface (hanzoai/cloud → clients/eval).
+  description: "The Hanzo Cloud evaluation service (`clients/eval`), mounted into the unified\ncloud binary\
+    \ (HIP-0106) and reached through the gateway at `api.hanzo.ai`.\nIt is a NATIVE evaluation system\
+    \ — datasets, dataset-items, evaluators,\nscore-configs, scores, traces, observations, and dataset\
+    \ runs — that replaced\nthe retired observability-console fork. Nothing proxies to any console.\n\n\
+    NAMESPACE — every route is under `/v1/evals/`. Only `hanzoai/ai` (inference)\nis the top-level `/v1/*`\
+    \ exception; this service follows the standard\n`/v1/<service>/<resource>` convention.\n\nStorage\
+    \ split (two orthogonal stores this package composes):\n  - metastore  (Hanzo Base/SQLite) — per-org\
+    \ config/metadata: datasets,\n    dataset-items, evaluators, score-configs, dataset-run records.\n\
+    \  - telemetry  (datastore/ClickHouse) — append-only event stream: traces,\n    scores-as-events,\
+    \ and production observations. Optional at mount; when no\n    datastore is wired, score/trace/observation/run\
+    \ endpoints return 503.\n\nTenant isolation is enforced SERVER-SIDE on every request. The org is derived\n\
+    from the VALIDATED bearer owner (HIP-0026) — NEVER a client-supplied\n`X-Org-Id`/`X-Project-Id` header.\
+    \ An unvalidated or org-less request receives\n403.\n\nAuthentication: Bearer JWT issued by Hanzo\
+    \ IAM (`https://hanzo.id`). The same\ntoken authenticates every Hanzo service. The `POST /v1/evals/runs`\
+    \ endpoint\nadditionally forwards the caller's own `Authorization` bearer to the model\ngateway, so\
+    \ it must be present.\n"
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+servers:
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
+security:
+- BearerAuth: []
+tags:
+- name: Datasets
+  description: Evaluation datasets and their items (metastore).
+- name: Evaluators
+  description: LLM-as-judge evaluator definitions (metastore).
+- name: Score Configs
+  description: Score-shape definitions (NUMERIC/CATEGORICAL/BOOLEAN) (metastore).
+- name: Scores
+  description: Score events (telemetry event stream).
+- name: Traces
+  description: Evaluation traces (telemetry event stream).
+- name: Observations
+  description: Production LLM generations from the usage ledger (telemetry).
+- name: Runs
+  description: Dataset runs through a model-under-test plus LLM-as-judge.
+paths:
+  /v1/evals/datasets:
+    post:
+      tags:
+      - Datasets
+      summary: Create or upsert a dataset
+      operationId: createDataset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasetRequest'
+      responses:
+        '201':
+          description: Dataset created/upserted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dataset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags:
+      - Datasets
+      summary: List the org's datasets
+      operationId: listDatasets
+      parameters:
+      - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Datasets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/evals/datasets/{name}:
+    parameters:
+    - $ref: '#/components/parameters/NamePathParam'
+    get:
+      tags:
+      - Datasets
+      summary: Get a dataset with its active item count
+      operationId: getDataset
+      responses:
+        '200':
+          description: Dataset detail (with items count)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dataset'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+      - Datasets
+      summary: Delete a dataset and its items
+      operationId: deleteDataset
+      responses:
+        '204':
+          description: Dataset deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/evals/dataset-items:
+    post:
+      tags:
+      - Datasets
+      summary: Create or upsert a dataset item
+      description: 'The referenced `datasetName` must already exist for the caller''s org,
+
+        otherwise a 404 is returned (no silent create).
+
+        '
+      operationId: createDatasetItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasetItemRequest'
+      responses:
+        '201':
+          description: Item created/upserted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags:
+      - Datasets
+      summary: List items in a dataset
+      operationId: listDatasetItems
+      parameters:
+      - name: datasetName
+        in: query
+        required: true
+        description: Name of the dataset whose items to list.
+        schema:
+          type: string
+      - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetItemList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/evals/evaluators:
+    post:
+      tags:
+      - Evaluators
+      summary: Create or upsert an evaluator
+      operationId: createEvaluator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvaluatorRequest'
+      responses:
+        '201':
+          description: Evaluator created/upserted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evaluator'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags:
+      - Evaluators
+      summary: List the org's evaluators
+      operationId: listEvaluators
+      parameters:
+      - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Evaluators
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluatorList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/evals/score-configs:
+    post:
+      tags:
+      - Score Configs
+      summary: Create or upsert a score config
+      operationId: createScoreConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScoreConfigRequest'
+      responses:
+        '201':
+          description: Score config created/upserted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags:
+      - Score Configs
+      summary: List the org's score configs
+      operationId: listScoreConfigs
+      parameters:
+      - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Score configs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreConfigList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/evals/scores:
+    post:
+      tags:
+      - Scores
+      summary: Record a score event
+      description: 'Requires telemetry (datastore) to be configured; otherwise 503. If a
+
+        score-config with the same name exists for the org, the value/label must
+
+        satisfy it (NUMERIC in [min,max]; CATEGORICAL in the allowed set;
+
+        BOOLEAN value 0 or 1). Values must be finite (no NaN/Inf).
+
+        '
+      operationId: createScore
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScoreRequest'
+      responses:
+        '201':
+          description: Score recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Score'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    get:
+      tags:
+      - Scores
+      summary: List score events
+      description: Requires telemetry (datastore) to be configured; otherwise 503.
+      operationId: listScores
+      parameters:
+      - name: name
+        in: query
+        schema:
+          type: string
+      - name: runName
+        in: query
+        schema:
+          type: string
+      - name: traceId
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Scores
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /v1/evals/traces:
+    get:
+      tags:
+      - Traces
+      summary: List traces
+      description: Requires telemetry (datastore) to be configured; otherwise 503.
+      operationId: listTraces
+      parameters:
+      - name: runName
+        in: query
+        schema:
+          type: string
+      - name: datasetName
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Traces
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TraceList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /v1/evals/observations:
+    get:
+      tags:
+      - Observations
+      summary: List production LLM generations
+      description: 'Lists production LLM generations ("observations of type GENERATION") for
+
+        the caller''s org, read from the usage ledger. Requires telemetry
+
+        (datastore) to be configured; otherwise 503.
+
+        '
+      operationId: listObservations
+      parameters:
+      - name: model
+        in: query
+        schema:
+          type: string
+      - name: userId
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Observations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObservationList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /v1/evals/runs:
+    post:
+      tags:
+      - Runs
+      summary: Run a dataset through a model and an LLM judge
+      description: 'Synchronously runs a dataset''s active items through the model-under-test
+
+        and an LLM-as-judge, recording a trace and a score per item, then returns
+
+        a run summary. Requires telemetry (datastore) configured (503 otherwise)
+
+        and the caller''s `Authorization` bearer (forwarded to the model gateway;
+
+        401 if missing). Bounded per org: at most 4 concurrent runs (429 when at
+
+        cap) and a wall-clock deadline; partial summaries are returned honestly.
+
+        If nothing scored, the response status is 502.
+
+        '
+      operationId: createRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunRequest'
+      responses:
+        '200':
+          description: Run summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '502':
+          description: Bad Gateway — run completed but nothing scored (returns RunSummary body).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunSummary'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    get:
+      tags:
+      - Runs
+      summary: List run records
+      operationId: listRuns
+      parameters:
+      - name: datasetName
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Run records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunRecordList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'JWT access token (or `hk-...`/`sk-...` API key) issued by Hanzo IAM
+
+        (https://hanzo.id). The same token authenticates every Hanzo service.
+
+        '
+  parameters:
+    NamePathParam:
+      name: name
+      in: path
+      required: true
+      description: The org-unique dataset name (also a URL path segment).
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$
+    LimitParam:
+      name: limit
+      in: query
+      description: Max items to return (default 100, max 500).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 500
+        default: 100
+  schemas:
+    DatasetRequest:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$
+          description: Org-unique dataset name.
+        description:
+          type: string
+          description: Free-text description (max 64 KiB).
+        metadata:
+          type: object
+          additionalProperties: true
+    Dataset:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        items:
+          type: integer
+          description: Active item count (populated on detail; omitted when zero).
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    DatasetList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dataset'
+    DatasetItemRequest:
+      type: object
+      required:
+      - datasetName
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$
+          description: Optional item id; generated when omitted.
+        datasetName:
+          type: string
+          description: Name of the owning dataset (must exist for the org).
+        input:
+          description: Arbitrary JSON input for the item.
+        expectedOutput:
+          description: Arbitrary JSON expected output (golden).
+        metadata:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - ARCHIVED
+          default: ACTIVE
+    DatasetItem:
+      type: object
+      properties:
+        id:
+          type: string
+        datasetName:
+          type: string
+        input:
+          description: Arbitrary JSON input.
+        expectedOutput:
+          description: Arbitrary JSON expected output.
+        metadata:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - ARCHIVED
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    DatasetItemList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatasetItem'
+    EvaluatorRequest:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$
+        model:
+          type: string
+          description: Judge model id.
+        criteria:
+          type: string
+          description: Judge criteria prompt (max 64 KiB).
+        scoreName:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$
+          description: Score name this evaluator emits; defaults to `name`.
+    Evaluator:
+      type: object
+      properties:
+        name:
+          type: string
+        model:
+          type: string
+        criteria:
+          type: string
+        scoreName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    EvaluatorList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Evaluator'
+    ScoreConfigRequest:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$
+        dataType:
+          type: string
+          enum:
+          - NUMERIC
+          - CATEGORICAL
+          - BOOLEAN
+          default: NUMERIC
+        minValue:
+          type: number
+          nullable: true
+          description: Lower bound for NUMERIC scores (must be finite).
+        maxValue:
+          type: number
+          nullable: true
+          description: Upper bound for NUMERIC scores (must be finite, >= minValue).
+        categories:
+          type: array
+          items:
+            type: string
+          description: Allowed labels; required (non-empty) for CATEGORICAL.
+    ScoreConfig:
+      type: object
+      properties:
+        name:
+          type: string
+        dataType:
+          type: string
+          enum:
+          - NUMERIC
+          - CATEGORICAL
+          - BOOLEAN
+        minValue:
+          type: number
+          nullable: true
+        maxValue:
+          type: number
+          nullable: true
+        categories:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ScoreConfigList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoreConfig'
+    ScoreRequest:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$
+        traceId:
+          type: string
+        runName:
+          type: string
+        datasetName:
+          type: string
+        datasetItemId:
+          type: string
+        dataType:
+          type: string
+          enum:
+          - NUMERIC
+          - CATEGORICAL
+          - BOOLEAN
+          description: 'Ignored/overridden when a score-config of this name exists (the
+
+            config''s type is authoritative). Defaults to NUMERIC.
+
+            '
+        value:
+          type: number
+          nullable: true
+          description: Required for NUMERIC (finite) and BOOLEAN (0 or 1).
+        stringValue:
+          type: string
+          description: Required for CATEGORICAL (max 256 chars).
+        comment:
+          type: string
+          description: Free-text comment (truncated at 2000 chars).
+    Score:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        traceId:
+          type: string
+        runName:
+          type: string
+        dataType:
+          type: string
+          enum:
+          - NUMERIC
+          - CATEGORICAL
+          - BOOLEAN
+        value:
+          type: number
+        stringValue:
+          type: string
+        comment:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    ScoreList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Score'
+    Trace:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        datasetName:
+          type: string
+        datasetItemId:
+          type: string
+        runName:
+          type: string
+        model:
+          type: string
+        input:
+          description: Arbitrary JSON input.
+        output:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    TraceList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Trace'
+    ObservationUsage:
+      type: object
+      properties:
+        unit:
+          type: string
+          description: e.g. TOKENS
+        input:
+          type: integer
+          format: int64
+        output:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
+    Observation:
+      type: object
+      properties:
+        id:
+          type: string
+        traceId:
+          type: string
+        parentObservationId:
+          type: string
+          nullable: true
+        name:
+          type: string
+        type:
+          type: string
+          description: Always GENERATION.
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+        level:
+          type: string
+          description: DEFAULT or ERROR.
+        statusMessage:
+          type: string
+          nullable: true
+        model:
+          type: string
+        usage:
+          $ref: '#/components/schemas/ObservationUsage'
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Includes provider, costCents, currency, userId, org.
+    ObservationList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Observation'
+    JudgeSpec:
+      type: object
+      properties:
+        model:
+          type: string
+        criteria:
+          type: string
+        name:
+          type: string
+    RunRequest:
+      type: object
+      required:
+      - dataset
+      - model
+      properties:
+        dataset:
+          type: string
+          description: Name of the dataset to run (must exist for the org).
+        model:
+          type: string
+          description: Model-under-test id.
+        runName:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$
+          description: Optional run name; auto-generated when omitted.
+        limit:
+          type: integer
+          description: Max items to run (default 20, max 100).
+        judge:
+          $ref: '#/components/schemas/JudgeSpec'
+    ItemResult:
+      type: object
+      properties:
+        itemId:
+          type: string
+        traceId:
+          type: string
+        score:
+          type: number
+        output:
+          type: string
+        error:
+          type: string
+    RunSummary:
+      type: object
+      properties:
+        dataset:
+          type: string
+        model:
+          type: string
+        judgeModel:
+          type: string
+        runName:
+          type: string
+        items:
+          type: integer
+        scored:
+          type: integer
+        avgScore:
+          type: number
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemResult'
+    RunRecord:
+      type: object
+      description: A durable run record (metastore) as returned by GET /v1/evals/runs.
+      properties:
+        dataset:
+          type: string
+        runName:
+          type: string
+        model:
+          type: string
+        judgeModel:
+          type: string
+        items:
+          type: integer
+        scored:
+          type: integer
+        avgScore:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    RunRecordList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunRecord'
+    Error:
+      type: object
+      required:
+      - status
+      - msg
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+          description: Always "error" for error responses
+        msg:
+          type: string
+          description: Human-readable error message
+        code:
+          type: integer
+          description: Application-specific error code
+        data:
+          type: object
+          description: Additional error context
+        data2:
+          type: object
+          description: Additional error details
+        requestId:
+          type: string
+          description: Request ID for debugging
+    ValidationError:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+        msg:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              code:
+                type: string
+  responses:
+    BadRequest:
+      description: Bad Request - Invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalidParameter:
+              value:
+                status: error
+                msg: 'Invalid parameter: email format is incorrect'
+                code: 400
+    Unauthorized:
+      description: Unauthorized - Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missingToken:
+              value:
+                status: error
+                msg: Authentication required
+                code: 401
+            invalidToken:
+              value:
+                status: error
+                msg: Invalid or expired token
+                code: 401
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            insufficientPermissions:
+              value:
+                status: error
+                msg: You don't have permission to access this resource
+                code: 403
+    NotFound:
+      description: Not Found - Resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            resourceNotFound:
+              value:
+                status: error
+                msg: Resource not found
+                code: 404
+    Conflict:
+      description: Conflict - Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            alreadyExists:
+              value:
+                status: error
+                msg: Resource with this ID already exists
+                code: 409
+    UnprocessableEntity:
+      description: Unprocessable Entity - Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          examples:
+            validationFailed:
+              value:
+                status: error
+                msg: Validation failed
+                errors:
+                - field: email
+                  message: Invalid email format
+                  code: invalid_format
+    TooManyRequests:
+      description: Too Many Requests - Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per window
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests in window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when window resets
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retry
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            rateLimited:
+              value:
+                status: error
+                msg: Rate limit exceeded. Please retry after 60 seconds
+                code: 429
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            serverError:
+              value:
+                status: error
+                msg: An internal error occurred
+                code: 500
+                requestId: req_abc123
+    ServiceUnavailable:
+      description: Service Unavailable - Temporary outage
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retry
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            maintenance:
+              value:
+                status: error
+                msg: Service temporarily unavailable
+                code: 503

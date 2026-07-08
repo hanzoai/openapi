@@ -1,0 +1,939 @@
+openapi: 3.1.0
+info:
+  title: Hanzo KMS API
+  summary: Org-scoped secrets manager (kmssvc) exposing the embedded luxfi/kms SecretStore as /v1/kms/*
+    on the unified Hanzo Cloud binary (HIP-0106).
+  description: 'The Hanzo KMS API served by the `kmssvc` subsystem of the unified cloud
+
+    binary (HIP-0106), reached through the gateway at `api.hanzo.ai`.
+
+
+    The subsystem re-declares the embedded luxfi/kms secrets-manager REST surface
+
+    at `/v1/kms/*`, backed by the SAME in-process `SecretStore` the cloud KMS
+
+    client uses, and gated by cloud''s single auth boundary (`SanitizeIdentity` →
+
+    `c.Org()` / `c.IsAdmin()`).
+
+
+    NOTE ON NAMESPACE: the internal subsystem is registered as `kmssvc` (mirroring
+
+    `paassvc`) purely so the generic auto-mounted `/v1/<name>/health` liveness
+
+    parks at the unrouted `/v1/kmssvc/health` and does NOT shadow the real
+
+    fail-closed probe. The HTTP API prefix served by the handlers is `/v1/kms`
+
+    (independent of the subsystem name, exactly as `paassvc` serves `/v1/paas`).
+
+    Every path in this document is therefore `/v1/kms/*`.
+
+
+    ORG SCOPING: `{org}` must equal the caller''s validated org (`c.Org()`); a
+
+    global admin (`c.IsAdmin()`) may act on any org. The org is folded into the
+
+    store path as `/orgs/{org}{subpath}`, so one org can never address another
+
+    org''s records. The org match is EXACT (case-sensitive) and validated as a
+
+    DNS-1123-ish label at the edge.
+
+
+    Secrets are sealed under a fresh per-secret DEK (master-key-wrapped) before
+
+    storage — plaintext never touches disk. When KMS is not co-resident in this
+
+    process, only the health/config/login routes are mounted and secret CRUD is
+
+    absent (health reports `degraded`, HTTP 503).
+
+
+    Authentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`). The same
+
+    token authenticates every Hanzo service. The `/v1/kms/auth/login` broker
+
+    exchanges a machine credential (`clientId`/`clientSecret`) at IAM''s
+
+    `client_credentials` endpoint and returns IAM''s own owner-scoped JWT verbatim.
+
+    '
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+servers:
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
+security:
+- BearerAuth: []
+tags:
+- name: Health
+  description: Liveness/config probes (public, no auth).
+- name: Auth
+  description: The credential-exchange login broker (public, rate-limited per source IP).
+- name: Secrets
+  description: Org-scoped sealed-secret CRUD (JWT, org-scoped).
+paths:
+  /v1/kms/health:
+    get:
+      tags:
+      - Health
+      operationId: kmsHealth
+      summary: KMS health probe
+      description: 'Real liveness probe. Returns 200 only when the store is open AND a master
+
+        key is configured; 503 with the honest reason in health-only/degraded
+
+        mode. Not JWT-gated — liveness must be probe-able without a token.
+
+        '
+      security: []
+      responses:
+        '200':
+          description: KMS is open and a master key is configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                ok:
+                  value:
+                    service: kms
+                    status: ok
+                    signing: true
+                    ready: true
+        '503':
+          description: 'Degraded — no in-process KMS client, or the master key is missing.
+
+            '
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                noClient:
+                  value:
+                    service: kms
+                    status: degraded
+                    ready: false
+                    error: no in-process KMS client (secrets served out-of-process or disabled)
+                masterKeyMissing:
+                  value:
+                    service: kms
+                    status: degraded
+                    signing: false
+                    ready: false
+                    error: master key not configured
+  /v1/kms/config:
+    get:
+      tags:
+      - Health
+      operationId: kmsConfig
+      summary: KMS console runtime config
+      description: 'Serves the KMS console SPA''s runtime config (the OIDC issuer the console
+
+        logs in against + the KMS API base). No secrets, so it is public.
+
+        '
+      security: []
+      responses:
+        '200':
+          description: Runtime config.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponse'
+              examples:
+                config:
+                  value:
+                    brand: hanzo
+                    issuer: https://hanzo.id
+                    apiBase: /v1/kms
+                    loginPath: /v1/kms/auth/login
+  /v1/kms/auth/login:
+    post:
+      tags:
+      - Auth
+      operationId: kmsLogin
+      summary: Broker a machine credential for an owner-scoped IAM JWT
+      description: 'The credential-exchange broker used by the kms-operator''s universalAuth
+
+        transport. POST `{clientId, clientSecret}`; the broker exchanges them at
+
+        IAM''s `client_credentials` endpoint and returns IAM''s own JWT verbatim as
+
+        `{accessToken, expiresIn, tokenType}`. The returned token''s `owner` claim
+
+        scopes it to exactly one org, re-checked by the secret-CRUD guard.
+
+
+        Public and unauthenticated (it IS the credential exchange), so it is
+
+        rate-limited PER SOURCE IP. Fail-closed: no IAM issuer configured → 503;
+
+        malformed input → 400; a bad credential → 401; an IAM outage → 502. Never
+
+        logs or echoes the secret; carries no IAM internals in error bodies.
+
+        '
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Owner-scoped IAM JWT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              examples:
+                ok:
+                  value:
+                    accessToken: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+                    expiresIn: 3600
+                    tokenType: Bearer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Authentication failed (bad or unknown credential).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                loginFailed:
+                  value:
+                    status: error
+                    msg: kms login failed
+                    code: 401
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          description: Upstream IAM is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                iamDown:
+                  value:
+                    status: error
+                    msg: kms login failed
+                    code: 502
+        '503':
+          description: No IAM issuer configured; login is disabled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                noIssuer:
+                  value:
+                    status: error
+                    msg: 'kms login unavailable: no IAM issuer configured'
+                    code: 503
+  /v1/kms/orgs/{org}/secrets:
+    parameters:
+    - $ref: '#/components/parameters/Org'
+    get:
+      tags:
+      - Secrets
+      operationId: kmsListSecrets
+      summary: List a path's secret metadata
+      description: 'Returns the non-sensitive metadata (never ciphertext or plaintext) of the
+
+        org''s secrets at a path/env. `?path=` narrows to a subpath; `?env=`
+
+        selects the environment (default `default`).
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/Env'
+      - $ref: '#/components/parameters/PathQuery'
+      responses:
+        '200':
+          description: Secret metadata list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListSecretsResponse'
+              examples:
+                list:
+                  value:
+                    secrets:
+                    - name: DB_PASSWORD
+                      path: /orgs/acme/ci
+                      env: production
+                      scheme: v1
+                    total: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '502':
+          description: Backing store error (Bad Gateway).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      tags:
+      - Secrets
+      operationId: kmsPutSecret
+      summary: Upsert (seal + store) a secret
+      description: 'Seals + upserts a secret. The value is sealed under a fresh per-secret DEK
+
+        (master-key-wrapped) before storage — plaintext never touches disk.
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecretPutRequest'
+      responses:
+        '200':
+          description: Secret stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PutSecretResponse'
+              examples:
+                stored:
+                  value:
+                    stored: true
+                    name: DB_PASSWORD
+                    env: production
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '502':
+          description: Backing store error (Bad Gateway).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /v1/kms/orgs/{org}/secrets/{secretPath}:
+    parameters:
+    - $ref: '#/components/parameters/Org'
+    - $ref: '#/components/parameters/SecretPath'
+    get:
+      tags:
+      - Secrets
+      operationId: kmsGetSecret
+      summary: Read one secret value
+      description: 'Reads one secret value. The trailing wildcard path is the sub-path + name
+
+        under the org (last segment is the name, the rest is the sub-path);
+
+        `?env=` selects the environment. Returns the opened plaintext.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/Env'
+      responses:
+        '200':
+          description: Opened secret value.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetSecretResponse'
+              examples:
+                value:
+                  value:
+                    name: DB_PASSWORD
+                    env: production
+                    value: s3cr3t-plaintext
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          description: Backing store error (Bad Gateway).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    delete:
+      tags:
+      - Secrets
+      operationId: kmsDeleteSecret
+      summary: Delete one secret
+      description: 'Removes one secret. The trailing wildcard path is the sub-path + name;
+
+        `?env=` selects the environment.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/Env'
+      responses:
+        '200':
+          description: Secret deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteSecretResponse'
+              examples:
+                deleted:
+                  value:
+                    deleted: true
+                    name: DB_PASSWORD
+                    env: production
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          description: Backing store error (Bad Gateway).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: '#/components/securitySchemes/bearerAuth'
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'JWT access token obtained from Hanzo IAM.
+
+
+        To obtain a token:
+
+        1. Redirect user to authorization endpoint
+
+        2. Exchange authorization code for access token
+
+        3. Include token in Authorization header
+
+        '
+    oauth2:
+      type: oauth2
+      description: OAuth2 authentication via Hanzo IAM
+      flows:
+        authorizationCode:
+          authorizationUrl: https://iam.hanzo.ai/oauth/authorize
+          tokenUrl: https://iam.hanzo.ai/oauth/token
+          refreshUrl: https://iam.hanzo.ai/oauth/token
+          scopes:
+            openid: OpenID Connect identity
+            profile: User profile information
+            email: Email address
+            read: Read access to resources
+            write: Write access to resources
+            admin: Administrative access
+        clientCredentials:
+          tokenUrl: https://iam.hanzo.ai/oauth/token
+          scopes:
+            read: Read access to resources
+            write: Write access to resources
+            admin: Administrative access
+        password:
+          tokenUrl: https://iam.hanzo.ai/oauth/token
+          scopes:
+            openid: OpenID Connect identity
+            profile: User profile information
+            email: Email address
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: 'API key for service-to-service authentication.
+
+
+        Generate keys via the Hanzo Gateway /key/generate endpoint.
+
+        '
+  parameters:
+    Org:
+      name: org
+      in: path
+      required: true
+      description: 'The tenant org. Must equal the caller''s validated org (or the caller must
+
+        be a global admin). Validated as a DNS-1123-ish label (≤63 chars,
+
+        `[A-Za-z0-9_-]`). Match is EXACT (case-sensitive).
+
+        '
+      schema:
+        type: string
+        maxLength: 63
+        pattern: ^[A-Za-z0-9_-]+$
+    SecretPath:
+      name: secretPath
+      in: path
+      required: true
+      description: 'The trailing wildcard segment (`/secrets/*`): the secret''s sub-path + name
+
+        under the org. The last segment is the secret NAME; any preceding segments
+
+        are the sub-path folded under `/orgs/{org}`. E.g. `DB` →
+
+        `(/orgs/{org}, DB)`; `ci/DB` → `(/orgs/{org}/ci, DB)`.
+
+        '
+      schema:
+        type: string
+    Env:
+      name: env
+      in: query
+      required: false
+      description: 'The secret environment. Defaults to `default` when omitted. Must not
+
+        contain `/`, control characters, or exceed 63 bytes.
+
+        '
+      schema:
+        type: string
+        default: default
+        maxLength: 63
+    PathQuery:
+      name: path
+      in: query
+      required: false
+      description: 'Optional subpath (relative to the org root) to narrow the listing. Must be
+
+        `/`-separated non-empty segments without `.`, `..`, or control characters.
+
+        '
+      schema:
+        type: string
+  schemas:
+    HealthResponse:
+      type: object
+      description: KMS health probe result.
+      required:
+      - service
+      - status
+      properties:
+        service:
+          type: string
+          const: kms
+        status:
+          type: string
+          enum:
+          - ok
+          - degraded
+        ready:
+          type: boolean
+          description: True only when the store is open and a master key is configured.
+        signing:
+          type: boolean
+          description: Whether a signing key is configured (present when a KMS client exists).
+        error:
+          type: string
+          description: Honest failure reason when degraded.
+    ConfigResponse:
+      type: object
+      description: KMS console SPA runtime config.
+      properties:
+        brand:
+          type: string
+          description: The white-label brand (e.g. hanzo).
+        issuer:
+          type: string
+          description: The OIDC issuer the console logs in against.
+        apiBase:
+          type: string
+          const: /v1/kms
+        loginPath:
+          type: string
+          const: /v1/kms/auth/login
+    LoginRequest:
+      type: object
+      description: The kms-operator's universalAuth machine credential.
+      required:
+      - clientId
+      - clientSecret
+      properties:
+        clientId:
+          type: string
+          maxLength: 512
+        clientSecret:
+          type: string
+          maxLength: 512
+    LoginResponse:
+      type: object
+      description: IAM's owner-scoped JWT, relayed verbatim.
+      required:
+      - accessToken
+      - tokenType
+      properties:
+        accessToken:
+          type: string
+          description: The owner-scoped IAM JWT bearer.
+        expiresIn:
+          type: integer
+          format: int64
+          description: Token lifetime in seconds (from IAM's expires_in).
+        tokenType:
+          type: string
+          const: Bearer
+    SecretMeta:
+      type: object
+      description: A secret's non-sensitive descriptor (never any ciphertext or plaintext).
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        env:
+          type: string
+        scheme:
+          type: string
+    ListSecretsResponse:
+      type: object
+      properties:
+        secrets:
+          type: array
+          items:
+            $ref: '#/components/schemas/SecretMeta'
+        total:
+          type: integer
+    SecretPutRequest:
+      type: object
+      description: The upsert body. `value` is sealed before storage.
+      required:
+      - name
+      - value
+      properties:
+        path:
+          type: string
+          description: Optional subpath under the org, e.g. "/ci".
+        name:
+          type: string
+          maxLength: 253
+          description: Required. Must not contain '/', control characters, or exceed 253 bytes.
+        env:
+          type: string
+          maxLength: 63
+          default: default
+          description: Optional; defaults to "default".
+        value:
+          type: string
+          description: Required; sealed under a per-secret DEK before storage.
+    PutSecretResponse:
+      type: object
+      properties:
+        stored:
+          type: boolean
+        name:
+          type: string
+        env:
+          type: string
+    GetSecretResponse:
+      type: object
+      properties:
+        name:
+          type: string
+        env:
+          type: string
+        value:
+          type: string
+          description: The opened plaintext secret value.
+    DeleteSecretResponse:
+      type: object
+      properties:
+        deleted:
+          type: boolean
+        name:
+          type: string
+        env:
+          type: string
+    Error:
+      type: object
+      required:
+      - status
+      - msg
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+          description: Always "error" for error responses
+        msg:
+          type: string
+          description: Human-readable error message
+        code:
+          type: integer
+          description: Application-specific error code
+        data:
+          type: object
+          description: Additional error context
+        data2:
+          type: object
+          description: Additional error details
+        requestId:
+          type: string
+          description: Request ID for debugging
+    ValidationError:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+        msg:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              code:
+                type: string
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+        token_type:
+          type: string
+          enum:
+          - Bearer
+        expires_in:
+          type: integer
+          description: Token lifetime in seconds
+        refresh_token:
+          type: string
+          description: Refresh token for obtaining new access tokens
+        scope:
+          type: string
+          description: Space-separated list of granted scopes
+        id_token:
+          type: string
+          description: OpenID Connect ID token (JWT)
+    UserInfo:
+      type: object
+      description: OIDC UserInfo response
+      properties:
+        sub:
+          type: string
+          description: Subject identifier (user ID)
+        name:
+          type: string
+        given_name:
+          type: string
+        family_name:
+          type: string
+        preferred_username:
+          type: string
+        email:
+          type: string
+          format: email
+        email_verified:
+          type: boolean
+        phone_number:
+          type: string
+        phone_number_verified:
+          type: boolean
+        picture:
+          type: string
+          format: uri
+        updated_at:
+          type: integer
+          description: Unix timestamp
+    Web3AuthRequest:
+      type: object
+      description: Web3 wallet authentication request
+      required:
+      - address
+      - nonce
+      - signature
+      properties:
+        address:
+          type: string
+          description: Ethereum wallet address
+          pattern: ^0x[a-fA-F0-9]{40}$
+        nonce:
+          type: string
+          description: Nonce obtained from /v1/iam/auth/web3-nonce
+        createAt:
+          type: integer
+          description: Timestamp when signature was created
+        typedData:
+          type: string
+          description: The message that was signed
+        signature:
+          type: string
+          description: Wallet signature
+        walletType:
+          type: string
+          description: Type of wallet used
+          enum:
+          - MetaMask
+          - WalletConnect
+          - Coinbase
+          - Rainbow
+  responses:
+    BadRequest:
+      description: Bad Request - Invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalidParameter:
+              value:
+                status: error
+                msg: 'Invalid parameter: email format is incorrect'
+                code: 400
+    Unauthorized:
+      description: Unauthorized - Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missingToken:
+              value:
+                status: error
+                msg: Authentication required
+                code: 401
+            invalidToken:
+              value:
+                status: error
+                msg: Invalid or expired token
+                code: 401
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            insufficientPermissions:
+              value:
+                status: error
+                msg: You don't have permission to access this resource
+                code: 403
+    NotFound:
+      description: Not Found - Resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            resourceNotFound:
+              value:
+                status: error
+                msg: Resource not found
+                code: 404
+    Conflict:
+      description: Conflict - Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            alreadyExists:
+              value:
+                status: error
+                msg: Resource with this ID already exists
+                code: 409
+    UnprocessableEntity:
+      description: Unprocessable Entity - Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          examples:
+            validationFailed:
+              value:
+                status: error
+                msg: Validation failed
+                errors:
+                - field: email
+                  message: Invalid email format
+                  code: invalid_format
+    TooManyRequests:
+      description: Too Many Requests - Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per window
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests in window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when window resets
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retry
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            rateLimited:
+              value:
+                status: error
+                msg: Rate limit exceeded. Please retry after 60 seconds
+                code: 429
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            serverError:
+              value:
+                status: error
+                msg: An internal error occurred
+                code: 500
+                requestId: req_abc123
+    ServiceUnavailable:
+      description: Service Unavailable - Temporary outage
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retry
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            maintenance:
+              value:
+                status: error
+                msg: Service temporarily unavailable
+                code: 503

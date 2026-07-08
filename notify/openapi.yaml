@@ -1,0 +1,782 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Notify API
+  summary: Native transactional SEND surface (hanzoai/notify folded into cloud).
+  description: 'The Hanzo Notify SEND surface, folded natively into the unified cloud binary
+
+    (HIP-0106) and reached through the gateway at `api.hanzo.ai`. It is the
+
+    in-process replacement for the standalone `notifyd` Deployment.
+
+
+    SCOPE — this fold serves exactly ONE live contract: synchronous transactional
+
+    sends (SMS + email), the surface Hanzo IAM uses to deliver OTP codes. It POSTs
+
+    to `POST /v1/notify/send?sync=true` and treats a response status of
+
+    `sent`/`delivered` as success. The wider notifyd control plane
+
+    (tenants/templates/providers/preferences/unsubscribe/metering/events/messages
+
+    collections and the async Temporal worker plane) has no live consumer and is
+
+    deliberately NOT folded here.
+
+
+    SYNC ONLY — async dispatch requires the Temporal worker plane, which is not
+
+    part of this fold. A request WITHOUT `?sync=true` fails closed with `503`;
+
+    it never silently degrades to a sync send.
+
+
+    SECURITY — the org is derived from the VALIDATED principal''s tenant (the
+
+    identity middleware''s trusted, gateway-minted org), never from a client
+
+    header. An unauthenticated caller gets `401`; a signed-in caller can only
+
+    send scoped to their own org.
+
+
+    Provider credentials are read exclusively from cloud''s embedded KMS at the
+
+    org-scoped, rotatable ref `orgs/<org>/notify/<service>/<key>` — never from
+
+    env, plaintext, or logs.
+
+
+    Authentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`). The same
+
+    token authenticates every Hanzo service.
+
+    '
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+servers:
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
+security:
+- bearerAuth: []
+tags:
+- name: Send
+  description: Synchronous transactional SMS and email delivery.
+- name: Health
+  description: Liveness probe.
+paths:
+  /v1/notify/health:
+    get:
+      operationId: notifyHealth
+      tags:
+      - Health
+      summary: Liveness probe
+      description: 'Returns a fixed health body. Mirrors notifyd''s `GET /v1/notify/health`
+
+        verbatim so existing probes keep working unchanged. Unauthenticated.
+
+        '
+      security: []
+      responses:
+        '200':
+          description: Service is healthy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                service: notify
+                status: ok
+  /v1/notify/send:
+    post:
+      operationId: notifySend
+      tags:
+      - Send
+      summary: Send a notification (generic channel)
+      description: 'Synchronously delivers a notification. The channel is read from the
+
+        request body (`channel: "sms"|"email"`). Only `sms` and `email` are
+
+        supported by the cloud fold.
+
+
+        `sync=true` is REQUIRED. Without it the request fails closed with `503`
+
+        (async dispatch is not available in the fold).
+
+
+        The org scope is taken from the validated principal''s tenant, never from
+
+        a client-supplied header. The provider is chosen from configured KMS
+
+        credentials unless `provider` pins one explicitly.
+
+
+        RESPONSE SHAPE — for a single recipient the body is a bare
+
+        `SendResponse`. For multiple recipients the body is
+
+        `{"items": [SendResponse, ...]}`, one entry per recipient. A per-recipient
+
+        terminal delivery failure is reported as a `200` with `status: "failed"`
+
+        and an `error` message, NOT as an HTTP error.
+
+        '
+      parameters:
+      - name: sync
+        in: query
+        required: true
+        description: 'Must be `true`. Async dispatch is not available in the cloud fold; any
+
+          other value yields `503`.
+
+          '
+        schema:
+          type: string
+          enum:
+          - true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendRequest'
+            examples:
+              iamOtpSms:
+                summary: IAM OTP over SMS (the live contract)
+                value:
+                  to:
+                  - '+15551234567'
+                  channel: sms
+                  event: iam.otp_sent
+                  template_vars:
+                    otp: '482913'
+                    recipient: '+15551234567'
+                    app: Hanzo
+              rawEmail:
+                summary: Raw-body email (no template)
+                value:
+                  to:
+                  - user@example.com
+                  channel: email
+                  subject: Welcome
+                  body: Thanks for signing up.
+      responses:
+        '200':
+          description: 'Delivery attempted. Single recipient returns a bare `SendResponse`;
+
+            multiple recipients return an items wrapper. A `status` of `failed`
+
+            with a populated `error` is a per-recipient terminal failure, still
+
+            returned as `200`.
+
+            '
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/SendResponse'
+                - $ref: '#/components/schemas/SendResponseList'
+              examples:
+                sent:
+                  summary: Single recipient, sent
+                  value:
+                    message_id: 4f3c2a1b9e8d7c6b5a4f3e2d1c0b9a88
+                    status: sent
+                failed:
+                  summary: Single recipient, terminal failure
+                  value:
+                    message_id: 4f3c2a1b9e8d7c6b5a4f3e2d1c0b9a88
+                    status: failed
+                    error: 'notify: no SMS provider configured for org "acme"'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /v1/notify/send/sms:
+    post:
+      operationId: notifySendSms
+      tags:
+      - Send
+      summary: Send an SMS notification
+      description: 'Convenience route that pins `channel: sms`. Any `channel` in the body is
+
+        overridden. Otherwise identical to `POST /v1/notify/send` — `sync=true`
+
+        required, org derived from the validated principal, single vs. list
+
+        response shape.
+
+        '
+      parameters:
+      - name: sync
+        in: query
+        required: true
+        description: Must be `true`; otherwise `503`.
+        schema:
+          type: string
+          enum:
+          - true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendRequest'
+            example:
+              to:
+              - '+15551234567'
+              event: iam.otp_sent
+              template_vars:
+                otp: '482913'
+                app: Hanzo
+      responses:
+        '200':
+          description: Delivery attempted. See `POST /v1/notify/send`.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/SendResponse'
+                - $ref: '#/components/schemas/SendResponseList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /v1/notify/send/email:
+    post:
+      operationId: notifySendEmail
+      tags:
+      - Send
+      summary: Send an email notification
+      description: 'Convenience route that pins `channel: email`. Any `channel` in the body
+
+        is overridden. Otherwise identical to `POST /v1/notify/send` —
+
+        `sync=true` required, org derived from the validated principal, single
+
+        vs. list response shape.
+
+        '
+      parameters:
+      - name: sync
+        in: query
+        required: true
+        description: Must be `true`; otherwise `503`.
+        schema:
+          type: string
+          enum:
+          - true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendRequest'
+            example:
+              to:
+              - user@example.com
+              subject: Welcome
+              body: Thanks for signing up.
+      responses:
+        '200':
+          description: Delivery attempted. See `POST /v1/notify/send`.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/SendResponse'
+                - $ref: '#/components/schemas/SendResponseList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+components:
+  securitySchemes:
+    bearerAuth:
+      $ref: '#/components/securitySchemes/bearerAuth'
+    oauth2:
+      type: oauth2
+      description: OAuth2 authentication via Hanzo IAM
+      flows:
+        authorizationCode:
+          authorizationUrl: https://iam.hanzo.ai/oauth/authorize
+          tokenUrl: https://iam.hanzo.ai/oauth/token
+          refreshUrl: https://iam.hanzo.ai/oauth/token
+          scopes:
+            openid: OpenID Connect identity
+            profile: User profile information
+            email: Email address
+            read: Read access to resources
+            write: Write access to resources
+            admin: Administrative access
+        clientCredentials:
+          tokenUrl: https://iam.hanzo.ai/oauth/token
+          scopes:
+            read: Read access to resources
+            write: Write access to resources
+            admin: Administrative access
+        password:
+          tokenUrl: https://iam.hanzo.ai/oauth/token
+          scopes:
+            openid: OpenID Connect identity
+            profile: User profile information
+            email: Email address
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: 'API key for service-to-service authentication.
+
+
+        Generate keys via the Hanzo Gateway /key/generate endpoint.
+
+        '
+  schemas:
+    Channel:
+      type: string
+      description: 'Delivery channel. Only `sms` and `email` are supported by the cloud
+
+        fold; `voice` and `whatsapp` are defined by the notify types but not
+
+        wired here.
+
+        '
+      enum:
+      - sms
+      - email
+      - voice
+      - whatsapp
+    SendRequest:
+      type: object
+      description: 'Notification send request (`notify/pkg/types.SendRequest`). Delivery
+
+        content is either a raw `subject`/`body`, or a template resolved from
+
+        `template_id`/`event` rendered against `template_vars`.
+
+        '
+      required:
+      - to
+      properties:
+        to:
+          type: array
+          description: 'Destination address(es). Phone number for SMS, email for email.
+
+            Multiple recipients fan out into one provider call each and produce
+
+            one response entry per recipient.
+
+            '
+          items:
+            type: string
+        channel:
+          $ref: '#/components/schemas/Channel'
+        provider:
+          type: string
+          description: 'Pins a specific provider service name (e.g. `twilio`, `plivo`,
+
+            `twilio_email`, `mail`). When omitted the fold picks the org''s
+
+            default for the channel from configured KMS credentials.
+
+            '
+        subject:
+          type: string
+          description: Raw subject; used verbatim when `body` is set (no-template path).
+        body:
+          type: string
+          description: 'Raw message body. When non-empty it wins verbatim and no template is
+
+            rendered.
+
+            '
+        template_id:
+          type: string
+          description: 'Built-in template identifier. When `body` is empty, the template is
+
+            resolved from `template_id` or, failing that, `event`.
+
+            '
+        template_vars:
+          type: object
+          additionalProperties: true
+          description: 'Free-form variables the template is rendered against (e.g. `otp`,
+
+            `app`, `recipient`). A missing `app` defaults to `Hanzo`.
+
+            '
+        event:
+          type: string
+          description: 'Event-catalog identifier. Also used as a fallback template id when
+
+            `template_id` is unset (the IAM OTP path sends `event: iam.otp_sent`
+
+            with no `template_id`).
+
+            '
+        idempotency_key:
+          type: string
+          description: 'Per-tenant deduplication key. Accepted on the wire; the sync fold
+
+            does not persist a Message row.
+
+            '
+        send_at:
+          type: string
+          description: 'RFC3339 schedule time for async dispatch. Async is not available in
+
+            the fold, so a set value has no effect on the sync path.
+
+            '
+        options:
+          type: object
+          additionalProperties: true
+          description: Free-form per-provider knob bag.
+    SendResponse:
+      type: object
+      description: 'Canonical send result (`notify/pkg/types.SendResponse`). In the sync
+
+        fold `task_id` is always empty and `status` is the terminal result.
+
+        '
+      required:
+      - message_id
+      - status
+      properties:
+        message_id:
+          type: string
+          description: Generated 16-byte hex message id (opaque handle).
+        task_id:
+          type: string
+          description: 'hanzoai/tasks workflow id in async mode; always empty in the sync
+
+            fold.
+
+            '
+        status:
+          type: string
+          description: 'Terminal delivery status. In the sync fold this is `sent` on success
+
+            or `failed` on terminal failure. (The type also defines `queued`,
+
+            `sending`, `delivered` for the async plane, which is not folded.)
+
+            '
+          enum:
+          - queued
+          - sending
+          - sent
+          - delivered
+          - failed
+        error:
+          type: string
+          description: Set on terminal failure (sync mode only).
+    SendResponseList:
+      type: object
+      description: 'Multi-recipient wrapper. Returned only when the request has more than one
+
+        recipient — one `SendResponse` per recipient, in request order.
+
+        '
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SendResponse'
+    HealthResponse:
+      type: object
+      description: Fixed health body.
+      properties:
+        service:
+          type: string
+          example: notify
+        status:
+          type: string
+          example: ok
+    Error:
+      type: object
+      required:
+      - status
+      - msg
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+          description: Always "error" for error responses
+        msg:
+          type: string
+          description: Human-readable error message
+        code:
+          type: integer
+          description: Application-specific error code
+        data:
+          type: object
+          description: Additional error context
+        data2:
+          type: object
+          description: Additional error details
+        requestId:
+          type: string
+          description: Request ID for debugging
+    ValidationError:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+        msg:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              code:
+                type: string
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+        token_type:
+          type: string
+          enum:
+          - Bearer
+        expires_in:
+          type: integer
+          description: Token lifetime in seconds
+        refresh_token:
+          type: string
+          description: Refresh token for obtaining new access tokens
+        scope:
+          type: string
+          description: Space-separated list of granted scopes
+        id_token:
+          type: string
+          description: OpenID Connect ID token (JWT)
+    UserInfo:
+      type: object
+      description: OIDC UserInfo response
+      properties:
+        sub:
+          type: string
+          description: Subject identifier (user ID)
+        name:
+          type: string
+        given_name:
+          type: string
+        family_name:
+          type: string
+        preferred_username:
+          type: string
+        email:
+          type: string
+          format: email
+        email_verified:
+          type: boolean
+        phone_number:
+          type: string
+        phone_number_verified:
+          type: boolean
+        picture:
+          type: string
+          format: uri
+        updated_at:
+          type: integer
+          description: Unix timestamp
+    Web3AuthRequest:
+      type: object
+      description: Web3 wallet authentication request
+      required:
+      - address
+      - nonce
+      - signature
+      properties:
+        address:
+          type: string
+          description: Ethereum wallet address
+          pattern: ^0x[a-fA-F0-9]{40}$
+        nonce:
+          type: string
+          description: Nonce obtained from /v1/iam/auth/web3-nonce
+        createAt:
+          type: integer
+          description: Timestamp when signature was created
+        typedData:
+          type: string
+          description: The message that was signed
+        signature:
+          type: string
+          description: Wallet signature
+        walletType:
+          type: string
+          description: Type of wallet used
+          enum:
+          - MetaMask
+          - WalletConnect
+          - Coinbase
+          - Rainbow
+  responses:
+    BadRequest:
+      description: Bad Request - Invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalidParameter:
+              value:
+                status: error
+                msg: 'Invalid parameter: email format is incorrect'
+                code: 400
+    Unauthorized:
+      description: Unauthorized - Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missingToken:
+              value:
+                status: error
+                msg: Authentication required
+                code: 401
+            invalidToken:
+              value:
+                status: error
+                msg: Invalid or expired token
+                code: 401
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            insufficientPermissions:
+              value:
+                status: error
+                msg: You don't have permission to access this resource
+                code: 403
+    NotFound:
+      description: Not Found - Resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            resourceNotFound:
+              value:
+                status: error
+                msg: Resource not found
+                code: 404
+    Conflict:
+      description: Conflict - Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            alreadyExists:
+              value:
+                status: error
+                msg: Resource with this ID already exists
+                code: 409
+    UnprocessableEntity:
+      description: Unprocessable Entity - Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          examples:
+            validationFailed:
+              value:
+                status: error
+                msg: Validation failed
+                errors:
+                - field: email
+                  message: Invalid email format
+                  code: invalid_format
+    TooManyRequests:
+      description: Too Many Requests - Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per window
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests in window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when window resets
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retry
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            rateLimited:
+              value:
+                status: error
+                msg: Rate limit exceeded. Please retry after 60 seconds
+                code: 429
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            serverError:
+              value:
+                status: error
+                msg: An internal error occurred
+                code: 500
+                requestId: req_abc123
+    ServiceUnavailable:
+      description: Service Unavailable - Temporary outage
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retry
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            maintenance:
+              value:
+                status: error
+                msg: Service temporarily unavailable
+                code: 503

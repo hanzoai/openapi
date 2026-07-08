@@ -1,0 +1,367 @@
+openapi: 3.1.0
+info:
+  title: Hanzo Referrals API
+  summary: Per-org viral-loop referral program that grants promo cloud credit (hanzoai/cloud clients/referrals).
+  description: |
+    The Hanzo Cloud referrals surface served by the `referrals` subsystem of the
+    unified cloud binary (HIP-0106), reached through the gateway at `api.hanzo.ai`.
+
+    A native-Go, per-org referral program on Base/SQLite that grants promo cloud
+    credit through the same commerce ledger path as an admin comp (the trial/Credit
+    bucket, tag `grant:referral`).
+
+    The loop, end to end:
+      1. Every org has a STABLE referral code and a link `https://<brand>/?ref=<code>`.
+      2. A new org signs up via a link, the console posts `POST /v1/referrals/claim`
+         with the code, recording referrer to referee at status `signed_up`.
+         Self-referral is blocked; one referral per referee ever (idempotent).
+      3. When the referee QUALIFIES (has made metered spend) both sides are granted
+         trial credit: referrer +$10 (1000 cents), referee +$5 (500 cents). The
+         grant is latched at-most-once. The qualify check runs lazily when the
+         referrer loads `GET /v1/referrals` and via the admin sweep.
+
+    Authentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`). The same
+    token authenticates every Hanzo service. The customer routes are scoped to the
+    caller's org server-side; the `/v1/admin/referrals*` routes require global-admin.
+  version: 1.0.0
+  contact:
+    name: Hanzo AI
+    url: https://hanzo.ai
+    email: support@hanzo.ai
+  license:
+    name: Proprietary
+    url: https://hanzo.ai/terms
+servers:
+- url: https://api.hanzo.ai
+  description: Hanzo Gateway Production
+security:
+- bearerAuth: []
+tags:
+- name: Referrals
+  description: Customer-facing referral surface, scoped to the caller's org.
+- name: Admin
+  description: Global-admin referral directory and qualify sweep.
+- name: Health
+  description: Liveness probe.
+paths:
+  /v1/referrals:
+    get:
+      operationId: getMyReferrals
+      tags: [Referrals]
+      summary: Get my referral code, link, and referrals
+      description: |
+        Returns the caller org's stable referral code and link, the referrals they
+        have made (with per-referral status and credit earned), a status tally, and
+        the total credit earned. Opportunistically runs the qualify check for the
+        caller's own pending referees, so the page is self-updating.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: The caller's referral overview.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyReferralsResponse'
+        '403':
+          $ref: '../shared/errors.yaml#/components/responses/Forbidden'
+        '500':
+          $ref: '../shared/errors.yaml#/components/responses/InternalServerError'
+  /v1/referrals/claim:
+    post:
+      operationId: claimReferral
+      tags: [Referrals]
+      summary: Claim a referral from a ?ref code
+      description: |
+        Records a referral. The REFEREE is the validated caller (never client-
+        supplied); the referrer is resolved from the code. Idempotent (one per
+        referee, first-touch wins); self-referral is blocked; an unknown code is
+        rejected. Returns 201 when a new referral was created, 200 when it already
+        existed.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimRequest'
+      responses:
+        '200':
+          description: Referral already existed (idempotent replay).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResponse'
+        '201':
+          description: Referral created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResponse'
+        '400':
+          $ref: '../shared/errors.yaml#/components/responses/BadRequest'
+        '403':
+          $ref: '../shared/errors.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: '../shared/errors.yaml#/components/responses/NotFound'
+        '500':
+          $ref: '../shared/errors.yaml#/components/responses/InternalServerError'
+  /v1/admin/referrals:
+    get:
+      operationId: adminListReferrals
+      tags: [Admin]
+      summary: List every referral with a fleet summary (global-admin)
+      description: |
+        Returns every referral (both orgs exposed) plus a fleet summary. Global-admin
+        only. Wrapped in the `{ status, msg, data }` admin envelope.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        description: |
+          Max rows to return. Defaults to 500 when absent/invalid/<=0; capped at 1000.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 500
+      responses:
+        '200':
+          description: The referral directory and summary, in the admin envelope.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminListEnvelope'
+        '403':
+          $ref: '../shared/errors.yaml#/components/responses/Forbidden'
+        '500':
+          $ref: '../shared/errors.yaml#/components/responses/InternalServerError'
+  /v1/admin/referrals/sweep:
+    post:
+      operationId: adminSweepReferrals
+      tags: [Admin]
+      summary: Qualify-check every pending referral (global-admin)
+      description: |
+        The periodic qualify path (cron/operator on demand). Qualify-checks every
+        pending referral (bounded to 500 per sweep) and grants the ones that now
+        qualify. Global-admin only. Returns counts in the admin envelope.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Sweep result counts, in the admin envelope.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSweepEnvelope'
+        '403':
+          $ref: '../shared/errors.yaml#/components/responses/Forbidden'
+        '500':
+          $ref: '../shared/errors.yaml#/components/responses/InternalServerError'
+  /v1/referrals/health:
+    get:
+      operationId: referralsHealth
+      tags: [Health]
+      summary: Liveness probe
+      description: |
+        Auto-registered liveness probe (serve.go registers `GET /v1/referrals/health`
+        for every mounted subsystem). Response body is not defined by this package.
+      security: []
+      responses:
+        '200':
+          description: The service is live.
+components:
+  securitySchemes:
+    bearerAuth:
+      $ref: '../shared/auth.yaml#/components/securitySchemes/bearerAuth'
+  schemas:
+    ReferralStatus:
+      type: string
+      description: |
+        A referral advances signed_up -> qualified -> credited. It never moves
+        backward; credited is terminal.
+      enum: [signed_up, qualified, credited]
+    MyReferralView:
+      type: object
+      description: One row in the referrer's own list (their side of the edge).
+      properties:
+        id:
+          type: string
+        referee:
+          type: string
+          description: The org that signed up via my code.
+        status:
+          $ref: '#/components/schemas/ReferralStatus'
+        creditsCents:
+          type: integer
+          format: int64
+          description: What I earned from this referral, in USD minor units (cents).
+        createdAt:
+          type: integer
+          format: int64
+          description: Unix timestamp.
+        qualifiedAt:
+          type: integer
+          format: int64
+          description: Unix timestamp; 0 if not yet qualified.
+        creditedAt:
+          type: integer
+          format: int64
+          description: Unix timestamp; 0 if not yet credited.
+    StatusCounts:
+      type: object
+      description: The customer-view tally of a referrer's referrals by status.
+      properties:
+        total:
+          type: integer
+        signedUp:
+          type: integer
+        qualified:
+          type: integer
+        credited:
+          type: integer
+    MyReferralsResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          description: The caller org's stable referral code.
+        link:
+          type: string
+          format: uri
+          description: The share link, `<linkBase>/?ref=<code>`.
+        referrerBonusCents:
+          type: integer
+          format: int64
+          description: Bonus granted to the referrer on qualification (1000 = $10).
+        refereeBonusCents:
+          type: integer
+          format: int64
+          description: Bonus granted to the referee on qualification (500 = $5).
+        creditsEarnedCents:
+          type: integer
+          format: int64
+          description: Total credit earned across all of the caller's referrals.
+        counts:
+          $ref: '#/components/schemas/StatusCounts'
+        referrals:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyReferralView'
+    ClaimRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          description: The referrer's code the referee arrived with (from a ?ref= link).
+    ClaimResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        status:
+          $ref: '#/components/schemas/ReferralStatus'
+        created:
+          type: boolean
+          description: True when a new referral was created (201); false on idempotent replay (200).
+        createdAt:
+          type: integer
+          format: int64
+          description: Unix timestamp.
+    AdminReferralView:
+      type: object
+      description: One row in the global-admin directory (both orgs exposed).
+      properties:
+        id:
+          type: string
+        referrerOrg:
+          type: string
+        refereeOrg:
+          type: string
+        code:
+          type: string
+        status:
+          $ref: '#/components/schemas/ReferralStatus'
+        referrerGrantCents:
+          type: integer
+          format: int64
+        refereeGrantCents:
+          type: integer
+          format: int64
+        referrerTxn:
+          type: string
+          description: Ledger transaction id for the referrer bonus (omitted if empty).
+        refereeTxn:
+          type: string
+          description: Ledger transaction id for the referee bonus (omitted if empty).
+        createdAt:
+          type: integer
+          format: int64
+        qualifiedAt:
+          type: integer
+          format: int64
+        creditedAt:
+          type: integer
+          format: int64
+    AdminSummary:
+      type: object
+      description: The fleet tally for the admin directory.
+      properties:
+        total:
+          type: integer
+        signedUp:
+          type: integer
+        qualified:
+          type: integer
+        credited:
+          type: integer
+        grantedCents:
+          type: integer
+          format: int64
+          description: Total promo credit granted across both sides of all referrals.
+    AdminListData:
+      type: object
+      properties:
+        referrals:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminReferralView'
+        summary:
+          $ref: '#/components/schemas/AdminSummary'
+    AdminListEnvelope:
+      type: object
+      description: The `{ status, msg, data }` admin envelope.
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        msg:
+          type: string
+        data:
+          $ref: '#/components/schemas/AdminListData'
+    AdminSweepData:
+      type: object
+      properties:
+        swept:
+          type: integer
+          description: Number of pending referrals examined this sweep.
+        credited:
+          type: integer
+          description: Number newly advanced to credited this sweep.
+    AdminSweepEnvelope:
+      type: object
+      description: The `{ status, msg, data }` admin envelope.
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        msg:
+          type: string
+        data:
+          $ref: '#/components/schemas/AdminSweepData'
