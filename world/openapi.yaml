@@ -1,0 +1,434 @@
+openapi: 3.1.0
+info:
+  title: Hanzo World API
+  description: |
+    Hanzo World Model — real-time global-intelligence data on the unified cloud
+    /v1 plane. Powers world.hanzo.ai and is consumable by any Hanzo app/agent as
+    a data feed. Self-contained Go backend (hanzoai/world, MIT) proxying public
+    upstreams (GDELT, CoinGecko, Polymarket, OpenSky, USGS, NASA FIRMS, ACLED,
+    FRED, EIA, …) with SSRF-bounded allowlists + short-TTL caching. All routes
+    are same-origin `/v1/world/*` (no `/api/` — Hanzo standard).
+
+    AUTH: public data feeds are open (service-level upstream keys where a feed
+    requires one; a missing key degrades to a clean empty/`skipped` body, never
+    5xx). The AI/inference routes carry NO shared key — they forward the signed-in
+    user's IAM token to api.hanzo.ai so inference meters to that user's org +
+    project + linked billing account; anonymous callers get a `skipped` body.
+  version: 1.0.0
+  contact: { name: Hanzo AI, url: https://hanzo.ai, email: support@hanzo.ai }
+  license: { name: MIT }
+servers:
+  - url: https://api.hanzo.ai
+    description: Hanzo Gateway
+  - url: https://world.hanzo.ai
+    description: Hanzo World (same-origin, self-contained fork target *.hanzo.app)
+tags:
+  - { name: News, description: News, RSS, research feeds }
+  - { name: Markets, description: Crypto, equities, macro, econ }
+  - { name: Geo, description: Physical/geospatial events }
+  - { name: Conflict, description: Conflict + humanitarian data }
+  - { name: Intel, description: Computed intelligence signals }
+  - { name: AI, description: AI summaries (per-user IAM → org/project/billing) }
+  - { name: Video, description: Live news video resolution + player }
+  - { name: Meta, description: Health + version }
+paths:
+  /v1/world/gdelt-doc:
+    get:
+      tags: [News]
+      summary: "GDELT article search"
+      operationId: world_gdelt_doc
+      parameters:
+        - { name: query, in: query, required: true, schema: { type: string } }
+        - { name: maxrecords, in: query, required: false, schema: { type: string } }
+        - { name: timespan, in: query, required: false, schema: { type: string } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/gdelt-geo:
+    get:
+      tags: [News]
+      summary: "GDELT geo-tagged events"
+      operationId: world_gdelt_geo
+      parameters:
+        - { name: query, in: query, required: true, schema: { type: string } }
+        - { name: format, in: query, required: false, schema: { type: string } }
+        - { name: maxrecords, in: query, required: false, schema: { type: string } }
+        - { name: timespan, in: query, required: false, schema: { type: string } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/rss-proxy:
+    get:
+      tags: [News]
+      summary: "Allowlisted RSS feed proxy (SSRF-bounded)"
+      operationId: world_rss_proxy
+      parameters:
+        - { name: url, in: query, required: true, schema: { type: string } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/hackernews:
+    get:
+      tags: [News]
+      summary: "Hacker News stories"
+      operationId: world_hackernews
+      parameters:
+        - { name: type, in: query, required: false, schema: { type: string } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/github-trending:
+    get:
+      tags: [News]
+      summary: "GitHub trending repositories"
+      operationId: world_github_trending
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/arxiv:
+    get:
+      tags: [News]
+      summary: "arXiv research feed (backs Robotics/Quantum lenses)"
+      operationId: world_arxiv
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: cat, in: query, required: false, schema: { type: string } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/tech-events:
+    get:
+      tags: [News]
+      summary: "Curated technology events"
+      operationId: world_tech_events
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/story:
+    get:
+      tags: [News]
+      summary: "Story detail"
+      operationId: world_story
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/og-story:
+    get:
+      tags: [News]
+      summary: "Open-graph story card"
+      operationId: world_og_story
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/coingecko:
+    get:
+      tags: [Markets]
+      summary: "Crypto spot prices (CoinGecko)"
+      operationId: world_coingecko
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/polymarket:
+    get:
+      tags: [Markets]
+      summary: "Prediction markets (Polymarket gamma)"
+      operationId: world_polymarket
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/yahoo-finance:
+    get:
+      tags: [Markets]
+      summary: "Equity/index quotes (Yahoo)"
+      operationId: world_yahoo_finance
+      parameters:
+        - { name: symbol, in: query, required: true, schema: { type: string } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/finnhub:
+    get:
+      tags: [Markets]
+      summary: "Market data (Finnhub; requires FINNHUB_KEY)"
+      operationId: world_finnhub
+      parameters:
+        - { name: symbol, in: query, required: true, schema: { type: string } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/stock-index:
+    get:
+      tags: [Markets]
+      summary: "Stock index snapshot"
+      operationId: world_stock_index
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/macro-signals:
+    get:
+      tags: [Markets]
+      summary: "Macro market-radar signals"
+      operationId: world_macro_signals
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/etf-flows:
+    get:
+      tags: [Markets]
+      summary: "BTC/crypto ETF flows"
+      operationId: world_etf_flows
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/stablecoin-markets:
+    get:
+      tags: [Markets]
+      summary: "Stablecoin market health"
+      operationId: world_stablecoin_markets
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/fred-data:
+    get:
+      tags: [Markets]
+      summary: "FRED economic series (requires FRED_API_KEY)"
+      operationId: world_fred_data
+      parameters:
+        - { name: series_id, in: query, required: true, schema: { type: string } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/worldbank:
+    get:
+      tags: [Markets]
+      summary: "World Bank indicators"
+      operationId: world_worldbank
+      parameters:
+        - { name: indicator, in: query, required: false, schema: { type: string } }
+        - { name: country, in: query, required: false, schema: { type: string } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/eia:
+    get:
+      tags: [Markets]
+      summary: "US EIA energy data (requires EIA_API_KEY)"
+      operationId: world_eia
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/earthquakes:
+    get:
+      tags: [Geo]
+      summary: "USGS earthquake feed"
+      operationId: world_earthquakes
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/firms-fires:
+    get:
+      tags: [Geo]
+      summary: "NASA FIRMS active fires (requires NASA_FIRMS_API_KEY)"
+      operationId: world_firms_fires
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/opensky:
+    get:
+      tags: [Geo]
+      summary: "OpenSky flight states"
+      operationId: world_opensky
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/ais-snapshot:
+    get:
+      tags: [Geo]
+      summary: "AIS vessel snapshot (requires WS_RELAY_URL)"
+      operationId: world_ais_snapshot
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/wingbits:
+    get:
+      tags: [Geo]
+      summary: "Wingbits ADS-B (requires WINGBITS_API_KEY)"
+      operationId: world_wingbits
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/climate-anomalies:
+    get:
+      tags: [Geo]
+      summary: "Climate anomaly feed"
+      operationId: world_climate_anomalies
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/worldpop-exposure:
+    get:
+      tags: [Geo]
+      summary: "Population exposure model"
+      operationId: world_worldpop_exposure
+      parameters:
+        - { name: area, in: query, required: false, schema: { type: string } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/faa-status:
+    get:
+      tags: [Geo]
+      summary: "FAA airport status"
+      operationId: world_faa_status
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/nga-warnings:
+    get:
+      tags: [Geo]
+      summary: "NGA maritime safety warnings"
+      operationId: world_nga_warnings
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/cloudflare-outages:
+    get:
+      tags: [Geo]
+      summary: "Cloudflare internet outages"
+      operationId: world_cloudflare_outages
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/acled:
+    get:
+      tags: [Conflict]
+      summary: "ACLED conflict events (requires ACLED_ACCESS_TOKEN)"
+      operationId: world_acled
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/acled-conflict:
+    get:
+      tags: [Conflict]
+      summary: "ACLED conflict summary (requires ACLED_ACCESS_TOKEN)"
+      operationId: world_acled_conflict
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/ucdp:
+    get:
+      tags: [Conflict]
+      summary: "UCDP conflict data"
+      operationId: world_ucdp
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/ucdp-events:
+    get:
+      tags: [Conflict]
+      summary: "UCDP georeferenced events"
+      operationId: world_ucdp_events
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/unhcr-population:
+    get:
+      tags: [Conflict]
+      summary: "UNHCR displacement/population"
+      operationId: world_unhcr_population
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/hapi:
+    get:
+      tags: [Conflict]
+      summary: "Humanitarian API (HDX HAPI)"
+      operationId: world_hapi
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/cyber-threats:
+    get:
+      tags: [Conflict]
+      summary: "Cyber threat feed"
+      operationId: world_cyber_threats
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/risk-scores:
+    get:
+      tags: [Intel]
+      summary: "Country risk scores"
+      operationId: world_risk_scores
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/theater-posture:
+    get:
+      tags: [Intel]
+      summary: "Strategic theater posture"
+      operationId: world_theater_posture
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/temporal-baseline:
+    get:
+      tags: [Intel]
+      summary: "Temporal baseline metrics"
+      operationId: world_temporal_baseline
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/service-status:
+    get:
+      tags: [Intel]
+      summary: "Upstream data-source status"
+      operationId: world_service_status
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/pizzint/dashboard-data:
+    get:
+      tags: [Intel]
+      summary: "PIZZINT dashboard aggregate"
+      operationId: world_pizzint_dashboard_data
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/pizzint/gdelt/batch:
+    get:
+      tags: [Intel]
+      summary: "PIZZINT GDELT batch"
+      operationId: world_pizzint_gdelt_batch
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/groq-summarize:
+    post:
+      tags: [AI]
+      summary: "World-brief summary via Hanzo inference (forwards the caller IAM token → org/project/billing; anon → skipped)"
+      operationId: world_groq_summarize
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+        '401': { description: Missing/invalid IAM token }
+  /v1/world/openrouter-summarize:
+    post:
+      tags: [AI]
+      summary: "Alt summary path via Hanzo inference (per-user IAM token)"
+      operationId: world_openrouter_summarize
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+        '401': { description: Missing/invalid IAM token }
+  /v1/world/classify-batch:
+    post:
+      tags: [AI]
+      summary: "Batch headline classification (per-user IAM token)"
+      operationId: world_classify_batch
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+        '401': { description: Missing/invalid IAM token }
+  /v1/world/classify-event:
+    post:
+      tags: [AI]
+      summary: "Single event classification (per-user IAM token)"
+      operationId: world_classify_event
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+        '401': { description: Missing/invalid IAM token }
+  /v1/world/country-intel:
+    post:
+      tags: [AI]
+      summary: "AI country intelligence brief (per-user IAM token)"
+      operationId: world_country_intel
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+        '401': { description: Missing/invalid IAM token }
+  /v1/world/youtube/live:
+    get:
+      tags: [Video]
+      summary: "Resolve a channel handle to its current LIVE video id"
+      operationId: world_youtube_live
+      parameters:
+        - { name: channel, in: query, required: true, schema: { type: string } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/youtube/embed:
+    get:
+      tags: [Video]
+      summary: "Self-contained IFrame-API player page (text/html)"
+      operationId: world_youtube_embed
+      parameters:
+        - { name: videoId, in: query, required: true, schema: { type: string } }
+      responses:
+        '200': { description: HTML player page, content: { text/html: { schema: { type: string } } } }
+  /v1/world/health:
+    get:
+      tags: [Meta]
+      summary: "Liveness probe"
+      operationId: world_health
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/version:
+    get:
+      tags: [Meta]
+      summary: "Build version"
+      operationId: world_version
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
