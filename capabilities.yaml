@@ -1,12 +1,22 @@
 # capabilities.yaml — the ONE registry of Hanzo public capabilities.
 #
+# This file is the single source of truth. merge.py READS it (there is no
+# hand-kept GROUPS dict anymore) to build hanzo.yaml's x-tagGroups AND to
+# generate CAPABILITIES.md. CAPABILITIES.md is a DERIVED artifact — never edit it
+# by hand; edit this file and run `python3 merge.py`.
+#
 # One and one way, by construction:
-#   • every openapi/<name>/openapi.yaml MUST appear here exactly once, in exactly
-#     one domain — merge.py FAILS the build on an orphan spec, an unlisted spec,
-#     or a name in two domains.  Orthogonality is a build invariant, not a hope.
+#   • every openapi/<name>/openapi.yaml MUST appear here exactly once, across
+#     domains ∪ core — merge.py FAILS the build on an orphan spec (dir with no
+#     entry), an unlisted spec, or a name in two entries. Orthogonality is a
+#     build invariant, not a hope.
+#   • a `collapsed` name MUST have NO spec dir (build fails if a dir reappears).
+#   • `internal` names are EXCLUDED from the master, x-tagGroups, SDKs and docs.
+#   • `pending`/`review`/domain names WITHOUT a dir are fine (not-yet-authored or
+#     future-fold); only a spec dir on disk is load-bearing for the invariant.
 #   • the route IS the identity: one capability = one name = one /v1/<name> = one
 #     <name>/openapi.yaml.  No svc suffix, no singular/plural twins, no facade.
-#   • merge.py emits x-tagGroups from `domains` so Redoc/Scalar render the eight
+#   • merge.py emits x-tagGroups from `domains`+`core` so Redoc/Scalar render the
 #     movements automatically.  Docs + SDKs derive from hanzo.yaml — never hand-kept.
 #
 # version: the API path stays /v1 (the compatibility contract, immutable).  The
@@ -29,7 +39,7 @@ domains:
   - id: data
     title: "Data"
     role: "the stores every capability writes to and reads from"
-    services: [storage, base, db, kv, vector]
+    services: [storage, s3, base, db, kv, vector]
 
   - id: streams
     title: "Streams"
@@ -39,22 +49,22 @@ domains:
   - id: observability
     title: "Observability"
     role: "see everything — telemetry · analytics · usage"
-    services: [o11y, analytics]
+    services: [o11y, observe, analytics]
 
   - id: commerce
     title: "Commerce"
     role: "the economy — meter · price · bill · reward"
-    services: [commerce, billing, pricing, plan, product, crm, referrals, affiliates, licensing, treasury, wallets]
+    services: [commerce, billing, pricing, plan, product, crm, referrals, affiliates, licensing]
 
   - id: platform
     title: "Platform"
     role: "the cloud fabric — deploy · provision · route · host"
-    services: [cloud, platform, paas, provisioning, gateway, visor, edge, dns, registry, nexus]
+    services: [cloud, platform, paas, provisioning, gateway, visor, edge, dns, registry, nexus, do]
 
   - id: applications
     title: "Applications"
     role: "the user-facing surfaces built on all of the above"
-    services: [console, projects, git, team, templates, integrations, bot, chat, kb, search, websearch, authors, sites, tracker, framework]
+    services: [console, projects, app, git, templates, integrations, bot, chat, kb, search, websearch, world, authors, sites, tracker, framework]
 
 # Core — governance that owns no single domain.
 core: [admin, plugin]
@@ -66,19 +76,21 @@ internal: [principal, goja, mpc, controlplane, metrics, audit]
 # NO spec dir (they were removed), and records where the capability now lives.
 collapsed:
   eval:      evals                     # pure dup — same /v1/evals
-  observe:   o11y + console/settings   # /v1/o11y facet → o11y; /v1/settings → console
   operative: bot + visor              # computer-using-agent split: bot = the CUA (@hanzo/bot), visor = the VM it runs on
-  s3:        storage                   # renamed: storage is the capability, s3 the implementation
   plans:     plan                      # singular canonical
   plugins:   plugin
 
 # Not-yet-scored — LIVE surfaces missing a spec. Author these to complete the set.
 pending: [team, wallets, treasury, usage, fleet]
 
-# Braids under review — same concern, different names? Verify before merging;
-# do NOT silently consolidate (would lose capability). merge.py warns, not fails.
+# Braids under review — same concern, different names? A spec dir still exists
+# (so it is GROUPED into a domain above and counts for the invariant); folding it
+# away is a separate, verified decision — do NOT silently consolidate here (would
+# lose capability). merge.py groups them; it does not fold them.
 review:
-  app_vs_projects: "app (hanzo.app builds/deploys) vs projects (buildable/deployable sites) — likely ONE concern; fold app→projects?"
-  do_is_a_provider: "do (DigitalOcean VPCs/LBs) is a PROVIDER, not a capability — fold into provisioning/platform?"
+  app_vs_projects: "app (hanzo.app builds/deploys, grouped→applications) vs projects (buildable/deployable sites) — likely ONE concern; fold app→projects?"
+  do_is_a_provider: "do (DigitalOcean VPCs/LBs, grouped→platform) is a PROVIDER, not a capability — fold into provisioning/platform?"
+  s3_vs_storage: "s3 (/v1/s3/*, grouped→data) is the present object store; storage is the canonical rename target (no dir yet) — fold s3→storage once the dir is renamed?"
+  observe_vs_o11y: "observe (/v1/o11y/{logs,metrics,status} + /v1/settings, grouped→observability) is an o11y read-plane facet + a console settings facet — fold observe→o11y (+ console) once the routes migrate?"
   workflow_cluster: "auto (Hanzo Auto engine) · automations (connector pieces) · flow — three workflow surfaces; decomplect to one?"
   retrieval_cluster: "search vs kb (semantic) vs vector (store) — overlapping retrieval; is search distinct from kb?"
