@@ -540,3 +540,89 @@ paths:
       operationId: world_version
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/cloud-pulse:
+    get:
+      tags: [Cloud]
+      summary: "Public platform aggregate (SaaS variant). Anonymized counts; demo-flagged unless a service token is wired server-side."
+      operationId: world_cloud_pulse
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/cloud/models:
+    get:
+      tags: [Cloud]
+      summary: "Public served-model catalog + scale (from the gateway /v1/models). No auth."
+      operationId: world_cloud_models
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/cloud/fleet:
+    get:
+      tags: [Cloud]
+      summary: "ADMIN. Machines + GPUs grouped by provider/region (visor). Requires an admin-org IAM bearer; 401 without a token, 403 for non-admin."
+      operationId: world_cloud_fleet
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+        '401': { description: "Sign in required" }
+        '403': { description: "Admin only" }
+  /v1/world/cloud/services:
+    get:
+      tags: [Cloud]
+      summary: "ADMIN. Per-subsystem health + RED metrics (o11y). Requires an admin-org IAM bearer."
+      operationId: world_cloud_services
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+        '401': { description: "Sign in required" }
+        '403': { description: "Admin only" }
+  /v1/world/cloud/analytics:
+    get:
+      tags: [Cloud]
+      summary: "ADMIN. Web analytics aggregate — top pages/referrers/countries, live visitors (analytics.hanzo.ai). Requires an admin-org IAM bearer."
+      operationId: world_cloud_analytics
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+        '401': { description: "Sign in required" }
+        '403': { description: "Admin only" }
+  /v1/world/cloud/llm:
+    get:
+      tags: [Cloud]
+      summary: "ADMIN. Platform LLM observability — per-model/per-org usage, tokens, cost, errors, trace latency (cloud /v1/admin/o11y). Requires an admin-org IAM bearer."
+      operationId: world_cloud_llm
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: query
+          name: range
+          schema: { type: string, enum: [24h, 7d, 30d], default: 24h }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+        '401': { description: "Sign in required" }
+        '403': { description: "Admin only" }
+  /v1/world/cloud/chain-nodes:
+    get:
+      tags: [Cloud]
+      summary: "Public blockchain-network map data — per-network block height, peer count, live flag, and modeled node positions (positionsModeled:true; counts are real, geo is illustrative). No auth."
+      operationId: world_cloud_chain_nodes
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/cloud/byo-gpu:
+    get:
+      tags: [Cloud]
+      summary: "Public BYO-GPU map data — connected GPU workers by region (real counts when a service token is wired server-side, else demo-flagged). No auth."
+      operationId: world_cloud_byo_gpu
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+  /v1/world/cloud/traffic:
+    get:
+      tags: [Cloud]
+      summary: "Public request-traffic arcs — country-level origin → nearest region, weight-normalized (real analytics when a service token is wired server-side, else demo-flagged). No auth."
+      operationId: world_cloud_traffic
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object } } } }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Hanzo IAM (hanzo.id) OIDC access token. Admin Cloud routes require the owner claim to be an admin org."
