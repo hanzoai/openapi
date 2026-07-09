@@ -2,27 +2,17 @@ openapi: 3.1.0
 info:
   title: Hanzo Referrals API
   summary: Per-org viral-loop referral program that grants promo cloud credit (hanzoai/cloud clients/referrals).
-  description: |
-    The Hanzo Cloud referrals surface served by the `referrals` subsystem of the
-    unified cloud binary (HIP-0106), reached through the gateway at `api.hanzo.ai`.
-
-    A native-Go, per-org referral program on Base/SQLite that grants promo cloud
-    credit through the same commerce ledger path as an admin comp (the trial/Credit
-    bucket, tag `grant:referral`).
-
-    The loop, end to end:
-      1. Every org has a STABLE referral code and a link `https://<brand>/?ref=<code>`.
-      2. A new org signs up via a link, the console posts `POST /v1/referrals/claim`
-         with the code, recording referrer to referee at status `signed_up`.
-         Self-referral is blocked; one referral per referee ever (idempotent).
-      3. When the referee QUALIFIES (has made metered spend) both sides are granted
-         trial credit: referrer +$10 (1000 cents), referee +$5 (500 cents). The
-         grant is latched at-most-once. The qualify check runs lazily when the
-         referrer loads `GET /v1/referrals` and via the admin sweep.
-
-    Authentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`). The same
-    token authenticates every Hanzo service. The customer routes are scoped to the
-    caller's org server-side; the `/v1/admin/referrals*` routes require global-admin.
+  description: "The Hanzo Cloud referrals surface served by the `referrals` subsystem of the\nunified cloud binary (HIP-0106),\
+    \ reached through the gateway at `api.hanzo.ai`.\n\nA native-Go, per-org referral program on Base/SQLite that grants promo\
+    \ cloud\ncredit through the same commerce ledger path as an admin comp (the trial/Credit\nbucket, tag `grant:referral`).\n\
+    \nThe loop, end to end:\n  1. Every org has a STABLE referral code and a link `https://<brand>/?ref=<code>`.\n  2. A new\
+    \ org signs up via a link, the console posts `POST /v1/referrals/claim`\n     with the code, recording referrer to referee\
+    \ at status `signed_up`.\n     Self-referral is blocked; one referral per referee ever (idempotent).\n  3. When the referee\
+    \ QUALIFIES (has made metered spend) both sides are granted\n     trial credit: referrer +$10 (1000 cents), referee +$5\
+    \ (500 cents). The\n     grant is latched at-most-once. The qualify check runs lazily when the\n     referrer loads `GET\
+    \ /v1/referrals` and via the admin sweep.\n\nAuthentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`). The\
+    \ same\ntoken authenticates every Hanzo service. The customer routes are scoped to the\ncaller's org server-side; the\
+    \ `/v1/admin/referrals*` routes require global-admin.\n"
   version: 8.0.0
   contact:
     name: Hanzo AI
@@ -47,13 +37,18 @@ paths:
   /v1/referrals:
     get:
       operationId: getMyReferrals
-      tags: [Referrals]
+      tags:
+      - Referrals
       summary: Get my referral code, link, and referrals
-      description: |
-        Returns the caller org's stable referral code and link, the referrals they
+      description: 'Returns the caller org''s stable referral code and link, the referrals they
+
         have made (with per-referral status and credit earned), a status tally, and
+
         the total credit earned. Opportunistically runs the qualify check for the
-        caller's own pending referees, so the page is self-updating.
+
+        caller''s own pending referees, so the page is self-updating.
+
+        '
       security:
       - bearerAuth: []
       responses:
@@ -64,20 +59,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/MyReferralsResponse'
         '403':
-          $ref: '../shared/errors.yaml#/components/responses/Forbidden'
+          $ref: '#/components/responses/Forbidden'
         '500':
-          $ref: '../shared/errors.yaml#/components/responses/InternalServerError'
+          $ref: '#/components/responses/InternalServerError'
   /v1/referrals/claim:
     post:
       operationId: claimReferral
-      tags: [Referrals]
+      tags:
+      - Referrals
       summary: Claim a referral from a ?ref code
-      description: |
-        Records a referral. The REFEREE is the validated caller (never client-
+      description: 'Records a referral. The REFEREE is the validated caller (never client-
+
         supplied); the referrer is resolved from the code. Idempotent (one per
+
         referee, first-touch wins); self-referral is blocked; an unknown code is
+
         rejected. Returns 201 when a new referral was created, 200 when it already
+
         existed.
+
+        '
       security:
       - bearerAuth: []
       requestBody:
@@ -100,29 +101,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/ClaimResponse'
         '400':
-          $ref: '../shared/errors.yaml#/components/responses/BadRequest'
+          $ref: '#/components/responses/BadRequest'
         '403':
-          $ref: '../shared/errors.yaml#/components/responses/Forbidden'
+          $ref: '#/components/responses/Forbidden'
         '404':
-          $ref: '../shared/errors.yaml#/components/responses/NotFound'
+          $ref: '#/components/responses/NotFound'
         '500':
-          $ref: '../shared/errors.yaml#/components/responses/InternalServerError'
+          $ref: '#/components/responses/InternalServerError'
   /v1/admin/referrals:
     get:
       operationId: adminListReferrals
-      tags: [Admin]
+      tags:
+      - Admin
       summary: List every referral with a fleet summary (global-admin)
-      description: |
-        Returns every referral (both orgs exposed) plus a fleet summary. Global-admin
+      description: 'Returns every referral (both orgs exposed) plus a fleet summary. Global-admin
+
         only. Wrapped in the `{ status, msg, data }` admin envelope.
+
+        '
       security:
       - bearerAuth: []
       parameters:
       - name: limit
         in: query
         required: false
-        description: |
-          Max rows to return. Defaults to 500 when absent/invalid/<=0; capped at 1000.
+        description: 'Max rows to return. Defaults to 500 when absent/invalid/<=0; capped at 1000.
+
+          '
         schema:
           type: integer
           minimum: 1
@@ -136,18 +141,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/AdminListEnvelope'
         '403':
-          $ref: '../shared/errors.yaml#/components/responses/Forbidden'
+          $ref: '#/components/responses/Forbidden'
         '500':
-          $ref: '../shared/errors.yaml#/components/responses/InternalServerError'
+          $ref: '#/components/responses/InternalServerError'
   /v1/admin/referrals/sweep:
     post:
       operationId: adminSweepReferrals
-      tags: [Admin]
+      tags:
+      - Admin
       summary: Qualify-check every pending referral (global-admin)
-      description: |
-        The periodic qualify path (cron/operator on demand). Qualify-checks every
+      description: 'The periodic qualify path (cron/operator on demand). Qualify-checks every
+
         pending referral (bounded to 500 per sweep) and grants the ones that now
+
         qualify. Global-admin only. Returns counts in the admin envelope.
+
+        '
       security:
       - bearerAuth: []
       responses:
@@ -158,17 +167,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/AdminSweepEnvelope'
         '403':
-          $ref: '../shared/errors.yaml#/components/responses/Forbidden'
+          $ref: '#/components/responses/Forbidden'
         '500':
-          $ref: '../shared/errors.yaml#/components/responses/InternalServerError'
+          $ref: '#/components/responses/InternalServerError'
   /v1/referrals/health:
     get:
       operationId: referralsHealth
-      tags: [Health]
+      tags:
+      - Health
       summary: Liveness probe
-      description: |
-        Auto-registered liveness probe (serve.go registers `GET /v1/referrals/health`
+      description: 'Auto-registered liveness probe (serve.go registers `GET /v1/referrals/health`
+
         for every mounted subsystem). Response body is not defined by this package.
+
+        '
       security: []
       responses:
         '200':
@@ -176,14 +188,19 @@ paths:
 components:
   securitySchemes:
     bearerAuth:
-      $ref: '../shared/auth.yaml#/components/securitySchemes/bearerAuth'
+      $ref: ../shared/auth.yaml#/components/securitySchemes/bearerAuth
   schemas:
     ReferralStatus:
       type: string
-      description: |
-        A referral advances signed_up -> qualified -> credited. It never moves
+      description: 'A referral advances signed_up -> qualified -> credited. It never moves
+
         backward; credited is terminal.
-      enum: [signed_up, qualified, credited]
+
+        '
+      enum:
+      - signed_up
+      - qualified
+      - credited
     MyReferralView:
       type: object
       description: One row in the referrer's own list (their side of the edge).
@@ -253,7 +270,8 @@ components:
             $ref: '#/components/schemas/MyReferralView'
     ClaimRequest:
       type: object
-      required: [code]
+      required:
+      - code
       properties:
         code:
           type: string
@@ -340,7 +358,8 @@ components:
       properties:
         status:
           type: string
-          enum: [ok]
+          enum:
+          - ok
         msg:
           type: string
         data:
@@ -360,8 +379,102 @@ components:
       properties:
         status:
           type: string
-          enum: [ok]
+          enum:
+          - ok
         msg:
           type: string
         data:
           $ref: '#/components/schemas/AdminSweepData'
+    Error:
+      type: object
+      required:
+      - status
+      - msg
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+          description: Always "error" for error responses
+        msg:
+          type: string
+          description: Human-readable error message
+        code:
+          type: integer
+          description: Application-specific error code
+        data:
+          type: object
+          description: Additional error context
+        data2:
+          type: object
+          description: Additional error details
+        requestId:
+          type: string
+          description: Request ID for debugging
+  responses:
+    BadRequest:
+      description: Bad Request - Invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalidParameter:
+              value:
+                status: error
+                msg: 'Invalid parameter: email format is incorrect'
+                code: 400
+    Unauthorized:
+      description: Unauthorized - Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missingToken:
+              value:
+                status: error
+                msg: Authentication required
+                code: 401
+            invalidToken:
+              value:
+                status: error
+                msg: Invalid or expired token
+                code: 401
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            insufficientPermissions:
+              value:
+                status: error
+                msg: You don't have permission to access this resource
+                code: 403
+    NotFound:
+      description: Not Found - Resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            resourceNotFound:
+              value:
+                status: error
+                msg: Resource not found
+                code: 404
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            serverError:
+              value:
+                status: error
+                msg: An internal error occurred
+                code: 500
+                requestId: req_abc123

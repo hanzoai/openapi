@@ -1540,9 +1540,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/referrals_AdminListEnvelope'
         '403':
-          $ref: ../shared/errors.yaml#/components/responses/Forbidden
+          $ref: '#/components/responses/referrals_Forbidden'
         '500':
-          $ref: ../shared/errors.yaml#/components/responses/InternalServerError
+          $ref: '#/components/responses/referrals_InternalServerError'
   /v1/admin/referrals/sweep:
     post:
       operationId: referrals_adminSweepReferrals
@@ -1566,9 +1566,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/referrals_AdminSweepEnvelope'
         '403':
-          $ref: ../shared/errors.yaml#/components/responses/Forbidden
+          $ref: '#/components/responses/referrals_Forbidden'
         '500':
-          $ref: ../shared/errors.yaml#/components/responses/InternalServerError
+          $ref: '#/components/responses/referrals_InternalServerError'
   /v1/admin/revenue:
     get:
       tags:
@@ -52577,9 +52577,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/referrals_MyReferralsResponse'
         '403':
-          $ref: ../shared/errors.yaml#/components/responses/Forbidden
+          $ref: '#/components/responses/referrals_Forbidden'
         '500':
-          $ref: ../shared/errors.yaml#/components/responses/InternalServerError
+          $ref: '#/components/responses/referrals_InternalServerError'
   /v1/referrals/claim:
     post:
       operationId: referrals_claimReferral
@@ -52619,13 +52619,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/referrals_ClaimResponse'
         '400':
-          $ref: ../shared/errors.yaml#/components/responses/BadRequest
+          $ref: '#/components/responses/referrals_BadRequest'
         '403':
-          $ref: ../shared/errors.yaml#/components/responses/Forbidden
+          $ref: '#/components/responses/referrals_Forbidden'
         '404':
-          $ref: ../shared/errors.yaml#/components/responses/NotFound
+          $ref: '#/components/responses/referrals_NotFound'
         '500':
-          $ref: ../shared/errors.yaml#/components/responses/InternalServerError
+          $ref: '#/components/responses/referrals_InternalServerError'
   /v1/referrals/health:
     get:
       operationId: referrals_referralsHealth
@@ -77216,8 +77216,8 @@ components:
       discriminator:
         propertyName: applicationType
         mapping:
-          application: '#/components/schemas/CancelDeploymentJobApplication'
-          compose: '#/components/schemas/CancelDeploymentJobCompose'
+          application: '#/components/schemas/platform_CancelDeploymentJobApplication'
+          compose: '#/components/schemas/platform_CancelDeploymentJobCompose'
     platform_CancelDeploymentJobApplication:
       type: object
       required:
@@ -77334,9 +77334,9 @@ components:
       discriminator:
         propertyName: applicationType
         mapping:
-          application: '#/components/schemas/DeployJobApplication'
-          compose: '#/components/schemas/DeployJobCompose'
-          application-preview: '#/components/schemas/DeployJobApplicationPreview'
+          application: '#/components/schemas/platform_DeployJobApplication'
+          compose: '#/components/schemas/platform_DeployJobCompose'
+          application-preview: '#/components/schemas/platform_DeployJobApplicationPreview'
     platform_DeployJobApplication:
       type: object
       required:
@@ -79219,6 +79219,32 @@ components:
           type: integer
           format: int64
           description: Unix timestamp.
+    referrals_Error:
+      type: object
+      required:
+      - status
+      - msg
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+          description: Always "error" for error responses
+        msg:
+          type: string
+          description: Human-readable error message
+        code:
+          type: integer
+          description: Application-specific error code
+        data:
+          type: object
+          description: Additional error context
+        data2:
+          type: object
+          description: Additional error details
+        requestId:
+          type: string
+          description: Request ID for debugging
     referrals_MyReferralView:
       type: object
       description: One row in the referrer's own list (their side of the edge).
@@ -82714,6 +82740,72 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/provisioning_Error'
+    referrals_BadRequest:
+      description: Bad Request - Invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/referrals_Error'
+          examples:
+            invalidParameter:
+              value:
+                status: error
+                msg: 'Invalid parameter: email format is incorrect'
+                code: 400
+    referrals_Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/referrals_Error'
+          examples:
+            insufficientPermissions:
+              value:
+                status: error
+                msg: You don't have permission to access this resource
+                code: 403
+    referrals_InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/referrals_Error'
+          examples:
+            serverError:
+              value:
+                status: error
+                msg: An internal error occurred
+                code: 500
+                requestId: req_abc123
+    referrals_NotFound:
+      description: Not Found - Resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/referrals_Error'
+          examples:
+            resourceNotFound:
+              value:
+                status: error
+                msg: Resource not found
+                code: 404
+    referrals_Unauthorized:
+      description: Unauthorized - Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/referrals_Error'
+          examples:
+            missingToken:
+              value:
+                status: error
+                msg: Authentication required
+                code: 401
+            invalidToken:
+              value:
+                status: error
+                msg: Invalid or expired token
+                code: 401
     registry_BadRequest:
       description: Bad Request
       content:
