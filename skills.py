@@ -371,6 +371,11 @@ def generate(out_dir: str, brands: list, include_services: bool, only: list | No
 
     for brand in brands:
         broot = os.path.join(out_dir, brand)
+        # Clean only the brand subtree we own — never the whole out_dir, so a
+        # committed sibling (e.g. the cloud embed's catalog/.gitignore that keeps
+        # the fallback tracked) survives regeneration.
+        if os.path.isdir(broot):
+            shutil.rmtree(broot)
         master_entries = []
         for svc in sorted(per_service_skills):
             skills = per_service_skills[svc]
@@ -463,8 +468,6 @@ def main():
             shutil.rmtree(tmp, ignore_errors=True)
         return 0
 
-    if os.path.isdir(args.out):
-        shutil.rmtree(args.out)
     stats = generate(args.out, brands, not args.no_services, only)
     print(f"generated {stats['skills']} skills across {stats['services']} services "
           f"× {stats['brands']} brands → {args.out}")
