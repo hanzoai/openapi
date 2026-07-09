@@ -36,7 +36,7 @@ paths:
     get:
       tags: [News]
       summary: "GDELT article search"
-      operationId: world_gdelt_doc
+      operationId: gdelt_doc
       parameters:
         - { name: query, in: query, required: true, schema: { type: string } }
         - { name: maxrecords, in: query, required: false, schema: { type: string } }
@@ -47,7 +47,7 @@ paths:
     get:
       tags: [News]
       summary: "GDELT geo-tagged events"
-      operationId: world_gdelt_geo
+      operationId: gdelt_geo
       parameters:
         - { name: query, in: query, required: true, schema: { type: string } }
         - { name: format, in: query, required: false, schema: { type: string } }
@@ -59,7 +59,7 @@ paths:
     get:
       tags: [News]
       summary: "Allowlisted RSS feed proxy (SSRF-bounded)"
-      operationId: world_rss_proxy
+      operationId: rss_proxy
       parameters:
         - { name: url, in: query, required: true, schema: { type: string } }
       responses:
@@ -68,7 +68,7 @@ paths:
     get:
       tags: [News]
       summary: "Hacker News stories"
-      operationId: world_hackernews
+      operationId: hackernews
       parameters:
         - { name: type, in: query, required: false, schema: { type: string } }
       responses:
@@ -77,14 +77,14 @@ paths:
     get:
       tags: [News]
       summary: "GitHub trending repositories"
-      operationId: world_github_trending
+      operationId: github_trending
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/arxiv:
     get:
       tags: [News]
       summary: "arXiv research feed (backs Robotics/Quantum lenses)"
-      operationId: world_arxiv
+      operationId: arxiv
       parameters:
         - { name: q, in: query, required: false, schema: { type: string } }
         - { name: cat, in: query, required: false, schema: { type: string } }
@@ -94,42 +94,42 @@ paths:
     get:
       tags: [News]
       summary: "Curated technology events"
-      operationId: world_tech_events
+      operationId: tech_events
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/story:
     get:
       tags: [News]
       summary: "Story detail"
-      operationId: world_story
+      operationId: story
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/og-story:
     get:
       tags: [News]
       summary: "Open-graph story card"
-      operationId: world_og_story
+      operationId: og_story
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/coingecko:
     get:
       tags: [Markets]
       summary: "Crypto spot prices (CoinGecko)"
-      operationId: world_coingecko
+      operationId: coingecko
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/polymarket:
     get:
       tags: [Markets]
       summary: "Prediction markets (Polymarket gamma)"
-      operationId: world_polymarket
+      operationId: polymarket
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/yahoo-finance:
     get:
       tags: [Markets]
       summary: "Equity/index quotes (Yahoo)"
-      operationId: world_yahoo_finance
+      operationId: yahoo_finance
       parameters:
         - { name: symbol, in: query, required: true, schema: { type: string } }
       responses:
@@ -138,7 +138,7 @@ paths:
     get:
       tags: [Markets]
       summary: "Market data (Finnhub; requires FINNHUB_KEY)"
-      operationId: world_finnhub
+      operationId: finnhub
       parameters:
         - { name: symbol, in: query, required: true, schema: { type: string } }
       responses:
@@ -147,28 +147,28 @@ paths:
     get:
       tags: [Markets]
       summary: "Stock index snapshot"
-      operationId: world_stock_index
+      operationId: stock_index
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/macro-signals:
     get:
       tags: [Markets]
       summary: "Macro market-radar signals"
-      operationId: world_macro_signals
+      operationId: macro_signals
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/etf-flows:
     get:
       tags: [Markets]
       summary: "BTC/crypto ETF flows"
-      operationId: world_etf_flows
+      operationId: etf_flows
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/stablecoin-markets:
     get:
       tags: [Markets]
       summary: "Stablecoin market health"
-      operationId: world_stablecoin_markets
+      operationId: stablecoin_markets
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/indicators:
@@ -181,7 +181,7 @@ paths:
         Each field degrades to null when its source is down; the equity fear/greed
         and risk-on/off composites recompute over surviving inputs and ship their
         formulas inline. Cached ~2 min. Always 200 (never 5xx).
-      operationId: world_indicators
+      operationId: indicators
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/sentiment:
@@ -196,14 +196,14 @@ paths:
         so the endpoint serves a cached value instantly and refreshes in the
         background at a paced cadence; until the first refresh lands it returns a
         clean `status:"warming"` body. Always 200 (never 5xx).
-      operationId: world_sentiment
+      operationId: sentiment
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/fred-data:
     get:
       tags: [Markets]
       summary: "FRED economic series (requires FRED_API_KEY)"
-      operationId: world_fred_data
+      operationId: fred_data
       parameters:
         - { name: series_id, in: query, required: true, schema: { type: string } }
       responses:
@@ -212,7 +212,7 @@ paths:
     get:
       tags: [Markets]
       summary: "World Bank indicators"
-      operationId: world_worldbank
+      operationId: worldbank
       parameters:
         - { name: indicator, in: query, required: false, schema: { type: string } }
         - { name: country, in: query, required: false, schema: { type: string } }
@@ -222,56 +222,56 @@ paths:
     get:
       tags: [Markets]
       summary: "US EIA energy data (requires EIA_API_KEY)"
-      operationId: world_eia
+      operationId: eia
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/earthquakes:
     get:
       tags: [Geo]
       summary: "USGS earthquake feed"
-      operationId: world_earthquakes
+      operationId: earthquakes
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/firms-fires:
     get:
       tags: [Geo]
       summary: "NASA FIRMS active fires (requires NASA_FIRMS_API_KEY)"
-      operationId: world_firms_fires
+      operationId: firms_fires
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/opensky:
     get:
       tags: [Geo]
       summary: "OpenSky flight states"
-      operationId: world_opensky
+      operationId: opensky
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/ais-snapshot:
     get:
       tags: [Geo]
       summary: "AIS vessel snapshot (requires WS_RELAY_URL)"
-      operationId: world_ais_snapshot
+      operationId: ais_snapshot
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/wingbits:
     get:
       tags: [Geo]
       summary: "Wingbits ADS-B (requires WINGBITS_API_KEY)"
-      operationId: world_wingbits
+      operationId: wingbits
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/climate-anomalies:
     get:
       tags: [Geo]
       summary: "Climate anomaly feed"
-      operationId: world_climate_anomalies
+      operationId: climate_anomalies
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/worldpop-exposure:
     get:
       tags: [Geo]
       summary: "Population exposure model"
-      operationId: world_worldpop_exposure
+      operationId: worldpop_exposure
       parameters:
         - { name: area, in: query, required: false, schema: { type: string } }
       responses:
@@ -280,119 +280,119 @@ paths:
     get:
       tags: [Geo]
       summary: "FAA airport status"
-      operationId: world_faa_status
+      operationId: faa_status
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/nga-warnings:
     get:
       tags: [Geo]
       summary: "NGA maritime safety warnings"
-      operationId: world_nga_warnings
+      operationId: nga_warnings
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/cloudflare-outages:
     get:
       tags: [Geo]
       summary: "Cloudflare internet outages"
-      operationId: world_cloudflare_outages
+      operationId: cloudflare_outages
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/acled:
     get:
       tags: [Conflict]
       summary: "ACLED conflict events (requires ACLED_ACCESS_TOKEN)"
-      operationId: world_acled
+      operationId: acled
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/acled-conflict:
     get:
       tags: [Conflict]
       summary: "ACLED conflict summary (requires ACLED_ACCESS_TOKEN)"
-      operationId: world_acled_conflict
+      operationId: acled_conflict
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/ucdp:
     get:
       tags: [Conflict]
       summary: "UCDP conflict data"
-      operationId: world_ucdp
+      operationId: ucdp
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/ucdp-events:
     get:
       tags: [Conflict]
       summary: "UCDP georeferenced events"
-      operationId: world_ucdp_events
+      operationId: ucdp_events
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/unhcr-population:
     get:
       tags: [Conflict]
       summary: "UNHCR displacement/population"
-      operationId: world_unhcr_population
+      operationId: unhcr_population
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/hapi:
     get:
       tags: [Conflict]
       summary: "Humanitarian API (HDX HAPI)"
-      operationId: world_hapi
+      operationId: hapi
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/cyber-threats:
     get:
       tags: [Conflict]
       summary: "Cyber threat feed"
-      operationId: world_cyber_threats
+      operationId: cyber_threats
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/risk-scores:
     get:
       tags: [Intel]
       summary: "Country risk scores"
-      operationId: world_risk_scores
+      operationId: risk_scores
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/theater-posture:
     get:
       tags: [Intel]
       summary: "Strategic theater posture"
-      operationId: world_theater_posture
+      operationId: theater_posture
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/temporal-baseline:
     get:
       tags: [Intel]
       summary: "Temporal baseline metrics"
-      operationId: world_temporal_baseline
+      operationId: temporal_baseline
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/service-status:
     get:
       tags: [Intel]
       summary: "Upstream data-source status"
-      operationId: world_service_status
+      operationId: service_status
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/pizzint/dashboard-data:
     get:
       tags: [Intel]
       summary: "PIZZINT dashboard aggregate"
-      operationId: world_pizzint_dashboard_data
+      operationId: pizzint_dashboard_data
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/pizzint/gdelt/batch:
     get:
       tags: [Intel]
       summary: "PIZZINT GDELT batch"
-      operationId: world_pizzint_gdelt_batch
+      operationId: pizzint_gdelt_batch
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/model/state:
     get:
       tags: [Intel]
       summary: "World model — full compact world-state snapshot (all entities, instability-ranked)"
-      operationId: world_model_state
+      operationId: model_state
       parameters:
         - { name: kind, in: query, required: false, schema: { type: string, enum: [country, theater, market] } }
       responses:
@@ -401,7 +401,7 @@ paths:
     get:
       tags: [Intel]
       summary: "World model — one country's full state vector + recent deltas"
-      operationId: world_model_country
+      operationId: model_country
       parameters:
         - { name: iso, in: path, required: true, schema: { type: string } }
       responses:
@@ -411,7 +411,7 @@ paths:
     get:
       tags: [Intel]
       summary: "World model — top entities by metric"
-      operationId: world_model_top
+      operationId: model_top
       parameters:
         - { name: metric, in: query, required: false, schema: { type: string, enum: [instability, velocity, sentiment] } }
         - { name: kind, in: query, required: false, schema: { type: string } }
@@ -422,7 +422,7 @@ paths:
     get:
       tags: [Intel]
       summary: "World model — what changed since a timestamp (the inform-our-AI hook)"
-      operationId: world_model_changes
+      operationId: model_changes
       parameters:
         - { name: since, in: query, required: false, schema: { type: string, format: date-time } }
       responses:
@@ -431,14 +431,14 @@ paths:
     get:
       tags: [Intel]
       summary: "World model — SSE stream of state deltas as folds land"
-      operationId: world_model_stream
+      operationId: model_stream
       responses:
         '200': { description: SSE stream, content: { text/event-stream: { schema: { type: string } } } }
   /v1/world/groq-summarize:
     post:
       tags: [AI]
       summary: "World-brief summary via Hanzo inference (forwards the caller IAM token → org/project/billing; anon → skipped)"
-      operationId: world_groq_summarize
+      operationId: groq_summarize
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
         '401': { description: Missing/invalid IAM token }
@@ -446,7 +446,7 @@ paths:
     post:
       tags: [AI]
       summary: "Alt summary path via Hanzo inference (per-user IAM token)"
-      operationId: world_openrouter_summarize
+      operationId: openrouter_summarize
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
         '401': { description: Missing/invalid IAM token }
@@ -454,7 +454,7 @@ paths:
     post:
       tags: [AI]
       summary: "Batch headline classification (per-user IAM token)"
-      operationId: world_classify_batch
+      operationId: classify_batch
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
         '401': { description: Missing/invalid IAM token }
@@ -462,7 +462,7 @@ paths:
     post:
       tags: [AI]
       summary: "Single event classification (per-user IAM token)"
-      operationId: world_classify_event
+      operationId: classify_event
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
         '401': { description: Missing/invalid IAM token }
@@ -470,7 +470,7 @@ paths:
     post:
       tags: [AI]
       summary: "AI country intelligence brief (per-user IAM token)"
-      operationId: world_country_intel
+      operationId: country_intel
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
         '401': { description: Missing/invalid IAM token }
@@ -478,7 +478,7 @@ paths:
     get:
       tags: [Video]
       summary: "Resolve a channel handle to its current LIVE video id"
-      operationId: world_youtube_live
+      operationId: youtube_live
       parameters:
         - { name: channel, in: query, required: true, schema: { type: string } }
       responses:
@@ -487,7 +487,7 @@ paths:
     get:
       tags: [Video]
       summary: "Self-contained IFrame-API player page (text/html)"
-      operationId: world_youtube_embed
+      operationId: youtube_embed
       parameters:
         - { name: videoId, in: query, required: true, schema: { type: string } }
       responses:
@@ -502,7 +502,7 @@ paths:
         entitlement vocabulary. Agents and the dashboard read this to self-config
         against the live catalog instead of hardcoding tier numbers. Defaults to
         world-free; degrades to the fail-closed Free floor on a catalog outage.
-      operationId: world_limits
+      operationId: limits
       parameters:
         - name: plan
           in: query
@@ -530,35 +530,35 @@ paths:
     get:
       tags: [Meta]
       summary: "Liveness probe"
-      operationId: world_health
+      operationId: health
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/version:
     get:
       tags: [Meta]
       summary: "Build version"
-      operationId: world_version
+      operationId: version
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/cloud-pulse:
     get:
       tags: [Cloud]
       summary: "Public platform aggregate (SaaS variant). Anonymized counts; demo-flagged unless a service token is wired server-side."
-      operationId: world_cloud_pulse
+      operationId: cloud_pulse
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/cloud/models:
     get:
       tags: [Cloud]
       summary: "Public served-model catalog + scale (from the gateway /v1/models). No auth."
-      operationId: world_cloud_models
+      operationId: cloud_models
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/cloud/fleet:
     get:
       tags: [Cloud]
       summary: "ADMIN. Machines + GPUs grouped by provider/region (visor). Requires an admin-org IAM bearer; 401 without a token, 403 for non-admin."
-      operationId: world_cloud_fleet
+      operationId: cloud_fleet
       security: [ { bearerAuth: [] } ]
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
@@ -568,7 +568,7 @@ paths:
     get:
       tags: [Cloud]
       summary: "ADMIN. Per-subsystem health + RED metrics (o11y). Requires an admin-org IAM bearer."
-      operationId: world_cloud_services
+      operationId: cloud_services
       security: [ { bearerAuth: [] } ]
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
@@ -578,7 +578,7 @@ paths:
     get:
       tags: [Cloud]
       summary: "ADMIN. Web analytics aggregate — top pages/referrers/countries, live visitors (analytics.hanzo.ai). Requires an admin-org IAM bearer."
-      operationId: world_cloud_analytics
+      operationId: cloud_analytics
       security: [ { bearerAuth: [] } ]
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
@@ -588,7 +588,7 @@ paths:
     get:
       tags: [Cloud]
       summary: "ADMIN. Platform LLM observability — per-model/per-org usage, tokens, cost, errors, trace latency (cloud /v1/admin/o11y). Requires an admin-org IAM bearer."
-      operationId: world_cloud_llm
+      operationId: cloud_llm
       security: [ { bearerAuth: [] } ]
       parameters:
         - in: query
@@ -602,21 +602,21 @@ paths:
     get:
       tags: [Cloud]
       summary: "Public blockchain-network map data — per-network block height, peer count, live flag, and modeled node positions (positionsModeled:true; counts are real, geo is illustrative). No auth."
-      operationId: world_cloud_chain_nodes
+      operationId: cloud_chain_nodes
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/cloud/byo-gpu:
     get:
       tags: [Cloud]
       summary: "Public BYO-GPU map data — connected GPU workers by region (real counts when a service token is wired server-side, else demo-flagged). No auth."
-      operationId: world_cloud_byo_gpu
+      operationId: cloud_byo_gpu
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
   /v1/world/cloud/traffic:
     get:
       tags: [Cloud]
       summary: "Public request-traffic arcs — country-level origin → nearest region, weight-normalized (real analytics when a service token is wired server-side, else demo-flagged). No auth."
-      operationId: world_cloud_traffic
+      operationId: cloud_traffic
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
 components:
