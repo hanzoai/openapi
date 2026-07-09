@@ -354,11 +354,13 @@ def index_json(brand: str, entries: list, scope: str, service: str | None = None
     return json.dumps(doc, sort_keys=True, indent=2, ensure_ascii=False) + "\n"
 
 
-def generate(out_dir: str, brands: list, include_services: bool):
+def generate(out_dir: str, brands: list, include_services: bool, only: list | None = None):
     categories, internal, collapsed, cap = merge.load_registry()
     present = merge.spec_dirs()
     merge.check_invariant(present, categories, internal, collapsed)
     services = [s for s in present if s not in internal]
+    if only:
+        services = [s for s in services if s in set(only)]
 
     # Build skills once per service (brand-independent structure), then render per brand.
     per_service_skills = {}
@@ -431,6 +433,9 @@ def main():
                     help="comma-separated brand ids (default: all)")
     ap.add_argument("--no-services", action="store_true",
                     help="emit the master tree only (what the cloud binary embeds)")
+    ap.add_argument("--services", default="",
+                    help="comma-separated service subset (default: all public services); "
+                         "used to emit the tiny committed catalog fallback")
     ap.add_argument("--check", action="store_true",
                     help="drift gate: regenerate to a temp dir and diff against --out")
     args = ap.parse_args()
@@ -439,11 +444,12 @@ def main():
     unknown = [b for b in brands if b not in BRANDS]
     if unknown:
         sys.exit(f"skills: unknown brand(s) {unknown}; known: {sorted(BRANDS)}")
+    only = [s.strip() for s in args.services.split(",") if s.strip()] or None
 
     if args.check:
         tmp = tempfile.mkdtemp(prefix="agent-skills-check-")
         try:
-            generate(tmp, brands, not args.no_services)
+            generate(tmp, brands, not args.no_services, only)
             if not os.path.isdir(args.out):
                 sys.exit(f"skills --check: {args.out} does not exist (run skills.py first)")
             diffs = diff_trees(args.out, tmp)
@@ -459,7 +465,7 @@ def main():
 
     if os.path.isdir(args.out):
         shutil.rmtree(args.out)
-    stats = generate(args.out, brands, not args.no_services)
+    stats = generate(args.out, brands, not args.no_services, only)
     print(f"generated {stats['skills']} skills across {stats['services']} services "
           f"× {stats['brands']} brands → {args.out}")
     return 0
