@@ -98,6 +98,14 @@ def prefix(node, svc):
                     name = "/".join(v.split("/")[3:])
                     out[k] = f"#/components/{kind}/{svc}_{name}"
                     continue
+            if k == "mapping" and isinstance(v, dict):
+                # discriminator.mapping values are component-ref STRINGS (not $ref
+                # keys) — namespace them too, or they dangle post-merge.
+                out[k] = {mk: (f"#/components/schemas/{svc}_{mv.split('/', 3)[-1]}"
+                               if isinstance(mv, str) and mv.startswith("#/components/schemas/")
+                               else mv)
+                          for mk, mv in v.items()}
+                continue
             out[k] = prefix(v, svc)
         return out
     if isinstance(node, list):
