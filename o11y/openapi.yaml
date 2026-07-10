@@ -1,25 +1,33 @@
 openapi: 3.1.0
 info:
   title: Hanzo O11y API
-  description: 'Hanzo O11y provides unified observability with logs, metrics, and traces
+  description: 'Hanzo O11y is the ONE unified observability surface at /v1/o11y/*.
 
-    in a single platform.
+    The public API is FLAT and version-less (one /v1/, no nested /api/vN): the
+    upstream engine version is an internal implementation detail resolved
+    server-side, never leaked into a route.
 
 
-    Components:
+    Surfaces:
 
-    - **Logs**: LogQL query engine for structured and unstructured logs
+    - Builder query (POST /v1/o11y/query, /v1/o11y/query_range) — the one
+    canonical composite query the console issues; the org is pinned server-side.
 
-    - **Metrics**: PromQL query engine for time-series metrics
+    - Tenant-scoped reads (GET /v1/o11y/logs, /v1/o11y/metrics, /v1/o11y/status)
+    — org-pinned product logs, RED metrics plus LLM usage, and live service
+    health. The client picks a product and a bounded window, never a raw query.
 
-    - **Traces**: Distributed tracing with service dependency mapping
+    - Runtime reads (GET /v1/o11y/services, /v1/o11y/dashboards, /v1/o11y/rules,
+    /v1/o11y/health) — served by the embedded o11y runtime.
 
-    - **Dashboards**: Configurable dashboards for visualization
+    - Platform infra health (GET /v1/o11y/vm/query, /v1/o11y/vm/query_range) — a
+    SuperAdmin-only VictoriaMetrics read proxy allowlisted to up/sum(up)/count(up).
 
-    - **Alerts**: Rule-based alerting with multi-channel notifications
+    - LLM-observability ingest (POST /v1/o11y/ingestion) — the native-Go write
+    path for traces, observations, and scores.
 
     '
-  version: 8.0.0
+  version: 1.0.0
   contact:
     name: Hanzo AI
     url: https://hanzo.ai
@@ -27,21 +35,12 @@ info:
   license:
     name: Proprietary
 servers:
-- url: https://o11y.hanzo.ai
-  description: O11y Production
 - url: https://api.hanzo.ai
-  description: Hanzo Gateway (via api.hanzo.ai/v1/o11y/*)
+  description: Hanzo Gateway (api.hanzo.ai/v1/o11y/*)
 tags:
-- name: Logs
-  description: Log ingestion and querying (LogQL)
-- name: Metrics
-  description: Metric querying (PromQL)
-- name: Traces
-  description: Distributed tracing
-- name: Dashboards
-  description: Dashboard management
-- name: Alerts
-  description: Alert rules and notification channels
+- name: O11y
+  description: Unified observability — one o11y surface (query, logs, metrics, status,
+    runtime reads, platform infra health, and LLM-observability ingest).
 security:
 - BearerAuth: []
 components:
@@ -65,86 +64,209 @@ components:
           type: string
         message:
           type: string
-    LogQueryResult:
+    BuilderQuery:
       type: object
+      additionalProperties: true
+      description: 'Composite builder-query payload. The console-shaped composite
+        (start, end, step, compositeQuery with queryType and builderQueries) is
+        passed through to the internal query engine unchanged; the org is pinned
+        server-side and the client never supplies a raw PromQL/SQL fragment.'
+      properties:
+        start:
+          type: integer
+          format: int64
+          description: Range start (Unix ms).
+        end:
+          type: integer
+          format: int64
+          description: Range end (Unix ms).
+        step:
+          type: integer
+          description: Step resolution in seconds.
+        compositeQuery:
+          type: object
+          additionalProperties: true
+          description: Composite query definition (queryType, panelType, builderQueries).
+    BuilderQueryResult:
+      type: object
+      additionalProperties: true
+      description: Query result envelope. data.result carries the series or list rows
+        for the requested composite query.
       properties:
         status:
           type: string
-          enum:
-          - success
         data:
           type: object
-          properties:
-            resultType:
-              type: string
-              enum:
-              - streams
-              - matrix
-              - vector
-            result:
-              type: array
-              items:
-                type: object
-                properties:
-                  stream:
-                    type: object
-                    additionalProperties:
-                      type: string
-                    description: Label key-value pairs
-                  values:
-                    type: array
-                    items:
-                      type: array
-                      items:
-                        type: string
-                      minItems: 2
-                      maxItems: 2
-                      description: '[timestamp_ns, log_line]'
-            stats:
-              type: object
-              properties:
-                ingester:
-                  type: object
-                store:
-                  type: object
-                summary:
-                  type: object
-                  properties:
-                    bytesProcessedPerSecond:
-                      type: integer
-                    totalBytesProcessed:
-                      type: integer
-                    execTime:
-                      type: number
-    LogPushRequest:
+          additionalProperties: true
+    LogLine:
       type: object
-      required:
-      - streams
       properties:
-        streams:
+        ts:
+          type: string
+          format: date-time
+          description: RFC3339 UTC timestamp.
+        tsNano:
+          type: integer
+          format: int64
+          description: Nanosecond epoch cursor. Pass the response nextCursor back as
+            sinceNs to tail.
+        severity:
+          type: string
+          description: INFO, WARN, ERROR, etc.
+        body:
+          type: string
+        source:
+          type: string
+          enum:
+          - infra
+          - request
+          description: infra is the raw stdout stream (SuperAdmin only); request is the
+            per-org request log.
+    LogsResponse:
+      type: object
+      properties:
+        product:
+          type: string
+        view:
+          type: string
+          enum:
+          - infra
+          - request
+          description: infra for a validated SuperAdmin, request for every other org.
+        lines:
           type: array
           items:
-            type: object
-            required:
-            - stream
-            - values
-            properties:
-              stream:
-                type: object
-                additionalProperties:
-                  type: string
-                description: Label set identifying the stream
-              values:
-                type: array
-                items:
-                  type: array
-                  items:
-                    type: string
-                  minItems: 2
-                  maxItems: 3
-                  description: '[timestamp_ns, line, structured_metadata?]'
-    MetricQueryResult:
+            $ref: '#/components/schemas/LogLine'
+        nextCursor:
+          type: integer
+          format: int64
+          description: Max nanosecond cursor. Pass back as sinceNs for the next tail poll.
+    MetricPoint:
       type: object
+      properties:
+        t:
+          type: string
+          format: date-time
+          description: RFC3339 UTC bucket start.
+        v:
+          type: number
+    UsagePoint:
+      type: object
+      properties:
+        t:
+          type: string
+          format: date-time
+        calls:
+          type: integer
+          format: int64
+        tokens:
+          type: integer
+          format: int64
+        costCents:
+          type: integer
+          format: int64
+    MetricsResponse:
+      type: object
+      description: Per-org RED series (rate, errors, latency) for a product plus the
+        org LLM usage rollup. A non-admin sees only its own org attribution; a
+        validated SuperAdmin sees the whole product. Usage is always the caller org.
+      properties:
+        product:
+          type: string
+        range:
+          type: object
+          properties:
+            sinceSec:
+              type: integer
+            stepSec:
+              type: integer
+        series:
+          type: object
+          properties:
+            requests:
+              type: array
+              items:
+                $ref: '#/components/schemas/MetricPoint'
+            errors:
+              type: array
+              items:
+                $ref: '#/components/schemas/MetricPoint'
+            latencyP50Ms:
+              type: array
+              items:
+                $ref: '#/components/schemas/MetricPoint'
+            latencyP95Ms:
+              type: array
+              items:
+                $ref: '#/components/schemas/MetricPoint'
+        usage:
+          type: object
+          properties:
+            calls:
+              type: integer
+              format: int64
+            tokens:
+              type: integer
+              format: int64
+            costCents:
+              type: integer
+              format: int64
+            series:
+              type: array
+              items:
+                $ref: '#/components/schemas/UsagePoint'
+        summary:
+          type: object
+          properties:
+            requests:
+              type: integer
+              format: int64
+            errors:
+              type: integer
+              format: int64
+            errorRate:
+              type: number
+            p95Ms:
+              type: number
+    Deployment:
+      type: object
+      description: One live replica of a product service from the VictoriaMetrics up
+        inventory.
+      properties:
+        instance:
+          type: string
+        up:
+          type: boolean
+    StatusResult:
+      type: object
+      description: Live health of a product service — an in-cluster health probe fused
+        with the VictoriaMetrics up inventory.
+      properties:
+        product:
+          type: string
+        up:
+          type: boolean
+        latencyMs:
+          type: integer
+          format: int64
+        source:
+          type: string
+          enum:
+          - probe
+          - victoria-metrics
+          - unreachable
+          - unknown-service
+        deployments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Deployment'
+        checkedAt:
+          type: string
+          format: date-time
+    PrometheusResponse:
+      type: object
+      description: Native Prometheus/VictoriaMetrics query envelope, returned verbatim
+        by the SuperAdmin VM read proxy.
       properties:
         status:
           type: string
@@ -165,99 +287,11 @@ components:
               type: array
               items:
                 type: object
-                properties:
-                  metric:
-                    type: object
-                    additionalProperties:
-                      type: string
-                  value:
-                    type: array
-                    items: {}
-                    description: '[unix_timestamp, value] for vector/scalar'
-                  values:
-                    type: array
-                    items:
-                      type: array
-                      items: {}
-                    description: '[[unix_timestamp, value], ...] for matrix'
+                additionalProperties: true
         errorType:
           type: string
         error:
           type: string
-    SeriesResult:
-      type: object
-      properties:
-        status:
-          type: string
-          enum:
-          - success
-        data:
-          type: array
-          items:
-            type: object
-            additionalProperties:
-              type: string
-    Trace:
-      type: object
-      properties:
-        traceID:
-          type: string
-        rootServiceName:
-          type: string
-        rootTraceName:
-          type: string
-        startTimeUnixNano:
-          type: string
-        durationMs:
-          type: integer
-        spanCount:
-          type: integer
-        errorCount:
-          type: integer
-        spans:
-          type: array
-          items:
-            $ref: '#/components/schemas/Span'
-    Span:
-      type: object
-      properties:
-        traceID:
-          type: string
-        spanID:
-          type: string
-        parentSpanID:
-          type: string
-        operationName:
-          type: string
-        serviceName:
-          type: string
-        startTimeUnixNano:
-          type: string
-        durationNano:
-          type: string
-        status:
-          type: string
-          enum:
-          - OK
-          - ERROR
-          - UNSET
-        attributes:
-          type: object
-          additionalProperties:
-            type: string
-        events:
-          type: array
-          items:
-            type: object
-            properties:
-              name:
-                type: string
-              timeUnixNano:
-                type: string
-              attributes:
-                type: object
-                additionalProperties:
-                  type: string
     ServiceInfo:
       type: object
       properties:
@@ -269,205 +303,27 @@ components:
         error_count:
           type: integer
           format: int64
-    ServiceOperation:
-      type: object
-      properties:
-        name:
-          type: string
-        span_kind:
-          type: string
-          enum:
-          - SERVER
-          - CLIENT
-          - PRODUCER
-          - CONSUMER
-          - INTERNAL
-    DependencyLink:
-      type: object
-      properties:
-        parent:
-          type: string
-        child:
-          type: string
-        call_count:
-          type: integer
-          format: int64
-        error_count:
-          type: integer
-          format: int64
-    Dashboard:
+    DashboardSummary:
       type: object
       properties:
         uid:
           type: string
         title:
           type: string
-        description:
-          type: string
         tags:
           type: array
           items:
             type: string
-        panels:
-          type: array
-          items:
-            $ref: '#/components/schemas/Panel'
-        time:
-          type: object
-          properties:
-            from:
-              type: string
-            to:
-              type: string
-        refresh:
-          type: string
-          description: Auto-refresh interval (e.g. 30s, 1m, 5m)
-        version:
-          type: integer
-        created_at:
-          type: string
-          format: date-time
         updated_at:
           type: string
           format: date-time
-    DashboardCreate:
-      type: object
-      required:
-      - title
-      properties:
-        title:
-          type: string
-        description:
-          type: string
-        tags:
-          type: array
-          items:
-            type: string
-        panels:
-          type: array
-          items:
-            $ref: '#/components/schemas/Panel'
-        time:
-          type: object
-          properties:
-            from:
-              type: string
-              default: now-1h
-            to:
-              type: string
-              default: now
-        refresh:
-          type: string
-          default: 30s
-    Panel:
-      type: object
-      properties:
-        id:
-          type: integer
-        title:
-          type: string
-        type:
-          type: string
-          enum:
-          - graph
-          - stat
-          - table
-          - logs
-          - traces
-          - gauge
-          - bar
-          - heatmap
-          - text
-        datasource:
-          type: string
-          enum:
-          - loki
-          - prometheus
-          - traces
-        query:
-          type: string
-          description: LogQL, PromQL, or trace search query
-        grid_position:
-          type: object
-          properties:
-            x:
-              type: integer
-            y:
-              type: integer
-            w:
-              type: integer
-            h:
-              type: integer
-        options:
-          type: object
-          additionalProperties: true
     AlertRule:
       type: object
       properties:
         id:
           type: string
-          format: uuid
         name:
           type: string
-        description:
-          type: string
-        enabled:
-          type: boolean
-        datasource:
-          type: string
-          enum:
-          - loki
-          - prometheus
-        query:
-          type: string
-          description: LogQL or PromQL expression
-        condition:
-          type: object
-          properties:
-            evaluator:
-              type: object
-              properties:
-                type:
-                  type: string
-                  enum:
-                  - gt
-                  - lt
-                  - eq
-                  - within_range
-                  - outside_range
-                params:
-                  type: array
-                  items:
-                    type: number
-            operator:
-              type: string
-              enum:
-              - and
-              - or
-        for_duration:
-          type: string
-          description: Duration condition must be true before firing (e.g. 5m)
-        severity:
-          type: string
-          enum:
-          - info
-          - warning
-          - critical
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-        annotations:
-          type: object
-          additionalProperties:
-            type: string
-          description: Template-based annotations (summary, description, runbook)
-        channel_ids:
-          type: array
-          items:
-            type: string
-            format: uuid
-          description: Notification channels to alert
         state:
           type: string
           enum:
@@ -475,153 +331,53 @@ components:
           - pending
           - firing
           - inactive
-        last_evaluated:
-          type: string
-          format: date-time
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-    AlertRuleCreate:
-      type: object
-      required:
-      - name
-      - datasource
-      - query
-      - condition
-      properties:
-        name:
-          type: string
-        description:
-          type: string
-        enabled:
-          type: boolean
-          default: true
-        datasource:
-          type: string
-          enum:
-          - loki
-          - prometheus
-        query:
-          type: string
-        condition:
-          type: object
-          required:
-          - evaluator
-          properties:
-            evaluator:
-              type: object
-              required:
-              - type
-              - params
-              properties:
-                type:
-                  type: string
-                params:
-                  type: array
-                  items:
-                    type: number
-        for_duration:
-          type: string
-          default: 5m
         severity:
           type: string
           enum:
           - info
           - warning
           - critical
-          default: warning
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-        annotations:
-          type: object
-          additionalProperties:
-            type: string
-        channel_ids:
-          type: array
-          items:
-            type: string
-            format: uuid
-    NotificationChannel:
+        query:
+          type: string
+    HealthResponse:
       type: object
+      properties:
+        status:
+          type: string
+    IngestEvent:
+      type: object
+      description: One LLM-observability event — a typed envelope whose body is the
+        type-specific payload.
+      required:
+      - type
       properties:
         id:
           type: string
-          format: uuid
-        name:
-          type: string
         type:
           type: string
-          enum:
-          - slack
-          - email
-          - webhook
-          - pagerduty
-        config:
+          description: Event type (trace, observation, score).
+        timestamp:
+          type: string
+          format: date-time
+        body:
           type: object
-          properties:
-            url:
-              type: string
-              format: uri
-              description: Webhook URL or Slack incoming webhook
-            channel:
-              type: string
-              description: Slack channel name
-            email:
-              type: string
-              format: email
-            routing_key:
-              type: string
-              description: PagerDuty routing key
-            severity_map:
-              type: object
-              additionalProperties:
-                type: string
-              description: Map alert severity to PagerDuty severity
-        enabled:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-    NotificationChannelCreate:
+          additionalProperties: true
+    IngestBatch:
       type: object
       required:
-      - name
-      - type
-      - config
+      - batch
       properties:
-        name:
-          type: string
-        type:
-          type: string
-          enum:
-          - slack
-          - email
-          - webhook
-          - pagerduty
-        config:
-          type: object
-          properties:
-            url:
-              type: string
-              format: uri
-            channel:
-              type: string
-            email:
-              type: string
-              format: email
-            routing_key:
-              type: string
-        enabled:
-          type: boolean
-          default: true
+        batch:
+          type: array
+          items:
+            $ref: '#/components/schemas/IngestEvent'
+    IngestResult:
+      type: object
+      properties:
+        accepted:
+          type: integer
+        dropped:
+          type: integer
   responses:
     BadRequest:
       description: Bad Request
@@ -635,494 +391,191 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-    NotFound:
-      description: Not Found
+    Forbidden:
+      description: Forbidden — a validated principal (or, for platform infra health, a
+        SuperAdmin) is required.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-    InternalError:
-      description: Internal Server Error
+    ServiceUnavailable:
+      description: Service Unavailable — the telemetry datastore is not connected on
+        this deployment.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
 paths:
-  /v1/o11y/logs/query:
-    get:
-      tags:
-      - Logs
-      summary: Instant LogQL query
-      operationId: lokiQuery
-      description: Evaluate a LogQL expression at a single point in time.
-      parameters:
-      - name: query
-        in: query
-        required: true
-        schema:
-          type: string
-        description: LogQL query expression
-      - name: time
-        in: query
-        schema:
-          type: string
-        description: Evaluation timestamp (Unix epoch or RFC3339, default now)
-      - name: limit
-        in: query
-        schema:
-          type: integer
-          default: 100
-      - name: direction
-        in: query
-        schema:
-          type: string
-          enum:
-          - forward
-          - backward
-          default: backward
-      responses:
-        '200':
-          description: Query result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LogQueryResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-  /v1/o11y/logs/query_range:
-    get:
-      tags:
-      - Logs
-      summary: Range LogQL query
-      operationId: lokiQueryRange
-      description: Evaluate a LogQL expression over a range of time.
-      parameters:
-      - name: query
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: start
-        in: query
-        schema:
-          type: string
-        description: Start timestamp (Unix epoch or RFC3339)
-      - name: end
-        in: query
-        schema:
-          type: string
-        description: End timestamp (Unix epoch or RFC3339)
-      - name: step
-        in: query
-        schema:
-          type: string
-        description: Query step (e.g. 15s, 1m, 5m)
-      - name: limit
-        in: query
-        schema:
-          type: integer
-          default: 100
-      - name: direction
-        in: query
-        schema:
-          type: string
-          enum:
-          - forward
-          - backward
-          default: backward
-      responses:
-        '200':
-          description: Range query result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LogQueryResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-  /v1/o11y/logs/labels:
-    get:
-      tags:
-      - Logs
-      summary: List log labels
-      operationId: lokiLabels
-      parameters:
-      - name: start
-        in: query
-        schema:
-          type: string
-      - name: end
-        in: query
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Label names
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      type: string
-  /v1/o11y/logs/labels/{name}/values:
-    get:
-      tags:
-      - Logs
-      summary: Get label values
-      operationId: lokiLabelValues
-      parameters:
-      - name: name
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: start
-        in: query
-        schema:
-          type: string
-      - name: end
-        in: query
-        schema:
-          type: string
-      - name: query
-        in: query
-        schema:
-          type: string
-        description: LogQL stream selector to filter
-      responses:
-        '200':
-          description: Label values
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      type: string
-  /v1/o11y/logs/push:
+  /v1/o11y/query:
     post:
       tags:
-      - Logs
-      summary: Push log entries
-      operationId: lokiPush
+      - O11y
+      summary: Instant builder query
+      operationId: o11yQuery
+      description: Evaluate a composite builder query at a single point in time. The org
+        is pinned server-side; the internal engine version is resolved internally.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LogPushRequest'
-      responses:
-        '204':
-          description: Logs accepted
-        '400':
-          $ref: '#/components/responses/BadRequest'
-  /v1/o11y/logs/tail:
-    get:
-      tags:
-      - Logs
-      summary: Live tail logs (WebSocket)
-      operationId: lokiTail
-      description: 'WebSocket endpoint for live log tailing. Upgrade connection
-
-        to WebSocket to receive real-time log entries matching the query.
-
-        '
-      parameters:
-      - name: query
-        in: query
-        required: true
-        schema:
-          type: string
-        description: LogQL query expression
-      - name: delay_for
-        in: query
-        schema:
-          type: integer
-          default: 0
-        description: Seconds to delay entries for deduplication
-      - name: limit
-        in: query
-        schema:
-          type: integer
-          default: 100
-      responses:
-        '101':
-          description: WebSocket upgrade for live tail
-        '400':
-          $ref: '#/components/responses/BadRequest'
-  /v1/o11y/query:
-    get:
-      tags:
-      - Metrics
-      summary: Instant PromQL query
-      operationId: promQuery
-      parameters:
-      - name: query
-        in: query
-        required: true
-        schema:
-          type: string
-        description: PromQL expression
-      - name: time
-        in: query
-        schema:
-          type: string
-        description: Evaluation timestamp
-      - name: timeout
-        in: query
-        schema:
-          type: string
-        description: Evaluation timeout (e.g. 30s)
+              $ref: '#/components/schemas/BuilderQuery'
       responses:
         '200':
           description: Query result
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MetricQueryResult'
+                $ref: '#/components/schemas/BuilderQueryResult'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /v1/o11y/query_range:
-    get:
+    post:
       tags:
-      - Metrics
-      summary: Range PromQL query
-      operationId: promQueryRange
-      parameters:
-      - name: query
-        in: query
+      - O11y
+      summary: Range builder query
+      operationId: o11yQueryRange
+      description: Evaluate a composite builder query over a range of time — the console
+        composite list query. The org is pinned server-side.
+      requestBody:
         required: true
-        schema:
-          type: string
-      - name: start
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: end
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: step
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Query resolution step (e.g. 15s, 1m)
-      - name: timeout
-        in: query
-        schema:
-          type: string
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuilderQuery'
       responses:
         '200':
           description: Range query result
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MetricQueryResult'
+                $ref: '#/components/schemas/BuilderQueryResult'
         '400':
           $ref: '#/components/responses/BadRequest'
-  /v1/o11y/series:
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /v1/o11y/logs:
     get:
       tags:
-      - Metrics
-      summary: Find series by label matchers
-      operationId: promSeries
+      - O11y
+      summary: Tenant-scoped product logs
+      operationId: o11yLogs
+      description: Org-scoped log stream for a product. A validated SuperAdmin sees the
+        raw infra stdout stream; every other org sees its own request log stream. Tail
+        by passing the prior response nextCursor back as sinceNs.
       parameters:
-      - name: match[]
+      - name: product
         in: query
         required: true
         schema:
-          type: array
-          items:
-            type: string
-        description: Series selector (at least one required)
-      - name: start
-        in: query
-        schema:
           type: string
-      - name: end
+        description: Product slug (lowercase alphanumeric plus hyphen, at most 63 chars).
+      - name: sinceNs
         in: query
         schema:
-          type: string
-      responses:
-        '200':
-          description: Matching series
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SeriesResult'
-  /v1/o11y/labels:
-    get:
-      tags:
-      - Metrics
-      summary: List metric label names
-      operationId: promLabels
-      parameters:
-      - name: start
+          type: integer
+          format: int64
+        description: Nanosecond tail cursor. Absent, the last window seconds are returned.
+      - name: window
         in: query
         schema:
-          type: string
-      - name: end
-        in: query
-        schema:
-          type: string
-      - name: match[]
-        in: query
-        schema:
-          type: array
-          items:
-            type: string
-      responses:
-        '200':
-          description: Label names
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      type: string
-  /v1/o11y/label/{name}/values:
-    get:
-      tags:
-      - Metrics
-      summary: Get metric label values
-      operationId: promLabelValues
-      parameters:
-      - name: name
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: start
-        in: query
-        schema:
-          type: string
-      - name: end
-        in: query
-        schema:
-          type: string
-      - name: match[]
-        in: query
-        schema:
-          type: array
-          items:
-            type: string
-      responses:
-        '200':
-          description: Label values
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      type: string
-  /v1/o11y/traces:
-    get:
-      tags:
-      - Traces
-      summary: Search traces
-      operationId: searchTraces
-      parameters:
-      - name: service
-        in: query
-        schema:
-          type: string
-        description: Filter by service name
-      - name: operation
-        in: query
-        schema:
-          type: string
-        description: Filter by operation name
-      - name: tags
-        in: query
-        schema:
-          type: string
-        description: Key-value tag filter (e.g. http.status_code=500)
-      - name: min_duration
-        in: query
-        schema:
-          type: string
-        description: Minimum trace duration (e.g. 100ms, 1s)
-      - name: max_duration
-        in: query
-        schema:
-          type: string
-      - name: start
-        in: query
-        schema:
-          type: string
-          format: date-time
-      - name: end
-        in: query
-        schema:
-          type: string
-          format: date-time
+          type: integer
+          default: 900
+        description: Lookback window in seconds (max 86400) when no cursor is supplied.
       - name: limit
         in: query
         schema:
           type: integer
-          default: 20
+          default: 200
+        description: Row limit (max 1000).
       responses:
         '200':
-          description: Matching traces
+          description: Log stream
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  traces:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Trace'
+                $ref: '#/components/schemas/LogsResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-  /v1/o11y/traces/{traceId}:
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /v1/o11y/metrics:
     get:
       tags:
-      - Traces
-      summary: Get trace by ID
-      operationId: getTrace
+      - O11y
+      summary: Tenant-scoped RED metrics plus LLM usage
+      operationId: o11yMetrics
+      description: Per-org rate/errors/latency series for a product plus the org LLM
+        usage rollup. A non-admin is pinned to its own org attribution; a validated
+        SuperAdmin sees the whole product. Usage is always the caller org.
       parameters:
-      - name: traceId
-        in: path
+      - name: product
+        in: query
         required: true
         schema:
           type: string
+        description: Product slug.
+      - name: range
+        in: query
+        schema:
+          type: integer
+          default: 3600
+        description: Lookback window in seconds (max 604800).
+      - name: stepSec
+        in: query
+        schema:
+          type: integer
+        description: Bucket width in seconds (30 to 3600). Default is about 60 buckets
+          across the range.
       responses:
         '200':
-          description: Trace with all spans
+          description: RED metrics plus usage
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Trace'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: '#/components/schemas/MetricsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /v1/o11y/status:
+    get:
+      tags:
+      - O11y
+      summary: Live product service health
+      operationId: o11yStatus
+      description: Live in-cluster health probe of a product service fused with the
+        VictoriaMetrics up inventory. Principal-gated but not org-partitioned (a service
+        is up or down for everyone).
+      parameters:
+      - name: product
+        in: query
+        required: true
+        schema:
+          type: string
+        description: Product slug.
+      responses:
+        '200':
+          description: Service status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /v1/o11y/services:
     get:
       tags:
-      - Traces
+      - O11y
       summary: List traced services
-      operationId: listServices
+      operationId: o11yServices
+      description: List the services known to the o11y runtime.
       responses:
         '200':
           description: List of services
@@ -1135,92 +588,15 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/ServiceInfo'
-  /v1/o11y/services/{name}/operations:
-    get:
-      tags:
-      - Traces
-      summary: List service operations
-      operationId: listServiceOperations
-      parameters:
-      - name: name
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: span_kind
-        in: query
-        schema:
-          type: string
-          enum:
-          - SERVER
-          - CLIENT
-          - PRODUCER
-          - CONSUMER
-          - INTERNAL
-      responses:
-        '200':
-          description: Operations for the service
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  operations:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ServiceOperation'
-  /v1/o11y/dependencies:
-    get:
-      tags:
-      - Traces
-      summary: Get service dependency graph
-      operationId: getDependencies
-      parameters:
-      - name: start
-        in: query
-        required: true
-        schema:
-          type: string
-          format: date-time
-      - name: end
-        in: query
-        required: true
-        schema:
-          type: string
-          format: date-time
-      responses:
-        '200':
-          description: Dependency links between services
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  dependencies:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/DependencyLink'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /v1/o11y/dashboards:
     get:
       tags:
-      - Dashboards
+      - O11y
       summary: List dashboards
-      operationId: listDashboards
-      parameters:
-      - name: tag
-        in: query
-        schema:
-          type: string
-      - name: page
-        in: query
-        schema:
-          type: integer
-          default: 1
-      - name: page_size
-        in: query
-        schema:
-          type: integer
-          default: 20
+      operationId: o11yDashboards
+      description: List dashboards from the o11y runtime.
       responses:
         '200':
           description: List of dashboards
@@ -1229,140 +605,16 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    uid:
-                      type: string
-                    title:
-                      type: string
-                    tags:
-                      type: array
-                      items:
-                        type: string
-                    updated_at:
-                      type: string
-                      format: date-time
-    post:
-      tags:
-      - Dashboards
-      summary: Create dashboard
-      operationId: createDashboard
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DashboardCreate'
-      responses:
-        '201':
-          description: Dashboard created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Dashboard'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-  /v1/o11y/dashboards/{uid}:
-    get:
-      tags:
-      - Dashboards
-      summary: Get dashboard
-      operationId: getDashboard
-      parameters:
-      - name: uid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Dashboard details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Dashboard'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    put:
-      tags:
-      - Dashboards
-      summary: Update dashboard
-      operationId: updateDashboard
-      parameters:
-      - name: uid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DashboardCreate'
-      responses:
-        '200':
-          description: Dashboard updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Dashboard'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      tags:
-      - Dashboards
-      summary: Delete dashboard
-      operationId: deleteDashboard
-      parameters:
-      - name: uid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Dashboard deleted
-          content:
-            application/json:
-              schema:
-                type: object
-        '404':
-          $ref: '#/components/responses/NotFound'
+                  $ref: '#/components/schemas/DashboardSummary'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /v1/o11y/rules:
     get:
       tags:
-      - Alerts
+      - O11y
       summary: List alert rules
-      operationId: listAlertRules
-      parameters:
-      - name: severity
-        in: query
-        schema:
-          type: string
-          enum:
-          - info
-          - warning
-          - critical
-      - name: state
-        in: query
-        schema:
-          type: string
-          enum:
-          - ok
-          - pending
-          - firing
-          - inactive
-      - name: page
-        in: query
-        schema:
-          type: integer
-          default: 1
-      - name: page_size
-        in: query
-        schema:
-          type: integer
-          default: 20
+      operationId: o11yRules
+      description: List alert rules from the o11y runtime.
       responses:
         '200':
           description: List of alert rules
@@ -1372,177 +624,129 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/AlertRule'
-    post:
-      tags:
-      - Alerts
-      summary: Create alert rule
-      operationId: createAlertRule
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AlertRuleCreate'
-      responses:
-        '201':
-          description: Alert rule created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AlertRule'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-  /v1/o11y/rules/{id}:
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /v1/o11y/health:
     get:
       tags:
-      - Alerts
-      summary: Get alert rule
-      operationId: getAlertRule
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
+      - O11y
+      summary: O11y health
+      operationId: o11yHealth
+      description: Liveness of the o11y subsystem.
       responses:
         '200':
-          description: Alert rule details
+          description: Health status
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AlertRule'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    put:
-      tags:
-      - Alerts
-      summary: Update alert rule
-      operationId: updateAlertRule
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AlertRuleCreate'
-      responses:
-        '200':
-          description: Alert rule updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AlertRule'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      tags:
-      - Alerts
-      summary: Delete alert rule
-      operationId: deleteAlertRule
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Alert rule deleted
-          content:
-            application/json:
-              schema:
-                type: object
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /v1/o11y/channels:
+                $ref: '#/components/schemas/HealthResponse'
+  /v1/o11y/vm/query:
     get:
       tags:
-      - Alerts
-      summary: List notification channels
-      operationId: listNotificationChannels
+      - O11y
+      summary: Platform infra health — instant VM query (SuperAdmin)
+      operationId: o11yVMQuery
+      description: SuperAdmin-only VictoriaMetrics instant read proxy backing the
+        platform infrastructure-health board. The query is allowlisted to the exact set
+        the board issues; anything else is a 400. The native Prometheus envelope is
+        returned verbatim.
+      parameters:
+      - name: query
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - up
+          - sum(up)
+          - count(up)
+        description: Allowlisted PromQL. Only up, sum(up), and count(up) are permitted.
       responses:
         '200':
-          description: List of notification channels
+          description: Prometheus instant result
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/NotificationChannel'
-    post:
-      tags:
-      - Alerts
-      summary: Create notification channel
-      operationId: createNotificationChannel
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/NotificationChannelCreate'
-      responses:
-        '201':
-          description: Notification channel created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotificationChannel'
+                $ref: '#/components/schemas/PrometheusResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-  /v1/o11y/channels/{id}:
-    put:
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /v1/o11y/vm/query_range:
+    get:
       tags:
-      - Alerts
-      summary: Update notification channel
-      operationId: updateNotificationChannel
+      - O11y
+      summary: Platform infra health — range VM query (SuperAdmin)
+      operationId: o11yVMQueryRange
+      description: SuperAdmin-only VictoriaMetrics range read proxy backing the platform
+        infrastructure-health board. The query is allowlisted; start, end, and step are
+        validated as positive integers. The native Prometheus envelope is returned
+        verbatim.
       parameters:
-      - name: id
-        in: path
+      - name: query
+        in: query
         required: true
         schema:
           type: string
-          format: uuid
+          enum:
+          - up
+          - sum(up)
+          - count(up)
+        description: Allowlisted PromQL. Only up, sum(up), and count(up) are permitted.
+      - name: start
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Range start (Unix seconds, positive integer).
+      - name: end
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Range end (Unix seconds, positive integer).
+      - name: step
+        in: query
+        required: true
+        schema:
+          type: integer
+        description: Step resolution (seconds, positive integer).
+      responses:
+        '200':
+          description: Prometheus range result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrometheusResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /v1/o11y/ingestion:
+    post:
+      tags:
+      - O11y
+      summary: Ingest LLM-observability events
+      operationId: o11yIngest
+      description: Native-Go write path for LLM-observability events (traces,
+        observations, scores). Events arrive as a batch; the response reports how many
+        were persisted versus dropped as an unknown type.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NotificationChannelCreate'
+              $ref: '#/components/schemas/IngestBatch'
       responses:
         '200':
-          description: Notification channel updated
+          description: Ingestion receipt
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NotificationChannel'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      tags:
-      - Alerts
-      summary: Delete notification channel
-      operationId: deleteNotificationChannel
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Notification channel deleted
-          content:
-            application/json:
-              schema:
-                type: object
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: '#/components/schemas/IngestResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
