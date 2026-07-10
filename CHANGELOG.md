@@ -2,6 +2,38 @@
 
 ## v1.0.0
 
+### 2026-07-10 — o11y resynced to the flat, version-less live surface
+
+Reconciled `o11y/openapi.yaml` to the live cloud routes in
+`hanzoai/cloud/clients/o11y` (`scope.go` + `query.go` + `vmproxy.go` +
+`event_ingest.go`). The prior spec modelled a fictional Loki/Tempo/Grafana
+surface (LogQL `logs/query`, `logs/push`, `logs/tail`, Prom `series`/`labels`,
+`traces`, `dependencies`, notification `channels`, dashboard/rule CRUD) that
+was never served at these flat paths. The o11y subsystem also collapsed from
+five registrations to one `o11y` concept; the spec now reads as a single `O11y`
+surface (one tag).
+
+The spec is now exactly the live public surface (12 flat, version-less paths —
+no nested `/v1/o11y/api/vN/*` or `/v1/o11y/vN/*`):
+
+- `POST /v1/o11y/query`, `POST /v1/o11y/query_range` — the one canonical
+  composite builder query (was wrongly `GET` PromQL); the upstream engine
+  version stays internal, never in the route.
+- `GET /v1/o11y/logs`, `/v1/o11y/metrics`, `/v1/o11y/status` — tenant-scoped,
+  org-pinned reads (product logs, RED + LLM usage, live service health) with
+  schemas grounded in the Go response structs.
+- **`GET /v1/o11y/vm/query`, `GET /v1/o11y/vm/query_range`** — NEW. The
+  SuperAdmin-only VictoriaMetrics read proxy backing the platform
+  infrastructure-health board; `query` allowlisted to `up`/`sum(up)`/`count(up)`,
+  returning the native Prometheus envelope verbatim.
+- `GET /v1/o11y/services`, `/v1/o11y/dashboards`, `/v1/o11y/rules`,
+  `/v1/o11y/health` — served by the embedded o11y runtime.
+- `POST /v1/o11y/ingestion` — native-Go LLM-observability event ingest
+  (traces/observations/scores).
+
+`hanzo.yaml` regenerated via `merge.py`: 68 services, 1797 paths (−10 from the
+removed fictional o11y paths).
+
 ### Canonical capability manifest + category grouping
 
 - Added `CAPABILITIES.md` — the authoritative index of every public
