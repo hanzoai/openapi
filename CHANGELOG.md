@@ -2,6 +2,29 @@
 
 ## v1.0.0
 
+### 2026-07-11 — git: SSH transport, client-less push, ZAP note, sshUrl
+
+Extended `git/openapi.yaml` to match the new native-git surface in
+`hanzoai/cloud/clients/git`:
+
+- **`/v1/git/keys` CRUD** (`registerGitKey`, `listGitKeys`, `deleteGitKey`) —
+  per-user SSH public keys backing `git clone git@git.hanzo.ai:<org>/<repo>.git`.
+  A key is stored with its SHA256 fingerprint (the global unique handle) and
+  resolves, at SSH auth time, to its owning org.
+- **`/v1/git/repos/{name}/push`** (`gitPush`) — client-less push: builds a
+  commit from a set of posted files (UTF-8 or base64), advances the branch ref,
+  and fires the git-push-to-deploy build exactly as a real receive-pack does.
+  Creates the repo on first push.
+- **`sshUrl`** added to the `Repo` schema (and the new `PushResult`): every repo
+  now advertises both `cloneUrl` (HTTPS) and `sshUrl` (SSH, scp-style).
+- **ZAP transport** documented in the spec description: the git control plane is
+  also reachable over the shared ZAP-over-WebSocket plane at `/zap` (procedures
+  `git/zap/{createRepo,listRepos,getRepo,deleteRepo,usage}`), thin adapters over
+  the SAME core the REST handlers call — one implementation, two transports.
+
+New schemas: `RegisterKey`, `Key`, `PushFile`, `PushRequest`, `PushResult`.
+`hanzo.yaml` + `CAPABILITIES.md` regenerated via `merge.py`.
+
 ### 2026-07-10 — o11y resynced to the flat, version-less live surface
 
 Reconciled `o11y/openapi.yaml` to the live cloud routes in
