@@ -29334,6 +29334,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/gateway_Team'
+  /v1/git/keys:
+    post:
+      tags:
+      - SSH Keys
+      summary: Register an SSH public key
+      description: 'Registers an OpenSSH public key for the tenant. The key is validated,
+
+        canonicalized, and stored with its SHA256 fingerprint (the global unique
+
+        handle). A key belongs to exactly one org; re-registering it under
+
+        another org is a 409.
+
+        '
+      operationId: git_registerGitKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/git_RegisterKey'
+      responses:
+        '201':
+          description: Key registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/git_Key'
+        '400':
+          description: Missing or invalid public key
+        '401':
+          $ref: '#/components/responses/git_Unauthorized'
+        '409':
+          description: This SSH key is already registered
+    get:
+      tags:
+      - SSH Keys
+      summary: List the tenant's SSH keys
+      operationId: git_listGitKeys
+      responses:
+        '200':
+          description: Keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/git_Key'
+        '401':
+          $ref: '#/components/responses/git_Unauthorized'
+  /v1/git/keys/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Key id
+    delete:
+      tags:
+      - SSH Keys
+      summary: Remove an SSH key
+      operationId: git_deleteGitKey
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/git_Unauthorized'
+        '404':
+          description: Key not found
   /v1/git/repos:
     post:
       tags:
@@ -29414,6 +29487,42 @@ paths:
           $ref: '#/components/responses/git_Unauthorized'
         '404':
           description: Repo not found
+  /v1/git/repos/{name}/push:
+    parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Repo name (a trailing ".git" is stripped)
+    post:
+      tags:
+      - Repos
+      summary: Client-less push (build a commit from posted files)
+      description: "Builds a tree + commit from the posted files, advances the branch ref,\nand fires the git-push-to-deploy\
+        \ build exactly as a real receive-pack\nwould \u2014 for builders with no local git client. Creates the repo on the\n\
+        first push. File content is UTF-8 by default, or base64 when the file's\n`encoding` is `base64`.\n"
+      operationId: git_gitPush
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/git_PushRequest'
+      responses:
+        '200':
+          description: Pushed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/git_PushResult'
+        '400':
+          description: Invalid branch
+          path: null
+          files: null
+          or encoding: null
+        '401':
+          $ref: '#/components/responses/git_Unauthorized'
   /v1/git/usage:
     get:
       tags:
@@ -68906,6 +69015,85 @@ components:
         description:
           type: string
           maxLength: 4096
+    git_Key:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        publicKey:
+          type: string
+          description: Canonical OpenSSH authorized-key line
+        fingerprint:
+          type: string
+          description: SHA256 fingerprint (the stable handle)
+          example: SHA256:abc123...
+        createdAt:
+          type: string
+          format: date-time
+    git_PushFile:
+      type: object
+      required:
+      - path
+      - content
+      properties:
+        path:
+          type: string
+          description: Repo-relative path (no leading slash, no traversal)
+          example: src/index.js
+        content:
+          type: string
+          description: File content; UTF-8 by default, base64 when encoding=base64
+        encoding:
+          type: string
+          enum:
+          - utf-8
+          - base64
+          description: Content encoding (default utf-8)
+    git_PushRequest:
+      type: object
+      required:
+      - files
+      properties:
+        branch:
+          type: string
+          description: Target branch (default main)
+          example: main
+        message:
+          type: string
+          description: Commit message
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/git_PushFile'
+    git_PushResult:
+      type: object
+      properties:
+        commit:
+          type: string
+          description: New commit hash
+        branch:
+          type: string
+        cloneUrl:
+          type: string
+          format: uri
+        sshUrl:
+          type: string
+          example: git@git.hanzo.ai:acme/app.git
+    git_RegisterKey:
+      type: object
+      required:
+      - publicKey
+      properties:
+        title:
+          type: string
+          description: Human label; falls back to the key comment
+          maxLength: 256
+        publicKey:
+          type: string
+          description: OpenSSH authorized-key line
+          example: ssh-ed25519 AAAAC3Nza... user@host
     git_Repo:
       type: object
       properties:
@@ -68932,6 +69120,12 @@ components:
         cloneUrl:
           type: string
           format: uri
+          description: HTTPS clone URL
+          example: https://api.hanzo.ai/v1/git/acme/code.git
+        sshUrl:
+          type: string
+          description: SSH clone URL (scp-style)
+          example: git@git.hanzo.ai:acme/code.git
         sizeBytes:
           type: integer
           format: int64
