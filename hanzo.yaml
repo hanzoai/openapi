@@ -8230,140 +8230,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/bot_User'
-  /v1/bots:
-    get:
-      tags:
-      - Bots
-      summary: List the org's bots
-      operationId: visor_listBots
-      responses:
-        '200':
-          description: Bots
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  bots:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/visor_BotView'
-        '401':
-          $ref: '#/components/responses/visor_Unauthorized'
-  /v1/bots/launch:
-    post:
-      tags:
-      - Bots
-      summary: Launch a bot (machine + agent binding), or dryRun for a quote
-      operationId: visor_launchBot
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/visor_BotLaunchRequest'
-      responses:
-        '200':
-          description: Price quote (dryRun)
-          content:
-            application/json:
-              schema:
-                type: object
-        '201':
-          description: Bot launched
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/visor_BotView'
-        '400':
-          description: size / name is required
-        '401':
-          $ref: '#/components/responses/visor_Unauthorized'
-  /v1/bots/{id}:
-    get:
-      tags:
-      - Bots
-      summary: Get one bot by id
-      operationId: visor_getBot
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Bot
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/visor_BotView'
-        '401':
-          $ref: '#/components/responses/visor_Unauthorized'
-        '404':
-          description: Bot not found
-    delete:
-      tags:
-      - Bots
-      summary: Terminate a bot (unbind agent + delete machine)
-      operationId: visor_deleteBot
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: Terminated
-        '401':
-          $ref: '#/components/responses/visor_Unauthorized'
-  /v1/bots/{id}/{action}:
-    post:
-      tags:
-      - Bots
-      summary: Act on a bot (stop, pause, or message)
-      description: '`stop` and `pause` both halt the bot''s agent runtime (one honest
-
-        capability). `message` runs the bot''s bound agent via the agent runner
-
-        and returns that run''s output verbatim.
-
-        '
-      operationId: visor_botAction
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: action
-        in: path
-        required: true
-        schema:
-          type: string
-          enum:
-          - stop
-          - pause
-          - message
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              description: 'For message: the agent run body forwarded to /v1/agents/{ref}/run'
-      responses:
-        '200':
-          description: "Action result \u2014 {id,status} for stop/pause, or the agent run output for message"
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          description: unknown bot action / bot has no bound agent
-        '401':
-          $ref: '#/components/responses/visor_Unauthorized'
   /v1/chat-docs:
     post:
       tags:
@@ -19001,6 +18867,140 @@ paths:
                 type: string
         '401':
           $ref: '#/components/responses/ai_Unauthorized'
+  /v1/compute/bots:
+    get:
+      tags:
+      - Bots
+      summary: List the org's bot machines
+      operationId: visor_listBots
+      responses:
+        '200':
+          description: Bots
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bots:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/visor_BotView'
+        '401':
+          $ref: '#/components/responses/visor_Unauthorized'
+  /v1/compute/bots/launch:
+    post:
+      tags:
+      - Bots
+      summary: Launch a bot machine (machine + agent binding), or dryRun for a quote
+      operationId: visor_launchBot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/visor_BotLaunchRequest'
+      responses:
+        '200':
+          description: Price quote (dryRun)
+          content:
+            application/json:
+              schema:
+                type: object
+        '201':
+          description: Bot launched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/visor_BotView'
+        '400':
+          description: size / name is required
+        '401':
+          $ref: '#/components/responses/visor_Unauthorized'
+  /v1/compute/bots/{id}:
+    get:
+      tags:
+      - Bots
+      summary: Get one bot machine by id
+      operationId: visor_getBot
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Bot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/visor_BotView'
+        '401':
+          $ref: '#/components/responses/visor_Unauthorized'
+        '404':
+          description: Bot not found
+    delete:
+      tags:
+      - Bots
+      summary: Terminate a bot machine (unbind agent + delete machine)
+      operationId: visor_deleteBot
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Terminated
+        '401':
+          $ref: '#/components/responses/visor_Unauthorized'
+  /v1/compute/bots/{id}/{action}:
+    post:
+      tags:
+      - Bots
+      summary: Act on a bot machine (stop, pause, or message)
+      description: '`stop` and `pause` both halt the bot''s agent runtime (one honest
+
+        capability). `message` runs the bot''s bound agent via the agent runner
+
+        and returns that run''s output verbatim.
+
+        '
+      operationId: visor_botAction
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: action
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - stop
+          - pause
+          - message
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: 'For message: the agent run body forwarded to /v1/agents/{ref}/run'
+      responses:
+        '200':
+          description: "Action result \u2014 {id,status} for stop/pause, or the agent run output for message"
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: unknown bot action / bot has no bound agent
+        '401':
+          $ref: '#/components/responses/visor_Unauthorized'
   /v1/compute/regions:
     get:
       tags:
