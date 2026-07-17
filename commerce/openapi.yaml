@@ -335,6 +335,15 @@ paths:
         required: true
         schema:
           type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommerceEnableAccountRequest'
+        description: >-
+          Optional. Read (json.DecodeBytes) only when the org has two-stage
+          enablement (SignUpOptions.TwoStageEnabled); otherwise ignored.
       responses:
         '200':
           description: Account enabled
@@ -2672,6 +2681,20 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    CommerceEnableAccountRequest:
+      type: object
+      description: >-
+        Two-stage account-enable payload (twoStageEnableReq). Read only when the org
+        enables two-stage signup. All fields optional (password applied only when
+        non-empty). Embeds the user object, so additional user fields are accepted.
+      properties:
+        password:
+          type: string
+          description: New account password; applied only when non-empty.
+        passwordConfirm:
+          type: string
+          description: Password confirmation.
+      additionalProperties: true
     Error:
       type: object
       properties:
