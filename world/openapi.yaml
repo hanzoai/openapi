@@ -474,10 +474,13 @@ paths:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
         '401': { description: Missing/invalid IAM token }
   /v1/world/classify-event:
-    post:
+    get:
       tags: [AI]
       summary: "Single event classification (per-user IAM token)"
       operationId: world_classify_event
+      parameters:
+        - { name: title, in: query, required: true, schema: { type: string }, description: "Headline to classify." }
+        - { name: variant, in: query, required: false, schema: { type: string }, description: "Only 'tech' is special-cased." }
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
         '401': { description: Missing/invalid IAM token }
