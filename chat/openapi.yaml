@@ -669,6 +669,11 @@ paths:
       - OAuth
       summary: Apple OAuth callback
       security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/OAuthAppleCallbackForm' }
       responses:
         '302':
           description: Redirect with auth tokens
@@ -689,6 +694,11 @@ paths:
       - OAuth
       summary: SAML callback
       security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/OAuthSamlCallbackForm' }
       responses:
         '302':
           description: Redirect with auth tokens
@@ -2635,6 +2645,11 @@ paths:
       tags:
       - Assistants v1
       summary: Abort assistant chat (v1)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChatAbortRequest' }
       responses:
         '200':
           description: Aborted
@@ -2870,6 +2885,11 @@ paths:
       tags:
       - Assistants v2
       summary: Abort assistant chat (v2)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChatAbortRequest' }
       responses:
         '200':
           description: Aborted
@@ -4650,6 +4670,49 @@ components:
       description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
         Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
+    ChatAbortRequest:
+      type: object
+      description: Abort an in-flight assistant run. Both fields are dereferenced unconditionally by the abort handler (abortRun.js).
+      properties:
+        abortKey:
+          type: string
+          description: The run abort key (format "<thread>:<run>"); split by the handler.
+        endpoint:
+          type: string
+          description: The endpoint whose run is being aborted (routes control flow via isAssistantsEndpoint).
+      required: [abortKey, endpoint]
+    OAuthAppleCallbackForm:
+      type: object
+      description: >-
+        Apple Sign In form_post callback body. Consumed by the passport-apple strategy middleware
+        (not an in-repo struct); field set is the passport-apple / Apple OIDC standard.
+      properties:
+        code:
+          type: string
+          description: Apple authorization code.
+        id_token:
+          type: string
+          description: Apple-issued OIDC ID token (JWT).
+        user:
+          type: string
+          description: JSON-encoded user object, present only on first authorization.
+        state:
+          type: string
+          description: Opaque CSRF/state value round-tripped from the auth request.
+      required: [code]
+    OAuthSamlCallbackForm:
+      type: object
+      description: >-
+        SAML 2.0 HTTP-POST binding assertion consumer body. Consumed by the @node-saml/passport-saml
+        strategy middleware (not an in-repo struct); field set is the SAML POST-binding standard.
+      properties:
+        SAMLResponse:
+          type: string
+          description: Base64-encoded SAML response assertion.
+        RelayState:
+          type: string
+          description: Opaque relay state round-tripped from the auth request.
+      required: [SAMLResponse]
     AuthResponse:
       type: object
       properties:
