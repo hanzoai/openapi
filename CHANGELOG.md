@@ -32,13 +32,16 @@ fabricated:
   auth-logout/verify/sso + website-reset (Umami, no upstream in tree); paas
   doks-upgrade-ha, container-deploy (served by platform tRPC, not cloud).
 
-Review notes: `world/classify-event` is declared POST but the handler is GET
-(query `title`) — left as a flagged method mismatch, no body added. The
-`cloud`/`nexus` `object.File`/`object.Connection` (and `File`/`Connection`)
-components referenced by the new file/connection bodies appear stale vs the
-current `hanzoai/ai` Go structs; regenerating those two specs from the ai Beego
-swagger is the durable re-sync. `hanzo.yaml` + `CAPABILITIES.md` regenerated via
-`merge.py`.
+Red-review fixes (fix-then-ship): `world/classify-event` corrected from POST to
+GET with `title` (required) + `variant` query params, matching the handler
+(`internal/world/handlers_ai.go:167`). The `cloud`/`nexus` `add-file`/`delete-file`
+bodies now reference a dedicated request schema (`object.FileInput` / `FileInput`,
+`owner`+`name` required) built from the real `ai/object/file.go` struct — instead
+of the stale UI-tree response component `object.File`/`File`, which lacked
+`owner`/`name`/`filename`/`store` and would have handed clients a wrong contract.
+`delete-connection`'s `object.Connection`/`Connection` was verified correct against
+`ai/object/connection.go` and left unchanged. `hanzo.yaml` + `CAPABILITIES.md`
+regenerated via `merge.py` (3802 `$refs`, 0 dangling).
 
 ### 2026-07-11 — git: SSH transport, client-less push, ZAP note, sshUrl
 
