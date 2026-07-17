@@ -108,6 +108,41 @@ components:
       description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
         Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
+    AcceptUserInvitationRequest:
+      type: object
+      properties:
+        invitationToken:
+          type: string
+          description: The invitation token; the invitation is resolved from it.
+      required: [invitationToken]
+    PushFlowsGitRepoRequest:
+      type: object
+      properties:
+        type: { type: string, enum: [PUSH_FLOW, DELETE_FLOW] }
+        commitMessage: { type: string, minLength: 1 }
+        externalFlowIds: { type: array, items: { type: string } }
+      required: [type, commitMessage, externalFlowIds]
+    PushTablesGitRepoRequest:
+      type: object
+      properties:
+        type: { type: string, enum: [PUSH_TABLE, DELETE_TABLE] }
+        commitMessage: { type: string, minLength: 1 }
+        externalTableIds: { type: array, items: { type: string } }
+      required: [type, commitMessage, externalTableIds]
+    PushEverythingGitRepoRequest:
+      type: object
+      properties:
+        type: { type: string, enum: [PUSH_EVERYTHING] }
+        commitMessage: { type: string, minLength: 1 }
+      required: [type, commitMessage]
+    PushGitRepoRequest:
+      description: >-
+        Push flows, tables, or everything to the connected git repo. Discriminated by
+        the type field (PushGitRepoRequest is a union of three request shapes).
+      oneOf:
+        - $ref: '#/components/schemas/PushFlowsGitRepoRequest'
+        - $ref: '#/components/schemas/PushTablesGitRepoRequest'
+        - $ref: '#/components/schemas/PushEverythingGitRepoRequest'
     SeekPage:
       type: object
       properties:
@@ -1822,6 +1857,13 @@ paths:
       tags:
       - user-invitations
       summary: Accept an invitation
+      requestBody:
+        required: true
+        description: The invitation is resolved from the token in the body (the path id is not consumed).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptUserInvitationRequest'
       parameters:
       - name: id
         in: path
@@ -2748,6 +2790,12 @@ paths:
       tags:
       - git-repos
       summary: Push flows to git (EE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushGitRepoRequest'
       parameters:
       - name: id
         in: path
