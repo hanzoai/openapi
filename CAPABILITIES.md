@@ -128,7 +128,6 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 | `world` | `/v1/world` | ✓ |
 | `authors` | `/v1/authors` | ✓ |
 | `sites` | `/v1/sites` | pending |
-| `tracker` | `/v1/tracker` | ✓ |
 | `framework` | `/v1/framework` | ✓ |
 
 ## Core
@@ -148,6 +147,13 @@ Resolved duplicates / consolidations — removed, no spec dir. The capability no
 | `operative` | bot + visor |
 | `plans` | plan |
 | `plugins` | plugin |
+| `featuregate` | featureflags |
+| `ads` | marketing |
+| `cms` | content |
+| `cron` | tasks |
+| `connectorruntime` | automations |
+| `tracker` | analytics |
+| `gojabase` | goja |
 
 ## Pending
 
