@@ -160,6 +160,15 @@ paths:
       - Authentication
       description: Get Login Error Counts
       operationId: ApiController.Callback
+      requestBody:
+        required: false
+        description: >-
+          Optional. OAuth code/state are read via merged query+form (c.GetString);
+          when posted form-encoded they populate these fields, else read from query.
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/controllers.OAuthCallbackForm'
       responses:
         '200':
           description: The Response object
@@ -1592,6 +1601,15 @@ paths:
       tags:
       - Users
       operationId: ApiController.CheckUserPassword
+      requestBody:
+        required: true
+        description: >-
+          Handler binds the full object.User; only owner, name, password (and ldap,
+          which toggles LDAP-password mode) are consumed. Extra User fields are ignored.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/controllers.CheckPasswordRequest'
       responses:
         '200':
           description: The Response object
@@ -4678,6 +4696,20 @@ paths:
       - Tokens
       description: get OAuth access token
       operationId: ApiController.GetOAuthToken
+      requestBody:
+        required: false
+        description: >-
+          Optional. Params may be supplied as query string (documented above) or in
+          the body; body values fill only fields still empty from the query. JSON
+          (TokenRequest) is tried when the body is non-empty and grant_type is not
+          device_code, otherwise form-urlencoded is parsed.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/controllers.TokenRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/controllers.TokenRequest'
       parameters:
       - in: query
         name: grant_type
@@ -4771,6 +4803,19 @@ paths:
       - Tokens
       description: refresh OAuth access token
       operationId: ApiController.RefreshToken
+      requestBody:
+        required: false
+        description: >-
+          Optional. Read only when client_id is absent from the query/Basic-auth;
+          then JSON (TokenRequest) or form-urlencoded fills client_id, client_secret,
+          grant_type, scope, refresh_token.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/controllers.TokenRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/controllers.TokenRequest'
       parameters:
       - in: query
         name: grant_type
@@ -4827,6 +4872,15 @@ paths:
       - Authentication
       description: logout the current user
       operationId: ApiController.Logout
+      requestBody:
+        required: false
+        description: >-
+          Optional. OIDC RP-initiated logout params are read via merged query+form
+          (c.GetString); when posted form-encoded they populate these fields.
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/controllers.LogoutForm'
       parameters:
       - in: query
         name: id_token_hint
@@ -4871,6 +4925,12 @@ paths:
       - MFA
       description: enable totp
       operationId: ApiController.MfaSetupEnable
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/controllers.MfaSetupEnableForm'
       responses:
         '200':
           description: The Response object
@@ -4885,6 +4945,12 @@ paths:
       - MFA
       description: setup MFA
       operationId: ApiController.MfaSetupInitiate
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/controllers.MfaSetupInitiateForm'
       responses:
         '200':
           description: The Response object
@@ -4899,6 +4965,12 @@ paths:
       - MFA
       description: setup verify totp
       operationId: ApiController.MfaSetupVerify
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/controllers.MfaSetupVerifyForm'
       responses:
         '200':
           description: The Response object
@@ -5056,6 +5128,12 @@ paths:
       tags:
       - Users
       operationId: ApiController.ResetEmailOrPhone
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/controllers.ResetContactForm'
       responses:
         '200':
           description: The Response object
@@ -5223,6 +5301,12 @@ paths:
       tags:
       - MFA
       operationId: ApiController.SendVerificationCode
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/controllers.SendVerificationCodeForm'
       responses:
         '200':
           description: The Response object
@@ -5275,6 +5359,12 @@ paths:
       - MFA
       description: ': Set specific Mfa Preferred'
       operationId: ApiController.SetPreferredMfa
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/controllers.SetPreferredMfaForm'
       responses:
         '200':
           description: The Response object
@@ -5360,6 +5450,15 @@ paths:
       - Users
       description: sync ldap users
       operationId: ApiController.SyncLdapUsers
+      requestBody:
+        required: true
+        description: The LDAP users to sync (JSON array; may be empty). Query id (<owner>/<ldapId>) selects the server.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/object.LdapUser'
       parameters:
       - in: query
         name: id
@@ -5380,6 +5479,12 @@ paths:
       tags:
       - Authentication
       operationId: ApiController.Unlink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/controllers.LinkForm'
       responses:
         '200':
           description: The Response object
@@ -5522,6 +5627,12 @@ paths:
       tags:
       - MFA
       operationId: ApiController.VerifyCaptcha
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/controllers.VerifyCaptchaForm'
       responses:
         '200':
           description: The Response object
@@ -5535,6 +5646,15 @@ paths:
       tags:
       - MFA
       operationId: ApiController.VerifyCode
+      requestBody:
+        required: true
+        description: >-
+          Handler binds form.AuthForm; this endpoint consumes organization, username,
+          name, code, countryCode. Extra AuthForm fields are accepted but ignored.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/controllers.VerifyCodeForm'
       responses:
         '200':
           description: The Response object
@@ -5682,6 +5802,16 @@ paths:
       tags:
       - System
       operationId: ApiController.HandleOfficialAccountEvent
+      requestBody:
+        required: true
+        description: >-
+          WeChat official-account event callback (XML). GET pre-verify (echostr) is a
+          separate path; POST delivers the event XML. Query signature/timestamp/nonce
+          are also required for signature verification.
+        content:
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/controllers.WechatEvent'
       responses:
         '200':
           description: The Response object
@@ -5699,6 +5829,161 @@ components:
       description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
         Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
+    controllers.TokenRequest:
+      title: TokenRequest
+      type: object
+      description: >-
+        OAuth token request (controllers.TokenRequest). Optional supplement to the
+        query params on /oauth/token and /oauth/token/refresh; requiredness is
+        grant-type dependent and enforced downstream, so no fields are marked required.
+      properties:
+        assertion: { type: string }
+        client_id: { type: string }
+        client_secret: { type: string }
+        client_assertion: { type: string }
+        client_assertion_type: { type: string }
+        grant_type: { type: string }
+        code: { type: string }
+        code_verifier: { type: string }
+        scope: { type: string }
+        nonce: { type: string }
+        username: { type: string }
+        password: { type: string }
+        tag: { type: string }
+        avatar: { type: string }
+        refresh_token: { type: string }
+        subject_token: { type: string }
+        subject_token_type: { type: string }
+        audience: { type: string }
+        resource: { type: string, description: 'RFC 8707 resource indicator' }
+        access_key: { type: string }
+        access_secret: { type: string }
+    controllers.OAuthCallbackForm:
+      title: OAuthCallbackForm
+      type: object
+      properties:
+        code: { type: string, description: OAuth authorization code }
+        state: { type: string, description: Opaque state round-tripped from the auth request }
+    controllers.CheckPasswordRequest:
+      title: CheckPasswordRequest
+      type: object
+      description: Credentials to verify. Handler binds object.User; only these fields are consumed.
+      properties:
+        owner: { type: string }
+        name: { type: string }
+        password: { type: string }
+        ldap: { type: string, description: 'Non-empty toggles LDAP-password verification mode' }
+      required: [owner, name, password]
+      additionalProperties: true
+    controllers.LogoutForm:
+      title: LogoutForm
+      type: object
+      properties:
+        id_token_hint: { type: string }
+        post_logout_redirect_uri: { type: string }
+        state: { type: string }
+    controllers.MfaSetupEnableForm:
+      title: MfaSetupEnableForm
+      type: object
+      properties:
+        owner: { type: string }
+        name: { type: string }
+        mfaType: { type: string, description: 'totp | sms | email | radius | push' }
+        secret: { type: string, description: 'Required for totp; radius/push also require it' }
+        dest: { type: string, description: 'Destination for sms/email/radius/push' }
+        recoveryCodes: { type: string }
+      required: [owner, name, mfaType, recoveryCodes]
+    controllers.MfaSetupInitiateForm:
+      title: MfaSetupInitiateForm
+      type: object
+      properties:
+        owner: { type: string }
+        name: { type: string }
+        mfaType: { type: string }
+      required: [owner, name, mfaType]
+    controllers.MfaSetupVerifyForm:
+      title: MfaSetupVerifyForm
+      type: object
+      properties:
+        mfaType: { type: string }
+        passcode: { type: string }
+        secret: { type: string, description: 'Required for totp and radius/push' }
+        dest: { type: string, description: 'Required for sms/email/radius/push' }
+        countryCode: { type: string, description: 'Required for sms' }
+      required: [mfaType, passcode]
+    controllers.ResetContactForm:
+      title: ResetContactForm
+      type: object
+      properties:
+        type: { type: string, description: '"email" or "phone"' }
+        dest: { type: string }
+        code: { type: string }
+      required: [type, dest, code]
+    controllers.SendVerificationCodeForm:
+      title: SendVerificationCodeForm
+      type: object
+      description: form.VerificationForm as consumed by SendVerificationCode.
+      properties:
+        dest: { type: string }
+        type: { type: string }
+        countryCode: { type: string }
+        applicationId: { type: string, description: 'Must be of the form <owner>/<name>' }
+        method: { type: string }
+        checkUser: { type: string }
+        captchaType: { type: string }
+        clientSecret: { type: string, description: 'Required when captchaType != none' }
+        captchaToken: { type: string, description: 'Required when captchaType != none' }
+      required: [type, dest, captchaType, applicationId]
+    controllers.SetPreferredMfaForm:
+      title: SetPreferredMfaForm
+      type: object
+      properties:
+        mfaType: { type: string }
+        owner: { type: string }
+        name: { type: string }
+      required: [owner, name, mfaType]
+    controllers.VerifyCaptchaForm:
+      title: VerifyCaptchaForm
+      type: object
+      description: form.VerificationForm fields consumed by VerifyCaptcha.
+      properties:
+        applicationId: { type: string }
+        captchaType: { type: string }
+        captchaToken: { type: string }
+        clientSecret: { type: string }
+      required: [applicationId, captchaType, captchaToken, clientSecret]
+    controllers.LinkForm:
+      title: LinkForm
+      type: object
+      description: Unlink a federated provider from a user (controllers.LinkForm).
+      properties:
+        providerType: { type: string }
+        user: { $ref: '#/components/schemas/object.User' }
+      required: [providerType, user]
+    controllers.VerifyCodeForm:
+      title: VerifyCodeForm
+      type: object
+      description: form.AuthForm fields consumed by VerifyCode.
+      properties:
+        organization: { type: string }
+        username: { type: string, description: 'Email, phone, or username; must resolve to a user' }
+        name: { type: string }
+        code: { type: string }
+        countryCode: { type: string, description: 'E.164 country code for phone' }
+      required: [username, code]
+      additionalProperties: true
+    controllers.WechatEvent:
+      title: WechatEvent
+      type: object
+      xml: { name: xml }
+      description: WeChat official-account event callback body (XML root <xml>).
+      properties:
+        MsgType: { type: string }
+        Event: { type: string, description: 'SCAN or SUBSCRIBE' }
+        EventKey: { type: string, description: 'Used as providerId' }
+        FromUserName: { type: string }
+        Ticket: { type: string }
+      required: [Event, Ticket]
     webfinger.AliasesMap:
       title: string
       type: object
