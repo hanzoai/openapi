@@ -139,6 +139,8 @@ tags:
   description: Hanzo Tasks API
 - name: templates
   description: Hanzo Templates API
+- name: tracker
+  description: Hanzo Tracker API
 - name: vector
   description: Hanzo Vector API
 - name: visor
@@ -230,6 +232,7 @@ x-tagGroups:
   - websearch
   - world
   - authors
+  - tracker
   - framework
 - name: Core
   tags:
@@ -56320,6 +56323,221 @@ paths:
           $ref: '#/components/responses/templates_Unauthorized'
         '404':
           description: Template not found
+  /v1/tracker/projects:
+    get:
+      tags:
+      - Projects
+      summary: List projects
+      operationId: tracker_listProjects
+      responses:
+        '200':
+          description: Projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/tracker_Project'
+        '401':
+          $ref: '#/components/responses/tracker_Unauthorized'
+    post:
+      tags:
+      - Projects
+      summary: Create a project
+      operationId: tracker_createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tracker_CreateProjectRequest'
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tracker_Project'
+        '401':
+          $ref: '#/components/responses/tracker_Unauthorized'
+        '409':
+          description: Project key already exists in this org
+  /v1/tracker/projects/{key}:
+    parameters:
+    - name: key
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Project key (uppercase, ^[A-Z][A-Z0-9]{1,7}$)
+    get:
+      tags:
+      - Projects
+      summary: Get a project
+      operationId: tracker_getProject
+      responses:
+        '200':
+          description: Project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tracker_Project'
+        '401':
+          $ref: '#/components/responses/tracker_Unauthorized'
+        '404':
+          description: Project not found
+    patch:
+      tags:
+      - Projects
+      summary: Update a project
+      operationId: tracker_updateProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tracker_UpdateProjectRequest'
+      responses:
+        '200':
+          description: Project updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tracker_Project'
+        '401':
+          $ref: '#/components/responses/tracker_Unauthorized'
+        '404':
+          description: Project not found
+    delete:
+      tags:
+      - Projects
+      summary: Delete a project and all its issues
+      operationId: tracker_deleteProject
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/tracker_Unauthorized'
+        '404':
+          description: Project not found
+  /v1/tracker/projects/{key}/issues:
+    parameters:
+    - name: key
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Project key
+    get:
+      tags:
+      - Issues
+      summary: List issues (board/list)
+      operationId: tracker_listIssues
+      parameters:
+      - name: status
+        in: query
+        schema:
+          $ref: '#/components/schemas/tracker_IssueStatus'
+        description: Filter to one board column
+      responses:
+        '200':
+          description: Issues
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/tracker_Issue'
+        '401':
+          $ref: '#/components/responses/tracker_Unauthorized'
+        '404':
+          description: Project not found
+    post:
+      tags:
+      - Issues
+      summary: Create an issue
+      operationId: tracker_createIssue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tracker_CreateIssueRequest'
+      responses:
+        '201':
+          description: Issue created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tracker_Issue'
+        '401':
+          $ref: '#/components/responses/tracker_Unauthorized'
+        '404':
+          description: Project not found
+  /v1/tracker/projects/{key}/issues/{num}:
+    parameters:
+    - name: key
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Project key
+    - name: num
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Per-project issue number
+    get:
+      tags:
+      - Issues
+      summary: Get an issue
+      operationId: tracker_getIssue
+      responses:
+        '200':
+          description: Issue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tracker_Issue'
+        '401':
+          $ref: '#/components/responses/tracker_Unauthorized'
+        '404':
+          description: Issue not found
+    patch:
+      tags:
+      - Issues
+      summary: Update an issue
+      operationId: tracker_updateIssue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tracker_UpdateIssueRequest'
+      responses:
+        '200':
+          description: Issue updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tracker_Issue'
+        '401':
+          $ref: '#/components/responses/tracker_Unauthorized'
+        '404':
+          description: Issue not found
+    delete:
+      tags:
+      - Issues
+      summary: Delete an issue
+      operationId: tracker_deleteIssue
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/tracker_Unauthorized'
+        '404':
+          description: Issue not found
   /v1/upload:
     post:
       tags:
@@ -80849,6 +81067,136 @@ components:
         preview:
           type: string
           description: Live gallery screenshot/preview URL
+    tracker_CreateIssueRequest:
+      type: object
+      required:
+      - title
+      properties:
+        title:
+          type: string
+          maxLength: 512
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/tracker_IssueStatus'
+        priority:
+          $ref: '#/components/schemas/tracker_IssuePriority'
+        assignee:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+    tracker_CreateProjectRequest:
+      type: object
+      required:
+      - name
+      properties:
+        key:
+          type: string
+          description: Optional; derived from name when omitted. ^[A-Z][A-Z0-9]{1,7}$
+        name:
+          type: string
+          maxLength: 256
+        description:
+          type: string
+    tracker_Issue:
+      type: object
+      properties:
+        id:
+          type: string
+        identifier:
+          type: string
+          description: '''KEY-<number>, the human handle'''
+        projectKey:
+          type: string
+        number:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/tracker_IssueStatus'
+        priority:
+          $ref: '#/components/schemas/tracker_IssuePriority'
+        assignee:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: integer
+          format: int64
+        updatedAt:
+          type: integer
+          format: int64
+    tracker_IssuePriority:
+      type: string
+      enum:
+      - none
+      - urgent
+      - high
+      - medium
+      - low
+      description: Priority. Empty defaults to none.
+    tracker_IssueStatus:
+      type: string
+      enum:
+      - backlog
+      - todo
+      - in_progress
+      - done
+      - canceled
+      description: Board column. Empty defaults to backlog.
+    tracker_Project:
+      type: object
+      properties:
+        id:
+          type: string
+        org:
+          type: string
+        key:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: integer
+          format: int64
+          description: Unix seconds
+        updatedAt:
+          type: integer
+          format: int64
+          description: Unix seconds
+    tracker_UpdateIssueRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 512
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/tracker_IssueStatus'
+        priority:
+          $ref: '#/components/schemas/tracker_IssuePriority'
+        assignee:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+    tracker_UpdateProjectRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 256
+        description:
+          type: string
     vector_CollectionConfig:
       type: object
       properties:
@@ -82699,6 +83047,17 @@ components:
                 type: integer
                 example: 403
     templates_Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+              msg:
+                type: string
+    tracker_Unauthorized:
       description: Missing or invalid credentials
       content:
         application/json:
