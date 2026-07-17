@@ -2450,6 +2450,20 @@ paths:
       tags:
       - settings
       summary: Full Docker cleanup (admin)
+      requestBody:
+        required: false
+        description: tRPC input (apiServerSchema); the entire input is optional.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  properties:
+                    serverId:
+                      type: string
+                      description: Optional target server; omitted cleans the local host.
       responses:
         '200':
           description: Cleanup done
@@ -2510,6 +2524,21 @@ paths:
       tags:
       - ssh-key
       summary: Generate a new SSH key pair
+      requestBody:
+        required: true
+        description: tRPC input (apiGenerateSSHKey).
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum: [rsa, ed25519]
+                      description: Key algorithm (optional).
       responses:
         '200':
           description: Key pair
@@ -2914,6 +2943,15 @@ paths:
       - deployment
       summary: Webhook to trigger application deployment
       security: []
+      requestBody:
+        required: false
+        description: >-
+          Git-provider (or Docker-registry) webhook payload. Parsed untyped and
+          dispatched by provider header; invalid JSON falls back to an empty object.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GitProviderWebhookPayload'
       parameters:
       - name: refreshToken
         in: path
@@ -2932,6 +2970,15 @@ paths:
       - deployment
       summary: Webhook to trigger compose deployment
       security: []
+      requestBody:
+        required: false
+        description: >-
+          Git-provider webhook payload. Parsed untyped and dispatched by provider
+          header; invalid JSON falls back to an empty object.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GitProviderWebhookPayload'
       parameters:
       - name: refreshToken
         in: path
@@ -2999,6 +3046,24 @@ components:
       schema:
         type: string
   schemas:
+    GitProviderWebhookPayload:
+      type: object
+      additionalProperties: true
+      description: >-
+        Provider-specific webhook payload (GitHub/GitLab/Bitbucket/Gitea or Docker
+        registry). Consumed untyped; the fields below are the commonly-read ones.
+      properties:
+        ref: { type: string, description: 'GitHub/GitLab branch ref' }
+        after: { type: string, description: 'Gitea/soft-serve post-push commit sha' }
+        checkout_sha: { type: string, description: 'GitLab checkout sha' }
+        head_commit:
+          type: object
+          additionalProperties: true
+          description: 'GitHub head commit ({ id, message })'
+        commits:
+          type: array
+          items: { type: object, additionalProperties: true }
+          description: 'Commit list ({ id, message, modified })'
     TRPCResult:
       type: object
       properties:
