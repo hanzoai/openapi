@@ -13051,11 +13051,11 @@ paths:
       operationId: cloud_ApiController.AddFile
       requestBody:
         required: true
-        description: The file object to register (handler binds object.File; owner and name identify it).
+        description: The file object to register. owner and name are required and identify the file.
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/cloud_object.File'
+              $ref: '#/components/schemas/cloud_object.FileInput'
       parameters:
       - in: query
         name: store
@@ -13624,11 +13624,11 @@ paths:
       operationId: cloud_ApiController.DeleteFile
       requestBody:
         required: true
-        description: The file to delete (handler binds object.File; owner and name identify it).
+        description: The file to delete. owner and name are required and identify the file.
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/cloud_object.File'
+              $ref: '#/components/schemas/cloud_object.FileInput'
       parameters:
       - in: query
         name: store
@@ -42303,11 +42303,11 @@ paths:
       operationId: nexus_addFile
       requestBody:
         required: true
-        description: The file object to register (handler binds the File object; owner and name identify it).
+        description: The file object to register. owner and name are required and identify the file.
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/nexus_File'
+              $ref: '#/components/schemas/nexus_FileInput'
       parameters:
       - in: query
         name: store
@@ -42897,11 +42897,11 @@ paths:
       operationId: nexus_deleteFile
       requestBody:
         required: true
-        description: The file to delete (handler binds the File object; owner and name identify it).
+        description: The file to delete. owner and name are required and identify the file.
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/nexus_File'
+              $ref: '#/components/schemas/nexus_FileInput'
       parameters:
       - in: query
         name: store
@@ -57104,11 +57104,24 @@ paths:
         '401':
           description: Missing/invalid IAM token
   /v1/world/classify-event:
-    post:
+    get:
       tags:
       - AI
       summary: Single event classification (per-user IAM token)
       operationId: world_world_classify_event
+      parameters:
+      - name: title
+        in: query
+        required: true
+        schema:
+          type: string
+        description: Headline to classify.
+      - name: variant
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Only 'tech' is special-cased.
       responses:
         '200':
           description: OK
@@ -62420,7 +62433,7 @@ components:
       properties:
         abortKey:
           type: string
-          description: The run abort key (format "<thread>:<run>"); split by the handler.
+          description: The run abort key (format "conversationId:latestMessageId"); split by the handler.
         endpoint:
           type: string
           description: The endpoint whose run is being aborted (routes control flow via isAssistantsEndpoint).
@@ -63498,6 +63511,38 @@ components:
           type: string
         url:
           type: string
+    cloud_object.FileInput:
+      title: FileInput
+      type: object
+      description: Request body for add-file / delete-file, matching the object.File struct the handler binds (ai/object/file.go).
+        owner and name are the required identity; the rest describe the stored blob.
+      properties:
+        owner:
+          type: string
+        name:
+          type: string
+        createdTime:
+          type: string
+        filename:
+          type: string
+        size:
+          type: integer
+          format: int64
+        store:
+          type: string
+        storageProvider:
+          type: string
+        url:
+          type: string
+        tokenCount:
+          type: integer
+        status:
+          type: string
+        errorText:
+          type: string
+      required:
+      - owner
+      - name
     cloud_object.Form:
       title: Form
       type: object
@@ -75154,6 +75199,38 @@ components:
           type: string
         url:
           type: string
+    nexus_FileInput:
+      title: FileInput
+      type: object
+      description: Request body for add-file / delete-file, matching the File struct the handler binds (ai/object/file.go).
+        owner and name are the required identity; the rest describe the stored blob.
+      properties:
+        owner:
+          type: string
+        name:
+          type: string
+        createdTime:
+          type: string
+        filename:
+          type: string
+        size:
+          type: integer
+          format: int64
+        store:
+          type: string
+        storageProvider:
+          type: string
+        url:
+          type: string
+        tokenCount:
+          type: integer
+        status:
+          type: string
+        errorText:
+          type: string
+      required:
+      - owner
+      - name
     nexus_Form:
       title: Form
       type: object
