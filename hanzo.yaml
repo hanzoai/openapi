@@ -429,6 +429,12 @@ paths:
       - OAuth
       summary: Apple OAuth callback
       security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/chat_OAuthAppleCallbackForm'
       responses:
         '302':
           description: Redirect with auth tokens
@@ -439,6 +445,14 @@ paths:
       - Authentication
       description: Get Login Error Counts
       operationId: iam_ApiController.Callback
+      requestBody:
+        required: false
+        description: Optional. OAuth code/state are read via merged query+form (c.GetString); when posted form-encoded they
+          populate these fields, else read from query.
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.OAuthCallbackForm'
       responses:
         '200':
           description: The Response object
@@ -615,6 +629,12 @@ paths:
       - OAuth
       summary: SAML callback
       security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/chat_OAuthSamlCallbackForm'
       responses:
         '302':
           description: Redirect with auth tokens
@@ -625,6 +645,18 @@ paths:
       - Tokens
       description: get OAuth access token
       operationId: iam_ApiController.GetOAuthToken
+      requestBody:
+        required: false
+        description: Optional. Params may be supplied as query string (documented above) or in the body; body values fill
+          only fields still empty from the query. JSON (TokenRequest) is tried when the body is non-empty and grant_type is
+          not device_code, otherwise form-urlencoded is parsed.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.TokenRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.TokenRequest'
       parameters:
       - in: query
         name: grant_type
@@ -676,6 +708,17 @@ paths:
       - Tokens
       description: refresh OAuth access token
       operationId: iam_ApiController.RefreshToken
+      requestBody:
+        required: false
+        description: Optional. Read only when client_id is absent from the query/Basic-auth; then JSON (TokenRequest) or form-urlencoded
+          fills client_id, client_secret, grant_type, scope, refresh_token.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.TokenRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.TokenRequest'
       parameters:
       - in: query
         name: grant_type
@@ -5819,6 +5862,12 @@ paths:
       tags:
       - flow-runs
       summary: Retry a failed flow run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/auto_RetryFlowRequest'
       parameters:
       - name: id
         in: path
@@ -6821,6 +6870,15 @@ paths:
       - webhooks
       summary: Receive webhook and wait for flow run result
       security: []
+      requestBody:
+        required: false
+        description: Raw inbound webhook payload, forwarded verbatim to the flow as the trigger input. No fixed schema (config.rawBody);
+          any JSON object (or raw bytes) is accepted.
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
       parameters:
       - name: flowId
         in: path
@@ -9761,6 +9819,12 @@ paths:
       tags:
       - Assistants v1
       summary: Abort assistant chat (v1)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/chat_ChatAbortRequest'
       responses:
         '200':
           description: Aborted
@@ -9996,6 +10060,12 @@ paths:
       tags:
       - Assistants v2
       summary: Abort assistant chat (v2)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/chat_ChatAbortRequest'
       responses:
         '200':
           description: Aborted
@@ -13309,6 +13379,13 @@ paths:
       - File API
       description: add file
       operationId: cloud_ApiController.AddFile
+      requestBody:
+        required: true
+        description: The file object to register (handler binds object.File; owner and name identify it).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/cloud_object.File'
       parameters:
       - in: query
         name: store
@@ -13826,6 +13903,13 @@ paths:
       - Connection API
       description: delete connection
       operationId: cloud_ApiController.DeleteConnection
+      requestBody:
+        required: true
+        description: The connection to delete (handler binds object.Connection; owner and name identify it).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/cloud_object.Connection'
       parameters:
       - in: query
         name: id
@@ -13868,6 +13952,13 @@ paths:
       - File API
       description: delete file
       operationId: cloud_ApiController.DeleteFile
+      requestBody:
+        required: true
+        description: The file to delete (handler binds object.File; owner and name identify it).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/cloud_object.File'
       parameters:
       - in: query
         name: store
@@ -16989,6 +17080,14 @@ paths:
         required: true
         schema:
           type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/commerce_CommerceEnableAccountRequest'
+        description: Optional. Read (json.DecodeBytes) only when the org has two-stage enablement (SignUpOptions.TwoStageEnabled);
+          otherwise ignored.
       responses:
         '200':
           description: Account enabled
@@ -26777,6 +26876,12 @@ paths:
       tags:
       - git-repos
       summary: Push flows to git (EE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/flow_PushGitRepoRequest'
       parameters:
       - name: id
         in: path
@@ -28098,6 +28203,13 @@ paths:
       tags:
       - user-invitations
       summary: Accept an invitation
+      requestBody:
+        required: true
+        description: The invitation is resolved from the token in the body (the path id is not consumed).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/flow_AcceptUserInvitationRequest'
       parameters:
       - name: id
         in: path
@@ -30631,6 +30743,14 @@ paths:
       tags:
       - Users
       operationId: iam_ApiController.CheckUserPassword
+      requestBody:
+        required: true
+        description: Handler binds the full object.User; only owner, name, password (and ldap, which toggles LDAP-password
+          mode) are consumed. Extra User fields are ignored.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.CheckPasswordRequest'
       responses:
         '200':
           description: The Response object
@@ -30811,6 +30931,14 @@ paths:
       - Authentication
       description: logout the current user
       operationId: iam_ApiController.Logout
+      requestBody:
+        required: false
+        description: Optional. OIDC RP-initiated logout params are read via merged query+form (c.GetString); when posted form-encoded
+          they populate these fields.
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.LogoutForm'
       parameters:
       - in: query
         name: id_token_hint
@@ -30840,6 +30968,12 @@ paths:
       tags:
       - Users
       operationId: iam_ApiController.ResetEmailOrPhone
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.ResetContactForm'
       responses:
         '200':
           description: The Response object
@@ -30921,6 +31055,12 @@ paths:
       tags:
       - MFA
       operationId: iam_ApiController.SendVerificationCode
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.SendVerificationCodeForm'
       responses:
         '200':
           description: The Response object
@@ -30934,6 +31074,14 @@ paths:
       tags:
       - MFA
       operationId: iam_ApiController.VerifyCode
+      requestBody:
+        required: true
+        description: Handler binds form.AuthForm; this endpoint consumes organization, username, name, code, countryCode.
+          Extra AuthForm fields are accepted but ignored.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.VerifyCodeForm'
       responses:
         '200':
           description: The Response object
@@ -31064,6 +31212,12 @@ paths:
       tags:
       - MFA
       operationId: iam_ApiController.VerifyCaptcha
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.VerifyCaptchaForm'
       responses:
         '200':
           description: The Response object
@@ -32057,6 +32211,15 @@ paths:
       - Users
       description: sync ldap users
       operationId: iam_ApiController.SyncLdapUsers
+      requestBody:
+        required: true
+        description: The LDAP users to sync (JSON array; may be empty). Query id (<owner>/<ldapId>) selects the server.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/iam_object.LdapUser'
       parameters:
       - in: query
         name: id
@@ -32312,6 +32475,12 @@ paths:
       - MFA
       description: ': Set specific Mfa Preferred'
       operationId: iam_ApiController.SetPreferredMfa
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.SetPreferredMfaForm'
       responses:
         '200':
           description: The Response object
@@ -32347,6 +32516,12 @@ paths:
       - MFA
       description: enable totp
       operationId: iam_ApiController.MfaSetupEnable
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.MfaSetupEnableForm'
       responses:
         '200':
           description: The Response object
@@ -32361,6 +32536,12 @@ paths:
       - MFA
       description: setup MFA
       operationId: iam_ApiController.MfaSetupInitiate
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.MfaSetupInitiateForm'
       responses:
         '200':
           description: The Response object
@@ -32375,6 +32556,12 @@ paths:
       - MFA
       description: setup verify totp
       operationId: iam_ApiController.MfaSetupVerify
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.MfaSetupVerifyForm'
       responses:
         '200':
           description: The Response object
@@ -35120,6 +35307,12 @@ paths:
       tags:
       - Authentication
       operationId: iam_ApiController.Unlink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.LinkForm'
       responses:
         '200':
           description: The Response object
@@ -35445,6 +35638,14 @@ paths:
       tags:
       - System
       operationId: iam_ApiController.HandleOfficialAccountEvent
+      requestBody:
+        required: true
+        description: WeChat official-account event callback (XML). GET pre-verify (echostr) is a separate path; POST delivers
+          the event XML. Query signature/timestamp/nonce are also required for signature verification.
+        content:
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/iam_controllers.WechatEvent'
       responses:
         '200':
           description: The Response object
@@ -42427,6 +42628,13 @@ paths:
       - File API
       description: Add a file to a knowledge store
       operationId: nexus_addFile
+      requestBody:
+        required: true
+        description: The file object to register (handler binds the File object; owner and name identify it).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/nexus_File'
       parameters:
       - in: query
         name: store
@@ -42965,6 +43173,13 @@ paths:
       - Connection API
       description: Delete a connection
       operationId: nexus_deleteConnection
+      requestBody:
+        required: true
+        description: The connection to delete (handler binds the Connection object; owner and name identify it).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/nexus_Connection'
       parameters:
       - in: query
         name: id
@@ -43007,6 +43222,13 @@ paths:
       - File API
       description: Delete a file
       operationId: nexus_deleteFile
+      requestBody:
+        required: true
+        description: The file to delete (handler binds the File object; owner and name identify it).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/nexus_File'
       parameters:
       - in: query
         name: store
@@ -49136,6 +49358,14 @@ paths:
       - deployment
       summary: Webhook to trigger compose deployment
       security: []
+      requestBody:
+        required: false
+        description: Git-provider webhook payload. Parsed untyped and dispatched by provider header; invalid JSON falls back
+          to an empty object.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/platform_GitProviderWebhookPayload'
       parameters:
       - name: refreshToken
         in: path
@@ -49169,6 +49399,14 @@ paths:
       - deployment
       summary: Webhook to trigger application deployment
       security: []
+      requestBody:
+        required: false
+        description: Git-provider (or Docker-registry) webhook payload. Parsed untyped and dispatched by provider header;
+          invalid JSON falls back to an empty object.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/platform_GitProviderWebhookPayload'
       parameters:
       - name: refreshToken
         in: path
@@ -50494,6 +50732,20 @@ paths:
       tags:
       - settings
       summary: Full Docker cleanup (admin)
+      requestBody:
+        required: false
+        description: tRPC input (apiServerSchema); the entire input is optional.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  properties:
+                    serverId:
+                      type: string
+                      description: Optional target server; omitted cleans the local host.
       responses:
         '200':
           description: Cleanup done
@@ -50620,6 +50872,23 @@ paths:
       tags:
       - ssh-key
       summary: Generate a new SSH key pair
+      requestBody:
+        required: true
+        description: tRPC input (apiGenerateSSHKey).
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                json:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                      - rsa
+                      - ed25519
+                      description: Key algorithm (optional).
       responses:
         '200':
           description: Key pair
@@ -57531,6 +57800,12 @@ paths:
       - AI
       summary: Batch headline classification (per-user IAM token)
       operationId: world_world_classify_batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/world_WorldClassifyBatchRequest'
       responses:
         '200':
           description: OK
@@ -57757,6 +58032,12 @@ paths:
       - AI
       summary: AI country intelligence brief (per-user IAM token)
       operationId: world_world_country_intel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/world_WorldCountryIntelRequest'
       responses:
         '200':
           description: OK
@@ -57965,6 +58246,12 @@ paths:
       summary: "World-brief summary via Hanzo inference (forwards the caller IAM token \u2192 org/project/billing; anon \u2192\
         \ skipped)"
       operationId: world_world_groq_summarize
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/world_WorldSummarizeRequest'
       responses:
         '200':
           description: OK
@@ -58252,6 +58539,12 @@ paths:
       - AI
       summary: Alt summary path via Hanzo inference (per-user IAM token)
       operationId: world_world_openrouter_summarize
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/world_WorldSummarizeRequest'
       responses:
         '200':
           description: OK
@@ -61945,6 +62238,22 @@ components:
         updated:
           type: string
           format: date-time
+    auto_RetryFlowRequest:
+      type: object
+      description: Retry strategy for a failed flow run (RetryFlowRequestBody).
+      properties:
+        strategy:
+          type: string
+          enum:
+          - ON_LATEST_VERSION
+          - FROM_FAILED_STEP
+          description: Retry strategy.
+        projectId:
+          type: string
+          description: The project id (ApId).
+      required:
+      - strategy
+      - projectId
     auto_SeekPage:
       type: object
       properties:
@@ -63092,6 +63401,19 @@ components:
           type: string
         value:
           type: string
+    chat_ChatAbortRequest:
+      type: object
+      description: Abort an in-flight assistant run. Both fields are dereferenced unconditionally by the abort handler (abortRun.js).
+      properties:
+        abortKey:
+          type: string
+          description: The run abort key (format "<thread>:<run>"); split by the handler.
+        endpoint:
+          type: string
+          description: The endpoint whose run is being aborted (routes control flow via isAssistantsEndpoint).
+      required:
+      - abortKey
+      - endpoint
     chat_ChatCompletion:
       type: object
       properties:
@@ -63295,6 +63617,38 @@ components:
           type: string
         provider:
           type: string
+    chat_OAuthAppleCallbackForm:
+      type: object
+      description: Apple Sign In form_post callback body. Consumed by the passport-apple strategy middleware (not an in-repo
+        struct); field set is the passport-apple / Apple OIDC standard.
+      properties:
+        code:
+          type: string
+          description: Apple authorization code.
+        id_token:
+          type: string
+          description: Apple-issued OIDC ID token (JWT).
+        user:
+          type: string
+          description: JSON-encoded user object, present only on first authorization.
+        state:
+          type: string
+          description: Opaque CSRF/state value round-tripped from the auth request.
+      required:
+      - code
+    chat_OAuthSamlCallbackForm:
+      type: object
+      description: SAML 2.0 HTTP-POST binding assertion consumer body. Consumed by the @node-saml/passport-saml strategy middleware
+        (not an in-repo struct); field set is the SAML POST-binding standard.
+      properties:
+        SAMLResponse:
+          type: string
+          description: Base64-encoded SAML response assertion.
+        RelayState:
+          type: string
+          description: Opaque relay state round-tripped from the auth request.
+      required:
+      - SAMLResponse
     chat_Preset:
       type: object
       properties:
@@ -65349,6 +65703,19 @@ components:
         metadata:
           type: object
           additionalProperties: true
+    commerce_CommerceEnableAccountRequest:
+      type: object
+      description: Two-stage account-enable payload (twoStageEnableReq). Read only when the org enables two-stage signup.
+        All fields optional (password applied only when non-empty). Embeds the user object, so additional user fields are
+        accepted.
+      properties:
+        password:
+          type: string
+          description: New account password; applied only when non-empty.
+        passwordConfirm:
+          type: string
+          description: Password confirmation.
+      additionalProperties: true
     commerce_Coupon:
       type: object
       properties:
@@ -69000,6 +69367,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/exec_ExecFile'
+    flow_AcceptUserInvitationRequest:
+      type: object
+      properties:
+        invitationToken:
+          type: string
+          description: The invitation token; the invitation is resolved from it.
+      required:
+      - invitationToken
     flow_AppConnection:
       type: object
       properties:
@@ -69227,6 +69602,64 @@ components:
         updated:
           type: string
           format: date-time
+    flow_PushEverythingGitRepoRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - PUSH_EVERYTHING
+        commitMessage:
+          type: string
+          minLength: 1
+      required:
+      - type
+      - commitMessage
+    flow_PushFlowsGitRepoRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - PUSH_FLOW
+          - DELETE_FLOW
+        commitMessage:
+          type: string
+          minLength: 1
+        externalFlowIds:
+          type: array
+          items:
+            type: string
+      required:
+      - type
+      - commitMessage
+      - externalFlowIds
+    flow_PushGitRepoRequest:
+      description: Push flows, tables, or everything to the connected git repo. Discriminated by the type field (PushGitRepoRequest
+        is a union of three request shapes).
+      oneOf:
+      - $ref: '#/components/schemas/flow_PushFlowsGitRepoRequest'
+      - $ref: '#/components/schemas/flow_PushTablesGitRepoRequest'
+      - $ref: '#/components/schemas/flow_PushEverythingGitRepoRequest'
+    flow_PushTablesGitRepoRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - PUSH_TABLE
+          - DELETE_TABLE
+        commitMessage:
+          type: string
+          minLength: 1
+        externalTableIds:
+          type: array
+          items:
+            type: string
+      required:
+      - type
+      - commitMessage
+      - externalTableIds
     flow_Record:
       type: object
       properties:
@@ -70447,6 +70880,25 @@ components:
     iam_controllers.AuthForm:
       title: AuthForm
       type: object
+    iam_controllers.CheckPasswordRequest:
+      title: CheckPasswordRequest
+      type: object
+      description: Credentials to verify. Handler binds object.User; only these fields are consumed.
+      properties:
+        owner:
+          type: string
+        name:
+          type: string
+        password:
+          type: string
+        ldap:
+          type: string
+          description: Non-empty toggles LDAP-password verification mode
+      required:
+      - owner
+      - name
+      - password
+      additionalProperties: true
     iam_controllers.EmailForm:
       title: EmailForm
       type: object
@@ -70505,12 +70957,117 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/iam_object.LdapUser'
+    iam_controllers.LinkForm:
+      title: LinkForm
+      type: object
+      description: Unlink a federated provider from a user (controllers.LinkForm).
+      properties:
+        providerType:
+          type: string
+        user:
+          $ref: '#/components/schemas/iam_object.User'
+      required:
+      - providerType
+      - user
+    iam_controllers.LogoutForm:
+      title: LogoutForm
+      type: object
+      properties:
+        id_token_hint:
+          type: string
+        post_logout_redirect_uri:
+          type: string
+        state:
+          type: string
+    iam_controllers.MfaSetupEnableForm:
+      title: MfaSetupEnableForm
+      type: object
+      properties:
+        owner:
+          type: string
+        name:
+          type: string
+        mfaType:
+          type: string
+          description: totp | sms | email | radius | push
+        secret:
+          type: string
+          description: Required for totp; radius/push also require it
+        dest:
+          type: string
+          description: Destination for sms/email/radius/push
+        recoveryCodes:
+          type: string
+      required:
+      - owner
+      - name
+      - mfaType
+      - recoveryCodes
+    iam_controllers.MfaSetupInitiateForm:
+      title: MfaSetupInitiateForm
+      type: object
+      properties:
+        owner:
+          type: string
+        name:
+          type: string
+        mfaType:
+          type: string
+      required:
+      - owner
+      - name
+      - mfaType
+    iam_controllers.MfaSetupVerifyForm:
+      title: MfaSetupVerifyForm
+      type: object
+      properties:
+        mfaType:
+          type: string
+        passcode:
+          type: string
+        secret:
+          type: string
+          description: Required for totp and radius/push
+        dest:
+          type: string
+          description: Required for sms/email/radius/push
+        countryCode:
+          type: string
+          description: Required for sms
+      required:
+      - mfaType
+      - passcode
     iam_controllers.NotificationForm:
       title: NotificationForm
       type: object
       properties:
         content:
           type: string
+    iam_controllers.OAuthCallbackForm:
+      title: OAuthCallbackForm
+      type: object
+      properties:
+        code:
+          type: string
+          description: OAuth authorization code
+        state:
+          type: string
+          description: Opaque state round-tripped from the auth request
+    iam_controllers.ResetContactForm:
+      title: ResetContactForm
+      type: object
+      properties:
+        type:
+          type: string
+          description: '"email" or "phone"'
+        dest:
+          type: string
+        code:
+          type: string
+      required:
+      - type
+      - dest
+      - code
     iam_controllers.Response:
       title: Response
       type: object
@@ -70535,6 +71092,51 @@ components:
           type: string
         sub:
           type: string
+    iam_controllers.SendVerificationCodeForm:
+      title: SendVerificationCodeForm
+      type: object
+      description: form.VerificationForm as consumed by SendVerificationCode.
+      properties:
+        dest:
+          type: string
+        type:
+          type: string
+        countryCode:
+          type: string
+        applicationId:
+          type: string
+          description: Must be of the form <owner>/<name>
+        method:
+          type: string
+        checkUser:
+          type: string
+        captchaType:
+          type: string
+        clientSecret:
+          type: string
+          description: Required when captchaType != none
+        captchaToken:
+          type: string
+          description: Required when captchaType != none
+      required:
+      - type
+      - dest
+      - captchaType
+      - applicationId
+    iam_controllers.SetPreferredMfaForm:
+      title: SetPreferredMfaForm
+      type: object
+      properties:
+        mfaType:
+          type: string
+        owner:
+          type: string
+        name:
+          type: string
+      required:
+      - owner
+      - name
+      - mfaType
     iam_controllers.SmsForm:
       title: SmsForm
       type: object
@@ -70547,6 +71149,116 @@ components:
           type: array
           items:
             type: string
+    iam_controllers.TokenRequest:
+      title: TokenRequest
+      type: object
+      description: OAuth token request (controllers.TokenRequest). Optional supplement to the query params on /oauth/token
+        and /oauth/token/refresh; requiredness is grant-type dependent and enforced downstream, so no fields are marked required.
+      properties:
+        assertion:
+          type: string
+        client_id:
+          type: string
+        client_secret:
+          type: string
+        client_assertion:
+          type: string
+        client_assertion_type:
+          type: string
+        grant_type:
+          type: string
+        code:
+          type: string
+        code_verifier:
+          type: string
+        scope:
+          type: string
+        nonce:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+        tag:
+          type: string
+        avatar:
+          type: string
+        refresh_token:
+          type: string
+        subject_token:
+          type: string
+        subject_token_type:
+          type: string
+        audience:
+          type: string
+        resource:
+          type: string
+          description: RFC 8707 resource indicator
+        access_key:
+          type: string
+        access_secret:
+          type: string
+    iam_controllers.VerifyCaptchaForm:
+      title: VerifyCaptchaForm
+      type: object
+      description: form.VerificationForm fields consumed by VerifyCaptcha.
+      properties:
+        applicationId:
+          type: string
+        captchaType:
+          type: string
+        captchaToken:
+          type: string
+        clientSecret:
+          type: string
+      required:
+      - applicationId
+      - captchaType
+      - captchaToken
+      - clientSecret
+    iam_controllers.VerifyCodeForm:
+      title: VerifyCodeForm
+      type: object
+      description: form.AuthForm fields consumed by VerifyCode.
+      properties:
+        organization:
+          type: string
+        username:
+          type: string
+          description: Email, phone, or username; must resolve to a user
+        name:
+          type: string
+        code:
+          type: string
+        countryCode:
+          type: string
+          description: E.164 country code for phone
+      required:
+      - username
+      - code
+      additionalProperties: true
+    iam_controllers.WechatEvent:
+      title: WechatEvent
+      type: object
+      xml:
+        name: xml
+      description: WeChat official-account event callback body (XML root <xml>).
+      properties:
+        MsgType:
+          type: string
+        Event:
+          type: string
+          description: SCAN or SUBSCRIBE
+        EventKey:
+          type: string
+          description: Used as providerId
+        FromUserName:
+          type: string
+        Ticket:
+          type: string
+      required:
+      - Event
+      - Ticket
     iam_jose.JSONWebKey:
       title: JSONWebKey
       type: object
@@ -77836,6 +78548,31 @@ components:
           - compose
         serverId:
           type: string
+    platform_GitProviderWebhookPayload:
+      type: object
+      additionalProperties: true
+      description: Provider-specific webhook payload (GitHub/GitLab/Bitbucket/Gitea or Docker registry). Consumed untyped;
+        the fields below are the commonly-read ones.
+      properties:
+        ref:
+          type: string
+          description: GitHub/GitLab branch ref
+        after:
+          type: string
+          description: Gitea/soft-serve post-push commit sha
+        checkout_sha:
+          type: string
+          description: GitLab checkout sha
+        head_commit:
+          type: object
+          additionalProperties: true
+          description: GitHub head commit ({ id, message })
+        commits:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+          description: Commit list ({ id, message, modified })
     platform_MetricsConfig:
       type: object
       required:
@@ -82423,6 +83160,60 @@ components:
                 type: string
               img_src:
                 type: string
+    world_WorldClassifyBatchRequest:
+      type: object
+      description: Batch headline classification request.
+      properties:
+        titles:
+          type: array
+          items:
+            type: string
+          description: Titles to classify (non-empty).
+        variant:
+          type: string
+          description: Classification variant (only 'tech' is special-cased).
+      required:
+      - titles
+    world_WorldCountryIntelRequest:
+      type: object
+      description: AI country-intelligence brief request.
+      properties:
+        country:
+          type: string
+          description: Country name.
+        code:
+          type: string
+          description: Country code.
+        context:
+          type: object
+          additionalProperties: true
+          description: Free-form sensor/context object marshaled into the prompt.
+      required:
+      - country
+      - code
+    world_WorldSummarizeRequest:
+      type: object
+      description: World-brief summary request. Backs both groq-summarize and openrouter-summarize (same handler).
+      properties:
+        headlines:
+          type: array
+          items:
+            type: string
+          description: Headlines to summarize (non-empty).
+        mode:
+          type: string
+          description: 'Summary mode (default: brief).'
+        geoContext:
+          type: string
+          description: Optional geographic context hint.
+        variant:
+          type: string
+          description: 'Output variant (default: full).'
+        lang:
+          type: string
+          description: Optional target language.
+      required:
+      - headlines
     zt_EdgeNodeView:
       type: object
       description: One row per ZT edge-router.
