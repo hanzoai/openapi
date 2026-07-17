@@ -220,11 +220,11 @@ paths:
       operationId: addFile
       requestBody:
         required: true
-        description: The file object to register (handler binds the File object; owner and name identify it).
+        description: The file object to register. owner and name are required and identify the file.
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/File'
+              $ref: '#/components/schemas/FileInput'
       parameters:
       - in: query
         name: store
@@ -814,11 +814,11 @@ paths:
       operationId: deleteFile
       requestBody:
         required: true
-        description: The file to delete (handler binds the File object; owner and name identify it).
+        description: The file to delete. owner and name are required and identify the file.
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/File'
+              $ref: '#/components/schemas/FileInput'
       parameters:
       - in: query
         name: store
@@ -3780,6 +3780,26 @@ components:
     DeploymentStatus:
       title: DeploymentStatus
       type: object
+    FileInput:
+      title: FileInput
+      type: object
+      description: >-
+        Request body for add-file / delete-file, matching the File struct the handler
+        binds (ai/object/file.go). owner and name are the required identity; the rest
+        describe the stored blob.
+      properties:
+        owner: { type: string }
+        name: { type: string }
+        createdTime: { type: string }
+        filename: { type: string }
+        size: { type: integer, format: int64 }
+        store: { type: string }
+        storageProvider: { type: string }
+        url: { type: string }
+        tokenCount: { type: integer }
+        status: { type: string }
+        errorText: { type: string }
+      required: [owner, name]
     File:
       title: File
       type: object
