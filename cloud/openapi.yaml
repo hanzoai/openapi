@@ -187,11 +187,11 @@ paths:
       operationId: ApiController.AddFile
       requestBody:
         required: true
-        description: The file object to register (handler binds object.File; owner and name identify it).
+        description: The file object to register. owner and name are required and identify the file.
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/object.File'
+              $ref: '#/components/schemas/object.FileInput'
       parameters:
       - in: query
         name: store
@@ -763,11 +763,11 @@ paths:
       operationId: ApiController.DeleteFile
       requestBody:
         required: true
-        description: The file to delete (handler binds object.File; owner and name identify it).
+        description: The file to delete. owner and name are required and identify the file.
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/object.File'
+              $ref: '#/components/schemas/object.FileInput'
       parameters:
       - in: query
         name: store
@@ -4562,6 +4562,26 @@ components:
     object.DeploymentStatus:
       title: DeploymentStatus
       type: object
+    object.FileInput:
+      title: FileInput
+      type: object
+      description: >-
+        Request body for add-file / delete-file, matching the object.File struct the
+        handler binds (ai/object/file.go). owner and name are the required identity;
+        the rest describe the stored blob.
+      properties:
+        owner: { type: string }
+        name: { type: string }
+        createdTime: { type: string }
+        filename: { type: string }
+        size: { type: integer, format: int64 }
+        store: { type: string }
+        storageProvider: { type: string }
+        url: { type: string }
+        tokenCount: { type: integer }
+        status: { type: string }
+        errorText: { type: string }
+      required: [owner, name]
     object.File:
       title: File
       type: object
