@@ -1,0 +1,13 @@
+# Canonical CI config for hanzoai/openapi — read by the hanzoai/ci reusable
+# (.github/workflows/cicd.yml) and platform.hanzo.ai.
+#
+# Publishes the agent-skills catalog (/.well-known/agent-skills, skills.py
+# --no-services) as a versioned immutable image whose rootfs is /catalog.
+# hanzoai/cloud consumes it via `FROM ... AS skills` + `COPY --from=skills
+# /catalog/`, so it never re-runs skills.py inside a cloud release. hanzoai/ci
+# pushes to `repo:` (GHCR) and auto-mirrors to registry.hanzo.ai.
+images:
+  - name: agent-skills
+    context: .
+    dockerfile: Dockerfile.skills
+    repo: ghcr.io/hanzoai/agent-skills
