@@ -439,6 +439,11 @@ paths:
       tags: [AI]
       summary: "World-brief summary via Hanzo inference (forwards the caller IAM token → org/project/billing; anon → skipped)"
       operationId: world_groq_summarize
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorldSummarizeRequest' }
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
         '401': { description: Missing/invalid IAM token }
@@ -447,6 +452,11 @@ paths:
       tags: [AI]
       summary: "Alt summary path via Hanzo inference (per-user IAM token)"
       operationId: world_openrouter_summarize
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorldSummarizeRequest' }
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
         '401': { description: Missing/invalid IAM token }
@@ -455,6 +465,11 @@ paths:
       tags: [AI]
       summary: "Batch headline classification (per-user IAM token)"
       operationId: world_classify_batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorldClassifyBatchRequest' }
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
         '401': { description: Missing/invalid IAM token }
@@ -471,6 +486,11 @@ paths:
       tags: [AI]
       summary: "AI country intelligence brief (per-user IAM token)"
       operationId: world_country_intel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorldCountryIntelRequest' }
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object } } } }
         '401': { description: Missing/invalid IAM token }
@@ -626,3 +646,29 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: "Hanzo IAM (hanzo.id) OIDC access token. Admin Cloud routes require the owner claim to be an admin org."
+  schemas:
+    WorldSummarizeRequest:
+      type: object
+      description: World-brief summary request. Backs both groq-summarize and openrouter-summarize (same handler).
+      properties:
+        headlines: { type: array, items: { type: string }, description: Headlines to summarize (non-empty). }
+        mode: { type: string, description: "Summary mode (default: brief)." }
+        geoContext: { type: string, description: Optional geographic context hint. }
+        variant: { type: string, description: "Output variant (default: full)." }
+        lang: { type: string, description: Optional target language. }
+      required: [headlines]
+    WorldClassifyBatchRequest:
+      type: object
+      description: Batch headline classification request.
+      properties:
+        titles: { type: array, items: { type: string }, description: Titles to classify (non-empty). }
+        variant: { type: string, description: "Classification variant (only 'tech' is special-cased)." }
+      required: [titles]
+    WorldCountryIntelRequest:
+      type: object
+      description: AI country-intelligence brief request.
+      properties:
+        country: { type: string, description: Country name. }
+        code: { type: string, description: Country code. }
+        context: { type: object, additionalProperties: true, description: Free-form sensor/context object marshaled into the prompt. }
+      required: [country, code]
