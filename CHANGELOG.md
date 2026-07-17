@@ -2,6 +2,44 @@
 
 ## v1.0.0
 
+### request bodies — complete the write-op contract from real handlers
+
+Filled the missing `requestBody` shapes on write ops (POST/PUT/PATCH), each
+sourced from the real handler (`hanzoai/cloud/clients/*`, `iam`, `chat`,
+`commerce`, `world`, `auto`, `flow`→`auto`, `platform`, and the `hanzoai/ai`
+Beego controllers behind the `cloud`/`nexus` file/connection routes) — never
+guessed. Coverage across the 68 specs: **832 → 871 of 955** write ops now carry
+a `requestBody`.
+
+The 84 write ops still without a body fall in two source-verified buckets, not
+fabricated:
+
+- **Body-less by design (61):** path/query/session RPC actions that read no
+  body — admin suspend/reactivate/sweep; automations run/enable/disable (org is
+  the validated cred, "NEVER from the body"); commerce
+  capture/confirm/cancel/discard (captured amount is the stored order amount,
+  never client-supplied); the Neon/Harbor/Meilisearch/Qdrant-proxied
+  db/registry/search/vector actions; iam
+  device/impersonation-exit/sso-logout/identification-verify; and the
+  `cloud`/`nexus` query-param file/connection + signin/signout actions.
+- **No live handler (23) — flagged, not authored:** iam
+  user-keys/orders-cancel/invoice-payment/pay-order/place-order/refresh-engines
+  (Casdoor-era swagger; billing moved to commerce); kms token-renew,
+  token-auth-identity-tokens, webhook-test, secret-sync-trigger (absent from the
+  Go KMS); framework install/submit/cancel (repo not in tree); flow
+  solutions-apply, git-repos-pull (no such routes); bot skill undelete/stars
+  (cloud proxies verbatim, upstream not located); analytics
+  auth-logout/verify/sso + website-reset (Umami, no upstream in tree); paas
+  doks-upgrade-ha, container-deploy (served by platform tRPC, not cloud).
+
+Review notes: `world/classify-event` is declared POST but the handler is GET
+(query `title`) — left as a flagged method mismatch, no body added. The
+`cloud`/`nexus` `object.File`/`object.Connection` (and `File`/`Connection`)
+components referenced by the new file/connection bodies appear stale vs the
+current `hanzoai/ai` Go structs; regenerating those two specs from the ai Beego
+swagger is the durable re-sync. `hanzo.yaml` + `CAPABILITIES.md` regenerated via
+`merge.py`.
+
 ### 2026-07-11 — git: SSH transport, client-less push, ZAP note, sshUrl
 
 Extended `git/openapi.yaml` to match the new native-git surface in
