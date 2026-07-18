@@ -1507,6 +1507,166 @@ paths:
                     type: integer
         '401':
           $ref: '#/components/responses/admin_Unauthorized'
+  /v1/admin/promos:
+    get:
+      tags:
+      - Promotions
+      summary: List discount promos
+      operationId: admin_adminListPromos
+      description: The admin-set, limited-time plan discount windows (e.g. a 50%-off launch promo).
+      responses:
+        '200':
+          description: Promo rows
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  msg:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/admin_Promo'
+                  data2:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/admin_Unauthorized'
+    post:
+      tags:
+      - Promotions
+      summary: Create a discount promo
+      operationId: admin_adminCreatePromo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/admin_PromoCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  msg:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/admin_Promo'
+        '400':
+          description: "Invalid request \u2014 percentOff out of [0,100] or end <= start"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  msg:
+                    type: string
+        '401':
+          $ref: '#/components/responses/admin_Unauthorized'
+  /v1/admin/promos/{id}:
+    get:
+      tags:
+      - Promotions
+      summary: Get one discount promo
+      operationId: admin_adminGetPromo
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Promo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  msg:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/admin_Promo'
+        '401':
+          $ref: '#/components/responses/admin_Unauthorized'
+        '404':
+          description: Promo not found
+    patch:
+      tags:
+      - Promotions
+      summary: Update a discount promo
+      operationId: admin_adminUpdatePromo
+      description: "Partial update \u2014 only fields present in the body change."
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/admin_PromoUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  msg:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/admin_Promo'
+        '400':
+          description: Invalid request
+        '401':
+          $ref: '#/components/responses/admin_Unauthorized'
+        '404':
+          description: Promo not found
+    delete:
+      tags:
+      - Promotions
+      summary: Delete a discount promo
+      operationId: admin_adminDeletePromo
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  msg:
+                    type: string
+        '401':
+          $ref: '#/components/responses/admin_Unauthorized'
+        '404':
+          description: Promo not found
   /v1/admin/referrals:
     get:
       operationId: referrals_adminListReferrals
@@ -7193,6 +7353,172 @@ paths:
                 $ref: '#/components/schemas/billing_PaymentMethods'
         '401':
           $ref: '#/components/responses/billing_Unauthorized'
+  /v1/billing/spend-alerts:
+    get:
+      tags:
+      - Spend Caps
+      summary: List spend alerts / caps
+      operationId: billing_billingListSpendAlerts
+      description: "The caller org's spend-alert rows (soft budgets, hard caps, rate limits) with DERIVED period spend and\
+        \ over/warn flags for the current UTC month. Org-scoped from the validated token \u2014 never another tenant's rows."
+      responses:
+        '200':
+          description: Spend-alert rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/billing_SpendAlert'
+        '401':
+          $ref: '#/components/responses/billing_Unauthorized'
+    post:
+      tags:
+      - Spend Caps
+      summary: Create a spend alert / cap
+      operationId: billing_billingCreateSpendAlert
+      description: 'Create a soft alert or, with `enforce: true`, a HARD per-scope spend cap. The
+
+        owning org is pinned server-side from the validated token (never a body/query
+
+        field). At least one of `threshold` (> 0) or `rateLimitRpm` (> 0) is required.
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/billing_SpendAlertCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/billing_SpendAlert'
+        '400':
+          description: "Invalid request \u2014 no limit set, negative threshold, softPct out of range, or org row limit (200)\
+            \ reached"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  msg:
+                    type: string
+        '401':
+          $ref: '#/components/responses/billing_Unauthorized'
+  /v1/billing/spend-alerts/authorize:
+    get:
+      tags:
+      - Spend Caps
+      summary: Per-request spend-cap verdict
+      operationId: billing_billingAuthorizeSpendCap
+      description: "The per-request cap verdict the cloud metering gate consumes (service-to-service).\nEvaluates EVERY covering\
+        \ spend-alert row for the (project, service) scope over the\ncurrent UTC month (most-restrictive-wins) and denies\
+        \ with reason `spend_cap` when a\nhard-enforced cap would be exceeded; fails CLOSED if a hard row's spend is unknown.\n\
+        Balance is NOT checked here \u2014 the DISTINCT `insufficient_balance` reason is layered\nby the cloud money-path\
+        \ composite, not this endpoint.\n"
+      parameters:
+      - name: user
+        in: query
+        schema:
+          type: string
+        description: Org billing key (equals the org slug).
+      - name: project
+        in: query
+        schema:
+          type: string
+        description: Scope project axis; "" or "default" = the org-wide default scope.
+      - name: service
+        in: query
+        schema:
+          type: string
+        description: Scope service axis (server-derived route/provider).
+      - name: amount
+        in: query
+        schema:
+          type: integer
+          format: int64
+        description: Proposed charge in USD cents to test against the cap (0 = a pure "already over?" check).
+      - name: pv
+        in: query
+        schema:
+          type: string
+          enum:
+          - '0'
+          - '1'
+        description: 1 = the project axis is bound to a VALIDATED claim (hardens project-scoped caps); otherwise a project-scoped
+          cap degrades to a soft warn (anti-spoof).
+      - name: currency
+        in: query
+        schema:
+          type: string
+          default: usd
+      responses:
+        '200':
+          description: Cap verdict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/billing_CapVerdict'
+        '401':
+          $ref: '#/components/responses/billing_Unauthorized'
+  /v1/billing/spend-alerts/{id}:
+    patch:
+      tags:
+      - Spend Caps
+      summary: Update a spend alert / cap
+      operationId: billing_billingUpdateSpendAlert
+      description: "Partial update of a spend-alert row the caller's org owns \u2014 only fields present in the body change;\
+        \ the rest are preserved. A foreign id 404s (tenant-isolated)."
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/billing_SpendAlertUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/billing_SpendAlert'
+        '400':
+          description: Invalid request (negative threshold / softPct out of range)
+        '401':
+          $ref: '#/components/responses/billing_Unauthorized'
+        '404':
+          description: Spend alert not found
+    delete:
+      tags:
+      - Spend Caps
+      summary: Delete a spend alert / cap
+      operationId: billing_billingDeleteSpendAlert
+      description: Delete a spend-alert row the caller's org owns. A foreign id 404s.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/billing_Unauthorized'
+        '404':
+          description: Spend alert not found
   /v1/billing/usage:
     get:
       tags:
@@ -29517,10 +29843,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/git_PushResult'
         '400':
-          description: Invalid branch
-          path: null
-          files: null
-          or encoding: null
+          description: Invalid branch, path, files, or encoding
         '401':
           $ref: '#/components/responses/git_Unauthorized'
   /v1/git/usage:
@@ -58670,6 +58993,99 @@ components:
           type: boolean
         updated:
           type: string
+    admin_Promo:
+      type: object
+      description: 'An admin-set, limited-time discount window applied to plan pricing (e.g. a
+
+        50%-off launch promo), configured at admin.hanzo.ai via /v1/admin/promos.
+
+        The discount is LIVE only when `active` is true AND now is within
+
+        [start, end). `plans` scopes it to specific plan ids (empty = all plans).
+
+        '
+      properties:
+        id:
+          type: string
+          description: Server-assigned id.
+        percentOff:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+          description: Percent off list price (50 = 50% off).
+        start:
+          type: string
+          format: date-time
+          description: Window start, inclusive (UTC).
+        end:
+          type: string
+          format: date-time
+          description: Window end, exclusive (UTC).
+        plans:
+          type: array
+          items:
+            type: string
+          description: Plan ids the promo applies to; empty = all plans.
+        active:
+          type: boolean
+          description: Admin on/off toggle; the discount applies only when this is true and now is within [start, end).
+      required:
+      - id
+      - percentOff
+      - start
+      - end
+      - active
+    admin_PromoCreate:
+      type: object
+      description: Create a discount promo. `id` is server-assigned and ignored on input.
+      properties:
+        percentOff:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        plans:
+          type: array
+          items:
+            type: string
+          description: Plan ids; empty = all plans.
+        active:
+          type: boolean
+          default: true
+      required:
+      - percentOff
+      - start
+      - end
+      additionalProperties: false
+    admin_PromoUpdate:
+      type: object
+      description: "Partial update \u2014 only the fields present are changed."
+      properties:
+        percentOff:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        plans:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+      additionalProperties: false
     admin_RawList:
       type: object
       description: "Verbatim IAM list envelope \u2014 `data` carries the raw upstream rows."
@@ -61598,6 +62014,48 @@ components:
           type: integer
           format: int64
       additionalProperties: true
+    billing_CapReason:
+      type: string
+      description: "The cap/funds verdict reason. \"\" = allowed (funded and under every covering\ncap). `spend_cap` = funded\
+        \ but a HARD-enforced per-scope cap would be exceeded\n(the tenant's OWN policy ceiling). `insufficient_balance` =\
+        \ out of prepaid\nfunds. `spend_cap` and `insufficient_balance` are DISTINCT \u2014 one is policy,\none is funds.\
+        \ The `/spend-alerts/authorize` endpoint (a pure cap check) emits\nonly \"\" or `spend_cap`; the cloud money-path\
+        \ composite (metering) adds\n`insufficient_balance`.\n"
+      enum:
+      - ''
+      - spend_cap
+      - insufficient_balance
+    billing_CapVerdict:
+      type: object
+      description: 'The per-request spend-cap verdict for a (project, service) scope, evaluated
+
+        over the org''s spend-alert rows (most-restrictive-wins). Fails CLOSED: if a
+
+        hard-enforceable row''s spend cannot be computed the verdict denies.
+
+        '
+      properties:
+        allow:
+          type: boolean
+          description: Whether the request is permitted.
+        reason:
+          $ref: '#/components/schemas/billing_CapReason'
+        capCents:
+          type: integer
+          format: int64
+          description: The tightest violated cap's ceiling in USD cents (0 when allowed).
+        spentCents:
+          type: integer
+          format: int64
+          description: Period spend for the scope in USD cents at decision time.
+        warnPct:
+          type: integer
+          description: Utilization percent of the most-utilized covering cap when at/over its soft threshold (0 otherwise,
+            and 0 on a deny).
+      required:
+      - allow
+      - reason
+      additionalProperties: true
     billing_GpuChargeRequest:
       type: object
       properties:
@@ -61647,6 +62105,146 @@ components:
           items:
             $ref: '#/components/schemas/billing_PaymentMethod'
       additionalProperties: true
+    billing_SpendAlert:
+      type: object
+      description: "A tenant-configured budget on cumulative spend for a SCOPE (project,\nservice). It is a soft alert by\
+        \ default; with `enforce: true` it is a HARD\nper-scope spend cap \u2014 once `period` spend for the scope would exceed\n\
+        `threshold`, the metering gate denies with reason `spend_cap` (402). Period\nspend is DERIVED on demand from the append-only\
+        \ usage ledger for the current\nUTC month; the row carries NO running total, so a cap change takes effect on\nthe\
+        \ next request and can never drift from the debited spend. Scope axes use\n\"\" as a wildcard: (\"\",\"\") is the\
+        \ org-wide default row, (P,\"\") every service\nin project P, (\"\",S) service S in any project.\n"
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+          description: "The org the cap is scoped to \u2014 server-pinned to the validated X-Org-Id, never a client field."
+        title:
+          type: string
+        threshold:
+          type: integer
+          format: int64
+          description: The scope's spend cap / alert ceiling in USD cents (Money). 0 = no cap (a rate-limit-only row).
+        currency:
+          type: string
+          default: usd
+        project:
+          type: string
+          description: Scope project axis; "" = wildcard (the org-wide default row).
+        service:
+          type: string
+          description: Scope service axis (server-derived route/provider); "" = wildcard (all services).
+        enforce:
+          type: boolean
+          description: false (default) = SOFT (warn only, never blocks); true = HARD cap (402 on breach).
+        softPct:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Soft-warn threshold as a percent of `threshold` (unset/0 defaults to 80).
+        rateLimitRpm:
+          type: integer
+          description: Requests-per-minute ceiling for the scope (429 when exceeded). 0 = none.
+        period:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+          description: The UTC calendar month the cap is measured over, e.g. "2026-07" (Schedule window; resets on the 1st).
+        resetsAt:
+          type: string
+          format: date-time
+          description: "Midnight UTC on the first of the next month \u2014 when period spend resets to 0."
+        periodSpentCents:
+          type: integer
+          format: int64
+          description: DERIVED spend for the scope in `period`, in USD cents, summed from the deduped usage ledger. Absent
+            if the aggregation errored.
+        over:
+          type: boolean
+          description: "DERIVED \u2014 true iff a further billable request would breach the cap (the SAME boundary `enforce`\
+            \ uses, so it never drifts from the verdict)."
+        warn:
+          type: boolean
+          description: "DERIVED \u2014 true iff period spend has reached the soft-warn threshold (`softPct` of `threshold`)."
+        triggeredAt:
+          type: string
+          description: ISO timestamp the alert last fired; empty if never.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - userId
+      - threshold
+      - currency
+      - project
+      - service
+      - enforce
+      - softPct
+      - rateLimitRpm
+      additionalProperties: true
+    billing_SpendAlertCreate:
+      type: object
+      description: "Create a spend alert / cap. The owning org is pinned server-side from the\nvalidated token \u2014 a body\
+        \ `userId` is ignored. At least one of `threshold`\n(> 0) or `rateLimitRpm` (> 0) must be set.\n"
+      properties:
+        title:
+          type: string
+        threshold:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Spend cap ceiling in USD cents.
+        currency:
+          type: string
+          default: usd
+        project:
+          type: string
+          description: Scope project axis; "" or "default" = org-wide.
+        service:
+          type: string
+          description: Scope service axis; "" = all services.
+        enforce:
+          type: boolean
+          default: false
+          description: true = HARD cap; false = soft warn.
+        softPct:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Soft-warn percent; 0 defaults to 80.
+        rateLimitRpm:
+          type: integer
+          minimum: 0
+          description: Per-minute request ceiling; 0 = none.
+      additionalProperties: false
+    billing_SpendAlertUpdate:
+      type: object
+      description: "Partial update \u2014 only the fields present are changed; absent fields are preserved (a PATCH that flips\
+        \ `enforce` must not wipe `threshold`)."
+      properties:
+        title:
+          type: string
+        threshold:
+          type: integer
+          format: int64
+          minimum: 0
+        project:
+          type: string
+        service:
+          type: string
+        enforce:
+          type: boolean
+        softPct:
+          type: integer
+          minimum: 0
+          maximum: 100
+        rateLimitRpm:
+          type: integer
+          minimum: 0
+      additionalProperties: false
     billing_UsageLedger:
       type: object
       properties:

@@ -38,6 +38,8 @@ tags:
     description: Fleet compute and o11y aggregates
   - name: Audit
     description: Tamper-evident audit trail
+  - name: Promotions
+    description: Admin-set, limited-time plan discount windows
 security:
   - bearerAuth: []
 paths:
@@ -279,6 +281,68 @@ paths:
       responses:
         '200': { description: Analytics data, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/AnalyticsData' } } } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/promos:
+    get:
+      tags: [Promotions]
+      summary: List discount promos
+      operationId: adminListPromos
+      description: The admin-set, limited-time plan discount windows (e.g. a 50%-off launch promo).
+      responses:
+        '200': { description: Promo rows, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { type: array, items: { $ref: '#/components/schemas/Promo' } }, data2: { type: integer } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Promotions]
+      summary: Create a discount promo
+      operationId: adminCreatePromo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PromoCreate' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/Promo' } } } } } }
+        '400': { description: 'Invalid request — percentOff out of [0,100] or end <= start', content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v1/admin/promos/{id}:
+    get:
+      tags: [Promotions]
+      summary: Get one discount promo
+      operationId: adminGetPromo
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Promo, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/Promo' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Promo not found }
+    patch:
+      tags: [Promotions]
+      summary: Update a discount promo
+      operationId: adminUpdatePromo
+      description: Partial update — only fields present in the body change.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PromoUpdate' }
+      responses:
+        '200': { description: Updated, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/Promo' } } } } } }
+        '400': { description: Invalid request }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Promo not found }
+    delete:
+      tags: [Promotions]
+      summary: Delete a discount promo
+      operationId: adminDeletePromo
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Deleted, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Promo not found }
 
 components:
   securitySchemes:
@@ -716,3 +780,39 @@ components:
         count: { type: integer, format: int64 }
         head: { type: string }
         brokenAt: { type: integer, format: int64 }
+    Promo:
+      type: object
+      description: |
+        An admin-set, limited-time discount window applied to plan pricing (e.g. a
+        50%-off launch promo), configured at admin.hanzo.ai via /v1/admin/promos.
+        The discount is LIVE only when `active` is true AND now is within
+        [start, end). `plans` scopes it to specific plan ids (empty = all plans).
+      properties:
+        id: { type: string, description: Server-assigned id. }
+        percentOff: { type: number, format: double, minimum: 0, maximum: 100, description: 'Percent off list price (50 = 50% off).' }
+        start: { type: string, format: date-time, description: 'Window start, inclusive (UTC).' }
+        end: { type: string, format: date-time, description: 'Window end, exclusive (UTC).' }
+        plans: { type: array, items: { type: string }, description: Plan ids the promo applies to; empty = all plans. }
+        active: { type: boolean, description: 'Admin on/off toggle; the discount applies only when this is true and now is within [start, end).' }
+      required: [id, percentOff, start, end, active]
+    PromoCreate:
+      type: object
+      description: Create a discount promo. `id` is server-assigned and ignored on input.
+      properties:
+        percentOff: { type: number, format: double, minimum: 0, maximum: 100 }
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+        plans: { type: array, items: { type: string }, description: Plan ids; empty = all plans. }
+        active: { type: boolean, default: true }
+      required: [percentOff, start, end]
+      additionalProperties: false
+    PromoUpdate:
+      type: object
+      description: Partial update — only the fields present are changed.
+      properties:
+        percentOff: { type: number, format: double, minimum: 0, maximum: 100 }
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+        plans: { type: array, items: { type: string } }
+        active: { type: boolean }
+      additionalProperties: false
