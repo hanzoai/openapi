@@ -2,6 +2,35 @@
 
 ## v1.0.0
 
+### Codegen-clean: dart-dio + typescript-axios crashes fixed; SDK regen unblocked
+
+The `Regenerate SDKs` workflow failed on every merge for a week. Root causes,
+all fixed here (openapi-generator 7.14.0, pinned):
+
+- `notify/openapi.yaml` — the `sync` query param on `/v1/notify/send`,
+  `/v1/notify/send/sms`, `/v1/notify/send/email` declared `type: string` but
+  `enum: [true]` (a YAML boolean). typescript-axios crashed with
+  `ClassCastException: Boolean cannot be cast to String` on `notify_notifySend`.
+  Enum value is now the string `'true'` (matches the declared type and the
+  `?sync=true` wire form).
+- `vector/openapi.yaml` — the `id` path param on
+  `/v1/vector/collections/{collection_name}/points/{id}` used
+  `oneOf: [integer, string]`. dart-dio crashed with
+  `ClassCastException: JsonSchema cannot be cast to ComposedSchema` (composed
+  schemas are not supported on parameters). Path params serialize as strings on
+  the wire, so it is now `type: string` (pass `"42"` or a UUID) — faithful and
+  gives cleaner SDK signatures than an `any`/`object` id.
+- `.github/workflows/regenerate-sdks.yml` — the `dispatch` job authenticated
+  with `SDK_DISPATCH_TOKEN`, which was never set (resolved empty → 401), so
+  python/go/js were never regenerated; repointed to the canonical org `GH_PAT`
+  (visibility: all, repo scope) and set `fail-fast: false`. The cpp/dart job no
+  longer uploads to GitHub artifact storage (that quota was exhausted and is a
+  dependency we refuse per the own-CI directive) — generation itself is the
+  codegen gate.
+
+All five generators (cpp-restsdk, dart-dio, go, python, typescript-axios) now
+generate clean from `hanzo.yaml` with zero exceptions.
+
 ### Usage-cap + promo canonical types (HIP-0127 primitive algebra)
 
 Curry-precise, code-faithful types for the spend-cap / promo money surface,
