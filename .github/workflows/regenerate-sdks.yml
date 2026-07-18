@@ -66,12 +66,15 @@ jobs:
     steps:
       - name: Fire spec-update to hanzoai/${{ matrix.repo }}
         # Each SDK repo's generate.yml regenerates from this hanzo.yaml with
-        # openapi-generator and opens a PR. No Stainless, no API key. GH_PAT is
-        # the org's canonical cross-repo automation PAT (repo scope on the SDK
-        # repos); the default GITHUB_TOKEN cannot dispatch to a sibling repo.
+        # openapi-generator and opens a PR. No Stainless, no API key.
+        # SDK_DISPATCH_TOKEN is a repo-level secret on hanzoai/openapi holding a
+        # PAT with `repo` scope on the three SDK repos (the org-level GH_PAT does
+        # not propagate to this self-hosted runner). The default GITHUB_TOKEN
+        # cannot dispatch to a sibling repo. Rotate to a KMS-synced long-lived
+        # PAT; repo-level so it is unambiguously injected here.
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.SDK_DISPATCH_TOKEN }}
           repository: hanzoai/${{ matrix.repo }}
           event-type: spec-update
 
