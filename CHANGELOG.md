@@ -2,6 +2,25 @@
 
 ## v1.0.0
 
+### Usage-cap + promo canonical types (HIP-0127 primitive algebra)
+
+Curry-precise, code-faithful types for the spend-cap / promo money surface,
+aligned to the primitive algebra (Meter = usage measured, Policy = cap-deny
+verdict, Money = cents, Schedule = period window).
+
+- `billing/openapi.yaml` — `/v1/billing/spend-alerts` self-service CRUD
+  (`get` list, `post`, `patch {id}`, `delete {id}`) plus
+  `/v1/billing/spend-alerts/authorize` (the per-request cap verdict the cloud
+  metering gate consumes). Schemas `SpendAlert` (scope + `threshold` cap cents
+  + `enforce` + derived `period`/`resetsAt`/`periodSpentCents`/`over`/`warn`),
+  `SpendAlertCreate`, `SpendAlertUpdate`, `CapVerdict`, and `CapReason` — where
+  `spend_cap` and `insufficient_balance` are DISTINCT reasons. Shapes match
+  commerce `api/billing/spend_alerts.go` + `spend_cap.go` and the cloud
+  `clients/metering` verdict.
+- `admin/openapi.yaml` — `/v1/admin/promos` admin-set discount CRUD with the
+  `Promo` (`percentOff`, `start`, `end`, `plans`, `active`), `PromoCreate`,
+  and `PromoUpdate` schemas.
+
 ### 2026-07-11 — git: SSH transport, client-less push, ZAP note, sshUrl
 
 Extended `git/openapi.yaml` to match the new native-git surface in
