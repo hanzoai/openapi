@@ -60,17 +60,18 @@ jobs:
     needs: validate
     runs-on: hanzo-build-linux-amd64
     strategy:
+      fail-fast: false
       matrix:
         repo: [python-sdk, go-sdk, js-sdk]
     steps:
       - name: Fire spec-update to hanzoai/${{ matrix.repo }}
         # Each SDK repo's generate.yml regenerates from this hanzo.yaml with
-        # openapi-generator and opens a PR. No Stainless, no API key.
-        # SDK_DISPATCH_TOKEN: a PAT (or GitHub App token) with `repo` scope on
-        # the three SDK repos, synced from KMS.
+        # openapi-generator and opens a PR. No Stainless, no API key. GH_PAT is
+        # the org's canonical cross-repo automation PAT (repo scope on the SDK
+        # repos); the default GITHUB_TOKEN cannot dispatch to a sibling repo.
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.SDK_DISPATCH_TOKEN }}
+          token: ${{ secrets.GH_PAT }}
           repository: hanzoai/${{ matrix.repo }}
           event-type: spec-update
 
@@ -82,13 +83,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { lang: cpp,  generator: cpp-restsdk, repo: hanzoai/cpp-sdk,  props: 'packageName=hanzo' }
-          - { lang: dart, generator: dart-dio,    repo: hanzoai/dart-sdk, props: 'pubName=hanzo' }
+          - { lang: cpp,  generator: cpp-restsdk, props: 'packageName=hanzo' }
+          - { lang: dart, generator: dart-dio,    props: 'pubName=hanzo' }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21' }
-      - name: Generate ${{ matrix.lang }} client from hanzo.yaml
+      - name: Codegen gate — ${{ matrix.lang }} generates clean from hanzo.yaml
+        # cpp/dart have no PyPI/npm/pkg.go.dev target; generation IS the gate —
+        # it proves the merged spec is codegen-clean for these generators. We do
+        # NOT push to GitHub artifact storage: that quota is a hard dependency we
+        # refuse (own-CI directive — escape Actions-artifact storage limits). The
+        # generator exit code (and a non-empty output) is the gate.
         run: |
           curl -sSL -o /tmp/openapi-generator-cli.jar \
             https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/7.14.0/openapi-generator-cli-7.14.0.jar
@@ -96,10 +102,6 @@ jobs:
             -i hanzo.yaml -g ${{ matrix.generator }} \
             --additional-properties=${{ matrix.props }} \
             -o out/${{ matrix.lang }}
-          echo "generated $(find out/${{ matrix.lang }} -type f | wc -l) files for ${{ matrix.lang }}"
-      - name: Upload ${{ matrix.lang }} SDK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: hanzo-${{ matrix.lang }}-sdk
-          path: out/${{ matrix.lang }}
-          if-no-files-found: error
+          n=$(find out/${{ matrix.lang }} -type f | wc -l)
+          echo "generated $n files for ${{ matrix.lang }}"
+          test "$n" -gt 0
