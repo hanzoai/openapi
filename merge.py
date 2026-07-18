@@ -193,7 +193,7 @@ def build_master(present, categories, internal):
             ),
             "version": "8.0.0",
             "contact": {"name": "Hanzo AI", "url": "https://hanzo.ai", "email": "support@hanzo.ai"},
-            "license": {"name": "Proprietary"},
+            "license": {"name": "BSD 3-Clause License", "identifier": "BSD-3-Clause"},
         },
         "servers": [{"url": "https://api.hanzo.ai", "description": "Hanzo Gateway"}],
         "tags": tags,
