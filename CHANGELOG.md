@@ -110,7 +110,7 @@ surface, route-accurate to the Go handlers in `hanzoai/cloud/clients/<x>`:
 - Added `websearch/openapi.yaml` — `/v1/websearch/{search,scrape}` (SearXNG +
   Firecrawl-shaped over Hanzo Crawl) from `clients/websearch`.
 - Added `tasks/openapi.yaml` — `/v1/tasks/*` (durable workflow engine surface,
-  identity-gated) from `clients/tasksvc`.
+  identity-gated) from `clients/tasks`.
 - Re-based `visor/openapi.yaml` onto its live flat prefixes `/v1/machines`,
   `/v1/gpus`, `/v1/clusters`, `/v1/bots`, `/v1/compute/*`, `/v1/agent-bindings`
   from `clients/visor` (was wrongly under `/v1/visor/*`).
