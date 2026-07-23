@@ -51220,7 +51220,7 @@ paths:
       tags:
       - Projects
       summary: List projects
-      description: List all projects for the caller's org.
+      description: List every project for the caller's org, most-recently-updated first.
       operationId: projects_listProjects
       responses:
         '200':
@@ -51282,6 +51282,7 @@ paths:
       tags:
       - Projects
       summary: Get a project
+      description: Read one org-scoped project by slug.
       operationId: projects_getProject
       responses:
         '200':
@@ -51300,7 +51301,7 @@ paths:
       tags:
       - Projects
       summary: Update a project
-      description: 'Partial update. Only supplied fields change. `name` may not be blanked.
+      description: 'Partial update; only supplied fields change. `name` may not be blanked.
 
         `framework` must remain a known build hint. `cacheControl` is capped at
 
@@ -51333,9 +51334,13 @@ paths:
       tags:
       - Projects
       summary: Delete a project
-      description: 'Delete the project and purge its S3 site, release the subdomain binding,
+      description: 'Delete the project and its deployment history, purge the S3 origin under
 
-        and purge the edge cache (site purge/host unbind are best-effort).
+        `<org>/<slug>/`, release the subdomain binding, and flush the edge
+
+        cache-tag `site-<org>-<slug>`. The metadata delete is authoritative; the
+
+        S3-origin purge, host unbind, and edge flush are best-effort.
 
         '
       operationId: projects_deleteProject
@@ -51354,13 +51359,14 @@ paths:
     post:
       tags:
       - Deployments
-      summary: Deploy a project live
-      description: "Two modes on one endpoint, selected by Content-Type:\n\n- Artifact (default): the request body is a tar\
-        \ or tar.gz of the BUILT\n  site (must contain `index.html` at the root). The site is unpacked to\n  S3 under `<org>/<slug>/`,\
-        \ marked public-read, and a `live` deployment\n  is recorded. Responds `200` with the finalized deployment.\n\n- Git\
-        \ (`Content-Type: application/json`, body `{\"source\":\"git\",...}`):\n  records a `queued` deployment and responds\
-        \ `202`. CI builds the linked\n  repo and later calls the completion hook to flip it live. Requires the\n  project\
-        \ to have a linked repo.\n"
+      summary: Deploy a project to the S3 origin
+      description: "The artifact/git entrypoint. Two modes on one endpoint, selected by\nContent-Type; both funnel through\
+        \ the one publish core.\n\n- Artifact (default): the request body is a zip or tar(.gz) of the BUILT\n  site (index.html\
+        \ at the root, or inside a single wrapper directory),\n  sent as a raw body or a multipart file. It is unpacked to\
+        \ the S3 origin\n  under `<org>/<slug>/`, marked public-read, recorded as a `live`\n  deployment, and served at `https://<slug>.<apex>`.\
+        \ Responds `200` with\n  the finalized deployment.\n- Git (`Content-Type: application/json`, body `{\"source\":\"\
+        git\", ...}`):\n  records a `queued` deployment and responds `202`. CI builds the linked\n  repo, syncs `dist/` to\
+        \ the same prefix, then calls the completion hook\n  to flip it `live`. Requires the project to have a linked repo.\n"
       operationId: projects_deployProject
       requestBody:
         required: true
@@ -51372,7 +51378,7 @@ paths:
             schema:
               type: string
               format: binary
-              description: tar or tar.gz of the built site (must contain index.html at root).
+              description: zip or tar(.gz) of the built site (index.html at the root, or inside a single wrapper directory).
       responses:
         '200':
           description: Artifact deployed live.
@@ -51395,11 +51401,7 @@ paths:
         '500':
           $ref: '#/components/responses/projects_InternalServerError'
         '502':
-          description: Upload to object storage failed.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/projects_Error'
+          $ref: '#/components/responses/projects_BadGateway'
         '503':
           $ref: '#/components/responses/projects_ServiceUnavailable'
   /v1/projects/{slug}/deployments:
@@ -51409,6 +51411,7 @@ paths:
       tags:
       - Deployments
       summary: List deployments for a project
+      description: List the project's deployments, newest version first.
       operationId: projects_listDeployments
       responses:
         '200':
@@ -51433,6 +51436,7 @@ paths:
       tags:
       - Deployments
       summary: Get a deployment
+      description: Read one deployment of a project by id.
       operationId: projects_getDeployment
       responses:
         '200':
@@ -51455,11 +51459,13 @@ paths:
       tags:
       - Deployments
       summary: CI completion hook for a git deployment
-      description: 'After CI syncs the built site to S3 it flips the queued deployment to
+      description: 'After CI syncs the built site to the S3 origin it flips the `queued`
 
-        `live` (or `error`). `status` must be `live` or `error`. When `liveUrl`
+        deployment to `live` (or `error`). `status` must be `live` or `error`.
 
-        is omitted on a live completion it defaults to the project''s S3 live URL.
+        When `liveUrl` is omitted on a live completion it defaults to the
+
+        project''s canonical live URL.
 
         '
       operationId: projects_completeDeployment
@@ -51478,6 +51484,30 @@ paths:
                 $ref: '#/components/schemas/projects_Deployment'
         '400':
           $ref: '#/components/responses/projects_BadRequest'
+        '403':
+          $ref: '#/components/responses/projects_Forbidden'
+        '404':
+          $ref: '#/components/responses/projects_NotFound'
+        '500':
+          $ref: '#/components/responses/projects_InternalServerError'
+  /v1/projects/{slug}/purge:
+    parameters:
+    - $ref: '#/components/parameters/projects_Slug'
+    post:
+      tags:
+      - Deployments
+      summary: Purge the site's edge cache
+      description: "Flush the site's edge cache without redeploying: invalidate the edge\ncache-tag `site-<org>-<slug>`, then\
+        \ stamp `lastPurgeAt` (unix seconds).\nThe S3 origin and the deployment history are untouched \u2014 only cached\n\
+        copies at the edge are dropped, so the next request re-fetches the current\nartifact from origin. Idempotent.\n"
+      operationId: projects_purgeProject
+      responses:
+        '200':
+          description: Edge cache purged; the project with an updated lastPurgeAt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projects_Project'
         '403':
           $ref: '#/components/responses/projects_Forbidden'
         '404':
@@ -55699,6 +55729,102 @@ paths:
           $ref: '#/components/responses/observe_InternalError'
         '503':
           $ref: '#/components/responses/observe_ServiceUnavailable'
+  /v1/sites:
+    post:
+      tags:
+      - Sites
+      summary: Build a site from a brief and deploy it
+      description: "Generate a self-contained, mobile-responsive static site from a\nnatural-language `brief` (one inference\
+        \ call), then deploy it through the\none publish core. Writes into the SAME org-scoped projects store as\n`/v1/projects`:\
+        \ it ensures a `project` (framework `static`) for the\nresolved slug and records a `deployment`. `/v1/sites` is the\n\
+        brief-build/raw-manifest entrypoint; `/v1/projects/{slug}/deploy` is the\nartifact/git entrypoint \u2014 one store,\
+        \ one publish core, not a second copy\nof project state. The brief is capped at 8 KiB. Responds `200` with the\npublished-site\
+        \ result.\n"
+      operationId: projects_buildSite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projects_BuildSiteRequest'
+      responses:
+        '200':
+          description: Site generated and deployed live.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projects_SiteDeployResult'
+        '400':
+          $ref: '#/components/responses/projects_BadRequest'
+        '403':
+          $ref: '#/components/responses/projects_Forbidden'
+        '500':
+          $ref: '#/components/responses/projects_InternalServerError'
+        '502':
+          $ref: '#/components/responses/projects_BadGateway'
+        '503':
+          $ref: '#/components/responses/projects_ServiceUnavailable'
+    get:
+      tags:
+      - Sites
+      summary: List the org's live sites
+      description: 'List the org''s `live` projects as sites at their canonical live URL
+
+        `https://<slug>.<apex>`. Reads the SAME org-scoped projects store as
+
+        `/v1/projects`; a project that is not `live` is omitted.
+
+        '
+      operationId: projects_listSites
+      responses:
+        '200':
+          description: The org's live sites.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/projects_Site'
+        '403':
+          $ref: '#/components/responses/projects_Forbidden'
+        '500':
+          $ref: '#/components/responses/projects_InternalServerError'
+  /v1/sites/deploy:
+    post:
+      tags:
+      - Sites
+      summary: Deploy a raw file manifest
+      description: "Deploy a caller-supplied file manifest (the same `{path, content}` shape\nthe brief build emits) through\
+        \ the one publish core. Every file passes the\nsame guards as the brief build: index.html required at the root; absolute\n\
+        and traversal paths rejected; a mobile viewport tag injected into HTML\nwhen absent. Writes into the SAME org-scoped\
+        \ projects store as\n`/v1/projects`: it ensures a `project` (framework `static`) for the\nresolved slug and records\
+        \ a `deployment`. `/v1/sites` is the\nbrief-build/raw-manifest entrypoint; `/v1/projects/{slug}/deploy` is the\nartifact/git\
+        \ entrypoint \u2014 one store, one publish core, not a second copy\nof project state. Responds `200` with the published-site\
+        \ result.\n"
+      operationId: projects_deploySite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projects_DeploySiteRequest'
+      responses:
+        '200':
+          description: Manifest deployed live.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projects_SiteDeployResult'
+        '400':
+          $ref: '#/components/responses/projects_BadRequest'
+        '403':
+          $ref: '#/components/responses/projects_Forbidden'
+        '500':
+          $ref: '#/components/responses/projects_InternalServerError'
+        '502':
+          $ref: '#/components/responses/projects_BadGateway'
+        '503':
+          $ref: '#/components/responses/projects_ServiceUnavailable'
   /v1/sql:
     post:
       tags:
@@ -78527,6 +78653,26 @@ components:
           - WalletConnect
           - Coinbase
           - Rainbow
+    projects_BuildSiteRequest:
+      type: object
+      description: "Body for POST /v1/sites \u2014 build a site from a brief."
+      required:
+      - brief
+      properties:
+        brief:
+          type: string
+          maxLength: 8192
+          description: Natural-language description of the site to generate (required; capped at 8 KiB).
+        slug:
+          type: string
+          description: Target project slug; derived from name (or minted "site-<token>") when omitted.
+          pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
+        name:
+          type: string
+          description: Display name; defaults to the generated site name, else "Site".
+        model:
+          type: string
+          description: Inference model override; empty selects the gateway default.
     projects_CompleteDeploymentRequest:
       type: object
       required:
@@ -78542,7 +78688,7 @@ components:
           type: string
         liveUrl:
           type: string
-          description: Defaults to the project S3 live URL when omitted on a live completion.
+          description: Defaults to the project's canonical live URL when omitted on a live completion.
         message:
           type: string
         files:
@@ -78577,6 +78723,9 @@ components:
           - vue
           - remix
           - nuxt
+          - unity
+          - unreal
+          - godot
         repo:
           type: object
           properties:
@@ -78584,9 +78733,27 @@ components:
               type: string
             branch:
               type: string
+    projects_DeploySiteRequest:
+      type: object
+      description: "Body for POST /v1/sites/deploy \u2014 deploy a raw file manifest."
+      required:
+      - files
+      properties:
+        files:
+          type: array
+          description: Site files (required, non-empty); index.html must be present at the root.
+          items:
+            $ref: '#/components/schemas/projects_SiteFile'
+        slug:
+          type: string
+          description: Target project slug; derived from name (or minted "site-<token>") when omitted.
+          pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
+        name:
+          type: string
+          description: Display name; defaults to "Site".
     projects_Deployment:
       type: object
-      description: A single deploy record.
+      description: "One deployment of a project \u2014 a versioned deploy record."
       required:
       - id
       - projectId
@@ -78604,21 +78771,35 @@ components:
           type: string
         version:
           type: integer
+          description: Monotonic per project, 1-based.
         status:
           type: string
-          description: Deploy status (e.g. queued, uploading, building, live, error).
+          description: Deployment status.
+          enum:
+          - queued
+          - building
+          - uploading
+          - live
+          - error
         source:
           type: string
-          description: Deploy source (e.g. upload, git).
+          description: How the artifact was produced.
+          enum:
+          - upload
+          - generated
+          - deploy
+          - git
         commit:
           type: string
         liveUrl:
           type: string
+          description: Canonical live URL, https://<slug>.<apex>.
         bucket:
           type: string
+          description: S3-origin bucket.
         prefix:
           type: string
-          description: S3 key prefix the site is served from.
+          description: S3-origin key prefix the site is served from (<org>/<slug>).
         files:
           type: integer
         bytes:
@@ -78679,7 +78860,7 @@ components:
           type: string
     projects_Project:
       type: object
-      description: The published project view (json shape console2 consumes).
+      description: "The org-scoped project \u2014 the slug-keyed record of a deployable site (the json shape console consumes)."
       required:
       - id
       - org
@@ -78716,22 +78897,32 @@ components:
           - vue
           - remix
           - nuxt
+          - unity
+          - unreal
+          - godot
         status:
           type: string
-          description: Project lifecycle status (e.g. draft, building, live, error).
+          description: Project lifecycle status.
+          enum:
+          - draft
+          - building
+          - live
+          - error
         liveUrl:
           type: string
+          description: Canonical live URL, https://<slug>.<apex>. Set once deployed.
         bucket:
           type: string
+          description: S3-origin bucket holding the site.
         currentDeploymentId:
           type: string
         cacheControl:
           type: string
-          description: HTML/document Cache-Control policy in effect.
+          description: Per-project HTML/document Cache-Control policy applied at the S3 origin.
         lastPurgeAt:
           type: integer
           format: int64
-          description: Unix time of the last edge purge.
+          description: Unix time (seconds) of the last edge cache-tag purge.
         createdAt:
           type: integer
           format: int64
@@ -78748,6 +78939,71 @@ components:
         branch:
           type: string
           description: Branch to build (defaults to "main" when a url is set).
+    projects_Site:
+      type: object
+      description: "A live site in the org's list \u2014 a live project at its canonical live URL."
+      required:
+      - slug
+      - url
+      - name
+      - status
+      - updatedAt
+      properties:
+        slug:
+          type: string
+        url:
+          type: string
+          description: Canonical live URL, https://<slug>.<apex>.
+        name:
+          type: string
+        status:
+          type: string
+          description: Always "live" in this list.
+        updatedAt:
+          type: integer
+          format: int64
+    projects_SiteDeployResult:
+      type: object
+      description: Published-site result returned by the /v1/sites deploy entrypoints.
+      required:
+      - url
+      - slug
+      - name
+      - deploymentId
+      - files
+      - status
+      properties:
+        url:
+          type: string
+          description: Canonical live URL, https://<slug>.<apex>.
+        slug:
+          type: string
+        name:
+          type: string
+        deploymentId:
+          type: string
+          description: The recorded deployment id (dep_...).
+        files:
+          type: array
+          description: Deployed file paths, sorted.
+          items:
+            type: string
+        status:
+          type: string
+          description: Deployment status (live on success).
+    projects_SiteFile:
+      type: object
+      description: "One file in a site manifest \u2014 a relative path and its full contents."
+      required:
+      - path
+      - content
+      properties:
+        path:
+          type: string
+          description: Relative path within the site (no leading "/", no ".."); index.html must be present at the root.
+        content:
+          type: string
+          description: Full file contents. HTML files get a mobile viewport tag injected when absent.
     projects_UpdateProjectRequest:
       type: object
       description: Partial update; only supplied fields change.
@@ -78769,10 +79025,13 @@ components:
           - vue
           - remix
           - nuxt
+          - unity
+          - unreal
+          - godot
         cacheControl:
           type: string
           maxLength: 256
-          description: Must not contain newlines.
+          description: Per-project HTML/document Cache-Control policy; must not contain newlines.
         repo:
           type: object
           properties:
@@ -83245,6 +83504,12 @@ components:
                 - field: email
                   message: Invalid email format
                   code: invalid_format
+    projects_BadGateway:
+      description: "Bad Gateway \u2014 the upload to the S3 origin failed."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/projects_Error'
     projects_BadRequest:
       description: "Bad Request \u2014 invalid input."
       content:
@@ -83276,7 +83541,8 @@ components:
           schema:
             $ref: '#/components/schemas/projects_Error'
     projects_ServiceUnavailable:
-      description: "Service Unavailable \u2014 object storage is not configured."
+      description: "Service Unavailable \u2014 a required backend is not configured (the S3 origin, or the inference gateway\
+        \ for brief builds)."
       content:
         application/json:
           schema:
@@ -83878,7 +84144,7 @@ components:
       name: slug
       in: path
       required: true
-      description: Org-unique project handle (lowercased); also the S3 key segment and subdomain label.
+      description: Org-unique project handle (lowercased); also the S3-origin key segment and the subdomain label.
       schema:
         type: string
         pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
