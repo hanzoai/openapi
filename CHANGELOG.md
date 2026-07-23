@@ -2,6 +2,15 @@
 
 ## v1.0.0
 
+### Add `research/` — the /v1/research versioned R&D evidence surface (HIP-0512)
+
+Adds the `research` service under the Intelligence domain: the R&D evidence plane
+(experiments, attempts, diary artifacts) served by `hanzoai/cloud/clients/research`.
+Versioned append-only records with canonical-vs-retained counts, first-class provenance
+(git + lib_versions), private-by-default visibility + separate consent grants, and
+content-hash-addressed diary artifacts. Seven operations: ingest, list experiments,
+projects, totals, grants, record artifact, list artifacts.
+
 ### Codegen-clean: dart-dio + typescript-axios crashes fixed; SDK regen unblocked
 
 The `Regenerate SDKs` workflow failed on every merge for a week. Root causes,
