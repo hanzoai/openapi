@@ -53229,6 +53229,40 @@ paths:
                     type: integer
         '403':
           $ref: '#/components/responses/research_Forbidden'
+  /v1/research/artifacts/{sha256}:
+    parameters:
+    - name: sha256
+      in: path
+      required: true
+      schema:
+        type: string
+      description: The artifact content hash.
+    - name: project
+      in: query
+      required: false
+      schema:
+        type: string
+    get:
+      tags:
+      - Research
+      summary: Retrieve an artifact's bytes by content hash (org-scoped)
+      operationId: research_getResearchArtifactBlob
+      responses:
+        '200':
+          description: The artifact bytes
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '403':
+          $ref: '#/components/responses/research_Forbidden'
+        '404':
+          description: Not found
   /v1/research/experiments:
     post:
       tags:
@@ -79900,15 +79934,20 @@ components:
                 type: boolean
     research_Artifact:
       type: object
-      description: "A research-diary record \u2014 a raw-artifact-class manifest tied to a run."
+      description: "A research-diary record \u2014 a raw-artifact-class record tied to a run. CONTENT-\nADDRESSED inside the\
+        \ trust boundary: submit the bytes (base64 content) and the\nSERVER hashes them; that sha256 is the identity + ref\
+        \ (sha256:<hash>). A client\nsha256, if sent, must MATCH the bytes. Bytes are retrievable by hash at\nGET /v1/research/artifacts/{sha256}.\n"
       required:
-      - sha256
       - kind
-      - ref
+      - content
       properties:
+        content:
+          type: string
+          format: byte
+          description: "base64 bytes on WRITE \u2014 the server hashes + stores them (never returned on read)"
         sha256:
           type: string
-          description: content-hash identity; idempotent re-POST
+          description: SERVER-derived identity (read); on write it is optional and must match the content bytes
         kind:
           type: string
           enum:
@@ -79916,7 +79955,7 @@ components:
           - report
         ref:
           type: string
-          description: file/blob ref (the bytes live here)
+          description: server-derived content address (sha256:<hash>); a client ref is ignored
         run_id:
           type: string
           description: the run/snapshot id it belongs to
