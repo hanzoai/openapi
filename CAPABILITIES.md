@@ -31,6 +31,7 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 | `engine` | `/v1/engine` | ✓ |
 | `agents` | `/v1/agents` | ✓ |
 | `evals` | `/v1/evals` | ✓ |
+| `research` | `/v1/research` | ✓ |
 | `prompts` | `/v1/prompts` | ✓ |
 | `functions` | `/v1/functions` | ✓ |
 | `exec` | `/v1/exec` | ✓ |
