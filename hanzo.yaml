@@ -128,6 +128,8 @@ tags:
   description: Hanzo Referrals API
 - name: registry
   description: Hanzo Registry API
+- name: research
+  description: Hanzo Research API
 - name: s3
   description: Hanzo S3 API
 - name: search
@@ -169,6 +171,7 @@ x-tagGroups:
   - engine
   - agents
   - evals
+  - research
   - prompts
   - functions
   - exec
@@ -53150,6 +53153,231 @@ paths:
                 type: object
         '401':
           $ref: '#/components/responses/ai_Unauthorized'
+  /v1/research/artifacts:
+    post:
+      tags:
+      - Research
+      summary: Record a diary artifact (idempotent by sha256 content hash)
+      description: "A raw-artifact-class manifest tied to a run \u2014 a `snapshot` (a PNG of the\ncanonical board) or a `report`\
+        \ (a generated page). `sha256` is the content-hash\nidentity; a re-POST of the same bytes is a no-op. The bytes live\
+        \ at `ref`\n(blob store). Private by default.\n"
+      operationId: research_recordResearchArtifact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/research_Artifact'
+      responses:
+        '200':
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sha256:
+                    type: string
+                  created:
+                    type: boolean
+                  rolled_up:
+                    type: boolean
+        '400':
+          $ref: '#/components/responses/research_BadRequest'
+        '403':
+          $ref: '#/components/responses/research_Forbidden'
+        '422':
+          $ref: '#/components/responses/research_Unprocessable'
+    get:
+      tags:
+      - Research
+      summary: The chronological diary feed (newest-first)
+      operationId: research_listResearchArtifacts
+      parameters:
+      - name: run
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Filter to one run/snapshot id.
+      - name: project
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Defaults to the caller's project scope.
+      - name: since
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+        description: Unix-seconds lower bound on ts.
+      responses:
+        '200':
+          description: Diary feed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/research_Artifact'
+                  total:
+                    type: integer
+        '403':
+          $ref: '#/components/responses/research_Forbidden'
+  /v1/research/experiments:
+    post:
+      tags:
+      - Research
+      summary: Ingest a batch of experiments and attempts (idempotent by content)
+      description: "Appends versions to the org's durable plane and rolls up to the warehouse\nbest-effort. The org is the\
+        \ validated principal's; `project` is the validated\n`X-Project-Id` sub-scope, stamped server-side. Re-ingesting identical\
+        \ content\nis a no-op. A `endpoint` on an experiment is SSRF-gated. Visibility/consent are\nforced private/withheld\
+        \ \u2014 a grant is separate.\n"
+      operationId: research_ingestResearch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/research_IngestRequest'
+      responses:
+        '200':
+          description: Ingest counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/research_IngestResult'
+        '400':
+          $ref: '#/components/responses/research_BadRequest'
+        '403':
+          $ref: '#/components/responses/research_Forbidden'
+        '422':
+          $ref: '#/components/responses/research_Unprocessable'
+    get:
+      tags:
+      - Research
+      summary: List canonical experiments (latest answered version per stable id)
+      operationId: research_listExperiments
+      parameters:
+      - name: project
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Narrow to one project; omit for the org's whole cross-project view.
+      - name: kind
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - benchmark
+          - kernel-perf
+          - training
+          - ablation
+          - policy-eval
+      responses:
+        '200':
+          description: Experiments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/research_Experiment'
+                  total:
+                    type: integer
+        '403':
+          $ref: '#/components/responses/research_Forbidden'
+  /v1/research/grants:
+    post:
+      tags:
+      - Research
+      summary: Set visibility/consent for a run (by id) or an artifact (by sha256)
+      description: 'The SEPARATE authorization upload never implies. A run grant (`id`) sets
+
+        visibility + the training/commons consent flags; an artifact grant (`sha256`)
+
+        sets visibility. A nil field is left unchanged.
+
+        '
+      operationId: research_setResearchGrant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/research_GrantRequest'
+      responses:
+        '200':
+          description: Rows updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/research_BadRequest'
+        '403':
+          $ref: '#/components/responses/research_Forbidden'
+        '404':
+          description: No records for that target
+        '422':
+          $ref: '#/components/responses/research_Unprocessable'
+  /v1/research/projects:
+    get:
+      tags:
+      - Research
+      summary: Every project in the org with its real totals (canonical + retained)
+      operationId: research_listResearchProjects
+      responses:
+        '200':
+          description: Project summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/research_ProjectSummary'
+                  total:
+                    type: integer
+        '403':
+          $ref: '#/components/responses/research_Forbidden'
+  /v1/research/totals:
+    get:
+      tags:
+      - Research
+      summary: Headline aggregate (canonical + retained) plus per-kind breakdown
+      operationId: research_getResearchTotals
+      parameters:
+      - name: project
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Scope the aggregate to one project.
+      responses:
+        '200':
+          description: Totals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/research_Totals'
+        '403':
+          $ref: '#/components/responses/research_Forbidden'
   /v1/s3:
     post:
       tags:
@@ -79670,6 +79898,333 @@ components:
                 type: string
               skip_cert_verify:
                 type: boolean
+    research_Artifact:
+      type: object
+      description: "A research-diary record \u2014 a raw-artifact-class manifest tied to a run."
+      required:
+      - sha256
+      - kind
+      - ref
+      properties:
+        sha256:
+          type: string
+          description: content-hash identity; idempotent re-POST
+        kind:
+          type: string
+          enum:
+          - snapshot
+          - report
+        ref:
+          type: string
+          description: file/blob ref (the bytes live here)
+        run_id:
+          type: string
+          description: the run/snapshot id it belongs to
+        project:
+          type: string
+        visibility:
+          type: string
+          enum:
+          - private
+          - org
+          - public
+          default: private
+          description: Read-only on ingest; set via a grant.
+        retention_class:
+          type: string
+          default: raw-artifact
+          readOnly: true
+        git_sha:
+          type: string
+        git_branch:
+          type: string
+        git_dirty:
+          type: boolean
+        lib_versions:
+          type: object
+          additionalProperties:
+            type: string
+        ts:
+          type: integer
+          format: int64
+    research_Attempt:
+      type: object
+      description: One versioned measured attempt on one item.
+      required:
+      - benchmark
+      - item
+      - model
+      properties:
+        benchmark:
+          type: string
+        item:
+          type: string
+        model:
+          type: string
+        revision:
+          type: string
+          enum:
+          - original
+          - corrected
+          - retracted
+          default: original
+        status:
+          type: string
+          enum:
+          - complete
+          - faulted
+          - failed
+          default: complete
+          description: faulted retains a negative result
+        gold:
+          type: string
+        answer:
+          type: string
+        correct:
+          type: boolean
+        response:
+          type: string
+          description: raw model output (raw-artifact retention class)
+        source:
+          type: string
+          default: hanzo-measured
+        ts:
+          type: integer
+          format: int64
+    research_Error:
+      type: object
+      properties:
+        error:
+          type: string
+    research_Experiment:
+      type: object
+      description: One versioned run record. On read, the canonical (latest answered) version.
+      required:
+      - id
+      - kind
+      - subject
+      properties:
+        project:
+          type: string
+          description: Server-stamped on ingest; a payload cannot forge it.
+        id:
+          type: string
+          description: "Stable id \u2014 \"<kind>:<subject>:<task>\". Keys supersession."
+        revision:
+          type: string
+          enum:
+          - original
+          - corrected
+          - retracted
+          default: original
+        status:
+          type: string
+          enum:
+          - queued
+          - planning
+          - running
+          - scoring
+          - complete
+          - partial
+          - failed
+          - faulted
+          - cancelled
+          default: complete
+        canonical:
+          type: boolean
+          readOnly: true
+          description: True when this is the current authoritative version.
+        visibility:
+          type: string
+          enum:
+          - private
+          - org
+          - public
+          default: private
+          description: Read-only on ingest (forced private); set via a grant.
+        trainable:
+          type: boolean
+          default: false
+          description: Read-only on ingest; set via a grant.
+        publishable:
+          type: boolean
+          default: false
+          description: Read-only on ingest; set via a grant.
+        kind:
+          type: string
+          enum:
+          - benchmark
+          - kernel-perf
+          - training
+          - ablation
+          - policy-eval
+        subject:
+          type: string
+          description: model / kernel / dataset under test
+        task:
+          type: string
+          description: benchmark id
+          kernel op: null
+          training objective: null
+        metric:
+          type: string
+          description: accuracy | tok/s | loss | net-lift
+        value:
+          type: number
+          description: the headline number
+        n:
+          type: integer
+          description: answered sample size / coverage
+        n_total:
+          type: integer
+          description: item target (done vs remaining = n_total - n)
+        cost_usd:
+          type: number
+        meta:
+          type: object
+          additionalProperties: true
+          description: nonpersonal provenance (permanent retention class)
+        git_sha:
+          type: string
+          description: producing repo commit at run time (indexed)
+        git_branch:
+          type: string
+          description: producing repo branch at run time (indexed)
+        git_dirty:
+          type: boolean
+          description: tree was dirty at run time
+        lib_versions:
+          type: object
+          additionalProperties:
+            type: string
+          description: '{lib: version} at run time'
+        ts:
+          type: integer
+          format: int64
+          description: run/observation clock (unix seconds); orders versions
+        endpoint:
+          type: string
+          description: OPTIONAL BYO arm URL; SSRF-gated at ingest (https
+          no loopback/private/link-local/metadata): null
+    research_GrantRequest:
+      type: object
+      description: A run grant (id) OR an artifact grant (sha256). At least one target required.
+      properties:
+        project:
+          type: string
+        id:
+          type: string
+          description: an experiment (run) stable id
+        sha256:
+          type: string
+          description: OR an artifact content hash
+        visibility:
+          type: string
+          enum:
+          - private
+          - org
+          - public
+          nullable: true
+        trainable:
+          type: boolean
+          nullable: true
+        publishable:
+          type: boolean
+          nullable: true
+    research_IngestRequest:
+      type: object
+      properties:
+        experiments:
+          type: array
+          items:
+            $ref: '#/components/schemas/research_Experiment'
+        attempts:
+          type: array
+          items:
+            $ref: '#/components/schemas/research_Attempt'
+    research_IngestResult:
+      type: object
+      description: "Counts after ingest \u2014 retained is the truth, canonical the deduped answered view."
+      properties:
+        project:
+          type: string
+        experiments_ingested:
+          type: integer
+          description: NEW versions added this batch
+        attempts_ingested:
+          type: integer
+        canonical_experiments:
+          type: integer
+        experiments_retained:
+          type: integer
+        canonical_attempts:
+          type: integer
+        attempts_retained:
+          type: integer
+        rolled_up:
+          type: boolean
+          description: false when the datastore was absent (SQLite retains the write)
+    research_KindTotal:
+      type: object
+      properties:
+        kind:
+          type: string
+        experiments:
+          type: integer
+        cost_usd:
+          type: number
+    research_ProjectSummary:
+      type: object
+      properties:
+        project:
+          type: string
+        experiments:
+          type: integer
+          description: canonical
+        experiments_retained:
+          type: integer
+        attempts:
+          type: integer
+          description: canonical
+        attempts_retained:
+          type: integer
+        models:
+          type: integer
+        benchmarks:
+          type: integer
+        cost_usd:
+          type: number
+        kinds:
+          type: array
+          items:
+            type: string
+    research_Totals:
+      type: object
+      properties:
+        project:
+          type: string
+        projects:
+          type: integer
+        experiments:
+          type: integer
+          description: canonical
+        experiments_retained:
+          type: integer
+        attempts:
+          type: integer
+          description: canonical
+        attempts_retained:
+          type: integer
+        models:
+          type: integer
+        benchmarks:
+          type: integer
+        cost_usd:
+          type: number
+        by_kind:
+          type: array
+          items:
+            $ref: '#/components/schemas/research_KindTotal'
     s3_Bucket:
       type: object
       properties:
@@ -82870,6 +83425,24 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/registry_Error'
+    research_BadRequest:
+      description: Malformed request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/research_Error'
+    research_Forbidden:
+      description: Missing validated principal (X-Org-Id required)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/research_Error'
+    research_Unprocessable:
+      description: Well-formed but semantically rejected (bad shape, blocked SSRF endpoint, bad enum)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/research_Error'
     search_NotFound:
       description: Resource not found
       content:
