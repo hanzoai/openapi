@@ -149,6 +149,19 @@ paths:
         '200': { description: Diary feed, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Artifact' } }, total: { type: integer } } } } } }
         '403': { $ref: '#/components/responses/Forbidden' }
 
+  /v1/research/artifacts/{sha256}:
+    parameters:
+      - { name: sha256, in: path, required: true, schema: { type: string }, description: The artifact content hash. }
+      - { name: project, in: query, required: false, schema: { type: string } }
+    get:
+      tags: [Research]
+      summary: Retrieve an artifact's bytes by content hash (org-scoped)
+      operationId: getResearchArtifactBlob
+      responses:
+        '200': { description: The artifact bytes, content: { application/octet-stream: { schema: { type: string, format: binary } }, image/png: { schema: { type: string, format: binary } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Not found }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -274,12 +287,18 @@ components:
         publishable: { type: boolean, nullable: true }
     Artifact:
       type: object
-      description: A research-diary record — a raw-artifact-class manifest tied to a run.
-      required: [sha256, kind, ref]
+      description: |
+        A research-diary record — a raw-artifact-class record tied to a run. CONTENT-
+        ADDRESSED inside the trust boundary: submit the bytes (base64 content) and the
+        SERVER hashes them; that sha256 is the identity + ref (sha256:<hash>). A client
+        sha256, if sent, must MATCH the bytes. Bytes are retrievable by hash at
+        GET /v1/research/artifacts/{sha256}.
+      required: [kind, content]
       properties:
-        sha256: { type: string, description: content-hash identity; idempotent re-POST }
+        content: { type: string, format: byte, description: base64 bytes on WRITE — the server hashes + stores them (never returned on read) }
+        sha256: { type: string, description: SERVER-derived identity (read); on write it is optional and must match the content bytes }
         kind: { type: string, enum: [snapshot, report] }
-        ref: { type: string, description: file/blob ref (the bytes live here) }
+        ref: { type: string, description: server-derived content address (sha256:<hash>); a client ref is ignored }
         run_id: { type: string, description: the run/snapshot id it belongs to }
         project: { type: string }
         visibility: { type: string, enum: [private, org, public], default: private, description: Read-only on ingest; set via a grant. }
