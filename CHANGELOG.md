@@ -58,6 +58,46 @@ verdict, Money = cents, Schedule = period window).
 - `admin/openapi.yaml` — `/v1/admin/promos` admin-set discount CRUD with the
   `Promo` (`percentOff`, `start`, `end`, `plans`, `active`), `PromoCreate`,
   and `PromoUpdate` schemas.
+### request bodies — complete the write-op contract from real handlers
+
+Filled the missing `requestBody` shapes on write ops (POST/PUT/PATCH), each
+sourced from the real handler (`hanzoai/cloud/clients/*`, `iam`, `chat`,
+`commerce`, `world`, `auto`, `flow`→`auto`, `platform`, and the `hanzoai/ai`
+Beego controllers behind the `cloud`/`nexus` file/connection routes) — never
+guessed. Coverage across the 68 specs: **832 → 871 of 955** write ops now carry
+a `requestBody`.
+
+The 84 write ops still without a body fall in two source-verified buckets, not
+fabricated:
+
+- **Body-less by design (61):** path/query/session RPC actions that read no
+  body — admin suspend/reactivate/sweep; automations run/enable/disable (org is
+  the validated cred, "NEVER from the body"); commerce
+  capture/confirm/cancel/discard (captured amount is the stored order amount,
+  never client-supplied); the Neon/Harbor/Meilisearch/Qdrant-proxied
+  db/registry/search/vector actions; iam
+  device/impersonation-exit/sso-logout/identification-verify; and the
+  `cloud`/`nexus` query-param file/connection + signin/signout actions.
+- **No live handler (23) — flagged, not authored:** iam
+  user-keys/orders-cancel/invoice-payment/pay-order/place-order/refresh-engines
+  (Casdoor-era swagger; billing moved to commerce); kms token-renew,
+  token-auth-identity-tokens, webhook-test, secret-sync-trigger (absent from the
+  Go KMS); framework install/submit/cancel (repo not in tree); flow
+  solutions-apply, git-repos-pull (no such routes); bot skill undelete/stars
+  (cloud proxies verbatim, upstream not located); analytics
+  auth-logout/verify/sso + website-reset (Umami, no upstream in tree); paas
+  doks-upgrade-ha, container-deploy (served by platform tRPC, not cloud).
+
+Red-review fixes (fix-then-ship): `world/classify-event` corrected from POST to
+GET with `title` (required) + `variant` query params, matching the handler
+(`internal/world/handlers_ai.go:167`). The `cloud`/`nexus` `add-file`/`delete-file`
+bodies now reference a dedicated request schema (`object.FileInput` / `FileInput`,
+`owner`+`name` required) built from the real `ai/object/file.go` struct — instead
+of the stale UI-tree response component `object.File`/`File`, which lacked
+`owner`/`name`/`filename`/`store` and would have handed clients a wrong contract.
+`delete-connection`'s `object.Connection`/`Connection` was verified correct against
+`ai/object/connection.go` and left unchanged. `hanzo.yaml` + `CAPABILITIES.md`
+regenerated via `merge.py` (3802 `$refs`, 0 dangling).
 
 ### 2026-07-11 — git: SSH transport, client-less push, ZAP note, sshUrl
 

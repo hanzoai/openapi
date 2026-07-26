@@ -114,6 +114,18 @@ components:
       description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
         Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
+    RetryFlowRequest:
+      type: object
+      description: Retry strategy for a failed flow run (RetryFlowRequestBody).
+      properties:
+        strategy:
+          type: string
+          enum: [ON_LATEST_VERSION, FROM_FAILED_STEP]
+          description: Retry strategy.
+        projectId:
+          type: string
+          description: The project id (ApId).
+      required: [strategy, projectId]
     SeekPage:
       type: object
       properties:
@@ -790,6 +802,12 @@ paths:
       tags:
       - flow-runs
       summary: Retry a failed flow run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetryFlowRequest'
       parameters:
       - name: id
         in: path
@@ -1158,6 +1176,14 @@ paths:
       - webhooks
       summary: Receive webhook and wait for flow run result
       security: []
+      requestBody:
+        required: false
+        description: >-
+          Raw inbound webhook payload, forwarded verbatim to the flow as the trigger
+          input. No fixed schema (config.rawBody); any JSON object (or raw bytes) is accepted.
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
       parameters:
       - name: flowId
         in: path

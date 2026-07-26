@@ -185,6 +185,13 @@ paths:
       - File API
       description: add file
       operationId: ApiController.AddFile
+      requestBody:
+        required: true
+        description: The file object to register. owner and name are required and identify the file.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/object.FileInput'
       parameters:
       - in: query
         name: store
@@ -705,6 +712,13 @@ paths:
       - Connection API
       description: delete connection
       operationId: ApiController.DeleteConnection
+      requestBody:
+        required: true
+        description: The connection to delete (handler binds object.Connection; owner and name identify it).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/object.Connection'
       parameters:
       - in: query
         name: id
@@ -747,6 +761,13 @@ paths:
       - File API
       description: delete file
       operationId: ApiController.DeleteFile
+      requestBody:
+        required: true
+        description: The file to delete. owner and name are required and identify the file.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/object.FileInput'
       parameters:
       - in: query
         name: store
@@ -4541,6 +4562,26 @@ components:
     object.DeploymentStatus:
       title: DeploymentStatus
       type: object
+    object.FileInput:
+      title: FileInput
+      type: object
+      description: >-
+        Request body for add-file / delete-file, matching the object.File struct the
+        handler binds (ai/object/file.go). owner and name are the required identity;
+        the rest describe the stored blob.
+      properties:
+        owner: { type: string }
+        name: { type: string }
+        createdTime: { type: string }
+        filename: { type: string }
+        size: { type: integer, format: int64 }
+        store: { type: string }
+        storageProvider: { type: string }
+        url: { type: string }
+        tokenCount: { type: integer }
+        status: { type: string }
+        errorText: { type: string }
+      required: [owner, name]
     object.File:
       title: File
       type: object
