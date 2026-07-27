@@ -17955,6 +17955,53 @@ paths:
                 type: object
         '400':
           $ref: '#/components/responses/commerce_BadRequest'
+  /v1/commerce/metrics/saas:
+    get:
+      tags:
+      - Metrics
+      summary: SaaS operations snapshot (platform god-view)
+      operationId: commerce_getSaaSMetrics
+      description: "The whole-business SaaS operations snapshot \u2014 recurring revenue (MRR/ARR,\nnew/churned MRR, MRR by\
+        \ plan category), subscription mix (per plan, trials,\nseats, a recent create/cancel events feed), metered pay-as-you-go\
+        \ revenue\ntotals, and the top customers by revenue \u2014 computed in commerce (the system\nof record for subscriptions\
+        \ + the usage ledger) from ONE cross-org walk.\nMoney is USD cents end to end.\n\nPLATFORM god-view: gated on a global\
+        \ admin OR the trusted internal service\ntoken (the console's global-admin-gated proxy forwards COMMERCE_SERVICE_TOKEN\n\
+        with no user identity). An org-level admin is refused (403) \u2014 this is\ncross-tenant data.\n\nPer-model LLM tokens/latency/error\
+        \ and the per-org AI-spend ranking are\ndeliberately NOT here: the canonical fleet LLM-observability aggregate is\n\
+        GET /v1/admin/o11y. The `gaps` array names what is not instrumented (e.g.\nplan-change upgrade/downgrade counts, per-model\
+        \ latency) rather than\nfabricating it.\n"
+      parameters:
+      - name: window
+        in: query
+        description: 'Usage + new/churn window: 7d | 30d | 90d | mtd | all (default 30d)'
+        schema:
+          type: string
+          enum:
+          - 7d
+          - 30d
+          - 90d
+          - mtd
+          - all
+          default: 30d
+      - name: limit
+        in: query
+        description: Cap for the customers list (1-200, default 20)
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 20
+      responses:
+        '200':
+          description: SaaS operations snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/commerce_SaaSMetrics'
+        '401':
+          $ref: '#/components/responses/commerce_Unauthorized'
+        '403':
+          description: Caller is not a platform administrator (cross-tenant data withheld)
   /v1/commerce/order:
     get:
       tags:
@@ -36380,419 +36427,13 @@ paths:
           $ref: '#/components/responses/kb_BadRequest'
         '401':
           $ref: '#/components/responses/kb_Unauthorized'
-  /v1/kms/admin/config:
-    get:
-      operationId: kms_getServerConfig
-      tags:
-      - Admin
-      summary: Get server configuration
-      responses:
-        '200':
-          description: Server config
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  allowSignUp:
-                    type: boolean
-                  allowedSignUpDomain:
-                    type: string
-                  isMigrationModeOn:
-                    type: boolean
-    patch:
-      operationId: kms_updateServerConfig
-      tags:
-      - Admin
-      summary: Update server configuration
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                allowSignUp:
-                  type: boolean
-                allowedSignUpDomain:
-                  type: string
-      responses:
-        '200':
-          description: Updated config
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/app-connections:
-    get:
-      operationId: kms_listAppConnections
-      tags:
-      - App Connections
-      summary: List app connections
-      parameters:
-      - name: orgId
-        in: query
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: App connection list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  appConnections:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_AppConnection'
+  /v1/kms/auth/login:
     post:
-      operationId: kms_createAppConnection
-      tags:
-      - App Connections
-      summary: Create an app connection
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - name
-              - app
-              - credentials
-              properties:
-                name:
-                  type: string
-                app:
-                  type: string
-                credentials:
-                  type: object
-      responses:
-        '200':
-          description: Created app connection
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  appConnection:
-                    $ref: '#/components/schemas/kms_AppConnection'
-  /v1/kms/app-connections/{connectionId}:
-    get:
-      operationId: kms_getAppConnection
-      tags:
-      - App Connections
-      summary: Get an app connection by ID
-      parameters:
-      - name: connectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: App connection details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  appConnection:
-                    $ref: '#/components/schemas/kms_AppConnection'
-    patch:
-      operationId: kms_updateAppConnection
-      tags:
-      - App Connections
-      summary: Update an app connection
-      parameters:
-      - name: connectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                credentials:
-                  type: object
-      responses:
-        '200':
-          description: Updated app connection
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  appConnection:
-                    $ref: '#/components/schemas/kms_AppConnection'
-    delete:
-      operationId: kms_deleteAppConnection
-      tags:
-      - App Connections
-      summary: Delete an app connection
-      parameters:
-      - name: connectionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Deletion confirmation
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/approval-policies/change:
-    get:
-      operationId: kms_listChangeApprovalPolicies
-      tags:
-      - Approval Policies
-      summary: List secret change approval policies
-      parameters:
-      - name: workspaceId
-        in: query
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Policy list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  approvalPolicies:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_ApprovalPolicy'
-    post:
-      operationId: kms_createChangeApprovalPolicy
-      tags:
-      - Approval Policies
-      summary: Create a secret change approval policy
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - workspaceId
-              - name
-              - approvals
-              - environment
-              properties:
-                workspaceId:
-                  type: string
-                  format: uuid
-                name:
-                  type: string
-                approvals:
-                  type: integer
-                  minimum: 1
-                environment:
-                  type: string
-                secretPath:
-                  type: string
-      responses:
-        '200':
-          description: Created policy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  approvalPolicy:
-                    $ref: '#/components/schemas/kms_ApprovalPolicy'
-  /v1/kms/auth/login1:
-    post:
-      operationId: kms_login1
       tags:
       - Auth
-      summary: Login step 1 - SRP init
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/kms_LoginRequest'
-      responses:
-        '200':
-          description: Login challenge or MFA prompt
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kms_LoginResponse'
-  /v1/kms/auth/token-auth/identities/{identityId}/tokens:
-    post:
-      operationId: kms_createIdentityToken
-      tags:
-      - Identity Auth
-      summary: Create an identity token
-      parameters:
-      - name: identityId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Token created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kms_TokenResponse'
-  /v1/kms/auth/token/renew:
-    post:
-      operationId: kms_renewAccessToken
-      tags:
-      - Auth
-      summary: Renew access token
-      responses:
-        '200':
-          description: Renewed token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kms_TokenResponse'
-  /v1/kms/auth/universal-auth/identities/{identityId}:
-    get:
-      operationId: kms_getUniversalAuth
-      tags:
-      - Identity Auth
-      summary: Get Universal Auth configuration for an identity
-      parameters:
-      - name: identityId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Universal auth config
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kms_UniversalAuthConfig'
-    post:
-      operationId: kms_attachUniversalAuth
-      tags:
-      - Identity Auth
-      summary: Attach Universal Auth to an identity
-      parameters:
-      - name: identityId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                accessTokenTrustedIps:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      ipAddress:
-                        type: string
-                accessTokenTTL:
-                  type: integer
-                  default: 2592000
-                accessTokenMaxTTL:
-                  type: integer
-                  default: 2592000
-                accessTokenNumUsesLimit:
-                  type: integer
-                  default: 0
-      responses:
-        '200':
-          description: Attached universal auth
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kms_UniversalAuthConfig'
-  /v1/kms/auth/universal-auth/identities/{identityId}/client-secrets:
-    post:
-      operationId: kms_createUniversalAuthClientSecret
-      tags:
-      - Identity Auth
-      summary: Create a client secret for Universal Auth
-      parameters:
-      - name: identityId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                description:
-                  type: string
-                ttl:
-                  type: integer
-                numUsesLimit:
-                  type: integer
-      responses:
-        '200':
-          description: Client secret created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kms_CreateClientSecretResponse'
-  /v1/kms/auth/universal-auth/login:
-    post:
-      operationId: kms_universalAuthLogin
-      tags:
-      - Identity Auth
-      summary: Login with Universal Auth
-      description: Exchange clientId and clientSecret for an access token.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/kms_UniversalAuthLoginRequest'
-      responses:
-        '200':
-          description: Access token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kms_TokenResponse'
+      summary: Exchange machine identity for a bearer token
+      description: 'The only auth route. The token is org-scoped: it reaches /v1/kms/orgs/<its own org>/* and nothing else.'
       security: []
-  /v1/kms/cert-manager/ca:
-    post:
-      operationId: kms_createCertificateAuthority
-      tags:
-      - Certificate Authorities
-      summary: Create a certificate authority
       requestBody:
         required: true
         content:
@@ -36800,971 +36441,235 @@ paths:
             schema:
               type: object
               required:
-              - projectId
-              - type
-              - friendlyName
-              - commonName
-              - keyAlgorithm
+              - clientId
+              - clientSecret
               properties:
-                projectId:
+                clientId:
                   type: string
-                  format: uuid
-                type:
+                clientSecret:
                   type: string
-                  enum:
-                  - root
-                  - intermediate
-                friendlyName:
-                  type: string
-                commonName:
-                  type: string
-                organization:
-                  type: string
-                ou:
-                  type: string
-                country:
-                  type: string
-                province:
-                  type: string
-                locality:
-                  type: string
-                keyAlgorithm:
-                  type: string
-                  enum:
-                  - RSA_2048
-                  - RSA_4096
-                  - ECDSA_P256
-                  - ECDSA_P384
-                maxPathLength:
-                  type: integer
-                notAfter:
-                  type: string
-                  description: Duration (e.g., "10y")
       responses:
         '200':
-          description: Created CA
+          description: Token issued
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  ca:
-                    $ref: '#/components/schemas/kms_CertificateAuthority'
-  /v1/kms/cert-manager/ca/{caId}:
-    get:
-      operationId: kms_getCertificateAuthority
-      tags:
-      - Certificate Authorities
-      summary: Get a certificate authority by ID
-      parameters:
-      - name: caId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: CA details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ca:
-                    $ref: '#/components/schemas/kms_CertificateAuthority'
-    patch:
-      operationId: kms_updateCertificateAuthority
-      tags:
-      - Certificate Authorities
-      summary: Update a certificate authority
-      parameters:
-      - name: caId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                status:
-                  type: string
-                  enum:
-                  - active
-                  - disabled
-      responses:
-        '200':
-          description: Updated CA
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ca:
-                    $ref: '#/components/schemas/kms_CertificateAuthority'
-    delete:
-      operationId: kms_deleteCertificateAuthority
-      tags:
-      - Certificate Authorities
-      summary: Delete a certificate authority
-      parameters:
-      - name: caId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Deletion confirmation
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/cert-manager/ca/{caId}/issue-certificate:
-    post:
-      operationId: kms_issueCertificate
-      tags:
-      - Certificates
-      summary: Issue a certificate from a CA
-      parameters:
-      - name: caId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/kms_IssueCertificateRequest'
-      responses:
-        '200':
-          description: Issued certificate
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  certificate:
+                  accessToken:
                     type: string
-                    description: PEM-encoded certificate
-                  certificateChain:
-                    type: string
-                    description: PEM-encoded certificate chain
-                  privateKey:
-                    type: string
-                    description: PEM-encoded private key
-                  serialNumber:
-                    type: string
-  /v1/kms/cert-manager/certificates:
-    get:
-      operationId: kms_listCertificates
-      tags:
-      - Certificates
-      summary: List certificates
-      parameters:
-      - name: caId
-        in: query
-        schema:
-          type: string
-          format: uuid
-      - name: offset
-        in: query
-        schema:
-          type: integer
-      - name: limit
-        in: query
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: Certificate list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  certificates:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_Certificate'
-                  totalCount:
+                  expiresIn:
                     type: integer
-  /v1/kms/cert-manager/certificates/{certificateId}:
+        '400':
+          description: clientId and clientSecret required
+        '401':
+          description: Invalid credentials
+      operationId: kms_post_v1_kms_auth_login
+  /v1/kms/health:
     get:
-      operationId: kms_getCertificate
       tags:
-      - Certificates
-      summary: Get a certificate by ID
-      parameters:
-      - name: certificateId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
+      - Health
+      summary: Liveness
+      security: []
+      description: status is `degraded` when MPC is configured but unreachable -- still 200, so a working secrets surface
+        is not flapped out of rotation.
       responses:
         '200':
-          description: Certificate details
+          description: Alive
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  certificate:
-                    $ref: '#/components/schemas/kms_Certificate'
-    delete:
-      operationId: kms_revokeCertificate
-      tags:
-      - Certificates
-      summary: Revoke a certificate
-      parameters:
-      - name: certificateId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                revocationReason:
-                  type: string
-      responses:
-        '200':
-          description: Certificate revoked
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/dashboard/{projectId}/secrets-overview:
+                  service:
+                    type: string
+                  status:
+                    type: string
+      operationId: kms_get_v1_kms_health
+  /v1/kms/healthz:
     get:
-      operationId: kms_getDashboardSecretsOverview
       tags:
-      - Dashboard
-      summary: Get secrets overview for the dashboard
-      parameters:
-      - $ref: '#/components/parameters/kms_projectId'
-      - name: environments
-        in: query
-        schema:
-          type: string
-          description: Comma-separated environment slugs
-      - name: secretPath
-        in: query
-        schema:
-          type: string
-          default: /
+      - Health
+      summary: Liveness
+      security: []
+      description: status is `degraded` when MPC is configured but unreachable -- still 200, so a working secrets surface
+        is not flapped out of rotation.
       responses:
         '200':
-          description: Dashboard secrets data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kms_DashboardSecrets'
-  /v1/kms/events:
-    get:
-      operationId: kms_listAuditLogs
-      tags:
-      - Audit Logs
-      summary: List audit log events
-      parameters:
-      - name: workspaceId
-        in: query
-        schema:
-          type: string
-          format: uuid
-      - name: eventType
-        in: query
-        schema:
-          type: string
-      - name: actor
-        in: query
-        schema:
-          type: string
-      - name: offset
-        in: query
-        schema:
-          type: integer
-      - name: limit
-        in: query
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: Audit log entries
+          description: Alive
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  auditLogs:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_AuditLog'
-                  totalCount:
-                    type: integer
-  /v1/kms/folders:
+                  service:
+                    type: string
+                  status:
+                    type: string
+      operationId: kms_get_v1_kms_healthz
+  /v1/kms/keys:
     get:
-      operationId: kms_listSecretFolders
       tags:
-      - Secret Folders
-      summary: List secret folders
-      parameters:
-      - name: workspaceId
-        in: query
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: environment
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: directory
-        in: query
-        schema:
-          type: string
-          default: /
+      - Keys
+      summary: List key sets
+      description: Registered ONLY when the deployment is configured with MPC. On a secrets-only KMS these return 404; when
+        MPC is configured but unreachable they return 503 {"error":"mpc unreachable","mode":"secrets-only"}. KMS never holds
+        private key material -- signing is t-of-n in the MPC cluster.
       responses:
         '200':
-          description: Folder list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  folders:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_SecretFolder'
+          description: Key sets
+        '503':
+          description: MPC unreachable
+      operationId: kms_get_v1_kms_keys
+  /v1/kms/keys/generate:
     post:
-      operationId: kms_createSecretFolder
       tags:
-      - Secret Folders
-      summary: Create a secret folder
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - workspaceId
-              - environment
-              - name
-              properties:
-                workspaceId:
-                  type: string
-                  format: uuid
-                environment:
-                  type: string
-                name:
-                  type: string
-                directory:
-                  type: string
-                  default: /
+      - Keys
+      summary: Generate a validator key set via MPC DKG
+      description: Registered ONLY when the deployment is configured with MPC. On a secrets-only KMS these return 404; when
+        MPC is configured but unreachable they return 503 {"error":"mpc unreachable","mode":"secrets-only"}. KMS never holds
+        private key material -- signing is t-of-n in the MPC cluster.
       responses:
         '200':
-          description: Created folder
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  folder:
-                    $ref: '#/components/schemas/kms_SecretFolder'
-  /v1/kms/folders/{folderId}:
-    patch:
-      operationId: kms_updateSecretFolder
-      tags:
-      - Secret Folders
-      summary: Update a secret folder
-      parameters:
-      - name: folderId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                workspaceId:
-                  type: string
-                  format: uuid
-                environment:
-                  type: string
-                directory:
-                  type: string
-      responses:
-        '200':
-          description: Updated folder
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  folder:
-                    $ref: '#/components/schemas/kms_SecretFolder'
-    delete:
-      operationId: kms_deleteSecretFolder
-      tags:
-      - Secret Folders
-      summary: Delete a secret folder
-      parameters:
-      - name: folderId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - workspaceId
-              - environment
-              properties:
-                workspaceId:
-                  type: string
-                  format: uuid
-                environment:
-                  type: string
-                directory:
-                  type: string
-      responses:
-        '200':
-          description: Deletion confirmation
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/identities:
-    post:
-      operationId: kms_createIdentity
-      tags:
-      - Identities
-      summary: Create a machine identity
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/kms_CreateIdentityRequest'
-      responses:
-        '200':
-          description: Created identity
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  identity:
-                    $ref: '#/components/schemas/kms_Identity'
-  /v1/kms/identities/{identityId}:
+          description: Key set
+        '503':
+          description: MPC unreachable
+      operationId: kms_post_v1_kms_keys_generate
+  /v1/kms/keys/{id}:
     get:
-      operationId: kms_getIdentity
       tags:
-      - Identities
-      summary: Get an identity by ID
+      - Keys
+      summary: Get a key set
+      description: Registered ONLY when the deployment is configured with MPC. On a secrets-only KMS these return 404; when
+        MPC is configured but unreachable they return 503 {"error":"mpc unreachable","mode":"secrets-only"}. KMS never holds
+        private key material -- signing is t-of-n in the MPC cluster.
       parameters:
-      - name: identityId
+      - name: id
         in: path
         required: true
         schema:
           type: string
-          format: uuid
+        description: Key set id
       responses:
         '200':
-          description: Identity details
+          description: Key set
+        '404':
+          description: Not found. Always JSON, never HTML.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  identity:
-                    $ref: '#/components/schemas/kms_Identity'
-    patch:
-      operationId: kms_updateIdentity
-      tags:
-      - Identities
-      summary: Update an identity
-      parameters:
-      - name: identityId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                role:
-                  type: string
-      responses:
-        '200':
-          description: Updated identity
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  identity:
-                    $ref: '#/components/schemas/kms_Identity'
-    delete:
-      operationId: kms_deleteIdentity
-      tags:
-      - Identities
-      summary: Delete an identity
-      parameters:
-      - name: identityId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Deletion confirmation
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/integration:
+                  message:
+                    type: string
+                  path:
+                    type: string
+        '503':
+          description: MPC unreachable
+      operationId: kms_get_v1_kms_keys_id
+  /v1/kms/keys/{id}/rotate:
     post:
-      operationId: kms_createIntegration
       tags:
-      - Integrations
-      summary: Create an integration
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - integrationAuthId
-              - integration
-              - app
-              - sourceEnvironment
-              - secretPath
-              properties:
-                integrationAuthId:
-                  type: string
-                  format: uuid
-                integration:
-                  type: string
-                app:
-                  type: string
-                sourceEnvironment:
-                  type: string
-                secretPath:
-                  type: string
-                  default: /
-                targetEnvironment:
-                  type: string
-      responses:
-        '200':
-          description: Created integration
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  integration:
-                    $ref: '#/components/schemas/kms_Integration'
-  /v1/kms/integration/{integrationId}:
-    patch:
-      operationId: kms_updateIntegration
-      tags:
-      - Integrations
-      summary: Update an integration
+      - Keys
+      summary: Reshare a key set
+      description: Registered ONLY when the deployment is configured with MPC. On a secrets-only KMS these return 404; when
+        MPC is configured but unreachable they return 503 {"error":"mpc unreachable","mode":"secrets-only"}. KMS never holds
+        private key material -- signing is t-of-n in the MPC cluster.
       parameters:
-      - name: integrationId
+      - name: id
         in: path
         required: true
         schema:
           type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                app:
-                  type: string
-                isActive:
-                  type: boolean
-                targetEnvironment:
-                  type: string
+        description: Key set id
       responses:
         '200':
-          description: Updated integration
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  integration:
-                    $ref: '#/components/schemas/kms_Integration'
-    delete:
-      operationId: kms_deleteIntegration
-      tags:
-      - Integrations
-      summary: Delete an integration
-      parameters:
-      - name: integrationId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Deletion confirmation
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/kms/keys:
-    get:
-      operationId: kms_listKmsKeys
-      tags:
-      - KMS
-      summary: List KMS encryption keys
-      parameters:
-      - name: projectId
-        in: query
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: KMS key list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  keys:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_KmsKey'
+          description: Reshared
+        '503':
+          description: MPC unreachable
+      operationId: kms_post_v1_kms_keys_id_rotate
+  /v1/kms/keys/{id}/sign:
     post:
-      operationId: kms_createKmsKey
       tags:
-      - KMS
-      summary: Create a KMS encryption key
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - name
-              - projectId
-              properties:
-                name:
-                  type: string
-                description:
-                  type: string
-                projectId:
-                  type: string
-                  format: uuid
-      responses:
-        '200':
-          description: Created KMS key
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  key:
-                    $ref: '#/components/schemas/kms_KmsKey'
-  /v1/kms/kms/keys/{keyId}:
-    patch:
-      operationId: kms_updateKmsKey
-      tags:
-      - KMS
-      summary: Update a KMS key
+      - Keys
+      summary: Threshold sign
+      description: Registered ONLY when the deployment is configured with MPC. On a secrets-only KMS these return 404; when
+        MPC is configured but unreachable they return 503 {"error":"mpc unreachable","mode":"secrets-only"}. KMS never holds
+        private key material -- signing is t-of-n in the MPC cluster.
       parameters:
-      - name: keyId
+      - name: id
         in: path
         required: true
         schema:
           type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                description:
-                  type: string
-                isDisabled:
-                  type: boolean
+        description: Key set id
       responses:
         '200':
-          description: Updated KMS key
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  key:
-                    $ref: '#/components/schemas/kms_KmsKey'
-    delete:
-      operationId: kms_deleteKmsKey
-      tags:
-      - KMS
-      summary: Delete a KMS key
-      parameters:
-      - name: keyId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Deletion confirmation
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/kms/keys/{keyId}/decrypt:
-    post:
-      operationId: kms_decryptData
-      tags:
-      - KMS
-      summary: Decrypt data with a KMS key
-      parameters:
-      - name: keyId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/kms_DecryptDataRequest'
-      responses:
-        '200':
-          description: Decrypted data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kms_DecryptDataResponse'
-  /v1/kms/kms/keys/{keyId}/encrypt:
-    post:
-      operationId: kms_encryptData
-      tags:
-      - KMS
-      summary: Encrypt data with a KMS key
-      parameters:
-      - name: keyId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/kms_EncryptDataRequest'
-      responses:
-        '200':
-          description: Encrypted data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/kms_EncryptDataResponse'
-  /v1/kms/organization:
-    get:
-      operationId: kms_listOrganizations
-      tags:
-      - Organizations
-      summary: List organizations the user belongs to
-      responses:
-        '200':
-          description: Organization list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  organizations:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_Organization'
-  /v1/kms/organization/{organizationId}:
-    get:
-      operationId: kms_getOrganization
-      tags:
-      - Organizations
-      summary: Get an organization by ID
-      parameters:
-      - name: organizationId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Organization details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  organization:
-                    $ref: '#/components/schemas/kms_Organization'
-    patch:
-      operationId: kms_updateOrganization
-      tags:
-      - Organizations
-      summary: Update an organization
-      parameters:
-      - name: organizationId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                slug:
-                  type: string
-      responses:
-        '200':
-          description: Updated organization
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  organization:
-                    $ref: '#/components/schemas/kms_Organization'
+          description: Signature
+        '503':
+          description: MPC unreachable
+      operationId: kms_post_v1_kms_keys_id_sign
   /v1/kms/orgs/{org}/secrets:
-    description: "Canonical (lux-native) org-scoped secrets API \u2014 the surface the Hanzo KMS Go server actually serves\
-      \ (github.com/hanzoai/kms embed.go registerSecretRoutes) and that console2 + the `kms` CLI use. Auth is an IAM-issued\
-      \ Bearer token verified against the issuer JWKS (authorize + canActOnOrg); the org in the path MUST match the token's\
-      \ owner claim (or a global admin). Zero-knowledge: list returns KEYS ONLY (no value); values are read one at a time\
-      \ via the {rest} path below.\n"
     get:
-      operationId: kms_kmsListOrgSecrets
       tags:
       - Secrets
-      summary: List an org's secret metadata (names only, never values)
+      summary: List secret names under a path
+      description: Mirrors the ZAP wire op OpSecretList (0x0042). Returns names only, never values.
       parameters:
       - name: org
         in: path
         required: true
         schema:
           type: string
+        description: Org scope
+      - name: path
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Grouping path, e.g. gateway
       - name: env
         in: query
-        description: "Environment slug (devnet, testnet, mainnet, production, \u2026). Default \"default\"."
+        required: false
         schema:
           type: string
-      - name: prefix
-        in: query
-        description: Restrict the scan to a subpath within brand/{org}.
-        schema:
-          type: string
+        description: Environment slug; defaults to `default`
       responses:
         '200':
-          description: Secret metadata rows (no values)
+          description: Names under the path
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  secrets:
+                  names:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        path:
-                          type: string
-                        name:
-                          type: string
-                        env:
-                          type: string
-                        version:
-                          type: integer
-                          format: int64
-                        updatedTime:
-                          type: string
-                          format: date-time
-                  count:
-                    type: integer
-                  truncated:
-                    type: boolean
+                      type: string
         '401':
-          description: Missing/invalid bearer token
-        '403':
-          description: Token org claim does not match the org path
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  statusCode:
+                    type: integer
+      operationId: kms_get_v1_kms_orgs_org_secrets
     post:
-      operationId: kms_kmsPutOrgSecret
       tags:
       - Secrets
-      summary: Create or upsert a secret (value write-only; version bumps)
+      summary: Create or replace a secret
+      description: ONE upsert. There is no separate update endpoint and no PATCH.
       parameters:
       - name: org
         in: path
         required: true
         schema:
           type: string
+        description: Org scope
       requestBody:
         required: true
         content:
@@ -37773,6 +36678,7 @@ paths:
               type: object
               required:
               - name
+              - env
               - value
               properties:
                 path:
@@ -37781,7 +36687,6 @@ paths:
                   type: string
                 env:
                   type: string
-                  default: default
                 value:
                   type: string
       responses:
@@ -37794,44 +36699,48 @@ paths:
                 properties:
                   ok:
                     type: boolean
-                  version:
-                    type: integer
-                    format: int64
         '400':
-          description: Invalid path/name or missing name+value
-        '403':
-          description: Token org claim does not match the org path
+          description: name and value required, or env missing
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  statusCode:
+                    type: integer
+      operationId: kms_post_v1_kms_orgs_org_secrets
   /v1/kms/orgs/{org}/secrets/{rest}:
-    description: 'One secret addressed by its full path/name (e.g. providers/alpaca/api_key). GET reveals the value (shown
-      once, audited); PATCH rotates with a compare-and-set on the current version (If-Match or body.version); DELETE removes
-      it. Same authorize()+canActOnOrg() gate as the list/create above.
-
-      '
-    parameters:
-    - name: org
-      in: path
-      required: true
-      schema:
-        type: string
-    - name: rest
-      in: path
-      required: true
-      description: The secret's path + name joined (a/b/c/name).
-      schema:
-        type: string
     get:
-      operationId: kms_kmsGetOrgSecret
       tags:
       - Secrets
-      summary: Reveal one secret value
+      summary: Read one secret value
       parameters:
-      - name: env
-        in: query
+      - name: org
+        in: path
+        required: true
         schema:
           type: string
+        description: Org scope
+      - name: rest
+        in: path
+        required: true
+        schema:
+          type: string
+        description: 'Path and name joined. Split at the LAST slash: `a/b/C` is path `a/b`, name `C`. Escape each segment
+          individually.'
+      - name: env
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Environment slug; defaults to `default`
       responses:
         '200':
-          description: The secret value + current version
+          description: The value
           content:
             application/json:
               schema:
@@ -37842,1292 +36751,104 @@ paths:
                     properties:
                       value:
                         type: string
-                  version:
-                    type: integer
-                    format: int64
-        '404':
-          description: Not found
-    patch:
-      operationId: kms_kmsRotateOrgSecret
-      tags:
-      - Secrets
-      summary: Rotate a secret (compare-and-set on version)
-      parameters:
-      - name: If-Match
-        in: header
-        description: Current version for the compare-and-set (replay protection).
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - value
-              - version
-              properties:
-                value:
-                  type: string
-                version:
-                  type: integer
-                  format: int64
-                env:
-                  type: string
-      responses:
-        '200':
-          description: Rotated
+        '400':
+          description: path and name required (no slash to split)
+        '401':
+          description: Missing or invalid bearer token
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  ok:
-                    type: boolean
-                  version:
+                  message:
+                    type: string
+                  statusCode:
                     type: integer
-                    format: int64
-        '409':
-          description: Version mismatch (replayed/stale rotate)
+        '404':
+          description: Not found. Always JSON, never HTML.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  path:
+                    type: string
+      operationId: kms_get_v1_kms_orgs_org_secrets_rest
     delete:
-      operationId: kms_kmsDeleteOrgSecret
       tags:
       - Secrets
       summary: Delete a secret
       parameters:
-      - name: env
-        in: query
+      - name: org
+        in: path
+        required: true
         schema:
           type: string
+        description: Org scope
+      - name: rest
+        in: path
+        required: true
+        schema:
+          type: string
+        description: 'Path and name joined. Split at the LAST slash: `a/b/C` is path `a/b`, name `C`. Escape each segment
+          individually.'
+      - name: env
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Environment slug; defaults to `default`
       responses:
         '200':
           description: Deleted
+        '401':
+          description: Missing or invalid bearer token
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  ok:
-                    type: boolean
-  /v1/kms/projects:
-    post:
-      operationId: kms_createProject
-      tags:
-      - Projects
-      summary: Create a project
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/kms_CreateProjectRequest'
-      responses:
-        '200':
-          description: Created project
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  project:
-                    $ref: '#/components/schemas/kms_Project'
-  /v1/kms/projects/{projectId}:
-    get:
-      operationId: kms_getProject
-      tags:
-      - Projects
-      summary: Get a project by ID
-      parameters:
-      - $ref: '#/components/parameters/kms_projectId'
-      responses:
-        '200':
-          description: Project details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  project:
-                    $ref: '#/components/schemas/kms_Project'
-    patch:
-      operationId: kms_updateProject
-      tags:
-      - Projects
-      summary: Update a project
-      parameters:
-      - $ref: '#/components/parameters/kms_projectId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-      responses:
-        '200':
-          description: Updated project
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  project:
-                    $ref: '#/components/schemas/kms_Project'
-    delete:
-      operationId: kms_deleteProject
-      tags:
-      - Projects
-      summary: Delete a project
-      parameters:
-      - $ref: '#/components/parameters/kms_projectId'
-      responses:
-        '200':
-          description: Deletion confirmation
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/projects/{projectId}/environments:
-    get:
-      operationId: kms_listEnvironments
-      tags:
-      - Environments
-      summary: List project environments
-      parameters:
-      - $ref: '#/components/parameters/kms_projectId'
-      responses:
-        '200':
-          description: Environment list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  environments:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_Environment'
-    post:
-      operationId: kms_createEnvironment
-      tags:
-      - Environments
-      summary: Create an environment
-      parameters:
-      - $ref: '#/components/parameters/kms_projectId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/kms_CreateEnvironmentRequest'
-      responses:
-        '200':
-          description: Created environment
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  environment:
-                    $ref: '#/components/schemas/kms_Environment'
-  /v1/kms/projects/{projectId}/environments/{envId}:
-    patch:
-      operationId: kms_updateEnvironment
-      tags:
-      - Environments
-      summary: Update an environment
-      parameters:
-      - $ref: '#/components/parameters/kms_projectId'
-      - $ref: '#/components/parameters/kms_envId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/kms_UpdateEnvironmentRequest'
-      responses:
-        '200':
-          description: Updated environment
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  environment:
-                    $ref: '#/components/schemas/kms_Environment'
-    delete:
-      operationId: kms_deleteEnvironment
-      tags:
-      - Environments
-      summary: Delete an environment
-      parameters:
-      - $ref: '#/components/parameters/kms_projectId'
-      - $ref: '#/components/parameters/kms_envId'
-      responses:
-        '200':
-          description: Deletion confirmation
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/projects/{projectId}/tags:
-    get:
-      operationId: kms_listSecretTags
-      tags:
-      - Secret Tags
-      summary: List secret tags for a project
-      parameters:
-      - $ref: '#/components/parameters/kms_projectId'
-      responses:
-        '200':
-          description: Tag list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  tags:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_SecretTag'
-    post:
-      operationId: kms_createSecretTag
-      tags:
-      - Secret Tags
-      summary: Create a secret tag
-      parameters:
-      - $ref: '#/components/parameters/kms_projectId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - name
-              - slug
-              - color
-              properties:
-                name:
-                  type: string
-                slug:
-                  type: string
-                color:
-                  type: string
-      responses:
-        '200':
-          description: Created tag
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  tag:
-                    $ref: '#/components/schemas/kms_SecretTag'
-  /v1/kms/projects/{projectId}/tags/{tagId}:
-    get:
-      operationId: kms_getSecretTag
-      tags:
-      - Secret Tags
-      summary: Get a secret tag by ID
-      parameters:
-      - $ref: '#/components/parameters/kms_projectId'
-      - name: tagId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Tag details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  tag:
-                    $ref: '#/components/schemas/kms_SecretTag'
-    patch:
-      operationId: kms_updateSecretTag
-      tags:
-      - Secret Tags
-      summary: Update a secret tag
-      parameters:
-      - $ref: '#/components/parameters/kms_projectId'
-      - name: tagId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                slug:
-                  type: string
-                color:
-                  type: string
-      responses:
-        '200':
-          description: Updated tag
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  tag:
-                    $ref: '#/components/schemas/kms_SecretTag'
-    delete:
-      operationId: kms_deleteSecretTag
-      tags:
-      - Secret Tags
-      summary: Delete a secret tag
-      parameters:
-      - $ref: '#/components/parameters/kms_projectId'
-      - name: tagId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Deletion confirmation
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/projects/{projectId}/users:
-    get:
-      operationId: kms_listProjectUsers
-      tags:
-      - Projects
-      summary: List project members
-      parameters:
-      - $ref: '#/components/parameters/kms_projectId'
-      - name: includeGroupMembers
-        in: query
-        schema:
-          type: boolean
-          default: false
-      responses:
-        '200':
-          description: Project members
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  users:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_User'
-  /v1/kms/secret-imports:
-    get:
-      operationId: kms_listSecretImports
-      tags:
-      - Secret Imports
-      summary: List secret imports
-      parameters:
-      - name: workspaceId
-        in: query
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: environment
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: directory
-        in: query
-        schema:
-          type: string
-          default: /
-      responses:
-        '200':
-          description: Import list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  secretImports:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_SecretImport'
-    post:
-      operationId: kms_createSecretImport
-      tags:
-      - Secret Imports
-      summary: Create a secret import
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - workspaceId
-              - environment
-              - directory
-              - import
-              properties:
-                workspaceId:
-                  type: string
-                  format: uuid
-                environment:
-                  type: string
-                directory:
-                  type: string
-                  default: /
-                import:
-                  type: object
-                  required:
-                  - environment
-                  - path
-                  properties:
-                    environment:
-                      type: string
-                    path:
-                      type: string
-      responses:
-        '200':
-          description: Created import
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  secretImport:
-                    $ref: '#/components/schemas/kms_SecretImport'
-  /v1/kms/secret-imports/{importId}:
-    patch:
-      operationId: kms_updateSecretImport
-      tags:
-      - Secret Imports
-      summary: Update a secret import
-      parameters:
-      - name: importId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                position:
-                  type: integer
-                import:
-                  type: object
-                  properties:
-                    environment:
-                      type: string
-                    path:
-                      type: string
-      responses:
-        '200':
-          description: Updated import
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  secretImport:
-                    $ref: '#/components/schemas/kms_SecretImport'
-    delete:
-      operationId: kms_deleteSecretImport
-      tags:
-      - Secret Imports
-      summary: Delete a secret import
-      parameters:
-      - name: importId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Deletion confirmation
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/secret-sharing/shared:
-    get:
-      operationId: kms_listSharedSecrets
-      tags:
-      - Secret Sharing
-      summary: List shared secrets created by the user
-      responses:
-        '200':
-          description: Shared secret list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  secrets:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_SharedSecret'
-    post:
-      operationId: kms_createSharedSecret
-      tags:
-      - Secret Sharing
-      summary: Create a shared secret
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - secretValue
-              properties:
-                secretValue:
-                  type: string
-                expiresAt:
-                  type: string
-                  format: date-time
-                expiresAfterViews:
-                  type: integer
-                accessType:
-                  type: string
-                  enum:
-                  - anyone
-                  - organization
-                  default: anyone
-      responses:
-        '200':
-          description: Created shared secret
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
+                  message:
                     type: string
-                    format: uuid
-  /v1/kms/secret-sharing/shared/{sharedSecretId}:
-    get:
-      operationId: kms_getSharedSecret
-      tags:
-      - Secret Sharing
-      summary: Get a shared secret by ID (consumes a view)
-      parameters:
-      - name: sharedSecretId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Shared secret value
+                  statusCode:
+                    type: integer
+        '404':
+          description: Not found. Always JSON, never HTML.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  secretValue:
+                  message:
                     type: string
-                  expiresAt:
+                  path:
                     type: string
-                    format: date-time
-      security: []
-    delete:
-      operationId: kms_deleteSharedSecret
-      tags:
-      - Secret Sharing
-      summary: Delete a shared secret
-      parameters:
-      - name: sharedSecretId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Deletion confirmation
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/secret-syncs:
+      operationId: kms_delete_v1_kms_orgs_org_secrets_rest
+  /v1/kms/status:
     get:
-      operationId: kms_listSecretSyncs
       tags:
-      - Secret Syncs
-      summary: List secret syncs
-      parameters:
-      - name: projectId
-        in: query
-        required: true
-        schema:
-          type: string
-          format: uuid
+      - Keys
+      summary: KMS + MPC cluster status
+      description: Registered ONLY when the deployment is configured with MPC. On a secrets-only KMS these return 404; when
+        MPC is configured but unreachable they return 503 {"error":"mpc unreachable","mode":"secrets-only"}. KMS never holds
+        private key material -- signing is t-of-n in the MPC cluster.
       responses:
         '200':
-          description: Secret sync list
+          description: Status
+        '404':
+          description: Not found. Always JSON, never HTML.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  secretSyncs:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_SecretSync'
-    post:
-      operationId: kms_createSecretSync
-      tags:
-      - Secret Syncs
-      summary: Create a secret sync
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - name
-              - destination
-              - projectId
-              - sourceEnvironment
-              - sourcePath
-              - connectionId
-              properties:
-                name:
-                  type: string
-                destination:
-                  type: string
-                projectId:
-                  type: string
-                  format: uuid
-                sourceEnvironment:
-                  type: string
-                sourcePath:
-                  type: string
-                connectionId:
-                  type: string
-                  format: uuid
-                isAutoSyncEnabled:
-                  type: boolean
-                  default: true
-                destinationConfig:
-                  type: object
-      responses:
-        '200':
-          description: Created secret sync
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  secretSync:
-                    $ref: '#/components/schemas/kms_SecretSync'
-  /v1/kms/secret-syncs/{syncId}:
-    get:
-      operationId: kms_getSecretSync
-      tags:
-      - Secret Syncs
-      summary: Get a secret sync by ID
-      parameters:
-      - name: syncId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Secret sync details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  secretSync:
-                    $ref: '#/components/schemas/kms_SecretSync'
-    patch:
-      operationId: kms_updateSecretSync
-      tags:
-      - Secret Syncs
-      summary: Update a secret sync
-      parameters:
-      - name: syncId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                isAutoSyncEnabled:
-                  type: boolean
-                destinationConfig:
-                  type: object
-      responses:
-        '200':
-          description: Updated secret sync
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  secretSync:
-                    $ref: '#/components/schemas/kms_SecretSync'
-    delete:
-      operationId: kms_deleteSecretSync
-      tags:
-      - Secret Syncs
-      summary: Delete a secret sync
-      parameters:
-      - name: syncId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Deletion confirmation
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/secret-syncs/{syncId}/trigger:
-    post:
-      operationId: kms_triggerSecretSync
-      tags:
-      - Secret Syncs
-      summary: Manually trigger a secret sync
-      parameters:
-      - name: syncId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Sync triggered
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/service-token:
-    get:
-      operationId: kms_getServiceToken
-      tags:
-      - Service Tokens
-      summary: Get the service token associated with the current request
-      responses:
-        '200':
-          description: Service token details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  serviceToken:
-                    $ref: '#/components/schemas/kms_ServiceToken'
-  /v1/kms/sso/config:
-    get:
-      operationId: kms_getSsoConfig
-      tags:
-      - SSO
-      summary: Get SSO configuration for an organization
-      parameters:
-      - name: orgId
-        in: query
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: SSO configuration
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
+                  message:
                     type: string
-                    format: uuid
-                  type:
+                  path:
                     type: string
-                    enum:
-                    - saml
-                    - oidc
-                  isActive:
-                    type: boolean
-                  orgId:
-                    type: string
-                    format: uuid
-    post:
-      operationId: kms_createSsoConfig
-      tags:
-      - SSO
-      summary: Create SSO configuration
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - orgId
-              - type
-              properties:
-                orgId:
-                  type: string
-                  format: uuid
-                type:
-                  type: string
-                  enum:
-                  - saml
-                  - oidc
-                isActive:
-                  type: boolean
-                  default: true
-      responses:
-        '200':
-          description: Created SSO config
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/user:
-    get:
-      operationId: kms_getCurrentUser
-      tags:
-      - Users
-      summary: Get the current authenticated user
-      responses:
-        '200':
-          description: Current user
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user:
-                    $ref: '#/components/schemas/kms_User'
-  /v1/kms/v4/secrets:
-    get:
-      operationId: kms_listSecrets
-      tags:
-      - Secrets
-      summary: List secrets
-      parameters:
-      - name: workspaceId
-        in: query
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: environment
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: secretPath
-        in: query
-        schema:
-          type: string
-          default: /
-      - name: expandSecretReferences
-        in: query
-        schema:
-          type: boolean
-          default: true
-      - name: recursive
-        in: query
-        schema:
-          type: boolean
-          default: false
-      - name: include_imports
-        in: query
-        schema:
-          type: boolean
-          default: false
-      - name: tagSlugs
-        in: query
-        schema:
-          type: string
-          description: Comma-separated tag slugs to filter by
-      - name: metadataFilter
-        in: query
-        schema:
-          type: string
-          description: 'Metadata filter in format: key=k1,value=v1|key=k2,value=v2'
-      responses:
-        '200':
-          description: Secret list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  secrets:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_Secret'
-                  imports:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        environment:
-                          type: string
-                        secretPath:
-                          type: string
-                        folderId:
-                          type: string
-                        secrets:
-                          type: array
-                          items:
-                            $ref: '#/components/schemas/kms_Secret'
-  /v1/kms/v4/secrets/batch:
-    post:
-      operationId: kms_batchSecrets
-      tags:
-      - Secrets
-      summary: Batch create, update, and delete secrets
-      parameters:
-      - name: workspaceId
-        in: query
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/kms_BatchSecretRequest'
-      responses:
-        '200':
-          description: Batch operation result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  created:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_Secret'
-                  updated:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_Secret'
-                  deleted:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_Secret'
-  /v1/kms/v4/secrets/{secretKey}:
-    get:
-      operationId: kms_getSecret
-      tags:
-      - Secrets
-      summary: Get a secret by key
-      parameters:
-      - name: secretKey
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: workspaceId
-        in: query
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: environment
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: secretPath
-        in: query
-        schema:
-          type: string
-          default: /
-      - name: expandSecretReferences
-        in: query
-        schema:
-          type: boolean
-          default: true
-      - name: version
-        in: query
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: Secret details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  secret:
-                    $ref: '#/components/schemas/kms_Secret'
-    post:
-      operationId: kms_createSecret
-      tags:
-      - Secrets
-      summary: Create a secret
-      parameters:
-      - name: secretKey
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/kms_CreateSecretRequest'
-      responses:
-        '200':
-          description: Created secret
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  secret:
-                    $ref: '#/components/schemas/kms_Secret'
-    patch:
-      operationId: kms_updateSecret
-      tags:
-      - Secrets
-      summary: Update a secret
-      parameters:
-      - name: secretKey
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/kms_UpdateSecretRequest'
-      responses:
-        '200':
-          description: Updated secret
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  secret:
-                    $ref: '#/components/schemas/kms_Secret'
-    delete:
-      operationId: kms_deleteSecret
-      tags:
-      - Secrets
-      summary: Delete a secret
-      parameters:
-      - name: secretKey
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: workspaceId
-        in: query
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: environment
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: secretPath
-        in: query
-        schema:
-          type: string
-          default: /
-      responses:
-        '200':
-          description: Deleted secret
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  secret:
-                    $ref: '#/components/schemas/kms_Secret'
-  /v1/kms/webhooks:
-    get:
-      operationId: kms_listWebhooks
-      tags:
-      - Webhooks
-      summary: List webhooks for a project
-      parameters:
-      - name: workspaceId
-        in: query
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Webhook list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  webhooks:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/kms_Webhook'
-    post:
-      operationId: kms_createWebhook
-      tags:
-      - Webhooks
-      summary: Create a webhook
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - workspaceId
-              - environment
-              - webhookUrl
-              properties:
-                workspaceId:
-                  type: string
-                  format: uuid
-                environment:
-                  type: string
-                webhookUrl:
-                  type: string
-                  format: uri
-                secretPath:
-                  type: string
-                  default: /
-                webhookSecretKey:
-                  type: string
-      responses:
-        '200':
-          description: Created webhook
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  webhook:
-                    $ref: '#/components/schemas/kms_Webhook'
-  /v1/kms/webhooks/{webhookId}:
-    patch:
-      operationId: kms_updateWebhook
-      tags:
-      - Webhooks
-      summary: Update a webhook
-      parameters:
-      - name: webhookId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                isDisabled:
-                  type: boolean
-      responses:
-        '200':
-          description: Updated webhook
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  webhook:
-                    $ref: '#/components/schemas/kms_Webhook'
-    delete:
-      operationId: kms_deleteWebhook
-      tags:
-      - Webhooks
-      summary: Delete a webhook
-      parameters:
-      - name: webhookId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Deletion confirmation
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/kms/webhooks/{webhookId}/test:
-    post:
-      operationId: kms_testWebhook
-      tags:
-      - Webhooks
-      summary: Test a webhook
-      parameters:
-      - name: webhookId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Test result
-          content:
-            application/json:
-              schema:
-                type: object
+      operationId: kms_get_v1_kms_status
   /v1/kv:
     post:
       tags:
@@ -65724,6 +63445,17 @@ components:
           type: string
           format: date-time
           readOnly: true
+    commerce_CategoryMRR:
+      type: object
+      properties:
+        category:
+          type: string
+          example: world
+        mrrCents:
+          type: integer
+          format: int64
+        subscriptions:
+          type: integer
     commerce_CheckoutRequest:
       type: object
       properties:
@@ -65814,6 +63546,30 @@ components:
           type: string
         phone:
           type: string
+    commerce_CustomerRow:
+      type: object
+      properties:
+        org:
+          type: string
+        plan:
+          type: string
+          description: plan slug
+        category:
+          type: string
+        status:
+          type: string
+          example: active
+        mrrCents:
+          type: integer
+          format: int64
+        usageCents:
+          type: integer
+          format: int64
+        seats:
+          type: integer
+        since:
+          type: string
+          format: date-time
     commerce_Error:
       type: object
       properties:
@@ -66268,6 +64024,25 @@ components:
           type: integer
         trialPeriodDays:
           type: integer
+    commerce_PlanBreakdown:
+      type: object
+      properties:
+        plan:
+          type: string
+          description: plan slug
+        name:
+          type: string
+        category:
+          type: string
+        active:
+          type: integer
+        trialing:
+          type: integer
+        seats:
+          type: integer
+        mrrCents:
+          type: integer
+          format: int64
     commerce_Product:
       type: object
       properties:
@@ -66384,6 +64159,65 @@ components:
         createdAt:
           type: string
           format: date-time
+    commerce_RevenueMetrics:
+      type: object
+      properties:
+        mrrCents:
+          type: integer
+          format: int64
+        arrCents:
+          type: integer
+          format: int64
+        activeSubscriptions:
+          type: integer
+        payingCustomers:
+          type: integer
+        trials:
+          type: integer
+        newMrrCents:
+          type: integer
+          format: int64
+        churnedMrrCents:
+          type: integer
+          format: int64
+        netNewMrrCents:
+          type: integer
+          format: int64
+        byCategory:
+          type: array
+          items:
+            $ref: '#/components/schemas/commerce_CategoryMRR'
+    commerce_SaaSMetrics:
+      type: object
+      description: The whole-business SaaS operations snapshot returned by GET /v1/commerce/metrics/saas.
+      properties:
+        asOf:
+          type: string
+          format: date-time
+        currency:
+          type: string
+          example: usd
+        window:
+          type: string
+          example: 30d
+        revenue:
+          $ref: '#/components/schemas/commerce_RevenueMetrics'
+        subscriptions:
+          $ref: '#/components/schemas/commerce_SubscriptionMetrics'
+        usage:
+          $ref: '#/components/schemas/commerce_UsageMetrics'
+        customers:
+          type: array
+          items:
+            $ref: '#/components/schemas/commerce_CustomerRow'
+        orgs:
+          type: integer
+          description: Total tenant organizations walked
+        gaps:
+          type: array
+          items:
+            type: string
+          description: "Honest \"not instrumented yet\" notes \u2014 never fabricated figures"
     commerce_Store:
       type: object
       properties:
@@ -66409,6 +64243,26 @@ components:
           type: string
           format: date-time
           readOnly: true
+    commerce_SubEvent:
+      type: object
+      properties:
+        at:
+          type: string
+          format: date-time
+        org:
+          type: string
+        type:
+          type: string
+          enum:
+          - created
+          - canceled
+        plan:
+          type: string
+        category:
+          type: string
+        mrrDeltaCents:
+          type: integer
+          format: int64
     commerce_Subscription:
       type: object
       properties:
@@ -66462,6 +64316,31 @@ components:
           type: string
           format: date-time
           readOnly: true
+    commerce_SubscriptionMetrics:
+      type: object
+      properties:
+        byPlan:
+          type: array
+          items:
+            $ref: '#/components/schemas/commerce_PlanBreakdown'
+        trialsActive:
+          type: integer
+        new:
+          type: integer
+        canceled:
+          type: integer
+        upgrades:
+          type: integer
+          nullable: true
+          description: "null \u2014 plan-change events are not instrumented"
+        downgrades:
+          type: integer
+          nullable: true
+          description: "null \u2014 plan-change events are not instrumented"
+        recent:
+          type: array
+          items:
+            $ref: '#/components/schemas/commerce_SubEvent'
     commerce_SubscriptionRequest:
       type: object
       required:
@@ -66526,6 +64405,22 @@ components:
           type: integer
         available:
           type: integer
+    commerce_UsageMetrics:
+      type: object
+      description: Metered pay-as-you-go REVENUE totals (billed wallet ledger). Per-model tokens / latency / error live in
+        the fleet god-view GET /v1/admin/o11y.
+      properties:
+        instrumented:
+          type: boolean
+        windowUsageCents:
+          type: integer
+          format: int64
+        requests:
+          type: integer
+          format: int64
+        untaggedRequests:
+          type: integer
+          format: int64
     commerce_User:
       type: object
       properties:
@@ -73758,335 +71653,6 @@ components:
             - kb-memory
             - kb-source
           description: Optional restriction to a subset of indexed knowledge doctypes
-    kms_AppConnection:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        app:
-          type: string
-          description: Service type (e.g., aws, github, gcp)
-        orgId:
-          type: string
-          format: uuid
-        credentials:
-          type: object
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    kms_ApprovalPolicy:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        type:
-          type: string
-          enum:
-          - change
-          - access
-        approvals:
-          type: integer
-        secretPath:
-          type: string
-        envId:
-          type: string
-          format: uuid
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    kms_AuditLog:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        actor:
-          type: object
-          properties:
-            type:
-              type: string
-            metadata:
-              type: object
-        orgId:
-          type: string
-          format: uuid
-        projectId:
-          type: string
-          format: uuid
-        event:
-          type: object
-          properties:
-            type:
-              type: string
-            metadata:
-              type: object
-        ipAddress:
-          type: string
-        userAgent:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-    kms_BatchSecretRequest:
-      type: object
-      properties:
-        create:
-          type: array
-          items:
-            $ref: '#/components/schemas/kms_CreateSecretRequest'
-        update:
-          type: array
-          items:
-            $ref: '#/components/schemas/kms_UpdateSecretRequest'
-        delete:
-          type: array
-          items:
-            type: object
-            required:
-            - secretKey
-            - environment
-            - secretPath
-            properties:
-              secretKey:
-                type: string
-              environment:
-                type: string
-              secretPath:
-                type: string
-    kms_Certificate:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        caId:
-          type: string
-          format: uuid
-        status:
-          type: string
-          enum:
-          - active
-          - revoked
-        friendlyName:
-          type: string
-        commonName:
-          type: string
-        serialNumber:
-          type: string
-        notBefore:
-          type: string
-          format: date-time
-        notAfter:
-          type: string
-          format: date-time
-        createdAt:
-          type: string
-          format: date-time
-    kms_CertificateAuthority:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        type:
-          type: string
-          enum:
-          - root
-          - intermediate
-        status:
-          type: string
-          enum:
-          - active
-          - disabled
-          - pending-certificate
-        friendlyName:
-          type: string
-        organization:
-          type: string
-        commonName:
-          type: string
-        dn:
-          type: string
-        maxPathLength:
-          type: integer
-        keyAlgorithm:
-          type: string
-          enum:
-          - RSA_2048
-          - RSA_4096
-          - ECDSA_P256
-          - ECDSA_P384
-        notBefore:
-          type: string
-          format: date-time
-        notAfter:
-          type: string
-          format: date-time
-        createdAt:
-          type: string
-          format: date-time
-    kms_CreateClientSecretResponse:
-      type: object
-      properties:
-        clientSecret:
-          type: string
-        clientSecretId:
-          type: string
-          format: uuid
-    kms_CreateEnvironmentRequest:
-      type: object
-      required:
-      - name
-      - slug
-      properties:
-        name:
-          type: string
-        slug:
-          type: string
-        position:
-          type: integer
-    kms_CreateIdentityRequest:
-      type: object
-      required:
-      - name
-      - organizationId
-      - role
-      properties:
-        name:
-          type: string
-        organizationId:
-          type: string
-          format: uuid
-        role:
-          type: string
-    kms_CreateProjectRequest:
-      type: object
-      required:
-      - projectName
-      - organizationId
-      properties:
-        projectName:
-          type: string
-        organizationId:
-          type: string
-          format: uuid
-        slug:
-          type: string
-        type:
-          type: string
-          enum:
-          - SecretManager
-          - CertManager
-        templateId:
-          type: string
-          format: uuid
-    kms_CreateSecretRequest:
-      type: object
-      required:
-      - secretKey
-      - secretValue
-      - environment
-      - secretPath
-      properties:
-        secretKey:
-          type: string
-        secretValue:
-          type: string
-        secretComment:
-          type: string
-        secretPath:
-          type: string
-          default: /
-        environment:
-          type: string
-        type:
-          type: string
-          enum:
-          - shared
-          - personal
-          default: shared
-        tagIds:
-          type: array
-          items:
-            type: string
-            format: uuid
-        secretMetadata:
-          type: array
-          items:
-            type: object
-            properties:
-              key:
-                type: string
-              value:
-                type: string
-        secretReminderNote:
-          type: string
-        secretReminderRepeatDays:
-          type: integer
-    kms_DashboardSecrets:
-      type: object
-      properties:
-        secrets:
-          type: array
-          items:
-            $ref: '#/components/schemas/kms_Secret'
-        folders:
-          type: array
-          items:
-            $ref: '#/components/schemas/kms_SecretFolder'
-        imports:
-          type: array
-          items:
-            $ref: '#/components/schemas/kms_SecretImport'
-    kms_DecryptDataRequest:
-      type: object
-      required:
-      - ciphertext
-      properties:
-        ciphertext:
-          type: string
-    kms_DecryptDataResponse:
-      type: object
-      properties:
-        plaintext:
-          type: string
-    kms_EncryptDataRequest:
-      type: object
-      required:
-      - plaintext
-      properties:
-        plaintext:
-          type: string
-          description: Base64-encoded plaintext to encrypt
-    kms_EncryptDataResponse:
-      type: object
-      properties:
-        ciphertext:
-          type: string
-    kms_Environment:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        slug:
-          type: string
-        position:
-          type: integer
     kms_Error:
       type: object
       properties:
@@ -74096,184 +71662,6 @@ components:
           type: string
         error:
           type: string
-    kms_Identity:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        authMethod:
-          type: string
-          enum:
-          - universal-auth
-          - token-auth
-          - kubernetes-auth
-          - gcp-auth
-          - aws-iam-auth
-          - azure-auth
-          - oidc-auth
-          - jwt-auth
-          - ldap-auth
-          - tls-cert-auth
-          - alicloud-auth
-          - oci-auth
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    kms_Integration:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        isActive:
-          type: boolean
-        integration:
-          type: string
-          description: Target platform (e.g., aws-parameter-store, github, vercel)
-        integrationAuthId:
-          type: string
-          format: uuid
-        envId:
-          type: string
-          format: uuid
-        secretPath:
-          type: string
-        targetEnvironment:
-          type: string
-        app:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    kms_IntegrationAuth:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        integration:
-          type: string
-        projectId:
-          type: string
-          format: uuid
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    kms_IssueCertificateRequest:
-      type: object
-      required:
-      - friendlyName
-      - commonName
-      properties:
-        friendlyName:
-          type: string
-        commonName:
-          type: string
-        altNames:
-          type: string
-          description: Comma-separated SANs
-        ttl:
-          type: string
-          description: Duration string (e.g., 365d, 1y)
-    kms_KmsKey:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        description:
-          type: string
-        isDisabled:
-          type: boolean
-        projectId:
-          type: string
-          format: uuid
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    kms_LoginRequest:
-      type: object
-      required:
-      - email
-      - password
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-        providerAuthToken:
-          type: string
-    kms_LoginResponse:
-      type: object
-      properties:
-        token:
-          type: string
-        isMfaEnabled:
-          type: boolean
-        mfaMethod:
-          type: string
-    kms_Organization:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        slug:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    kms_Project:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        slug:
-          type: string
-        orgId:
-          type: string
-          format: uuid
-        type:
-          type: string
-          enum:
-          - SecretManager
-          - CertManager
-        environments:
-          type: array
-          items:
-            $ref: '#/components/schemas/kms_Environment'
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
     kms_SdkEnvelope:
       type: object
       description: 'Canonical signed wrapper for every /v1/sdk operation. The signature is ML-DSA-65 over SHAKE256("lux-svc-envelope-v1"
@@ -74345,318 +71733,6 @@ components:
           type: string
           format: byte
           description: ML-DSA-65 public key (base64), for offline verification.
-    kms_Secret:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        version:
-          type: integer
-        type:
-          type: string
-          enum:
-          - shared
-          - personal
-        secretKey:
-          type: string
-        secretValue:
-          type: string
-        secretComment:
-          type: string
-        secretPath:
-          type: string
-        environment:
-          type: string
-        tags:
-          type: array
-          items:
-            $ref: '#/components/schemas/kms_SecretTag'
-        secretMetadata:
-          type: array
-          items:
-            type: object
-            properties:
-              key:
-                type: string
-              value:
-                type: string
-        secretReminderNote:
-          type: string
-        secretReminderRepeatDays:
-          type: integer
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    kms_SecretFolder:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        environment:
-          type: string
-        path:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    kms_SecretImport:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        importEnv:
-          type: string
-        importPath:
-          type: string
-        position:
-          type: integer
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    kms_SecretSync:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        destination:
-          type: string
-          description: Sync destination (e.g., aws-parameter-store, github)
-        sourceEnvironment:
-          type: string
-        sourcePath:
-          type: string
-        connectionId:
-          type: string
-          format: uuid
-        isAutoSyncEnabled:
-          type: boolean
-        lastSyncedAt:
-          type: string
-          format: date-time
-        syncStatus:
-          type: string
-          enum:
-          - succeeded
-          - failed
-          - pending
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    kms_SecretTag:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        slug:
-          type: string
-        name:
-          type: string
-        color:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    kms_ServiceToken:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        scopes:
-          type: array
-          items:
-            type: object
-            properties:
-              environment:
-                type: string
-              secretPath:
-                type: string
-        expiresAt:
-          type: string
-          format: date-time
-        createdAt:
-          type: string
-          format: date-time
-    kms_SharedSecret:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        encryptedValue:
-          type: string
-        expiresAt:
-          type: string
-          format: date-time
-        expiresAfterViews:
-          type: integer
-        accessType:
-          type: string
-          enum:
-          - anyone
-          - organization
-        createdAt:
-          type: string
-          format: date-time
-    kms_TokenResponse:
-      type: object
-      properties:
-        accessToken:
-          type: string
-        expiresIn:
-          type: integer
-        accessTokenMaxTTL:
-          type: integer
-        tokenType:
-          type: string
-          default: Bearer
-    kms_UniversalAuthConfig:
-      type: object
-      properties:
-        identityId:
-          type: string
-          format: uuid
-        clientId:
-          type: string
-        accessTokenTrustedIps:
-          type: array
-          items:
-            type: object
-            properties:
-              ipAddress:
-                type: string
-        accessTokenTTL:
-          type: integer
-        accessTokenMaxTTL:
-          type: integer
-        accessTokenNumUsesLimit:
-          type: integer
-    kms_UniversalAuthLoginRequest:
-      type: object
-      required:
-      - clientId
-      - clientSecret
-      properties:
-        clientId:
-          type: string
-        clientSecret:
-          type: string
-    kms_UpdateEnvironmentRequest:
-      type: object
-      properties:
-        name:
-          type: string
-        slug:
-          type: string
-        position:
-          type: integer
-    kms_UpdateSecretRequest:
-      type: object
-      required:
-      - secretKey
-      - environment
-      - secretPath
-      properties:
-        secretKey:
-          type: string
-        secretValue:
-          type: string
-        secretComment:
-          type: string
-        secretPath:
-          type: string
-          default: /
-        environment:
-          type: string
-        newSecretName:
-          type: string
-        tagIds:
-          type: array
-          items:
-            type: string
-            format: uuid
-        secretMetadata:
-          type: array
-          items:
-            type: object
-            properties:
-              key:
-                type: string
-              value:
-                type: string
-        secretReminderNote:
-          type: string
-        secretReminderRepeatDays:
-          type: integer
-    kms_User:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        email:
-          type: string
-          format: email
-        firstName:
-          type: string
-        lastName:
-          type: string
-        superAdmin:
-          type: boolean
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    kms_Webhook:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        url:
-          type: string
-          format: uri
-        envId:
-          type: string
-          format: uuid
-        secretPath:
-          type: string
-        isDisabled:
-          type: boolean
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
     kv_Cluster:
       type: object
       properties:

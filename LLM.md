@@ -1,8 +1,9 @@
 # openapi
 
-OpenAPI 3.1 specifications for all Hanzo services. v1.0.0 lock-in as of
-2026-05-31. No backwards compatibility, no `/api/` prefixes, no cross-brand
-references.
+OpenAPI 3.1 specifications for all Hanzo services. Release generation
+**V8 · Open Edition** (`info.version: 8.0.0`); the `/v1` route prefix is the
+immutable compatibility contract. No backwards compatibility, no `/api/`
+prefixes, no cross-brand references.
 
 ## Layout
 
@@ -18,7 +19,7 @@ references.
 - `<service>/openapi.yaml` — one self-contained spec per service.
 - `shared/` — shared schemas usable by individual specs in their `components`.
 - `README.md` — service index and usage.
-- `CHANGELOG.md` — v1 lock-in entry.
+- `CHANGELOG.md` — release notes.
 
 `merge.py` enforces one-and-one-way as a build invariant: every present
 `<service>/openapi.yaml` dir MUST map to exactly one entry across
@@ -31,7 +32,10 @@ excluded from the master and `x-tagGroups`.
 - Routing: every route is `/v1/<service>/<resource>`.
 - IAM additionally exposes `/oauth/*` and `/.well-known/*`.
 - Security: every operation uses `BearerAuth` (JWT from `https://hanzo.id`).
-- `info.version: 1.0.0` on every spec.
+- `info.version: 8.0.0` on every spec (the V8 generation; the `/v1` path is the
+  immutable contract).
+- operationIds are BARE in each spec (e.g. `logs_query`); `merge.py` namespaces
+  them `<svc>_` in the master. Never self-prefix a spec's operationIds.
 - No cross-file `$ref`. Each spec is self-contained.
 - No `deprecated: true`. Forward-only.
 - No `/api/` prefix anywhere.
@@ -47,7 +51,7 @@ python3 -c "import yaml, glob; [yaml.safe_load(open(s)) for s in glob.glob('*/op
 
 ## When changing a spec
 
-1. Bump nothing — version stays at `1.0.0`.
+1. Bump nothing — `info.version` stays at `8.0.0`; the `/v1` path is immutable.
 2. Add new resources under `/v1/<service>/<resource>`.
 3. Add components in the spec's own `components.schemas`. No `$ref` to
    other service yamls.

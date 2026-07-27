@@ -149,6 +149,12 @@ Resolved duplicates / consolidations — removed, no spec dir. The capability no
 | `operative` | bot + visor |
 | `plans` | plan |
 | `plugins` | plugin |
+| `featuregate` | featureflags |
+| `ads` | marketing |
+| `cms` | content |
+| `cron` | tasks |
+| `connectorruntime` | automations |
+| `gojabase` | goja |
 
 ## Pending
 

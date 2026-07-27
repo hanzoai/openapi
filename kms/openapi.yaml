@@ -123,6 +123,34 @@ components:
           type: string
           format: byte
           description: ML-DSA-65 signature (base64) over the canonical digest.
+    SdkEnvelopeIdentity:
+      type: object
+      description: The mnemonic-derived service identity block. Bound into the signature.
+      required:
+      - scheme
+      - node
+      - digest
+      - path
+      - pubkey
+      properties:
+        scheme:
+          type: integer
+          description: NodeID scheme. 0x42 = ML-DSA-65.
+          example: 66
+        node:
+          type: string
+          description: 20-byte canonical NodeID (cb58), the SHAKE256-384 digest prefix.
+        digest:
+          type: string
+          format: byte
+          description: 48-byte SHAKE256-384 FullDigest commitment (base64).
+        path:
+          type: string
+          description: BIP-44 service path the identity was derived from (e.g. hanzo/kms-operator).
+        pubkey:
+          type: string
+          format: byte
+          description: ML-DSA-65 public key (base64), for offline verification.
   parameters:
     projectId:
       name: projectId
