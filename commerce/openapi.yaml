@@ -68,6 +68,8 @@ tags:
   description: Form submissions and mailing lists
 - name: Counters
   description: Analytics counters and metrics
+- name: Metrics
+  description: Platform SaaS-operations god-view (revenue, subscriptions, usage, customers) — global-admin gated
 - name: Access Tokens
   description: API access token management
 security:
@@ -2611,6 +2613,48 @@ paths:
                 type: object
         '400':
           $ref: '#/components/responses/BadRequest'
+  /v1/commerce/metrics/saas:
+    get:
+      tags: [Metrics]
+      summary: SaaS operations snapshot (platform god-view)
+      operationId: getSaaSMetrics
+      description: |
+        The whole-business SaaS operations snapshot — recurring revenue (MRR/ARR,
+        new/churned MRR, MRR by plan category), subscription mix (per plan, trials,
+        seats, a recent create/cancel events feed), metered pay-as-you-go revenue
+        totals, and the top customers by revenue — computed in commerce (the system
+        of record for subscriptions + the usage ledger) from ONE cross-org walk.
+        Money is USD cents end to end.
+
+        PLATFORM god-view: gated on a global admin OR the trusted internal service
+        token (the console's global-admin-gated proxy forwards COMMERCE_SERVICE_TOKEN
+        with no user identity). An org-level admin is refused (403) — this is
+        cross-tenant data.
+
+        Per-model LLM tokens/latency/error and the per-org AI-spend ranking are
+        deliberately NOT here: the canonical fleet LLM-observability aggregate is
+        GET /v1/admin/o11y. The `gaps` array names what is not instrumented (e.g.
+        plan-change upgrade/downgrade counts, per-model latency) rather than
+        fabricating it.
+      parameters:
+        - name: window
+          in: query
+          description: 'Usage + new/churn window: 7d | 30d | 90d | mtd | all (default 30d)'
+          schema: { type: string, enum: [7d, 30d, 90d, mtd, all], default: 30d }
+        - name: limit
+          in: query
+          description: Cap for the customers list (1-200, default 20)
+          schema: { type: integer, minimum: 1, maximum: 200, default: 20 }
+      responses:
+        '200':
+          description: SaaS operations snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SaaSMetrics' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Caller is not a platform administrator (cross-tenant data withheld)
 components:
   securitySchemes:
     bearerAuth:
@@ -3715,3 +3759,93 @@ components:
             type: array
             items:
               $ref: '#/components/schemas/Form'
+    SaaSMetrics:
+      type: object
+      description: The whole-business SaaS operations snapshot returned by GET /v1/commerce/metrics/saas.
+      properties:
+        asOf: { type: string, format: date-time }
+        currency: { type: string, example: usd }
+        window: { type: string, example: 30d }
+        revenue: { $ref: '#/components/schemas/RevenueMetrics' }
+        subscriptions: { $ref: '#/components/schemas/SubscriptionMetrics' }
+        usage: { $ref: '#/components/schemas/UsageMetrics' }
+        customers:
+          type: array
+          items: { $ref: '#/components/schemas/CustomerRow' }
+        orgs: { type: integer, description: Total tenant organizations walked }
+        gaps:
+          type: array
+          items: { type: string }
+          description: Honest "not instrumented yet" notes — never fabricated figures
+    RevenueMetrics:
+      type: object
+      properties:
+        mrrCents: { type: integer, format: int64 }
+        arrCents: { type: integer, format: int64 }
+        activeSubscriptions: { type: integer }
+        payingCustomers: { type: integer }
+        trials: { type: integer }
+        newMrrCents: { type: integer, format: int64 }
+        churnedMrrCents: { type: integer, format: int64 }
+        netNewMrrCents: { type: integer, format: int64 }
+        byCategory:
+          type: array
+          items: { $ref: '#/components/schemas/CategoryMRR' }
+    CategoryMRR:
+      type: object
+      properties:
+        category: { type: string, example: world }
+        mrrCents: { type: integer, format: int64 }
+        subscriptions: { type: integer }
+    SubscriptionMetrics:
+      type: object
+      properties:
+        byPlan:
+          type: array
+          items: { $ref: '#/components/schemas/PlanBreakdown' }
+        trialsActive: { type: integer }
+        new: { type: integer }
+        canceled: { type: integer }
+        upgrades: { type: integer, nullable: true, description: 'null — plan-change events are not instrumented' }
+        downgrades: { type: integer, nullable: true, description: 'null — plan-change events are not instrumented' }
+        recent:
+          type: array
+          items: { $ref: '#/components/schemas/SubEvent' }
+    PlanBreakdown:
+      type: object
+      properties:
+        plan: { type: string, description: plan slug }
+        name: { type: string }
+        category: { type: string }
+        active: { type: integer }
+        trialing: { type: integer }
+        seats: { type: integer }
+        mrrCents: { type: integer, format: int64 }
+    SubEvent:
+      type: object
+      properties:
+        at: { type: string, format: date-time }
+        org: { type: string }
+        type: { type: string, enum: [created, canceled] }
+        plan: { type: string }
+        category: { type: string }
+        mrrDeltaCents: { type: integer, format: int64 }
+    UsageMetrics:
+      type: object
+      description: Metered pay-as-you-go REVENUE totals (billed wallet ledger). Per-model tokens / latency / error live in the fleet god-view GET /v1/admin/o11y.
+      properties:
+        instrumented: { type: boolean }
+        windowUsageCents: { type: integer, format: int64 }
+        requests: { type: integer, format: int64 }
+        untaggedRequests: { type: integer, format: int64 }
+    CustomerRow:
+      type: object
+      properties:
+        org: { type: string }
+        plan: { type: string, description: plan slug }
+        category: { type: string }
+        status: { type: string, example: active }
+        mrrCents: { type: integer, format: int64 }
+        usageCents: { type: integer, format: int64 }
+        seats: { type: integer }
+        since: { type: string, format: date-time }
