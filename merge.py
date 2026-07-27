@@ -147,6 +147,13 @@ def build_master(present, categories, internal):
         spec = yaml.safe_load(open(os.path.join(ROOT, svc, "openapi.yaml")))
         comps = spec.get("components", {}) or {}
         for p, item in (spec.get("paths", {}) or {}).items():
+            # The `/api/` segment is banned. Enforced here because this file is
+            # the ONE gate every spec passes through on its way into hanzo.yaml,
+            # which is what every SDK is generated from — a spec that regained
+            # the prefix would otherwise reappear in six languages at once.
+            if p.startswith("/api/") or "/api/" in p:
+                sys.exit(f"merge: {svc}/openapi.yaml declares a banned `/api/` "
+                         f"route: {p} (use /v1/{svc}/<resource>)")
             paths[p] = namespace_ops(prefix(item, svc), svc, p)
         for n, x in (comps.get("schemas", {}) or {}).items():
             schemas[f"{svc}_{n}"] = prefix(x, svc)
