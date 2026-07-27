@@ -8,7 +8,7 @@ info:
 
     It powers the REAL, per-org Settings / Status / Logs / Metrics behind every
     product's detail view in `console.hanzo.ai`, backed by the platform o11y stack
-    (O11y ClickHouse + VictoriaMetrics) and a per-org SQLite settings store.
+    (Hanzo Datastore + VictoriaMetrics) and a per-org SQLite settings store.
 
     ROUTES:
       - `/v1/o11y/{logs,metrics,status}` — scoped o11y reads, registered BEFORE the
@@ -17,7 +17,7 @@ info:
 
     TENANT ISOLATION is enforced SERVER-SIDE on every request. The org is derived
     from the VALIDATED bearer owner (HIP-0026) and is NEVER read from a query param,
-    body, or client header. It is bound as a positional ClickHouse parameter (never
+    body, or client header. It is bound as a positional Datastore parameter (never
     interpolated) and is the mandatory predicate on every SQLite statement. The
     client chooses a validated PRODUCT slug and a bounded range — never a raw query.
     Only the platform admin org (IAM_ADMIN_ORG) sees unattributed infra logs; every
