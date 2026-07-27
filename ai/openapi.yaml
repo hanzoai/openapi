@@ -319,252 +319,6 @@ paths:
           summary: Answer
           tags:
               - Answer
-  /v1/ai/applications:
-      get:
-          description: List the caller's applications.
-          operationId: getApplications
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: List applications
-          tags:
-              - Applications
-      post:
-          description: Create one application.
-          operationId: addApplication
-          requestBody:
-              content:
-                  application/json:
-                      schema:
-                          type: object
-              required: true
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: Create a application
-          tags:
-              - Applications
-  /v1/ai/applications/{owner}/{name}:
-      get:
-          description: Read one application by its (owner, name) key.
-          operationId: getApplication
-          parameters:
-              - description: Owning organization.
-                in: path
-                name: owner
-                required: true
-                schema:
-                  type: string
-              - description: Resource name, unique within the owner.
-                in: path
-                name: name
-                required: true
-                schema:
-                  type: string
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: Retrieve a application
-          tags:
-              - Applications
-      put:
-          description: Identical to PATCH — the handler takes a whole object either way.
-          operationId: replaceApplication
-          parameters:
-              - description: Owning organization.
-                in: path
-                name: owner
-                required: true
-                schema:
-                  type: string
-              - description: Resource name, unique within the owner.
-                in: path
-                name: name
-                required: true
-                schema:
-                  type: string
-          requestBody:
-              content:
-                  application/json:
-                      schema:
-                          type: object
-              required: true
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: Replace a application
-          tags:
-              - Applications
-      patch:
-          description: Update one application. PATCH and PUT reach the same handler, which has always taken a whole object.
-          operationId: updateApplication
-          parameters:
-              - description: Owning organization.
-                in: path
-                name: owner
-                required: true
-                schema:
-                  type: string
-              - description: Resource name, unique within the owner.
-                in: path
-                name: name
-                required: true
-                schema:
-                  type: string
-          requestBody:
-              content:
-                  application/json:
-                      schema:
-                          type: object
-              required: true
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: Update a application
-          tags:
-              - Applications
-      delete:
-          description: Delete one application.
-          operationId: deleteApplication
-          parameters:
-              - description: Owning organization.
-                in: path
-                name: owner
-                required: true
-                schema:
-                  type: string
-              - description: Resource name, unique within the owner.
-                in: path
-                name: name
-                required: true
-                schema:
-                  type: string
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: Delete a application
-          tags:
-              - Applications
-  /v1/ai/applications/{owner}/{name}/deploy:
-      post:
-          operationId: deployApplication
-          parameters:
-              - description: Owning organization.
-                in: path
-                name: owner
-                required: true
-                schema:
-                  type: string
-              - description: Resource name, unique within the owner.
-                in: path
-                name: name
-                required: true
-                schema:
-                  type: string
-          requestBody:
-              content:
-                  application/json:
-                      schema:
-                          type: object
-              required: true
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: Deploy (application)
-          tags:
-              - Applications
-  /v1/ai/applications/{owner}/{name}/undeploy:
-      post:
-          operationId: undeployApplication
-          parameters:
-              - description: Owning organization.
-                in: path
-                name: owner
-                required: true
-                schema:
-                  type: string
-              - description: Resource name, unique within the owner.
-                in: path
-                name: name
-                required: true
-                schema:
-                  type: string
-          requestBody:
-              content:
-                  application/json:
-                      schema:
-                          type: object
-              required: true
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: Undeploy (application)
-          tags:
-              - Applications
   /v1/ai/articles:
       get:
           description: List the caller's articles.
@@ -1216,6 +970,252 @@ paths:
           summary: Dashboards Vm
           tags:
               - Dashboards Vm
+  /v1/ai/deployments:
+      get:
+          description: List the caller's deployments.
+          operationId: getApplications
+          responses:
+              "200":
+                  content:
+                      application/json:
+                          schema:
+                              $ref: '#/components/schemas/Envelope'
+                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
+              "401":
+                  $ref: '#/components/responses/Unauthorized'
+              "403":
+                  $ref: '#/components/responses/Forbidden'
+          summary: List deployments
+          tags:
+              - Deployments
+      post:
+          description: Create one application.
+          operationId: addApplication
+          requestBody:
+              content:
+                  application/json:
+                      schema:
+                          type: object
+              required: true
+          responses:
+              "200":
+                  content:
+                      application/json:
+                          schema:
+                              $ref: '#/components/schemas/Envelope'
+                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
+              "401":
+                  $ref: '#/components/responses/Unauthorized'
+              "403":
+                  $ref: '#/components/responses/Forbidden'
+          summary: Create a application
+          tags:
+              - Deployments
+  /v1/ai/deployments/{owner}/{name}:
+      get:
+          description: Read one application by its (owner, name) key.
+          operationId: getApplication
+          parameters:
+              - description: Owning organization.
+                in: path
+                name: owner
+                required: true
+                schema:
+                  type: string
+              - description: Resource name, unique within the owner.
+                in: path
+                name: name
+                required: true
+                schema:
+                  type: string
+          responses:
+              "200":
+                  content:
+                      application/json:
+                          schema:
+                              $ref: '#/components/schemas/Envelope'
+                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
+              "401":
+                  $ref: '#/components/responses/Unauthorized'
+              "403":
+                  $ref: '#/components/responses/Forbidden'
+          summary: Retrieve a application
+          tags:
+              - Deployments
+      put:
+          description: Identical to PATCH — the handler takes a whole object either way.
+          operationId: replaceApplication
+          parameters:
+              - description: Owning organization.
+                in: path
+                name: owner
+                required: true
+                schema:
+                  type: string
+              - description: Resource name, unique within the owner.
+                in: path
+                name: name
+                required: true
+                schema:
+                  type: string
+          requestBody:
+              content:
+                  application/json:
+                      schema:
+                          type: object
+              required: true
+          responses:
+              "200":
+                  content:
+                      application/json:
+                          schema:
+                              $ref: '#/components/schemas/Envelope'
+                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
+              "401":
+                  $ref: '#/components/responses/Unauthorized'
+              "403":
+                  $ref: '#/components/responses/Forbidden'
+          summary: Replace a application
+          tags:
+              - Deployments
+      patch:
+          description: Update one application. PATCH and PUT reach the same handler, which has always taken a whole object.
+          operationId: updateApplication
+          parameters:
+              - description: Owning organization.
+                in: path
+                name: owner
+                required: true
+                schema:
+                  type: string
+              - description: Resource name, unique within the owner.
+                in: path
+                name: name
+                required: true
+                schema:
+                  type: string
+          requestBody:
+              content:
+                  application/json:
+                      schema:
+                          type: object
+              required: true
+          responses:
+              "200":
+                  content:
+                      application/json:
+                          schema:
+                              $ref: '#/components/schemas/Envelope'
+                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
+              "401":
+                  $ref: '#/components/responses/Unauthorized'
+              "403":
+                  $ref: '#/components/responses/Forbidden'
+          summary: Update a application
+          tags:
+              - Deployments
+      delete:
+          description: Delete one application.
+          operationId: deleteApplication
+          parameters:
+              - description: Owning organization.
+                in: path
+                name: owner
+                required: true
+                schema:
+                  type: string
+              - description: Resource name, unique within the owner.
+                in: path
+                name: name
+                required: true
+                schema:
+                  type: string
+          responses:
+              "200":
+                  content:
+                      application/json:
+                          schema:
+                              $ref: '#/components/schemas/Envelope'
+                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
+              "401":
+                  $ref: '#/components/responses/Unauthorized'
+              "403":
+                  $ref: '#/components/responses/Forbidden'
+          summary: Delete a application
+          tags:
+              - Deployments
+  /v1/ai/deployments/{owner}/{name}/deploy:
+      post:
+          operationId: deployApplication
+          parameters:
+              - description: Owning organization.
+                in: path
+                name: owner
+                required: true
+                schema:
+                  type: string
+              - description: Resource name, unique within the owner.
+                in: path
+                name: name
+                required: true
+                schema:
+                  type: string
+          requestBody:
+              content:
+                  application/json:
+                      schema:
+                          type: object
+              required: true
+          responses:
+              "200":
+                  content:
+                      application/json:
+                          schema:
+                              $ref: '#/components/schemas/Envelope'
+                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
+              "401":
+                  $ref: '#/components/responses/Unauthorized'
+              "403":
+                  $ref: '#/components/responses/Forbidden'
+          summary: Deploy (application)
+          tags:
+              - Deployments
+  /v1/ai/deployments/{owner}/{name}/undeploy:
+      post:
+          operationId: undeployApplication
+          parameters:
+              - description: Owning organization.
+                in: path
+                name: owner
+                required: true
+                schema:
+                  type: string
+              - description: Resource name, unique within the owner.
+                in: path
+                name: name
+                required: true
+                schema:
+                  type: string
+          requestBody:
+              content:
+                  application/json:
+                      schema:
+                          type: object
+              required: true
+          responses:
+              "200":
+                  content:
+                      application/json:
+                          schema:
+                              $ref: '#/components/schemas/Envelope'
+                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
+              "401":
+                  $ref: '#/components/responses/Unauthorized'
+              "403":
+                  $ref: '#/components/responses/Forbidden'
+          summary: Undeploy (application)
+          tags:
+              - Deployments
   /v1/ai/files:
       get:
           description: List the caller's files.
@@ -2403,180 +2403,6 @@ paths:
           summary: Tunnel (node)
           tags:
               - Nodes
-  /v1/ai/permissions:
-      get:
-          description: List the caller's permissions.
-          operationId: getPermissions
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: List permissions
-          tags:
-              - Permissions
-      post:
-          description: Create one permission.
-          operationId: addPermission
-          requestBody:
-              content:
-                  application/json:
-                      schema:
-                          type: object
-              required: true
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: Create a permission
-          tags:
-              - Permissions
-  /v1/ai/permissions/{owner}/{name}:
-      get:
-          description: Read one permission by its (owner, name) key.
-          operationId: getPermission
-          parameters:
-              - description: Owning organization.
-                in: path
-                name: owner
-                required: true
-                schema:
-                  type: string
-              - description: Resource name, unique within the owner.
-                in: path
-                name: name
-                required: true
-                schema:
-                  type: string
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: Retrieve a permission
-          tags:
-              - Permissions
-      put:
-          description: Identical to PATCH — the handler takes a whole object either way.
-          operationId: replacePermission
-          parameters:
-              - description: Owning organization.
-                in: path
-                name: owner
-                required: true
-                schema:
-                  type: string
-              - description: Resource name, unique within the owner.
-                in: path
-                name: name
-                required: true
-                schema:
-                  type: string
-          requestBody:
-              content:
-                  application/json:
-                      schema:
-                          type: object
-              required: true
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: Replace a permission
-          tags:
-              - Permissions
-      patch:
-          description: Update one permission. PATCH and PUT reach the same handler, which has always taken a whole object.
-          operationId: updatePermission
-          parameters:
-              - description: Owning organization.
-                in: path
-                name: owner
-                required: true
-                schema:
-                  type: string
-              - description: Resource name, unique within the owner.
-                in: path
-                name: name
-                required: true
-                schema:
-                  type: string
-          requestBody:
-              content:
-                  application/json:
-                      schema:
-                          type: object
-              required: true
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: Update a permission
-          tags:
-              - Permissions
-      delete:
-          description: Delete one permission.
-          operationId: deletePermission
-          parameters:
-              - description: Owning organization.
-                in: path
-                name: owner
-                required: true
-                schema:
-                  type: string
-              - description: Resource name, unique within the owner.
-                in: path
-                name: name
-                required: true
-                schema:
-                  type: string
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: Delete a permission
-          tags:
-              - Permissions
   /v1/ai/preferences:
       put:
           operationId: putUpdatePreferences
@@ -3934,9 +3760,32 @@ paths:
           summary: Delete a scan
           tags:
               - Scans
-  /v1/ai/sessions:
+  /v1/ai/signin:
+      post:
+          operationId: signin
+          requestBody:
+              content:
+                  application/json:
+                      schema:
+                          type: object
+              required: true
+          responses:
+              "200":
+                  content:
+                      application/json:
+                          schema:
+                              $ref: '#/components/schemas/Envelope'
+                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
+              "401":
+                  $ref: '#/components/responses/Unauthorized'
+              "403":
+                  $ref: '#/components/responses/Forbidden'
+          summary: Signin
+          tags:
+              - Signin
+  /v1/ai/signin-sessions:
       get:
-          description: List the caller's sessions.
+          description: List the caller's signin-sessions.
           operationId: getSessions
           responses:
               "200":
@@ -3949,9 +3798,9 @@ paths:
                   $ref: '#/components/responses/Unauthorized'
               "403":
                   $ref: '#/components/responses/Forbidden'
-          summary: List sessions
+          summary: List signin-sessions
           tags:
-              - Sessions
+              - Signin Sessions
       post:
           description: Create one session.
           operationId: addSession
@@ -3974,8 +3823,8 @@ paths:
                   $ref: '#/components/responses/Forbidden'
           summary: Create a session
           tags:
-              - Sessions
-  /v1/ai/sessions/duplicated:
+              - Signin Sessions
+  /v1/ai/signin-sessions/duplicated:
       get:
           operationId: isSessionDuplicated
           responses:
@@ -3991,11 +3840,11 @@ paths:
                   $ref: '#/components/responses/Forbidden'
           summary: Duplicated (session)
           tags:
-              - Sessions
-  /v1/ai/sessions/{owner}/{name}:
+              - Signin Sessions
+  /v1/ai/signin-sessions/{owner}/{name}:
       get:
           description: Read one session by its (owner, name) key.
-          operationId: getSession
+          operationId: getSingleSession
           parameters:
               - description: Owning organization.
                 in: path
@@ -4022,7 +3871,7 @@ paths:
                   $ref: '#/components/responses/Forbidden'
           summary: Retrieve a session
           tags:
-              - Sessions
+              - Signin Sessions
       put:
           description: Identical to PATCH — the handler takes a whole object either way.
           operationId: replaceSession
@@ -4058,7 +3907,7 @@ paths:
                   $ref: '#/components/responses/Forbidden'
           summary: Replace a session
           tags:
-              - Sessions
+              - Signin Sessions
       patch:
           description: Update one session. PATCH and PUT reach the same handler, which has always taken a whole object.
           operationId: updateSession
@@ -4094,7 +3943,7 @@ paths:
                   $ref: '#/components/responses/Forbidden'
           summary: Update a session
           tags:
-              - Sessions
+              - Signin Sessions
       delete:
           description: Delete one session.
           operationId: deleteSession
@@ -4124,30 +3973,7 @@ paths:
                   $ref: '#/components/responses/Forbidden'
           summary: Delete a session
           tags:
-              - Sessions
-  /v1/ai/signin:
-      post:
-          operationId: signin
-          requestBody:
-              content:
-                  application/json:
-                      schema:
-                          type: object
-              required: true
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: Signin
-          tags:
-              - Signin
+              - Signin Sessions
   /v1/ai/signout:
       post:
           operationId: signout
@@ -5094,6 +4920,23 @@ paths:
           summary: List usages
           tags:
               - Usages
+  /v1/ai/usages/by-user:
+      get:
+          operationId: getUserTableInfos
+          responses:
+              "200":
+                  content:
+                      application/json:
+                          schema:
+                              $ref: '#/components/schemas/Envelope'
+                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
+              "401":
+                  $ref: '#/components/responses/Unauthorized'
+              "403":
+                  $ref: '#/components/responses/Forbidden'
+          summary: By User (usage)
+          tags:
+              - Usages
   /v1/ai/usages/cloud:
       get:
           operationId: getCloudUsages
@@ -5128,9 +4971,8 @@ paths:
           summary: Range (usage)
           tags:
               - Usages
-  /v1/ai/users:
+  /v1/ai/usages/user-names:
       get:
-          description: List the caller's users.
           operationId: getUsers
           responses:
               "200":
@@ -5143,26 +4985,9 @@ paths:
                   $ref: '#/components/responses/Unauthorized'
               "403":
                   $ref: '#/components/responses/Forbidden'
-          summary: List users
+          summary: User Names (usage)
           tags:
-              - Users
-  /v1/ai/users/table-infos:
-      get:
-          operationId: getUserTableInfos
-          responses:
-              "200":
-                  content:
-                      application/json:
-                          schema:
-                              $ref: '#/components/schemas/Envelope'
-                  description: Envelope. `status` is "ok" or "error" — check it; a handled failure is still HTTP 200.
-              "401":
-                  $ref: '#/components/responses/Unauthorized'
-              "403":
-                  $ref: '#/components/responses/Forbidden'
-          summary: Table Infos (user)
-          tags:
-              - Users
+              - Usages
   /v1/ai/vectors:
       get:
           description: List the caller's vectors.
