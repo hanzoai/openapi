@@ -45,12 +45,20 @@ def jar(version):
     return path
 
 
+# Written INTO a client tree by the language runtime, never by the generator, so
+# they are not evidence of drift. Importing the Python client once is enough to
+# make --check report 2142 phantom deletions, and a check that cries wolf is one
+# nobody runs. Every one of these is already gitignored in its repo.
+ARTIFACTS = ("__pycache__", ".mypy_cache", ".pytest_cache", ".ruff_cache", "node_modules")
+
+
 def digest(path):
     """Content of a tree as {relpath: sha256}; a file is a one-entry tree."""
     if os.path.isfile(path):
         return {"": hashlib.sha256(open(path, "rb").read()).hexdigest()}
     out = {}
-    for base, _, names in os.walk(path):
+    for base, dirs, names in os.walk(path):
+        dirs[:] = [d for d in dirs if d not in ARTIFACTS]
         for n in names:
             p = os.path.join(base, n)
             out[os.path.relpath(p, path)] = hashlib.sha256(open(p, "rb").read()).hexdigest()
