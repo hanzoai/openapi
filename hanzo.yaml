@@ -42101,7 +42101,8 @@ paths:
       tags:
       - Auth
       summary: Exchange machine identity for a bearer token
-      description: 'The only auth route. The token is org-scoped: it reaches /v1/kms/orgs/<its own org>/* and nothing else.'
+      description: 'The only auth route. The token is org-scoped, and the org is read from it: a token reaches its own org''s
+        secrets and nothing else.'
       security: []
       requestBody:
         required: true
@@ -42278,19 +42279,13 @@ paths:
         '503':
           description: MPC unreachable
       operationId: kms_post_v1_kms_keys_id_sign
-  /v1/kms/orgs/{org}/secrets:
+  /v1/kms/secrets:
     get:
       tags:
       - Secrets
       summary: List secret names under a path
       description: Mirrors the ZAP wire op OpSecretList (0x0042). Returns names only, never values.
       parameters:
-      - name: org
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Org scope
       - name: path
         in: query
         required: false
@@ -42326,19 +42321,12 @@ paths:
                     type: string
                   statusCode:
                     type: integer
-      operationId: kms_get_v1_kms_orgs_org_secrets
+      operationId: kms_get_v1_kms_secrets
     post:
       tags:
       - Secrets
       summary: Create or replace a secret
       description: ONE upsert. There is no separate update endpoint and no PATCH.
-      parameters:
-      - name: org
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Org scope
       requestBody:
         required: true
         content:
@@ -42385,19 +42373,13 @@ paths:
                     type: string
                   statusCode:
                     type: integer
-      operationId: kms_post_v1_kms_orgs_org_secrets
-  /v1/kms/orgs/{org}/secrets/{rest}:
+      operationId: kms_post_v1_kms_secrets
+  /v1/kms/secrets/{rest}:
     get:
       tags:
       - Secrets
       summary: Read one secret value
       parameters:
-      - name: org
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Org scope
       - name: rest
         in: path
         required: true
@@ -42448,18 +42430,12 @@ paths:
                     type: string
                   path:
                     type: string
-      operationId: kms_get_v1_kms_orgs_org_secrets_rest
+      operationId: kms_get_v1_kms_secrets_rest
     delete:
       tags:
       - Secrets
       summary: Delete a secret
       parameters:
-      - name: org
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Org scope
       - name: rest
         in: path
         required: true
@@ -42498,7 +42474,7 @@ paths:
                     type: string
                   path:
                     type: string
-      operationId: kms_delete_v1_kms_orgs_org_secrets_rest
+      operationId: kms_delete_v1_kms_secrets_rest
   /v1/kms/status:
     get:
       tags:

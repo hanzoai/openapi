@@ -27,7 +27,11 @@ info:
     cmd/kms/main.go and probed live.
 
 
-    A secret is addressed by (org, path, name, env). In the URL, path and name
+    A secret is addressed by (org, path, name, env). The org is NOT in the URL --
+
+    it is the caller''s, read from the validated token, so a tenant is never
+
+    selectable by whoever is asking. In the URL, path and name
 
     are one trailing segment list that the server splits at its LAST slash, so
 
@@ -183,8 +187,8 @@ paths:
       tags:
       - Auth
       summary: Exchange machine identity for a bearer token
-      description: 'The only auth route. The token is org-scoped: it reaches /v1/kms/orgs/<its own org>/*
-        and nothing else.'
+      description: 'The only auth route. The token is org-scoped, and the org is read
+        from it: a token reaches its own org''s secrets and nothing else.'
       security: []
       requestBody:
         required: true
@@ -216,19 +220,13 @@ paths:
           description: clientId and clientSecret required
         '401':
           description: Invalid credentials
-  /v1/kms/orgs/{org}/secrets:
+  /v1/kms/secrets:
     get:
       tags:
       - Secrets
       summary: List secret names under a path
       description: Mirrors the ZAP wire op OpSecretList (0x0042). Returns names only, never values.
       parameters:
-      - name: org
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Org scope
       - name: path
         in: query
         required: false
@@ -269,13 +267,6 @@ paths:
       - Secrets
       summary: Create or replace a secret
       description: ONE upsert. There is no separate update endpoint and no PATCH.
-      parameters:
-      - name: org
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Org scope
       requestBody:
         required: true
         content:
@@ -314,18 +305,12 @@ paths:
         '400':
           description: name and value required, or env missing
         '401': *id001
-  /v1/kms/orgs/{org}/secrets/{rest}:
+  /v1/kms/secrets/{rest}:
     get:
       tags:
       - Secrets
       summary: Read one secret value
       parameters:
-      - name: org
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Org scope
       - &id002
         name: rest
         in: path
@@ -372,12 +357,6 @@ paths:
       - Secrets
       summary: Delete a secret
       parameters:
-      - name: org
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Org scope
       - *id002
       - name: env
         in: query
