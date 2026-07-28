@@ -51308,3075 +51308,620 @@ paths:
                 $ref: '#/components/schemas/plan_Catalog'
         '401':
           $ref: '#/components/responses/plan_Unauthorized'
-  /v1/platform/ai/suggest:
-    post:
-      operationId: platform_ai.suggest
-      tags:
-      - AI
-      summary: Get AI deployment suggestions
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  properties:
-                    prompt:
-                      type: string
-      responses:
-        '200':
-          description: AI suggestion
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/cancelDeployment:
-    post:
-      operationId: platform_application.cancelDeployment
-      tags:
-      - application
-      summary: Cancel an in-progress deployment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-      responses:
-        '200':
-          description: Cancellation requested
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/cleanQueues:
-    post:
-      operationId: platform_application.cleanQueues
-      tags:
-      - application
-      summary: Clear pending deployment jobs
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-      responses:
-        '200':
-          description: Queues cleaned
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/create:
-    post:
-      operationId: platform_application.create
-      tags:
-      - application
-      summary: Create a new application
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  $ref: '#/components/schemas/platform_CreateApplicationInput'
-      responses:
-        '200':
-          description: Application created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/delete:
-    post:
-      operationId: platform_application.delete
-      tags:
-      - application
-      summary: Delete an application and all associated resources
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-      responses:
-        '200':
-          description: Application deleted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/deploy:
-    post:
-      operationId: platform_application.deploy
-      tags:
-      - application
-      summary: Trigger a new deployment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-                    title:
-                      type: string
-                    description:
-                      type: string
-      responses:
-        '200':
-          description: Deployment queued
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/disconnectGitProvider:
-    post:
-      operationId: platform_application.disconnectGitProvider
-      tags:
-      - application
-      summary: Disconnect all git providers from application
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-      responses:
-        '200':
-          description: Git provider disconnected
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/markRunning:
-    post:
-      operationId: platform_application.markRunning
-      tags:
-      - application
-      summary: Mark application status as running
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-      responses:
-        '200':
-          description: Status updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/move:
-    post:
-      operationId: platform_application.move
-      tags:
-      - application
-      summary: Move application to a different environment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  - targetEnvironmentId
-                  properties:
-                    applicationId:
-                      type: string
-                    targetEnvironmentId:
-                      type: string
-      responses:
-        '200':
-          description: Application moved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/one:
+  /v1/platform/fleet:
     get:
-      operationId: platform_application.one
+      operationId: platform_get_v1_platform_fleet
       tags:
-      - application
-      summary: Get application details
+      - platform
       parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Application with domains, ports, mounts, deployments
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/readAppMonitoring:
-    get:
-      operationId: platform_application.readAppMonitoring
-      tags:
-      - application
-      summary: Read container monitoring stats
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Container stats
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/readTraefikConfig:
-    get:
-      operationId: platform_application.readTraefikConfig
-      tags:
-      - application
-      summary: Read Traefik routing config for an application
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Traefik YAML config string
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/redeploy:
-    post:
-      operationId: platform_application.redeploy
-      tags:
-      - application
-      summary: Redeploy (rebuild) an application
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-                    title:
-                      type: string
-                    description:
-                      type: string
-      responses:
-        '200':
-          description: Redeployment queued
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/refreshToken:
-    post:
-      operationId: platform_application.refreshToken
-      tags:
-      - application
-      summary: Regenerate webhook refresh token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-      responses:
-        '200':
-          description: Token refreshed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/reload:
-    post:
-      operationId: platform_application.reload
-      tags:
-      - application
-      summary: Reload application container (re-mechanize)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-      responses:
-        '200':
-          description: Application reloaded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/saveBitbucketProvider:
-    post:
-      operationId: platform_application.saveBitbucketProvider
-      tags:
-      - application
-      summary: Configure Bitbucket as source provider
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-                    bitbucketRepository:
-                      type: string
-                    bitbucketOwner:
-                      type: string
-                    bitbucketBranch:
-                      type: string
-                    bitbucketBuildPath:
-                      type: string
-                    bitbucketId:
-                      type: string
-      responses:
-        '200':
-          description: Bitbucket provider saved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/saveBuildType:
-    post:
-      operationId: platform_application.saveBuildType
-      tags:
-      - application
-      summary: Configure the build type
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  - buildType
-                  properties:
-                    applicationId:
-                      type: string
-                    buildType:
-                      type: string
-                      enum:
-                      - dockerfile
-                      - nixpacks
-                      - buildpacks
-                      - heroku
-                      - railpack
-                      - static
-                    dockerfile:
-                      type: string
-                    publishDirectory:
-                      type: string
-                    dockerContextPath:
-                      type: string
-                    dockerBuildStage:
-                      type: string
-                    herokuVersion:
-                      type: string
-                    isStaticSpa:
-                      type: boolean
-                    railpackVersion:
-                      type: string
-      responses:
-        '200':
-          description: Build type saved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/saveDockerProvider:
-    post:
-      operationId: platform_application.saveDockerProvider
-      tags:
-      - application
-      summary: Configure Docker image as source
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  - dockerImage
-                  properties:
-                    applicationId:
-                      type: string
-                    dockerImage:
-                      type: string
-                    username:
-                      type: string
-                    password:
-                      type: string
-                    registryUrl:
-                      type: string
-      responses:
-        '200':
-          description: Docker provider saved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/saveEnvironment:
-    post:
-      operationId: platform_application.saveEnvironment
-      tags:
-      - application
-      summary: Save environment variables and build args
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-                    env:
-                      type: string
-                      description: KEY=VALUE newline-separated
-                    buildArgs:
-                      type: string
-      responses:
-        '200':
-          description: Environment saved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/saveGitProdiver:
-    post:
-      operationId: platform_application.saveGitProdiver
-      tags:
-      - application
-      summary: Configure custom Git URL as source
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-                    customGitBranch:
-                      type: string
-                    customGitBuildPath:
-                      type: string
-                    customGitUrl:
-                      type: string
-                    customGitSSHKeyId:
-                      type: string
-      responses:
-        '200':
-          description: Git provider saved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/saveGiteaProvider:
-    post:
-      operationId: platform_application.saveGiteaProvider
-      tags:
-      - application
-      summary: Configure Gitea as source provider
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-                    giteaRepository:
-                      type: string
-                    giteaOwner:
-                      type: string
-                    giteaBranch:
-                      type: string
-                    giteaBuildPath:
-                      type: string
-                    giteaId:
-                      type: string
-      responses:
-        '200':
-          description: Gitea provider saved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/saveGithubProvider:
-    post:
-      operationId: platform_application.saveGithubProvider
-      tags:
-      - application
-      summary: Configure GitHub as source provider
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  - repository
-                  - branch
-                  - owner
-                  properties:
-                    applicationId:
-                      type: string
-                    repository:
-                      type: string
-                    branch:
-                      type: string
-                    owner:
-                      type: string
-                    buildPath:
-                      type: string
-                    githubId:
-                      type: string
-                    watchPaths:
-                      type: string
-                    triggerType:
-                      type: string
-                      enum:
-                      - push
-                      - tag
-                    enableSubmodules:
-                      type: boolean
-      responses:
-        '200':
-          description: GitHub provider saved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/saveGitlabProvider:
-    post:
-      operationId: platform_application.saveGitlabProvider
-      tags:
-      - application
-      summary: Configure GitLab as source provider
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-                    gitlabRepository:
-                      type: string
-                    gitlabOwner:
-                      type: string
-                    gitlabBranch:
-                      type: string
-                    gitlabBuildPath:
-                      type: string
-                    gitlabId:
-                      type: string
-                    gitlabProjectId:
-                      type: integer
-                    gitlabPathNamespace:
-                      type: string
-      responses:
-        '200':
-          description: GitLab provider saved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/start:
-    post:
-      operationId: platform_application.start
-      tags:
-      - application
-      summary: Start a stopped application
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-      responses:
-        '200':
-          description: Application started
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/stop:
-    post:
-      operationId: platform_application.stop
-      tags:
-      - application
-      summary: Stop a running application
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  properties:
-                    applicationId:
-                      type: string
-      responses:
-        '200':
-          description: Application stopped
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/update:
-    post:
-      operationId: platform_application.update
-      tags:
-      - application
-      summary: Update application configuration
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  $ref: '#/components/schemas/platform_UpdateApplicationInput'
-      responses:
-        '200':
-          description: Application updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/application/updateTraefikConfig:
-    post:
-      operationId: platform_application.updateTraefikConfig
-      tags:
-      - application
-      summary: Write Traefik routing config
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - applicationId
-                  - traefikConfig
-                  properties:
-                    applicationId:
-                      type: string
-                    traefikConfig:
-                      type: string
-      responses:
-        '200':
-          description: Config updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/backup/create:
-    post:
-      operationId: platform_backup.create
-      tags:
-      - backup
-      summary: Create a backup schedule
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  properties:
-                    schedule:
-                      type: string
-                    enabled:
-                      type: boolean
-                    destinationId:
-                      type: string
-                    postgresId:
-                      type: string
-                    mysqlId:
-                      type: string
-                    mariadbId:
-                      type: string
-                    mongoId:
-                      type: string
-      responses:
-        '200':
-          description: Backup created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/billing/getBalance:
-    get:
-      operationId: platform_billing.getBalance
-      tags:
-      - Billing
-      summary: Get account balance
-      responses:
-        '200':
-          description: Balance
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/billing/getPlans:
-    get:
-      operationId: platform_billing.getPlans
-      tags:
-      - Billing
-      summary: List subscription plans
-      responses:
-        '200':
-          description: Plan list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/cancel-deployment:
-    post:
-      operationId: platform_deployWorker.cancelDeployment
-      tags:
-      - deploy-worker
-      summary: Cancel an in-progress worker deployment
-      security:
-      - ApiKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/platform_CancelDeploymentJob'
-      responses:
-        '200':
-          description: Cancellation requested
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  applicationType:
-                    type: string
-        '403':
-          description: Invalid API key
-  /v1/platform/certificates/all:
-    get:
-      operationId: platform_certificates.all
-      tags:
-      - certificate
-      summary: List SSL certificates (admin)
-      responses:
-        '200':
-          description: Certificate list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/cluster/getNodes:
-    get:
-      operationId: platform_cluster.getNodes
-      tags:
-      - Cluster
-      summary: List Docker Swarm nodes
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Node list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/cancelDeployment:
-    post:
-      operationId: platform_compose.cancelDeployment
-      tags:
-      - compose
-      summary: Cancel in-progress compose deployment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - composeId
-                  properties:
-                    composeId:
-                      type: string
-      responses:
-        '200':
-          description: Cancellation requested
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/create:
-    post:
-      operationId: platform_compose.create
-      tags:
-      - compose
-      summary: Create a Docker Compose service
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - name
-                  - environmentId
-                  properties:
-                    name:
-                      type: string
-                    environmentId:
-                      type: string
-                    serverId:
-                      type: string
-                    description:
-                      type: string
-                    composeFile:
-                      type: string
-                    sourceType:
-                      type: string
-                      enum:
-                      - raw
-                      - github
-                      - gitlab
-                      - bitbucket
-                      - gitea
-                      - git
-      responses:
-        '200':
-          description: Compose created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/delete:
-    post:
-      operationId: platform_compose.delete
-      tags:
-      - compose
-      summary: Delete a compose service
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - composeId
-                  properties:
-                    composeId:
-                      type: string
-                    deleteVolumes:
-                      type: boolean
-      responses:
-        '200':
-          description: Compose deleted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/deploy:
-    post:
-      operationId: platform_compose.deploy
-      tags:
-      - compose
-      summary: Deploy a compose service
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - composeId
-                  properties:
-                    composeId:
-                      type: string
-                    title:
-                      type: string
-                    description:
-                      type: string
-      responses:
-        '200':
-          description: Deployment queued
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/deployTemplate:
-    post:
-      operationId: platform_compose.deployTemplate
-      tags:
-      - compose
-      summary: Deploy a one-click template
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - environmentId
-                  - id
-                  properties:
-                    environmentId:
-                      type: string
-                    serverId:
-                      type: string
-                    id:
-                      type: string
-                    baseUrl:
-                      type: string
-      responses:
-        '200':
-          description: Template deployed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/disconnectGitProvider:
-    post:
-      operationId: platform_compose.disconnectGitProvider
-      tags:
-      - compose
-      summary: Disconnect git providers from compose
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - composeId
-                  properties:
-                    composeId:
-                      type: string
-      responses:
-        '200':
-          description: Git provider disconnected
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/getConvertedCompose:
-    get:
-      operationId: platform_compose.getConvertedCompose
-      tags:
-      - compose
-      summary: Get final compose YAML with domains injected
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: YAML string
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/getDefaultCommand:
-    get:
-      operationId: platform_compose.getDefaultCommand
-      tags:
-      - compose
-      summary: Get the docker compose command
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Docker command string
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/getTags:
-    get:
-      operationId: platform_compose.getTags
-      tags:
-      - compose
-      summary: Get unique tags from all templates
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Tag list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/loadServices:
-    get:
-      operationId: platform_compose.loadServices
-      tags:
-      - compose
-      summary: List running services within a compose stack
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Service list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/move:
-    post:
-      operationId: platform_compose.move
-      tags:
-      - compose
-      summary: Move compose to a different environment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - composeId
-                  - targetEnvironmentId
-                  properties:
-                    composeId:
-                      type: string
-                    targetEnvironmentId:
-                      type: string
-      responses:
-        '200':
-          description: Compose moved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/one:
-    get:
-      operationId: platform_compose.one
-      tags:
-      - compose
-      summary: Get compose service details
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Compose details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/redeploy:
-    post:
-      operationId: platform_compose.redeploy
-      tags:
-      - compose
-      summary: Redeploy (rebuild) a compose service
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - composeId
-                  properties:
-                    composeId:
-                      type: string
-                    title:
-                      type: string
-                    description:
-                      type: string
-      responses:
-        '200':
-          description: Redeployment queued
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/refreshToken:
-    post:
-      operationId: platform_compose.refreshToken
-      tags:
-      - compose
-      summary: Regenerate webhook token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - composeId
-                  properties:
-                    composeId:
-                      type: string
-      responses:
-        '200':
-          description: Token refreshed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/start:
-    post:
-      operationId: platform_compose.start
-      tags:
-      - compose
-      summary: Start a compose service
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - composeId
-                  properties:
-                    composeId:
-                      type: string
-      responses:
-        '200':
-          description: Compose started
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/stop:
-    post:
-      operationId: platform_compose.stop
-      tags:
-      - compose
-      summary: Stop a compose service
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - composeId
-                  properties:
-                    composeId:
-                      type: string
-      responses:
-        '200':
-          description: Compose stopped
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/templates:
-    get:
-      operationId: platform_compose.templates
-      tags:
-      - compose
-      summary: List available one-click templates
-      security: []
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Template list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/compose/update:
-    post:
-      operationId: platform_compose.update
-      tags:
-      - compose
-      summary: Update compose configuration
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - composeId
-                  properties:
-                    composeId:
-                      type: string
-                    composeFile:
-                      type: string
-                    env:
-                      type: string
-                    name:
-                      type: string
-                    description:
-                      type: string
-      responses:
-        '200':
-          description: Compose updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/deploy:
-    post:
-      operationId: platform_deployWorker.deploy
-      tags:
-      - deploy-worker
-      summary: Submit deployment job to worker queue
-      security:
-      - ApiKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/platform_DeployJob'
-      responses:
-        '200':
-          description: Deployment queued
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  serverId:
-                    type: string
-        '403':
-          description: Invalid API key
-        '500':
-          description: Queue failure
-  /v1/platform/deploy/compose/{refreshToken}:
-    post:
-      operationId: platform_webhook.deployCompose
-      tags:
-      - deployment
-      summary: Webhook to trigger compose deployment
-      security: []
-      requestBody:
+      - in: query
+        name: env
         required: false
-        description: Git-provider webhook payload. Parsed untyped and dispatched by provider header; invalid JSON falls back
-          to an empty object.
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/platform_GitProviderWebhookPayload'
+        description: Only rows in this environment (namespace).
+        schema:
+          type: string
+      - in: query
+        name: health
+        required: false
+        description: 'Only rows at this health: green | yellow | red.'
+        schema:
+          type: string
+      - in: query
+        name: drift
+        required: false
+        description: "1 or true \u2014 only rows whose live state differs from declared."
+        schema:
+          type: string
+  /v1/platform/fleet/{app}:
+    get:
+      operationId: platform_get_v1_platform_fleet_by_app
       parameters:
-      - name: refreshToken
-        in: path
+      - in: path
+        name: app
         required: true
         schema:
           type: string
-      responses:
-        '200':
-          description: Deployment triggered
-        '401':
-          description: Invalid token
-  /v1/platform/deploy/github:
-    post:
-      operationId: platform_webhook.github
       tags:
-      - deployment
-      summary: GitHub webhook receiver for auto-deploy
-      security: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Webhook processed
-  /v1/platform/deploy/{refreshToken}:
+      - platform
+  /v1/platform/fleet/{app}/deploy:
     post:
-      operationId: platform_webhook.deployApplication
-      tags:
-      - deployment
-      summary: Webhook to trigger application deployment
-      security: []
-      requestBody:
-        required: false
-        description: Git-provider (or Docker-registry) webhook payload. Parsed untyped and dispatched by provider header;
-          invalid JSON falls back to an empty object.
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/platform_GitProviderWebhookPayload'
+      operationId: platform_post_v1_platform_fleet_by_app_deploy
       parameters:
-      - name: refreshToken
-        in: path
+      - in: path
+        name: app
         required: true
         schema:
           type: string
-      responses:
-        '200':
-          description: Deployment triggered
-        '401':
-          description: Invalid token
-  /v1/platform/deployment/all:
-    get:
-      operationId: platform_deployment.all
+      - in: query
+        name: env
+        required: false
+        description: Environment (namespace) holding the Deployment to restart.
+        schema:
+          type: string
       tags:
-      - deployment
-      summary: List deployments for an application
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Deployment history
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/deployment/allByCompose:
-    get:
-      operationId: platform_deployment.allByCompose
-      tags:
-      - deployment
-      summary: List deployments for a compose service
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Deployment history
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/deployment/allByServer:
-    get:
-      operationId: platform_deployment.allByServer
-      tags:
-      - deployment
-      summary: List deployments on a server
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Deployment history
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/deployment/allByType:
-    get:
-      operationId: platform_deployment.allByType
-      tags:
-      - deployment
-      summary: List deployments by resource type and ID
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Deployment list with rollback info
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/deployment/killProcess:
-    post:
-      operationId: platform_deployment.killProcess
-      tags:
-      - deployment
-      summary: Kill a running deployment process
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - deploymentId
-                  properties:
-                    deploymentId:
-                      type: string
-      responses:
-        '200':
-          description: Process killed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/destination/all:
-    get:
-      operationId: platform_destination.all
-      tags:
-      - destination
-      summary: List backup destinations
-      responses:
-        '200':
-          description: Destination list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/docker/getConfig:
-    get:
-      operationId: platform_docker.getConfig
-      tags:
-      - docker
-      summary: Get Docker inspect for a container
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Container config JSON
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/docker/getContainers:
-    get:
-      operationId: platform_docker.getContainers
-      tags:
-      - docker
-      summary: List all Docker containers
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Container list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/docker/restartContainer:
-    post:
-      operationId: platform_docker.restartContainer
-      tags:
-      - docker
-      summary: Restart a container by ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - containerId
-                  properties:
-                    containerId:
-                      type: string
-                    serverId:
-                      type: string
-      responses:
-        '200':
-          description: Container restarted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/domain/byApplicationId:
-    get:
-      operationId: platform_domain.byApplicationId
-      tags:
-      - domain
-      summary: List domains for an application
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Domain list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/domain/byComposeId:
-    get:
-      operationId: platform_domain.byComposeId
-      tags:
-      - domain
-      summary: List domains for a compose service
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Domain list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/domain/create:
-    post:
-      operationId: platform_domain.create
-      tags:
-      - domain
-      summary: Create a domain mapping
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  $ref: '#/components/schemas/platform_CreateDomainInput'
-      responses:
-        '200':
-          description: Domain created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/domain/delete:
-    post:
-      operationId: platform_domain.delete
-      tags:
-      - domain
-      summary: Delete a domain
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - domainId
-                  properties:
-                    domainId:
-                      type: string
-      responses:
-        '200':
-          description: Domain deleted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/domain/generateDomain:
-    post:
-      operationId: platform_domain.generateDomain
-      tags:
-      - domain
-      summary: Generate a traefik.me auto-domain
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - appName
-                  properties:
-                    appName:
-                      type: string
-                    serverId:
-                      type: string
-      responses:
-        '200':
-          description: Generated domain string
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/domain/one:
-    get:
-      operationId: platform_domain.one
-      tags:
-      - domain
-      summary: Get a domain by ID
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Domain details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/domain/update:
-    post:
-      operationId: platform_domain.update
-      tags:
-      - domain
-      summary: Update a domain mapping
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - domainId
-                  properties:
-                    domainId:
-                      type: string
-                    host:
-                      type: string
-                    port:
-                      type: integer
-                    https:
-                      type: boolean
-                    path:
-                      type: string
-                    certificateType:
-                      type: string
-                      enum:
-                      - none
-                      - letsencrypt
-                      - custom
-      responses:
-        '200':
-          description: Domain updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/domain/validateDomain:
-    post:
-      operationId: platform_domain.validateDomain
-      tags:
-      - domain
-      summary: Validate DNS for a domain
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - domain
-                  properties:
-                    domain:
-                      type: string
-                    serverIp:
-                      type: string
-      responses:
-        '200':
-          description: Validation result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/environment/byProjectId:
-    get:
-      operationId: platform_environment.byProjectId
-      tags:
-      - environment
-      summary: List all environments for a project
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Array of environments
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/environment/create:
-    post:
-      operationId: platform_environment.create
-      tags:
-      - environment
-      summary: Create a new environment within a project
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - projectId
-                  - name
-                  properties:
-                    projectId:
-                      type: string
-                    name:
-                      type: string
-                      description: Cannot be "production" (reserved)
-                    description:
-                      type: string
-      responses:
-        '200':
-          description: Environment created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/environment/duplicate:
-    post:
-      operationId: platform_environment.duplicate
-      tags:
-      - environment
-      summary: Duplicate an environment with all services
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - environmentId
-                  properties:
-                    environmentId:
-                      type: string
-                    name:
-                      type: string
-      responses:
-        '200':
-          description: Duplicated environment
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/environment/one:
-    get:
-      operationId: platform_environment.one
-      tags:
-      - environment
-      summary: Get a single environment by ID
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Environment with all services
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/environment/remove:
-    post:
-      operationId: platform_environment.remove
-      tags:
-      - environment
-      summary: Delete an environment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - environmentId
-                  properties:
-                    environmentId:
-                      type: string
-      responses:
-        '200':
-          description: Environment deleted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/environment/update:
-    post:
-      operationId: platform_environment.update
-      tags:
-      - environment
-      summary: Update an environment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - environmentId
-                  properties:
-                    environmentId:
-                      type: string
-                    name:
-                      type: string
-                    description:
-                      type: string
-      responses:
-        '200':
-          description: Environment updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/gitProvider/getAll:
-    get:
-      operationId: platform_gitProvider.getAll
-      tags:
-      - git-provider
-      summary: List all git providers
-      responses:
-        '200':
-          description: Git provider list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/github/getGithubBranches:
-    get:
-      operationId: platform_github.getGithubBranches
-      tags:
-      - github
-      summary: List branches for a repository
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Branch list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/github/getGithubRepositories:
-    get:
-      operationId: platform_github.getGithubRepositories
-      tags:
-      - github
-      summary: List repos from a GitHub installation
-      parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Repository list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/github/githubProviders:
-    get:
-      operationId: platform_github.githubProviders
-      tags:
-      - github
-      summary: List GitHub installations
-      responses:
-        '200':
-          description: GitHub providers
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
+      - platform
   /v1/platform/health:
     get:
-      operationId: platform_health
+      operationId: platform_get_v1_platform_health
       tags:
-      - Settings
-      summary: Platform health (REST)
-      security: []
-      responses:
-        '200':
-          description: Healthy
-  /v1/platform/healthcheck:
+      - platform
+  /v1/platform/projects:
     get:
-      operationId: platform_healthcheck
-      tags:
-      - Settings
-      summary: Platform healthcheck (REST)
-      security: []
+      operationId: platform_get_v1_platform_projects
       responses:
-        '200':
-          description: Healthy
-  /v1/platform/mariadb/create:
-    post:
-      operationId: platform_mariadb.create
-      tags:
-      - mariadb
-      summary: Create a MariaDB service
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  $ref: '#/components/schemas/platform_CreateDatabaseInput'
-      responses:
-        '200':
-          description: MariaDB created
+        2XX:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/mariadb/one:
-    get:
-      operationId: platform_mariadb.one
+                items:
+                  $ref: '#/components/schemas/platform_projectView'
+                type: array
+          description: Success
       tags:
-      - mariadb
-      summary: Get MariaDB details
+      - platform
+  /v1/platform/projects/{project}:
+    get:
+      operationId: platform_get_v1_platform_projects_by_project
       parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: MariaDB details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/mongo/create:
-    post:
-      operationId: platform_mongo.create
-      tags:
-      - mongo
-      summary: Create a MongoDB service
-      requestBody:
+      - in: path
+        name: project
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  $ref: '#/components/schemas/platform_CreateDatabaseInput'
+        schema:
+          type: string
       responses:
-        '200':
-          description: MongoDB created
+        2XX:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/mongo/one:
-    get:
-      operationId: platform_mongo.one
+                $ref: '#/components/schemas/platform_projectView'
+          description: Success
       tags:
-      - mongo
-      summary: Get MongoDB details
+      - platform
+  /v1/platform/projects/{project}/apps:
+    get:
+      operationId: platform_get_v1_platform_projects_by_project_apps
       parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: MongoDB details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/mysql/create:
-    post:
-      operationId: platform_mysql.create
-      tags:
-      - mysql
-      summary: Create a MySQL service
-      requestBody:
+      - in: path
+        name: project
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  $ref: '#/components/schemas/platform_CreateDatabaseInput'
+        schema:
+          type: string
       responses:
-        '200':
-          description: Database created
+        2XX:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/mysql/one:
-    get:
-      operationId: platform_mysql.one
+                items:
+                  $ref: '#/components/schemas/platform_appView'
+                type: array
+          description: Success
       tags:
-      - mysql
-      summary: Get MySQL details
+      - platform
+    post:
+      operationId: platform_post_v1_platform_projects_by_project_apps
       parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Database details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/notification/all:
-    get:
-      operationId: platform_notification.all
-      tags:
-      - notification
-      summary: List notification channels (admin)
-      responses:
-        '200':
-          description: Notification list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/organization/all:
-    get:
-      operationId: platform_organization.all
-      tags:
-      - organization
-      summary: List organizations
-      responses:
-        '200':
-          description: Organization list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/organization/create:
-    post:
-      operationId: platform_organization.create
-      tags:
-      - organization
-      summary: Create an organization
-      requestBody:
+      - in: path
+        name: project
         required: true
+        schema:
+          type: string
+      requestBody:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - name
-                  properties:
-                    name:
-                      type: string
+              $ref: '#/components/schemas/platform_createAppReq'
       responses:
-        '200':
-          description: Organization created
+        2XX:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/postgres/create:
-    post:
-      operationId: platform_postgres.create
+                $ref: '#/components/schemas/platform_appView'
+          description: Success
       tags:
-      - postgres
-      summary: Create a PostgreSQL service
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  $ref: '#/components/schemas/platform_CreateDatabaseInput'
-      responses:
-        '200':
-          description: Database created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/postgres/one:
-    get:
-      operationId: platform_postgres.one
-      tags:
-      - postgres
-      summary: Get PostgreSQL details
+      - platform
+  /v1/platform/projects/{project}/apps/{app}:
+    delete:
+      operationId: platform_delete_v1_platform_projects_by_project_apps_by_app
       parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Database details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/project/all:
-    get:
-      operationId: platform_project.all
-      tags:
-      - project
-      summary: List all projects in the active organization
-      responses:
-        '200':
-          description: Array of projects with nested environments and services
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/project/create:
-    post:
-      operationId: platform_project.create
-      tags:
-      - project
-      summary: Create a new project
-      requestBody:
+      - in: path
+        name: project
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  $ref: '#/components/schemas/platform_CreateProjectInput'
-      responses:
-        '200':
-          description: Project created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/project/duplicate:
-    post:
-      operationId: platform_project.duplicate
-      tags:
-      - project
-      summary: Duplicate a project or environment with selected services
-      requestBody:
+        schema:
+          type: string
+      - in: path
+        name: app
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - sourceEnvironmentId
-                  - name
-                  properties:
-                    sourceEnvironmentId:
-                      type: string
-                    name:
-                      type: string
-                    description:
-                      type: string
-                    includeServices:
-                      type: boolean
-                      default: true
-                    selectedServices:
-                      type: array
-                      items:
-                        type: object
-                        required:
-                        - id
-                        - type
-                        properties:
-                          id:
-                            type: string
-                          type:
-                            type: string
-                            enum:
-                            - application
-                            - postgres
-                            - mariadb
-                            - mongo
-                            - mysql
-                            - redis
-                            - compose
-                    duplicateInSameProject:
-                      type: boolean
-                      default: false
-      responses:
-        '200':
-          description: Duplicated project/environment
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/project/one:
-    get:
-      operationId: platform_project.one
+        schema:
+          type: string
       tags:
-      - project
-      summary: Get a single project by ID
+      - platform
+    get:
+      operationId: platform_get_v1_platform_projects_by_project_apps_by_app
       parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Project details with all environments and services
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/project/remove:
-    post:
-      operationId: platform_project.remove
-      tags:
-      - project
-      summary: Delete a project
-      requestBody:
+      - in: path
+        name: project
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - projectId
-                  properties:
-                    projectId:
-                      type: string
-      responses:
-        '200':
-          description: Project deleted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/project/update:
-    post:
-      operationId: platform_project.update
-      tags:
-      - project
-      summary: Update a project
-      requestBody:
+        schema:
+          type: string
+      - in: path
+        name: app
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  $ref: '#/components/schemas/platform_UpdateProjectInput'
+        schema:
+          type: string
       responses:
-        '200':
-          description: Project updated
+        2XX:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/redis/create:
+                $ref: '#/components/schemas/platform_appView'
+          description: Success
+      tags:
+      - platform
+  /v1/platform/projects/{project}/apps/{app}/deploy:
     post:
-      operationId: platform_redis.create
-      tags:
-      - redis
-      summary: Create a Redis service
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  $ref: '#/components/schemas/platform_CreateDatabaseInput'
-      responses:
-        '200':
-          description: Redis created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/redis/one:
-    get:
-      operationId: platform_redis.one
-      tags:
-      - redis
-      summary: Get Redis details
+      operationId: platform_post_v1_platform_projects_by_project_apps_by_app_deploy
       parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Redis details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/registry/all:
-    get:
-      operationId: platform_registry.all
-      tags:
-      - registry
-      summary: List container registries
-      responses:
-        '200':
-          description: Registry list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/rollback/rollback:
-    post:
-      operationId: platform_rollback.rollback
-      tags:
-      - rollback
-      summary: Rollback to a previous deployment
-      requestBody:
+      - in: path
+        name: project
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - deploymentId
-                  properties:
-                    deploymentId:
-                      type: string
-      responses:
-        '200':
-          description: Rollback initiated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/schedule/create:
-    post:
-      operationId: platform_schedule.create
-      tags:
-      - schedule
-      summary: Create a scheduled task
-      requestBody:
+        schema:
+          type: string
+      - in: path
+        name: app
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - command
-                  - schedule
-                  properties:
-                    command:
-                      type: string
-                    schedule:
-                      type: string
-                    enabled:
-                      type: boolean
-                    serverId:
-                      type: string
-      responses:
-        '200':
-          description: Schedule created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/schedule/list:
-    get:
-      operationId: platform_schedule.list
+        schema:
+          type: string
       tags:
-      - schedule
-      summary: List scheduled tasks
+      - platform
+  /v1/platform/projects/{project}/apps/{app}/deployments:
+    get:
+      operationId: platform_get_v1_platform_projects_by_project_apps_by_app_deployments
       parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Schedule list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/server/all:
-    get:
-      operationId: platform_server.all
-      tags:
-      - server
-      summary: List all servers with service counts
-      responses:
-        '200':
-          description: Server list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/server/create:
-    post:
-      operationId: platform_server.create
-      tags:
-      - server
-      summary: Register a new remote server
-      requestBody:
+      - in: path
+        name: project
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - name
-                  - ipAddress
-                  - sshKeyId
-                  properties:
-                    name:
-                      type: string
-                    description:
-                      type: string
-                    ipAddress:
-                      type: string
-                    port:
-                      type: integer
-                    username:
-                      type: string
-                    sshKeyId:
-                      type: string
-      responses:
-        '200':
-          description: Server registered
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/server/getServerMetrics:
-    get:
-      operationId: platform_server.getServerMetrics
+        schema:
+          type: string
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
       tags:
-      - server
-      summary: Fetch server metrics (CPU, memory, disk, network)
+      - platform
+  /v1/platform/projects/{project}/apps/{app}/deployments/{id}:
+    get:
+      operationId: platform_get_v1_platform_projects_by_project_apps_by_app_deployments_by_id
       parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Metric snapshots
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/server/one:
-    get:
-      operationId: platform_server.one
+      - in: path
+        name: project
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
       tags:
-      - server
-      summary: Get server details
+      - platform
+  /v1/platform/projects/{project}/apps/{app}/deployments/{id}/logs:
+    get:
+      operationId: platform_get_v1_platform_projects_by_project_apps_by_app_deployments_by_id_logs
       parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Server details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/server/publicIp:
-    get:
-      operationId: platform_server.publicIp
-      tags:
-      - server
-      summary: Get platform host public IP
-      responses:
-        '200':
-          description: IP string
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/server/remove:
-    post:
-      operationId: platform_server.remove
-      tags:
-      - server
-      summary: Remove a server (must have no active services)
-      requestBody:
+      - in: path
+        name: project
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - serverId
-                  properties:
-                    serverId:
-                      type: string
-      responses:
-        '200':
-          description: Server removed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/server/security:
-    get:
-      operationId: platform_server.security
+        schema:
+          type: string
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
       tags:
-      - server
-      summary: Run security audit (ufw, ssh, fail2ban)
+      - platform
+  /v1/platform/projects/{project}/apps/{app}/domains:
+    get:
+      operationId: platform_get_v1_platform_projects_by_project_apps_by_app_domains
       parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Security audit results
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/server/setup:
-    post:
-      operationId: platform_server.setup
-      tags:
-      - server
-      summary: Run initial setup (install Docker, Traefik, etc.)
-      requestBody:
+      - in: path
+        name: project
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - serverId
-                  properties:
-                    serverId:
-                      type: string
-      responses:
-        '200':
-          description: Setup complete
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/server/setupMonitoring:
-    post:
-      operationId: platform_server.setupMonitoring
-      tags:
-      - server
-      summary: Configure and deploy monitoring agent
-      requestBody:
+        schema:
+          type: string
+      - in: path
+        name: app
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - serverId
-                  - metricsConfig
-                  properties:
-                    serverId:
-                      type: string
-                    metricsConfig:
-                      $ref: '#/components/schemas/platform_MetricsConfig'
-      responses:
-        '200':
-          description: Monitoring configured
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/server/update:
+        schema:
+          type: string
+      tags:
+      - platform
     post:
-      operationId: platform_server.update
-      tags:
-      - server
-      summary: Update server configuration
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - serverId
-                  properties:
-                    serverId:
-                      type: string
-                    name:
-                      type: string
-                    description:
-                      type: string
-                    ipAddress:
-                      type: string
-                    port:
-                      type: integer
-                    username:
-                      type: string
-      responses:
-        '200':
-          description: Server updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/server/validate:
-    get:
-      operationId: platform_server.validate
-      tags:
-      - server
-      summary: Validate server capabilities
+      operationId: platform_post_v1_platform_projects_by_project_apps_by_app_domains
       parameters:
-      - $ref: '#/components/parameters/platform_TRPCInput'
-      responses:
-        '200':
-          description: Validation results (docker, nixpacks, buildpacks, etc.)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/settings/cleanAll:
-    post:
-      operationId: platform_settings.cleanAll
-      tags:
-      - Settings
-      summary: Full Docker cleanup (admin)
-      requestBody:
-        required: false
-        description: tRPC input (apiServerSchema); the entire input is optional.
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  properties:
-                    serverId:
-                      type: string
-                      description: Optional target server; omitted cleans the local host.
-      responses:
-        '200':
-          description: Cleanup done
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/settings/getHanzoVersion:
-    get:
-      operationId: platform_settings.getHanzoVersion
-      tags:
-      - Settings
-      summary: Get platform version
-      responses:
-        '200':
-          description: Version string
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/settings/health:
-    get:
-      operationId: platform_settings.health
-      tags:
-      - Settings
-      summary: Platform health check (tRPC)
-      security: []
-      responses:
-        '200':
-          description: Health status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/settings/isCloud:
-    get:
-      operationId: platform_settings.isCloud
-      tags:
-      - Settings
-      summary: Check if running in cloud mode
-      security: []
-      responses:
-        '200':
-          description: Boolean
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/settings/reloadTraefik:
-    post:
-      operationId: platform_settings.reloadTraefik
-      tags:
-      - Settings
-      summary: Reload Traefik configuration (admin)
-      requestBody:
+      - in: path
+        name: project
         required: true
+        schema:
+          type: string
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/projects/{project}/apps/{app}/domains/{host}:
+    delete:
+      operationId: platform_delete_v1_platform_projects_by_project_apps_by_app_domains_by_host
+      parameters:
+      - in: path
+        name: project
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: host
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/projects/{project}/apps/{app}/domains/{host}/verify:
+    post:
+      operationId: platform_post_v1_platform_projects_by_project_apps_by_app_domains_by_host_verify
+      parameters:
+      - in: path
+        name: project
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: host
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/projects/{project}/apps/{app}/env:
+    put:
+      operationId: platform_put_v1_platform_projects_by_project_apps_by_app_env
+      parameters:
+      - in: path
+        name: project
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
+      requestBody:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  properties:
-                    serverId:
-                      type: string
+              $ref: '#/components/schemas/platform_setEnvReq'
       responses:
-        '200':
-          description: Traefik reloaded
+        2XX:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/sshKey/all:
+                $ref: '#/components/schemas/platform_appView'
+          description: Success
+      tags:
+      - platform
+  /v1/platform/projects/{project}/apps/{app}/preview:
+    post:
+      operationId: platform_post_v1_platform_projects_by_project_apps_by_app_preview
+      parameters:
+      - in: path
+        name: project
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/projects/{project}/apps/{app}/promote:
+    post:
+      operationId: platform_post_v1_platform_projects_by_project_apps_by_app_promote
+      parameters:
+      - in: path
+        name: project
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/projects/{project}/apps/{app}/rollback:
+    post:
+      operationId: platform_post_v1_platform_projects_by_project_apps_by_app_rollback
+      parameters:
+      - in: path
+        name: project
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/projects/{project}/apps/{app}/start:
+    post:
+      operationId: platform_post_v1_platform_projects_by_project_apps_by_app_start
+      parameters:
+      - in: path
+        name: project
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/projects/{project}/apps/{app}/stop:
+    post:
+      operationId: platform_post_v1_platform_projects_by_project_apps_by_app_stop
+      parameters:
+      - in: path
+        name: project
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/sites:
     get:
-      operationId: platform_sshKey.all
+      operationId: platform_get_v1_platform_sites
       tags:
-      - ssh-key
-      summary: List all SSH keys
-      responses:
-        '200':
-          description: SSH key list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/sshKey/create:
+      - platform
     post:
-      operationId: platform_sshKey.create
+      operationId: platform_post_v1_platform_sites
       tags:
-      - ssh-key
-      summary: Add an SSH key
-      requestBody:
+      - platform
+  /v1/platform/sites/{slug}:
+    delete:
+      operationId: platform_delete_v1_platform_sites_by_slug
+      parameters:
+      - in: path
+        name: slug
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - name
-                  - privateKey
-                  properties:
-                    name:
-                      type: string
-                    description:
-                      type: string
-                    privateKey:
-                      type: string
-                    publicKey:
-                      type: string
-      responses:
-        '200':
-          description: SSH key created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/sshKey/generate:
-    post:
-      operationId: platform_sshKey.generate
+        schema:
+          type: string
       tags:
-      - ssh-key
-      summary: Generate a new SSH key pair
-      requestBody:
-        required: true
-        description: tRPC input (apiGenerateSSHKey).
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  properties:
-                    type:
-                      type: string
-                      enum:
-                      - rsa
-                      - ed25519
-                      description: Key algorithm (optional).
-      responses:
-        '200':
-          description: Key pair
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/sshKey/remove:
-    post:
-      operationId: platform_sshKey.remove
-      tags:
-      - ssh-key
-      summary: Remove an SSH key
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - sshKeyId
-                  properties:
-                    sshKeyId:
-                      type: string
-      responses:
-        '200':
-          description: SSH key removed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/user/all:
+      - platform
     get:
-      operationId: platform_user.all
-      tags:
-      - User
-      summary: List all users (admin only)
-      responses:
-        '200':
-          description: User list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/user/createApiKey:
-    post:
-      operationId: platform_user.createApiKey
-      tags:
-      - User
-      summary: Create an API key
-      requestBody:
+      operationId: platform_get_v1_platform_sites_by_slug
+      parameters:
+      - in: path
+        name: slug
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - name
-                  properties:
-                    name:
-                      type: string
-                    prefix:
-                      type: string
-                    expiresIn:
-                      type: integer
-                    rateLimitEnabled:
-                      type: boolean
-                    rateLimitTimeWindow:
-                      type: integer
-                    rateLimitMax:
-                      type: integer
-      responses:
-        '200':
-          description: API key (returned once)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/user/deleteApiKey:
-    post:
-      operationId: platform_user.deleteApiKey
+        schema:
+          type: string
       tags:
-      - User
-      summary: Delete an API key
-      requestBody:
+      - platform
+    patch:
+      operationId: platform_patch_v1_platform_sites_by_slug
+      parameters:
+      - in: path
+        name: slug
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                json:
-                  type: object
-                  required:
-                  - apiKeyId
-                  properties:
-                    apiKeyId:
-                      type: string
-      responses:
-        '200':
-          description: API key deleted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
-  /v1/platform/user/get:
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/sites/{slug}/deploy:
+    post:
+      operationId: platform_post_v1_platform_sites_by_slug_deploy
+      parameters:
+      - in: path
+        name: slug
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/sites/{slug}/deployments:
     get:
-      operationId: platform_user.get
+      operationId: platform_get_v1_platform_sites_by_slug_deployments
+      parameters:
+      - in: path
+        name: slug
+        required: true
+        schema:
+          type: string
       tags:
-      - User
-      summary: Get current authenticated user
-      responses:
-        '200':
-          description: User profile
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/platform_TRPCResult'
+      - platform
+  /v1/platform/sites/{slug}/deployments/{id}:
+    get:
+      operationId: platform_get_v1_platform_sites_by_slug_deployments_by_id
+      parameters:
+      - in: path
+        name: slug
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/sites/{slug}/domains:
+    get:
+      operationId: platform_get_v1_platform_sites_by_slug_domains
+      parameters:
+      - in: path
+        name: slug
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+    post:
+      operationId: platform_post_v1_platform_sites_by_slug_domains
+      parameters:
+      - in: path
+        name: slug
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/sites/{slug}/domains/{host}:
+    delete:
+      operationId: platform_delete_v1_platform_sites_by_slug_domains_by_host
+      parameters:
+      - in: path
+        name: slug
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: host
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/sites/{slug}/domains/{host}/verify:
+    post:
+      operationId: platform_post_v1_platform_sites_by_slug_domains_by_host_verify
+      parameters:
+      - in: path
+        name: slug
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: host
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/sites/{slug}/publish:
+    post:
+      operationId: platform_post_v1_platform_sites_by_slug_publish
+      parameters:
+      - in: path
+        name: slug
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/sites/{slug}/purge:
+    post:
+      operationId: platform_post_v1_platform_sites_by_slug_purge
+      parameters:
+      - in: path
+        name: slug
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/sites/{slug}/releases:
+    get:
+      operationId: platform_get_v1_platform_sites_by_slug_releases
+      parameters:
+      - in: path
+        name: slug
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+    post:
+      operationId: platform_post_v1_platform_sites_by_slug_releases
+      parameters:
+      - in: path
+        name: slug
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
+  /v1/platform/sites/{slug}/releases/{release}/activate:
+    post:
+      operationId: platform_post_v1_platform_sites_by_slug_releases_by_release_activate
+      parameters:
+      - in: path
+        name: slug
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: release
+        required: true
+        schema:
+          type: string
+      tags:
+      - platform
   /v1/plugins:
     get:
       tags:
@@ -62352,11 +59897,6 @@ components:
       in: header
       name: X-API-Key
       description: Shared service key (KMS-sourced) presented server-side by the chat node process. Not a user JWT.
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: Deploy worker API key
     s3Auth:
       type: apiKey
       in: header
@@ -80859,331 +78399,157 @@ components:
       type: object
       description: Opaque plan-catalog JSON emitted by the @hanzo/plans bundle (shape varies per route).
       additionalProperties: true
-    platform_CancelDeploymentJob:
-      oneOf:
-      - $ref: '#/components/schemas/platform_CancelDeploymentJobApplication'
-      - $ref: '#/components/schemas/platform_CancelDeploymentJobCompose'
-      discriminator:
-        propertyName: applicationType
-        mapping:
-          application: '#/components/schemas/platform_CancelDeploymentJobApplication'
-          compose: '#/components/schemas/platform_CancelDeploymentJobCompose'
-    platform_CancelDeploymentJobApplication:
-      type: object
-      required:
-      - applicationId
-      - applicationType
+    platform_EnvVarJSON:
       properties:
-        applicationId:
+        key:
           type: string
-        applicationType:
+        secret:
+          type: boolean
+        value:
           type: string
-          enum:
-          - application
-    platform_CancelDeploymentJobCompose:
       type: object
-      required:
-      - composeId
-      - applicationType
+    platform_appView:
       properties:
-        composeId:
+        buildType:
           type: string
-        applicationType:
-          type: string
-          enum:
-          - compose
-    platform_CreateApplicationInput:
-      type: object
-      required:
-      - name
-      - environmentId
-      properties:
-        name:
-          type: string
-        appName:
-          type: string
-        environmentId:
-          type: string
-        serverId:
+        createdAt:
+          type: integer
+        currentDeploymentId:
           type: string
         description:
           type: string
-    platform_CreateDatabaseInput:
-      type: object
-      required:
-      - name
-      - environmentId
-      properties:
+        dockerfile:
+          type: string
+        domains:
+          items:
+            type: string
+          type: array
+        env:
+          items:
+            $ref: '#/components/schemas/platform_EnvVarJSON'
+          type: array
+        environment:
+          type: string
+        health:
+          type: string
+        id:
+          type: string
+        image:
+          $ref: '#/components/schemas/platform_imageView'
         name:
           type: string
-        appName:
+        namespace:
           type: string
-        environmentId:
+        org:
           type: string
-        serverId:
-          type: string
-        dockerImage:
-          type: string
-        databaseName:
-          type: string
-        databaseUser:
-          type: string
-        databasePassword:
-          type: string
-        databaseRootPassword:
-          type: string
-        description:
-          type: string
-    platform_CreateDomainInput:
-      type: object
-      required:
-      - host
-      - domainType
-      properties:
-        host:
+        phase:
           type: string
         port:
           type: integer
-        https:
-          type: boolean
-        path:
+        projectId:
           type: string
-        domainType:
+        replicas:
+          type: integer
+        repo:
+          $ref: '#/components/schemas/platform_gitSource'
+        secretSync:
           type: string
-          enum:
-          - application
-          - compose
-        applicationId:
+        secretSyncDetail:
           type: string
-        composeId:
+        slug:
           type: string
-        serviceName:
+        source:
           type: string
-        certificateType:
+        status:
           type: string
-          enum:
-          - none
-          - letsencrypt
-          - custom
-    platform_CreateProjectInput:
+        storageGb:
+          type: integer
+        updatedAt:
+          type: integer
       type: object
-      required:
-      - name
+    platform_createAppReq:
       properties:
-        name:
+        buildType:
           type: string
         description:
           type: string
-        env:
+        dockerfile:
           type: string
-    platform_DeployJob:
-      oneOf:
-      - $ref: '#/components/schemas/platform_DeployJobApplication'
-      - $ref: '#/components/schemas/platform_DeployJobCompose'
-      - $ref: '#/components/schemas/platform_DeployJobApplicationPreview'
-      discriminator:
-        propertyName: applicationType
-        mapping:
-          application: '#/components/schemas/platform_DeployJobApplication'
-          compose: '#/components/schemas/platform_DeployJobCompose'
-          application-preview: '#/components/schemas/platform_DeployJobApplicationPreview'
-    platform_DeployJobApplication:
-      type: object
-      required:
-      - applicationId
-      - applicationType
-      - type
-      - serverId
-      properties:
-        applicationId:
-          type: string
-        titleLog:
-          type: string
-        descriptionLog:
-          type: string
-        server:
-          type: boolean
-        type:
-          type: string
-          enum:
-          - deploy
-          - redeploy
-        applicationType:
-          type: string
-          enum:
-          - application
-        serverId:
-          type: string
-    platform_DeployJobApplicationPreview:
-      type: object
-      required:
-      - applicationId
-      - previewDeploymentId
-      - applicationType
-      - type
-      - serverId
-      properties:
-        applicationId:
-          type: string
-        previewDeploymentId:
-          type: string
-        titleLog:
-          type: string
-        descriptionLog:
-          type: string
-        server:
-          type: boolean
-        type:
-          type: string
-          enum:
-          - deploy
-        applicationType:
-          type: string
-          enum:
-          - application-preview
-        serverId:
-          type: string
-    platform_DeployJobCompose:
-      type: object
-      required:
-      - composeId
-      - applicationType
-      - type
-      - serverId
-      properties:
-        composeId:
-          type: string
-        titleLog:
-          type: string
-        descriptionLog:
-          type: string
-        server:
-          type: boolean
-        type:
-          type: string
-          enum:
-          - deploy
-          - redeploy
-        applicationType:
-          type: string
-          enum:
-          - compose
-        serverId:
-          type: string
-    platform_GitProviderWebhookPayload:
-      type: object
-      additionalProperties: true
-      description: Provider-specific webhook payload (GitHub/GitLab/Bitbucket/Gitea or Docker registry). Consumed untyped;
-        the fields below are the commonly-read ones.
-      properties:
-        ref:
-          type: string
-          description: GitHub/GitLab branch ref
-        after:
-          type: string
-          description: Gitea/soft-serve post-push commit sha
-        checkout_sha:
-          type: string
-          description: GitLab checkout sha
-        head_commit:
-          type: object
-          additionalProperties: true
-          description: GitHub head commit ({ id, message })
-        commits:
-          type: array
+        domains:
           items:
-            type: object
-            additionalProperties: true
-          description: Commit list ({ id, message, modified })
-    platform_MetricsConfig:
-      type: object
-      required:
-      - server
-      - containers
-      properties:
-        server:
-          type: object
-          properties:
-            refreshRate:
-              type: integer
-            retentionDays:
-              type: integer
-            port:
-              type: integer
-            token:
-              type: string
-            urlCallback:
-              type: string
-            cronJob:
-              type: string
-            thresholds:
-              type: object
-              properties:
-                cpu:
-                  type: integer
-                memory:
-                  type: integer
-        containers:
-          type: object
-          properties:
-            refreshRate:
-              type: integer
-            services:
-              type: object
-              properties:
-                include:
-                  type: array
-                  items:
-                    type: string
-                exclude:
-                  type: array
-                  items:
-                    type: string
-    platform_TRPCResult:
-      type: object
-      properties:
-        result:
-          type: object
-          properties:
-            data:
-              type: object
-              properties:
-                json:
-                  description: Response payload (varies per endpoint)
-    platform_UpdateApplicationInput:
-      type: object
-      required:
-      - applicationId
-      properties:
-        applicationId:
+            type: string
+          type: array
+        env:
+          items:
+            $ref: '#/components/schemas/platform_EnvVarJSON'
+          type: array
+        environment:
           type: string
+        image:
+          properties:
+            repository:
+              type: string
+            tag:
+              type: string
+          type: object
         name:
           type: string
-        description:
-          type: string
-        memoryReservation:
-          type: integer
-        memoryLimit:
-          type: integer
-        cpuReservation:
-          type: integer
-        cpuLimit:
+        port:
           type: integer
         replicas:
           type: integer
-        command:
+        repo:
+          properties:
+            branch:
+              type: string
+            url:
+              type: string
+          type: object
+        slug:
           type: string
-    platform_UpdateProjectInput:
+        source:
+          type: string
+        storageGb:
+          type: integer
       type: object
-      required:
-      - projectId
+    platform_gitSource:
       properties:
-        projectId:
+        branch:
+          type: string
+        provider:
+          type: string
+        url:
+          type: string
+      type: object
+    platform_imageView:
+      properties:
+        repository:
+          type: string
+        tag:
+          type: string
+      type: object
+    platform_projectView:
+      properties:
+        applications:
+          type: integer
+        createdAt:
+          type: integer
+        description:
           type: string
         name:
           type: string
-        description:
+        org:
           type: string
+        slug:
+          type: string
+      type: object
+    platform_setEnvReq:
+      properties:
+        env:
+          items:
+            $ref: '#/components/schemas/platform_EnvVarJSON'
+          type: array
+      type: object
     plugin_ActionOut:
       type: object
       description: 'The envelope every mutation answers with. Data is per host and in the order
@@ -87745,12 +85111,6 @@ components:
         pattern: ^[a-zA-Z0-9_-]+$
         maxLength: 256
       description: Stream name.
-    platform_TRPCInput:
-      name: input
-      in: query
-      description: URL-encoded JSON input for tRPC queries
-      schema:
-        type: string
     plugin_PluginName:
       name: name
       in: path
