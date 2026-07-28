@@ -1,3 +1,16 @@
+# UNSERVED as of 2026-07-28, and SUPERSEDED — paas IS platform, one name. Cloud
+# main (b87a38df, "fold /v1/paas into /v1/platform") mounts no /v1/paas at all;
+# the deployed build still answers the fleet subset (/v1/paas/{health,apps,
+# apps/{app},apps/{app}/deploy}), which main renamed to /v1/platform/fleet/*.
+# Neither serves THIS surface: /v1/paas/cluster/info 404s live, and the whole
+# org/project/env/container tree below belongs to the standalone PaaS service
+# that the unified binary replaced. The live plane is /v1/platform/* — 33 routes
+# (projects/apps, sites, fleet), of which platform/openapi.yaml currently authors
+# NONE; that spec still describes the older RPC-style /v1/platform/application/*
+# surface, which is itself unserved. Retarget consumers to /v1/platform.
+# KEPT, not deleted: genspec refutes an authored operation only where the live
+# route table OWNS its product, so deleting on a deployment lag is the one
+# irreversible move. Delete when the capability is retired, not when it moves.
 openapi: 3.1.0
 info:
   title: Hanzo PaaS API

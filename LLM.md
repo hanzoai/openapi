@@ -94,6 +94,35 @@ Its `info` block comes from the emitting binary, so it carries the API contract
 version (`v1`) rather than this repo's V8 release generation — it is a machine
 artifact, not one of the authored specs the `8.0.0` convention governs.
 
+## Who reads this repo — five consumers, two different contracts
+
+An authored spec is not documentation. Five repos read these files as INPUT, and
+they disagree about what an unserved operation means — which is the whole reason
+`generated/` and `audit.py` exist.
+
+| consumer | reads | filters against the live router? |
+|---|---|---|
+| `hanzoai/cli` | `hanzo.yaml` → `genspec` → `spec/cloud.json` → `genproduct` | YES — refutes per owned product |
+| `hanzoai/console` | `hanzo.yaml` (proxy-allow test) | YES — asserts the proxy allows only declared paths |
+| `hanzoai/cloud` agent-skills | `<svc>/openapi.yaml` via `skills.py` | **NO** |
+| hanzo.ai oss-catalog | `capabilities.yaml` + `<svc>/openapi.yaml` | NO |
+| `hanzoai/world` cloud-pulse | `hanzo.yaml` | NO |
+
+**`skills.py` has NO liveness filter.** It opens `<svc>/openapi.yaml` directly
+(never `generated/hanzo.json`, never the wire) and emits a `SKILL.md` for every
+authored operation. So an operation nothing serves still ships as a skill an
+agent will call and get a 404 from. The CLI is protected by refutation; the
+skills plane is protected by nothing but this file being true. Authoring a route
+that does not exist is therefore not a harmless placeholder — it is a live
+instruction to call a dead endpoint.
+
+The 9 services annotated UNSERVED at the top of their `openapi.yaml`
+(nexus, flow, auto, console, mq, engine, db, registry, paas) are kept
+deliberately: `genspec` refutes only where the router OWNS the product, and it
+is silent about all nine, so silence is not evidence of absence and deleting on
+a deployment lag is the one irreversible move. The comment is what stops the
+silence from being read as health.
+
 ## SDK generation — the ONE way (Stainless RETIRED, 2026-07)
 
 The one interface is `hanzo.yaml`; the generator backend is

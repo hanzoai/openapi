@@ -1,3 +1,15 @@
+# DRIFTED as of 2026-07-28 — this spec and the served /v1/platform surface do not
+# overlap. Cloud main (b87a38df) mounts 33 REST routes: /v1/platform/{health,
+# projects,projects/{project}/apps/…,sites/…,fleet/…} — the last being the
+# /v1/paas/apps plane renamed by "fold /v1/paas into /v1/platform". NONE of the
+# 33 is authored here; the 131 paths below are the older RPC-style
+# /v1/platform/application/*, /v1/platform/project/* surface, and none of them is
+# served (/v1/platform/health 200s and /v1/platform/projects 403s — auth-gated,
+# so the route exists — while the RPC paths 404).
+# Consequence for consumers: the 33 real routes reach no SDK and no `hanzo`
+# command, because hanzoai/cli's genspec iterates the AUTHORED master and the
+# live table only REFUTES. Authoring them is the fix; this comment is the record
+# that it is owed, not a substitute for it.
 openapi: 3.1.0
 info:
   title: Hanzo Platform API
