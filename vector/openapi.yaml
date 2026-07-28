@@ -90,9 +90,7 @@ components:
             vectors:
               oneOf:
               - $ref: '#/components/schemas/VectorParams'
-              - type: object
-                additionalProperties:
-                  $ref: '#/components/schemas/VectorParams'
+              - $ref: '#/components/schemas/VectorParamsMap'
             shard_number:
               type: integer
             replication_factor:
@@ -100,6 +98,32 @@ components:
         hnsw_config:
           $ref: '#/components/schemas/HnswConfig'
         optimizer_config:
+          $ref: '#/components/schemas/OptimizerConfig'
+        wal_config:
+          $ref: '#/components/schemas/WalConfig'
+    VectorParamsMap:
+      description: Named vectors — one VectorParams per vector name.
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/VectorParams'
+    CreateCollectionRequest:
+      type: object
+      properties:
+        vectors:
+          oneOf:
+          - $ref: '#/components/schemas/VectorParams'
+          - $ref: '#/components/schemas/VectorParamsMap'
+        shard_number:
+          type: integer
+        replication_factor:
+          type: integer
+        write_consistency_factor:
+          type: integer
+        on_disk_payload:
+          type: boolean
+        hnsw_config:
+          $ref: '#/components/schemas/HnswConfig'
+        optimizers_config:
           $ref: '#/components/schemas/OptimizerConfig'
         wal_config:
           $ref: '#/components/schemas/WalConfig'
@@ -385,28 +409,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                vectors:
-                  oneOf:
-                  - $ref: '#/components/schemas/VectorParams'
-                  - type: object
-                    additionalProperties:
-                      $ref: '#/components/schemas/VectorParams'
-                shard_number:
-                  type: integer
-                replication_factor:
-                  type: integer
-                write_consistency_factor:
-                  type: integer
-                on_disk_payload:
-                  type: boolean
-                hnsw_config:
-                  $ref: '#/components/schemas/HnswConfig'
-                optimizers_config:
-                  $ref: '#/components/schemas/OptimizerConfig'
-                wal_config:
-                  $ref: '#/components/schemas/WalConfig'
+              $ref: '#/components/schemas/CreateCollectionRequest'
       responses:
         '200':
           description: Collection created
