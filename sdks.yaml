@@ -66,6 +66,12 @@ sdks:
       packageName: cloud
       withGoMod: "false"
       isGoSubmodule: "false"
+      # Go enums are package-scope consts, not nested types, so two schemas with
+      # a member of the same name collide: commerce PaymentStatus and OrderStatus
+      # both have CANCELLED and the package does not compile. Prefixing with the
+      # enum's own class is the generator's answer and is what every other
+      # language already gets for free from its namespacing.
+      enumClassPrefix: "true"
 
   typescript:
     repo: js-sdk

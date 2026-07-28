@@ -130,11 +130,29 @@ HTTP_METHODS = ("get", "put", "post", "delete", "options", "head", "patch", "tra
 
 
 def namespace_ops(item, svc, path):
-    """Prefix every operationId with `<svc>_` so the merged surface has globally
-    unique operationIds. OpenAPI requires operationId to be unique across the whole
-    document; common names (login, healthCheck, createTeam) collide across services
-    and break codegen otherwise. Mirrors the `<svc>_` component namespacing. When a
-    spec omits operationId, synthesize a deterministic one from method + path."""
+    """Normalize every operation on one path item for the merged document.
+
+    Two normalizations, both about codegen identity, both needing the same walk:
+
+    operationId gets a `<svc>_` prefix. OpenAPI requires operationId to be unique
+    across the whole document; common names (login, healthCheck, createTeam)
+    collide across services and break codegen otherwise. Mirrors the `<svc>_`
+    component namespacing. When a spec omits operationId, synthesize a
+    deterministic one from method + path.
+
+    tags collapse to the FIRST one. A tag is a grouping hint to a human reader,
+    but every generator reads it as the class an operation is emitted INTO, so an
+    operation with two tags is emitted TWICE — once per tag, with the same
+    identifier both times. In Go that is `ApiPricingGetFullPricingRequest
+    redeclared in this block` and the client does not compile; other languages
+    take the duplicate more quietly, which is worse. Seven operations were in
+    that state (commerce authorize/capture/charge/refund/storeAuthorize/
+    storeCharge, pricing getFullPricing) and this file has claimed to collapse
+    them since the Stainless retirement without doing it. The FIRST tag is the
+    primary by OpenAPI convention — it is what Redoc groups under — so keeping it
+    changes no rendering, and the secondary tag was never reachable as a group
+    anyway once x-tagGroups is emitted from capabilities.yaml.
+    """
     if not isinstance(item, dict):
         return item
     for method, op in item.items():
@@ -146,6 +164,8 @@ def namespace_ops(item, svc, path):
                 c if c.isalnum() else " " for c in path).split())
             base = f"{method}_{slug}"
         op["operationId"] = f"{svc}_{base}"
+        if len(op.get("tags") or []) > 1:
+            op["tags"] = op["tags"][:1]
     return item
 
 
