@@ -76,12 +76,22 @@ sdks:
   typescript:
     repo: js-sdk
     generator: typescript-axios
-    take: { .: src/cloud }
+    # `src`, not `src/cloud`: js-sdk IS the client. Python and Go vendor it as a
+    # subpackage beside a hand-written SDK that predates it, so there the client
+    # needs its own room; @hanzo/sdk has nothing else to be, and its src/index.ts
+    # is generator output down to the header. Pointing at src/cloud built a
+    # second, unexported copy of the same 2143 files next to the real one.
+    take: { .: src }
     properties:
       npmName: "@hanzo/sdk"
       withSeparateModelsAndApi: "true"
       apiPackage: api
-      modelPackage: model
+      # `models`, plural, because that is what @hanzo/sdk 2.0.1 published. The
+      # singular here would rename 1784 files under src/ and break anyone who
+      # deep-imports a model path — not something a patch release may do. The
+      # java/kotlin rows say `model` for the same reason in reverse: it is what
+      # those artifacts already ship.
+      modelPackage: models
       supportsES6: "true"
       useSingleRequestParameter: "true"
 
