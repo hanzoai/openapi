@@ -60480,9 +60480,7 @@ paths:
                 points:
                   type: array
                   items:
-                    oneOf:
-                    - type: integer
-                    - type: string
+                    $ref: '#/components/schemas/vector_PointId'
                 filter:
                   $ref: '#/components/schemas/vector_Filter'
       responses:
@@ -60519,15 +60517,11 @@ paths:
                 positive:
                   type: array
                   items:
-                    oneOf:
-                    - type: integer
-                    - type: string
+                    $ref: '#/components/schemas/vector_PointId'
                 negative:
                   type: array
                   items:
-                    oneOf:
-                    - type: integer
-                    - type: string
+                    $ref: '#/components/schemas/vector_PointId'
                 filter:
                   $ref: '#/components/schemas/vector_Filter'
                 limit:
@@ -85121,39 +85115,8 @@ components:
           $ref: '#/components/schemas/vector_CollectionConfig'
     vector_Condition:
       oneOf:
-      - type: object
-        properties:
-          key:
-            type: string
-          match:
-            type: object
-            properties:
-              value:
-                oneOf:
-                - type: string
-                - type: integer
-                - type: boolean
-              any:
-                type: array
-                items: {}
-              except:
-                type: array
-                items: {}
-      - type: object
-        properties:
-          key:
-            type: string
-          range:
-            type: object
-            properties:
-              lt:
-                type: number
-              lte:
-                type: number
-              gt:
-                type: number
-              gte:
-                type: number
+      - $ref: '#/components/schemas/vector_MatchCondition'
+      - $ref: '#/components/schemas/vector_RangeCondition'
     vector_CreateCollectionRequest:
       type: object
       properties:
@@ -85175,6 +85138,18 @@ components:
           $ref: '#/components/schemas/vector_OptimizerConfig'
         wal_config:
           $ref: '#/components/schemas/vector_WalConfig'
+    vector_DenseVector:
+      description: One unnamed vector.
+      type: array
+      items:
+        type: number
+    vector_FieldSelector:
+      description: Every field (true), none (false), or the named subset.
+      oneOf:
+      - type: boolean
+      - type: array
+        items:
+          type: string
     vector_Filter:
       type: object
       properties:
@@ -85205,6 +85180,42 @@ components:
           type: integer
         on_disk:
           type: boolean
+    vector_Match:
+      type: object
+      properties:
+        value:
+          $ref: '#/components/schemas/vector_MatchValue'
+        any:
+          type: array
+          items: {}
+        except:
+          type: array
+          items: {}
+    vector_MatchCondition:
+      type: object
+      properties:
+        key:
+          type: string
+        match:
+          $ref: '#/components/schemas/vector_Match'
+    vector_MatchValue:
+      oneOf:
+      - type: string
+      - type: integer
+      - type: boolean
+    vector_NamedVector:
+      description: One vector, addressed by its name.
+      type: object
+      properties:
+        name:
+          type: string
+        vector:
+          $ref: '#/components/schemas/vector_DenseVector'
+    vector_NamedVectors:
+      description: One vector per vector name.
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/vector_DenseVector'
     vector_OptimizerConfig:
       type: object
       properties:
@@ -85222,6 +85233,12 @@ components:
           type: integer
         flush_interval_sec:
           type: integer
+    vector_PointId:
+      description: "A point identifier \u2014 an integer or a UUID string."
+      oneOf:
+      - type: integer
+      - type: string
+        format: uuid
     vector_PointStruct:
       type: object
       required:
@@ -85229,30 +85246,35 @@ components:
       - vector
       properties:
         id:
-          oneOf:
-          - type: integer
-          - type: string
-            format: uuid
+          $ref: '#/components/schemas/vector_PointId'
         vector:
-          oneOf:
-          - type: array
-            items:
-              type: number
-          - type: object
-            additionalProperties:
-              type: array
-              items:
-                type: number
+          $ref: '#/components/schemas/vector_VectorInput'
         payload:
           type: object
           additionalProperties: true
+    vector_Range:
+      type: object
+      properties:
+        lt:
+          type: number
+        lte:
+          type: number
+        gt:
+          type: number
+        gte:
+          type: number
+    vector_RangeCondition:
+      type: object
+      properties:
+        key:
+          type: string
+        range:
+          $ref: '#/components/schemas/vector_Range'
     vector_ScoredPoint:
       type: object
       properties:
         id:
-          oneOf:
-          - type: integer
-          - type: string
+          $ref: '#/components/schemas/vector_PointId'
         version:
           type: integer
         score:
@@ -85260,11 +85282,7 @@ components:
         payload:
           type: object
         vector:
-          oneOf:
-          - type: array
-            items:
-              type: number
-          - type: object
+          $ref: '#/components/schemas/vector_VectorInput'
     vector_SearchParams:
       type: object
       properties:
@@ -85288,18 +85306,7 @@ components:
       - vector
       properties:
         vector:
-          oneOf:
-          - type: array
-            items:
-              type: number
-          - type: object
-            properties:
-              name:
-                type: string
-              vector:
-                type: array
-                items:
-                  type: number
+          $ref: '#/components/schemas/vector_VectorQuery'
         filter:
           $ref: '#/components/schemas/vector_Filter'
         params:
@@ -85311,17 +85318,9 @@ components:
           type: integer
           default: 0
         with_payload:
-          oneOf:
-          - type: boolean
-          - type: array
-            items:
-              type: string
+          $ref: '#/components/schemas/vector_FieldSelector'
         with_vector:
-          oneOf:
-          - type: boolean
-          - type: array
-            items:
-              type: string
+          $ref: '#/components/schemas/vector_FieldSelector'
         score_threshold:
           type: number
     vector_SnapshotDescription:
@@ -85334,6 +85333,11 @@ components:
           format: date-time
         size:
           type: integer
+    vector_VectorInput:
+      description: "A point's vector \u2014 unnamed, or one per configured vector name."
+      oneOf:
+      - $ref: '#/components/schemas/vector_DenseVector'
+      - $ref: '#/components/schemas/vector_NamedVectors'
     vector_VectorParams:
       type: object
       required:
@@ -85357,6 +85361,11 @@ components:
       type: object
       additionalProperties:
         $ref: '#/components/schemas/vector_VectorParams'
+    vector_VectorQuery:
+      description: The vector to search by, optionally naming which vector to use.
+      oneOf:
+      - $ref: '#/components/schemas/vector_DenseVector'
+      - $ref: '#/components/schemas/vector_NamedVector'
     vector_WalConfig:
       type: object
       properties:

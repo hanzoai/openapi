@@ -113,6 +113,19 @@ def prefix(node, svc):
     return node
 
 
+def schema(node, svc):
+    """Namespace a component schema. `title` goes: after namespacing, the KEY is
+    the name, and a title still reading `Error` leaves six schemas claiming one
+    name. Every generator prefers `title` over the key, so the duplicates collapse
+    into each other — silently in most languages, and in the Rust codegen into a
+    null model name that aborts the build. Every title in the per-service specs
+    only restates that spec's own key, so nothing is lost."""
+    node = prefix(node, svc)
+    if isinstance(node, dict):
+        node.pop("title", None)
+    return node
+
+
 HTTP_METHODS = ("get", "put", "post", "delete", "options", "head", "patch", "trace")
 
 
@@ -149,7 +162,7 @@ def build_master(present, categories, internal):
         for p, item in (spec.get("paths", {}) or {}).items():
             paths[p] = namespace_ops(prefix(item, svc), svc, p)
         for n, x in (comps.get("schemas", {}) or {}).items():
-            schemas[f"{svc}_{n}"] = prefix(x, svc)
+            schemas[f"{svc}_{n}"] = schema(x, svc)
         for n, x in (comps.get("responses", {}) or {}).items():
             responses[f"{svc}_{n}"] = prefix(x, svc)
         for n, x in (comps.get("parameters", {}) or {}).items():

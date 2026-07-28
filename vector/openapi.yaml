@@ -101,6 +101,47 @@ components:
           $ref: '#/components/schemas/OptimizerConfig'
         wal_config:
           $ref: '#/components/schemas/WalConfig'
+    PointId:
+      description: A point identifier — an integer or a UUID string.
+      oneOf:
+      - type: integer
+      - type: string
+        format: uuid
+    DenseVector:
+      description: One unnamed vector.
+      type: array
+      items:
+        type: number
+    NamedVectors:
+      description: One vector per vector name.
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/DenseVector'
+    NamedVector:
+      description: One vector, addressed by its name.
+      type: object
+      properties:
+        name:
+          type: string
+        vector:
+          $ref: '#/components/schemas/DenseVector'
+    VectorInput:
+      description: A point's vector — unnamed, or one per configured vector name.
+      oneOf:
+      - $ref: '#/components/schemas/DenseVector'
+      - $ref: '#/components/schemas/NamedVectors'
+    VectorQuery:
+      description: The vector to search by, optionally naming which vector to use.
+      oneOf:
+      - $ref: '#/components/schemas/DenseVector'
+      - $ref: '#/components/schemas/NamedVector'
+    FieldSelector:
+      description: Every field (true), none (false), or the named subset.
+      oneOf:
+      - type: boolean
+      - type: array
+        items:
+          type: string
     VectorParamsMap:
       description: Named vectors — one VectorParams per vector name.
       type: object
@@ -191,20 +232,9 @@ components:
       - vector
       properties:
         id:
-          oneOf:
-          - type: integer
-          - type: string
-            format: uuid
+          $ref: '#/components/schemas/PointId'
         vector:
-          oneOf:
-          - type: array
-            items:
-              type: number
-          - type: object
-            additionalProperties:
-              type: array
-              items:
-                type: number
+          $ref: '#/components/schemas/VectorInput'
         payload:
           type: object
           additionalProperties: true
@@ -214,18 +244,7 @@ components:
       - vector
       properties:
         vector:
-          oneOf:
-          - type: array
-            items:
-              type: number
-          - type: object
-            properties:
-              name:
-                type: string
-              vector:
-                type: array
-                items:
-                  type: number
+          $ref: '#/components/schemas/VectorQuery'
         filter:
           $ref: '#/components/schemas/Filter'
         params:
@@ -237,17 +256,9 @@ components:
           type: integer
           default: 0
         with_payload:
-          oneOf:
-          - type: boolean
-          - type: array
-            items:
-              type: string
+          $ref: '#/components/schemas/FieldSelector'
         with_vector:
-          oneOf:
-          - type: boolean
-          - type: array
-            items:
-              type: string
+          $ref: '#/components/schemas/FieldSelector'
         score_threshold:
           type: number
     SearchParams:
@@ -284,46 +295,54 @@ components:
             $ref: '#/components/schemas/Condition'
     Condition:
       oneOf:
-      - type: object
-        properties:
-          key:
-            type: string
-          match:
-            type: object
-            properties:
-              value:
-                oneOf:
-                - type: string
-                - type: integer
-                - type: boolean
-              any:
-                type: array
-                items: {}
-              except:
-                type: array
-                items: {}
-      - type: object
-        properties:
-          key:
-            type: string
-          range:
-            type: object
-            properties:
-              lt:
-                type: number
-              lte:
-                type: number
-              gt:
-                type: number
-              gte:
-                type: number
+      - $ref: '#/components/schemas/MatchCondition'
+      - $ref: '#/components/schemas/RangeCondition'
+    MatchCondition:
+      type: object
+      properties:
+        key:
+          type: string
+        match:
+          $ref: '#/components/schemas/Match'
+    Match:
+      type: object
+      properties:
+        value:
+          $ref: '#/components/schemas/MatchValue'
+        any:
+          type: array
+          items: {}
+        except:
+          type: array
+          items: {}
+    MatchValue:
+      oneOf:
+      - type: string
+      - type: integer
+      - type: boolean
+    RangeCondition:
+      type: object
+      properties:
+        key:
+          type: string
+        range:
+          $ref: '#/components/schemas/Range'
+    Range:
+      type: object
+      properties:
+        lt:
+          type: number
+        lte:
+          type: number
+        gt:
+          type: number
+        gte:
+          type: number
     ScoredPoint:
       type: object
       properties:
         id:
-          oneOf:
-          - type: integer
-          - type: string
+          $ref: '#/components/schemas/PointId'
         version:
           type: integer
         score:
@@ -331,11 +350,7 @@ components:
         payload:
           type: object
         vector:
-          oneOf:
-          - type: array
-            items:
-              type: number
-          - type: object
+          $ref: '#/components/schemas/VectorInput'
     SnapshotDescription:
       type: object
       properties:
@@ -542,9 +557,7 @@ paths:
                 points:
                   type: array
                   items:
-                    oneOf:
-                    - type: integer
-                    - type: string
+                    $ref: '#/components/schemas/PointId'
                 filter:
                   $ref: '#/components/schemas/Filter'
       responses:
@@ -650,15 +663,11 @@ paths:
                 positive:
                   type: array
                   items:
-                    oneOf:
-                    - type: integer
-                    - type: string
+                    $ref: '#/components/schemas/PointId'
                 negative:
                   type: array
                   items:
-                    oneOf:
-                    - type: integer
-                    - type: string
+                    $ref: '#/components/schemas/PointId'
                 filter:
                   $ref: '#/components/schemas/Filter'
                 limit:
