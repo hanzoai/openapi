@@ -1,0 +1,136 @@
+# The SDK matrix — data only. The generator invocation is logic and lives once,
+# in generate.py; nothing in this file is executable and nothing in an SDK repo
+# duplicates it.
+#
+# Every row is one language projection of hanzo.yaml. `take` maps a path in the
+# generator's output onto a path in the SDK repo that the generator OWNS
+# ENTIRELY: generate.py replaces it wholesale and --check diffs it. Anything
+# outside a `take` path is the repo's own (build files, the legacy published
+# client) and is never touched.
+
+generator: 7.14.0 # openapi-generator, pinned for every language
+spec: hanzo.yaml
+
+# Files the generator offers that a client must not carry, matched on the whole
+# relative path or on the bare name. Two kinds: a SECOND copy of the spec
+# (api/openapi.yaml — the exact thing this pipeline exists to kill), and build
+# metadata that belongs to the repo, which already has one. Cargo.toml is
+# deliberately absent: the Rust client is its own workspace member crate.
+# (openapi-generator's own --ignore-file-override honours only some of these,
+# so the driver does all of it — one mechanism, not two.)
+drop:
+  - api/openapi.yaml
+  - .openapi-generator # a VERSION file would be a second home for the pin above
+  - .openapi-generator-ignore
+  - .gitignore
+  - .npmignore
+  - .travis.yml
+  - .gitlab-ci.yml
+  - git_push.sh
+  - README.md
+  - package.json
+  - tsconfig.json
+  - tsconfig.esm.json
+  - "*.gemspec"
+  - Gemfile
+  - Rakefile
+  - go.mod
+  - go.sum
+  - pom.xml
+  - build.gradle
+  - settings.gradle
+  - setup.py
+  - setup.cfg
+  - pyproject.toml
+  - requirements.txt
+  - test-requirements.txt
+  - tox.ini
+
+sdks:
+  python:
+    repo: python-sdk
+    generator: python
+    # Vendored into the published `hanzoai` distribution as `hanzoai.cloud`, so
+    # every existing top-level export keeps working untouched.
+    take: { hanzoai/cloud: pkg/hanzoai/cloud }
+    properties:
+      packageName: hanzoai.cloud
+      library: urllib3
+      generateSourceCodeOnly: "true"
+
+  go:
+    repo: go-sdk
+    generator: go
+    take: { .: cloud }
+    properties:
+      packageName: cloud
+      withGoMod: "false"
+      isGoSubmodule: "false"
+
+  typescript:
+    repo: js-sdk
+    generator: typescript-axios
+    take: { .: src/cloud }
+    properties:
+      npmName: "@hanzo/sdk"
+      withSeparateModelsAndApi: "true"
+      apiPackage: api
+      modelPackage: model
+      supportsES6: "true"
+      useSingleRequestParameter: "true"
+
+  java:
+    repo: java-sdk
+    generator: java
+    take: { src/main/java/ai/hanzo/cloud: hanzo-java-cloud/src/main/java/ai/hanzo/cloud }
+    properties:
+      library: native # java.net.http — no third-party HTTP dependency
+      groupId: ai.hanzo
+      artifactId: hanzo-java-cloud
+      invokerPackage: ai.hanzo.cloud
+      apiPackage: ai.hanzo.cloud.api
+      modelPackage: ai.hanzo.cloud.model
+      hideGenerationTimestamp: "true"
+
+  kotlin:
+    repo: kotlin-sdk
+    generator: kotlin
+    take: { src/main/kotlin/ai/hanzo/cloud: hanzo-kotlin-cloud/src/main/kotlin/ai/hanzo/cloud }
+    properties:
+      library: jvm-okhttp4
+      groupId: ai.hanzo
+      artifactId: hanzo-kotlin-cloud
+      packageName: ai.hanzo.cloud
+      apiPackage: ai.hanzo.cloud.api
+      modelPackage: ai.hanzo.cloud.model
+      serializationLibrary: gson
+      hideGenerationTimestamp: "true"
+
+  ruby:
+    repo: ruby-sdk
+    generator: ruby
+    # Two paths because the Ruby generator puts the entry point beside the
+    # directory it loads, not inside it.
+    take:
+      lib/hanzoai_cloud: lib/hanzoai_cloud
+      lib/hanzoai_cloud.rb: lib/hanzoai_cloud.rb
+    properties:
+      gemName: hanzoai_cloud
+      moduleName: HanzoaiCloud
+      library: faraday
+      gemVersion: 8.0.0
+
+  rust:
+    repo: rust-sdk
+    # openapi-generator DOES emit Rust (reqwest); the client is a normal
+    # workspace member, so it needs its Cargo.toml and is the one language whose
+    # `take` root is the crate root.
+    generator: rust
+    take: { .: crates/hanzo-cloud }
+    properties:
+      packageName: hanzo-cloud
+      packageVersion: 8.0.0
+      library: reqwest
+      supportAsync: "true"
+      useSingleRequestParameter: "true"
+      preferUnsignedInt: "true"
