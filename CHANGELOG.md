@@ -2,6 +2,27 @@
 
 ## v1.0.0
 
+### `plugin/` — author the `/v1/admin/plugins` operator surface cloud already serves
+
+`generated/hanzo.json` carried four operations the contract never named:
+`GET /v1/admin/plugins` and `POST /v1/admin/plugins/{name}/{enable,disable,reload}`,
+served by `hanzoai/cloud/clients/plugin` as zip typed ops. Undeclared routes are
+unreachable from every consumer of this repo — no SDK method, and no `hanzo`
+command, because `hanzoai/cli`'s `genspec` iterates the AUTHORED master and uses
+the live route table only to REFUTE. A path absent here can never enter the CLI
+spec no matter what the server serves.
+
+They live in `plugin/`, not `admin/`: `admin/` is the aggregator subsystem
+(`clients/admin`), and the convention already established by `affiliates/`,
+`authors/` and `referrals/` is that a subsystem authors its own
+`/v1/admin/<subsystem>` operator paths beside its public ones.
+
+Prose, operationIds and parameters are carried verbatim from the emitted spec.
+The response schemas are named rather than inlined — `ListOut` → `Host` →
+`PluginStatus` → `PluginUsage`, `ActionOut` → `Result` — with each field's
+description lifted from the Go type it encodes, and `since` typed as a
+`date-time` string rather than the empty object a `time.Time` renders as.
+
 ### Add `research/` — the /v1/research versioned R&D evidence surface (HIP-0512)
 
 Adds the `research` service under the Intelligence domain: the R&D evidence plane

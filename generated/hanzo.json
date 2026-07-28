@@ -120,6 +120,9 @@
       "name": "content"
     },
     {
+      "name": "crawl"
+    },
+    {
       "name": "crm"
     },
     {
@@ -225,9 +228,6 @@
       "name": "indexers"
     },
     {
-      "name": "ingest"
-    },
-    {
       "name": "insights"
     },
     {
@@ -238,6 +238,9 @@
     },
     {
       "name": "kb"
+    },
+    {
+      "name": "keys"
     },
     {
       "name": "kms"
@@ -268,6 +271,9 @@
     },
     {
       "name": "marketplace"
+    },
+    {
+      "name": "meet"
     },
     {
       "name": "mesh"
@@ -349,6 +355,9 @@
     },
     {
       "name": "security"
+    },
+    {
+      "name": "sentry"
     },
     {
       "name": "settings"
@@ -2644,6 +2653,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "sizeGiB",
+            "in": "query",
+            "required": false,
+            "description": "SizeGiB is the target size on the resize action. A volume only ever grows —\nExpandTo is the verdict that refuses a shrink, so this is not validated here.",
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -2661,6 +2679,49 @@
                   "msg": "",
                   "status": "ok"
                 },
+                "schema": {
+                  "$ref": "#/components/schemas/MutationOut"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/v1/admin/infra/volumes/{id}/resize": {
+      "post": {
+        "operationId": "adminResizeVolume",
+        "summary": "expandVolume grows a volume.",
+        "description": "expandVolume grows a volume. GROW ONLY — see Volume.ExpandTo for why the other\ndirection is a data migration this board deliberately refuses to run.\n\nThe MECHANISM follows the volume's owner, because there is exactly one way to grow each\nkind completely. A volume a PVC claims is grown by patching the claim: the CSI driver\nthen resizes the DigitalOcean device AND grows the filesystem on it, leaving claim, PV,\ndevice and filesystem all agreeing. Calling DigitalOcean directly for that volume would\ngrow the device while the PV kept declaring the old capacity and the filesystem never\ngrew at all. One operation, one correct mechanism per owner — not two ways to do it.",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID is the DO volume id, from the path.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VolumeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MutationOut"
                 }
@@ -2854,6 +2915,28 @@
         }
       }
     },
+    "/v1/admin/money": {
+      "get": {
+        "operationId": "adminMoney",
+        "summary": "moneyBoardHandler answers GET /v1/admin/money.",
+        "description": "moneyBoardHandler answers GET /v1/admin/money.",
+        "tags": [
+          "admin"
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoneyOut"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        }
+      }
+    },
     "/v1/admin/o11y": {
       "get": {
         "operationId": "adminO11y",
@@ -2987,6 +3070,240 @@
                 },
                 "schema": {
                   "$ref": "#/components/schemas/overviewOut"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/v1/admin/plugins": {
+      "get": {
+        "operationId": "adminPlugins",
+        "summary": "list reports what each host is actually running: every loaded plugin with its\nversion, pid, uptime, reload and restart counts, and its measured CPU, RSS,\nthread and fd cost — read from the kernel, which is only answerable at all\nbecause a plugin is a process.\n\nReading this from deployment config would answer what was INTENDED.",
+        "description": "list reports what each host is actually running: every loaded plugin with its\nversion, pid, uptime, reload and restart counts, and its measured CPU, RSS,\nthread and fd cost — read from the kernel, which is only answerable at all\nbecause a plugin is a process.\n\nReading this from deployment config would answer what was INTENDED. Only the\nprocess knows what is TRUE, and during a rolling upgrade the two disagree on\npurpose.",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "description": "Scope \"host\" answers for THIS host only. Default \"fleet\" fans out to every\nlive peer. A peer answers a host-scoped read, which is what stops the\nfan-out recursing.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "host": "cloud-0",
+                      "plugins": [
+                        {
+                          "name": "billing",
+                          "prefix": "/v1/billing",
+                          "reloads": 1,
+                          "restarts": 0,
+                          "running": true,
+                          "source": "url",
+                          "version": "9f2c…"
+                        }
+                      ],
+                      "self": true
+                    }
+                  ],
+                  "drift": [
+                    {
+                      "drifted": false,
+                      "name": "billing",
+                      "running": 1,
+                      "versions": [
+                        "9f2c…"
+                      ]
+                    }
+                  ],
+                  "msg": "",
+                  "status": "ok"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListOut"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/v1/admin/plugins/{name}/disable": {
+      "post": {
+        "operationId": "adminDisablePlugin",
+        "summary": "disable stops the plugin.",
+        "description": "disable stops the plugin. Its routes STAY REGISTERED and answer 503 — not 404.\n\nThat is zip's choice and this keeps it. Removing the routes would mutate the\nroute table, and re-adding them on enable would grow it without bound across\nrepeated cycles, which is the invariant that makes reloads flat in memory. It\nis also the better answer: 404 says \"no such API\" and a client may cache it\nand stop retrying, while 503 says \"this API exists and is down right now\",\nwhich is true and retryable. Which of the two 503s this is — deliberate stop\nor crash — is what the status's disabled flag reports.",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "description": "Name is the app, from the path.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "name": "billing"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/NameIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "host": "cloud-0",
+                      "ok": true
+                    }
+                  ],
+                  "msg": "billing disabled",
+                  "status": "ok"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ActionOut"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/v1/admin/plugins/{name}/enable": {
+      "post": {
+        "operationId": "adminEnablePlugin",
+        "summary": "enable brings a stopped or disabled plugin back on the artifact it already\nhas: the zero Plugin names no new artifact, so Reload reuses the loaded spec\nand clears the disabled flag.",
+        "description": "enable brings a stopped or disabled plugin back on the artifact it already\nhas: the zero Plugin names no new artifact, so Reload reuses the loaded spec\nand clears the disabled flag. Named for what an operator means by it.",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "description": "Name is the app, from the path.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "name": "billing"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/NameIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "host": "cloud-0",
+                      "ok": true
+                    }
+                  ],
+                  "msg": "billing enabled",
+                  "status": "ok"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ActionOut"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/v1/admin/plugins/{name}/reload": {
+      "post": {
+        "operationId": "adminReloadPlugin",
+        "summary": "reload swaps a plugin for another build without dropping a request.",
+        "description": "reload swaps a plugin for another build without dropping a request. The\nreplacement is started and proven to be LISTENING before any traffic moves to\nit, so a bad build leaves the old one serving and returns an error rather\nthan a hole; the old process then drains before it is killed.\n\nWith a version or url+sum it pins; naming a digest this host has run before is\nthe rollback, and costs no network because the digest IS the cache key. With\nneither it restarts what is already loaded.\n\nFleet scope applies it to one host at a time and STOPS at the first failure,\nso a build that cannot come up reaches exactly one host.",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "description": "Name is the app, from the path. It must be one the manifest declares.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "name": "billing",
+                "version": "v1.2.3"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ReloadIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "host": "cloud-0",
+                      "ok": true,
+                      "version": "9f2c…"
+                    }
+                  ],
+                  "msg": "billing -\u003e 9f2c…",
+                  "status": "ok"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ActionOut"
                 }
               }
             },
@@ -3727,6 +4044,39 @@
         }
       }
     },
+    "/v1/admin/subsystems": {
+      "get": {
+        "operationId": "adminSubsystems",
+        "summary": "subsystems answers GET /v1/admin/subsystems.",
+        "description": "subsystems answers GET /v1/admin/subsystems. ?range=24h|7d|30d bounds the telemetry\nwindow (default 30d) — the same enum, and the same helpers, as the o11y board.",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "range",
+            "in": "query",
+            "required": false,
+            "description": "Range bounds the telemetry window: 24h, 7d or 30d. Anything else, including\nempty, resolves to the default through the same o11yRange the o11y board uses.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubsystemsOut"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        }
+      }
+    },
     "/v1/admin/sync": {
       "post": {
         "operationId": "adminSync",
@@ -4368,6 +4718,40 @@
         "operationId": "get_v1_agents_activity",
         "tags": [
           "agents"
+        ]
+      }
+    },
+    "/v1/agents/builds": {
+      "get": {
+        "operationId": "get_v1_agents_builds",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/v1/agents/builds/{org}/{project}": {
+      "get": {
+        "operationId": "get_v1_agents_builds_by_org_by_project",
+        "tags": [
+          "agents"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ]
       }
     },
@@ -5747,6 +6131,48 @@
         ]
       }
     },
+    "/v1/bot/connect": {
+      "get": {
+        "operationId": "get_v1_bot_connect",
+        "tags": [
+          "bot"
+        ]
+      }
+    },
+    "/v1/bot/nodes": {
+      "get": {
+        "operationId": "get_v1_bot_nodes",
+        "tags": [
+          "bot"
+        ]
+      }
+    },
+    "/v1/bot/nodes/{id}/invoke": {
+      "post": {
+        "operationId": "post_v1_bot_nodes_by_id_invoke",
+        "tags": [
+          "bot"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/bot/peer/invoke": {
+      "post": {
+        "operationId": "post_v1_bot_peer_invoke",
+        "tags": [
+          "bot"
+        ]
+      }
+    },
     "/v1/bot/{wildcard1}": {
       "delete": {
         "operationId": "delete_v1_bot_by_wildcard1",
@@ -6398,6 +6824,14 @@
         "operationId": "get_v1_captable_summary",
         "tags": [
           "captable"
+        ]
+      }
+    },
+    "/v1/catalog": {
+      "get": {
+        "operationId": "get_v1_catalog",
+        "tags": [
+          "catalog"
         ]
       }
     },
@@ -8784,6 +9218,14 @@
         ]
       }
     },
+    "/v1/crawl/": {
+      "post": {
+        "operationId": "post_v1_crawl",
+        "tags": [
+          "crawl"
+        ]
+      }
+    },
     "/v1/crm/applications": {
       "get": {
         "operationId": "get_v1_crm_applications",
@@ -10477,6 +10919,14 @@
     "/v1/event": {
       "post": {
         "operationId": "post_v1_event",
+        "tags": [
+          "event"
+        ]
+      }
+    },
+    "/v1/event/collect": {
+      "post": {
+        "operationId": "post_v1_event_collect",
         "tags": [
           "event"
         ]
@@ -12728,6 +13178,14 @@
         }
       }
     },
+    "/v1/git/webhook": {
+      "post": {
+        "operationId": "post_v1_git_webhook",
+        "tags": [
+          "git"
+        ]
+      }
+    },
     "/v1/git/zap/createRepo": {
       "post": {
         "operationId": "post_v1_git_zap_createrepo",
@@ -13613,14 +14071,6 @@
         "operationId": "get_v1_indexers",
         "tags": [
           "indexers"
-        ]
-      }
-    },
-    "/v1/ingest": {
-      "post": {
-        "operationId": "post_v1_ingest",
-        "tags": [
-          "ingest"
         ]
       }
     },
@@ -14684,6 +15134,26 @@
         ]
       }
     },
+    "/v1/keys": {
+      "delete": {
+        "operationId": "delete_v1_keys",
+        "tags": [
+          "keys"
+        ]
+      },
+      "get": {
+        "operationId": "get_v1_keys",
+        "tags": [
+          "keys"
+        ]
+      },
+      "post": {
+        "operationId": "post_v1_keys",
+        "tags": [
+          "keys"
+        ]
+      }
+    },
     "/v1/kms/auth/login": {
       "post": {
         "operationId": "post_v1_kms_auth_login",
@@ -14708,55 +15178,27 @@
         ]
       }
     },
-    "/v1/kms/orgs/{org}/secrets": {
+    "/v1/kms/secrets": {
       "get": {
-        "operationId": "get_v1_kms_orgs_by_org_secrets",
+        "operationId": "get_v1_kms_secrets",
         "tags": [
           "kms"
-        ],
-        "parameters": [
-          {
-            "name": "org",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
         ]
       },
       "post": {
-        "operationId": "post_v1_kms_orgs_by_org_secrets",
+        "operationId": "post_v1_kms_secrets",
         "tags": [
           "kms"
-        ],
-        "parameters": [
-          {
-            "name": "org",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
         ]
       }
     },
-    "/v1/kms/orgs/{org}/secrets/{wildcard1}": {
+    "/v1/kms/secrets/{wildcard1}": {
       "delete": {
-        "operationId": "delete_v1_kms_orgs_by_org_secrets_by_wildcard1",
+        "operationId": "delete_v1_kms_secrets_by_wildcard1",
         "tags": [
           "kms"
         ],
         "parameters": [
-          {
-            "name": "org",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "wildcard1",
             "in": "path",
@@ -14768,19 +15210,11 @@
         ]
       },
       "get": {
-        "operationId": "get_v1_kms_orgs_by_org_secrets_by_wildcard1",
+        "operationId": "get_v1_kms_secrets_by_wildcard1",
         "tags": [
           "kms"
         ],
         "parameters": [
-          {
-            "name": "org",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "wildcard1",
             "in": "path",
@@ -16949,6 +17383,22 @@
         ]
       }
     },
+    "/v1/meet/getToken": {
+      "post": {
+        "operationId": "post_v1_meet_gettoken",
+        "tags": [
+          "meet"
+        ]
+      }
+    },
+    "/v1/meet/health": {
+      "get": {
+        "operationId": "get_v1_meet_health",
+        "tags": [
+          "meet"
+        ]
+      }
+    },
     "/v1/mesh/services": {
       "get": {
         "operationId": "get_v1_mesh_services",
@@ -17611,32 +18061,25 @@
         "operationId": "get_v1_platform_projects",
         "tags": [
           "platform"
-        ]
-      },
-      "post": {
-        "operationId": "post_v1_platform_projects",
-        "tags": [
-          "platform"
-        ]
+        ],
+        "responses": {
+          "2XX": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/projectView"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/platform/projects/{project}": {
-      "delete": {
-        "operationId": "delete_v1_platform_projects_by_project",
-        "tags": [
-          "platform"
-        ],
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ]
-      },
       "get": {
         "operationId": "get_v1_platform_projects_by_project",
         "tags": [
@@ -17651,7 +18094,19 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "responses": {
+          "2XX": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/projectView"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/platform/projects/{project}/apps": {
@@ -17669,7 +18124,22 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "responses": {
+          "2XX": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/appView"
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "post": {
         "operationId": "post_v1_platform_projects_by_project_apps",
@@ -17685,7 +18155,28 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/createAppReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/appView"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/platform/projects/{project}/apps/{app}": {
@@ -17735,7 +18226,19 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "responses": {
+          "2XX": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/appView"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/platform/projects/{project}/apps/{app}/deploy": {
@@ -17999,7 +18502,28 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/setEnvReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/appView"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/platform/projects/{project}/apps/{app}/preview": {
@@ -18283,6 +18807,58 @@
         "parameters": [
           {
             "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/platform/sites/{slug}/domains/{host}": {
+      "delete": {
+        "operationId": "delete_v1_platform_sites_by_slug_domains_by_host",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "host",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/platform/sites/{slug}/domains/{host}/verify": {
+      "post": {
+        "operationId": "post_v1_platform_sites_by_slug_domains_by_host_verify",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "host",
             "in": "path",
             "required": true,
             "schema": {
@@ -18798,6 +19374,58 @@
         ]
       }
     },
+    "/v1/projects/{slug}/domains/{host}": {
+      "delete": {
+        "operationId": "delete_v1_projects_by_slug_domains_by_host",
+        "tags": [
+          "projects"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "host",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{slug}/domains/{host}/verify": {
+      "post": {
+        "operationId": "post_v1_projects_by_slug_domains_by_host_verify",
+        "tags": [
+          "projects"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "host",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
     "/v1/projects/{slug}/purge": {
       "post": {
         "operationId": "post_v1_projects_by_slug_purge",
@@ -18979,7 +19607,28 @@
         "operationId": "post_v1_run",
         "tags": [
           "run"
-        ]
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/runReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/runView"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/runner": {
@@ -19325,6 +19974,164 @@
         "parameters": [
           {
             "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/sentry": {
+      "delete": {
+        "operationId": "delete_v1_sentry",
+        "tags": [
+          "sentry"
+        ]
+      },
+      "get": {
+        "operationId": "get_v1_sentry",
+        "tags": [
+          "sentry"
+        ]
+      },
+      "options": {
+        "operationId": "options_v1_sentry",
+        "tags": [
+          "sentry"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_v1_sentry",
+        "tags": [
+          "sentry"
+        ]
+      },
+      "post": {
+        "operationId": "post_v1_sentry",
+        "tags": [
+          "sentry"
+        ]
+      },
+      "put": {
+        "operationId": "put_v1_sentry",
+        "tags": [
+          "sentry"
+        ]
+      },
+      "trace": {
+        "operationId": "trace_v1_sentry",
+        "tags": [
+          "sentry"
+        ]
+      }
+    },
+    "/v1/sentry/{wildcard1}": {
+      "delete": {
+        "operationId": "delete_v1_sentry_by_wildcard1",
+        "tags": [
+          "sentry"
+        ],
+        "parameters": [
+          {
+            "name": "wildcard1",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "get": {
+        "operationId": "get_v1_sentry_by_wildcard1",
+        "tags": [
+          "sentry"
+        ],
+        "parameters": [
+          {
+            "name": "wildcard1",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "options": {
+        "operationId": "options_v1_sentry_by_wildcard1",
+        "tags": [
+          "sentry"
+        ],
+        "parameters": [
+          {
+            "name": "wildcard1",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "patch_v1_sentry_by_wildcard1",
+        "tags": [
+          "sentry"
+        ],
+        "parameters": [
+          {
+            "name": "wildcard1",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "post_v1_sentry_by_wildcard1",
+        "tags": [
+          "sentry"
+        ],
+        "parameters": [
+          {
+            "name": "wildcard1",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "put_v1_sentry_by_wildcard1",
+        "tags": [
+          "sentry"
+        ],
+        "parameters": [
+          {
+            "name": "wildcard1",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "trace": {
+        "operationId": "trace_v1_sentry_by_wildcard1",
+        "tags": [
+          "sentry"
+        ],
+        "parameters": [
+          {
+            "name": "wildcard1",
             "in": "path",
             "required": true,
             "schema": {
@@ -20830,11 +21637,49 @@
         "tags": [
           "templates"
         ]
+      },
+      "post": {
+        "operationId": "post_v1_templates",
+        "tags": [
+          "templates"
+        ]
       }
     },
     "/v1/templates/{slug}": {
+      "delete": {
+        "operationId": "delete_v1_templates_by_slug",
+        "tags": [
+          "templates"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
       "get": {
         "operationId": "get_v1_templates_by_slug",
+        "tags": [
+          "templates"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "put_v1_templates_by_slug",
         "tags": [
           "templates"
         ],
@@ -22309,6 +23154,37 @@
         },
         "type": "object"
       },
+      "ActionOut": {
+        "properties": {
+          "data": {
+            "items": {
+              "properties": {
+                "host": {
+                  "type": "string"
+                },
+                "msg": {
+                  "type": "string"
+                },
+                "ok": {
+                  "type": "boolean"
+                },
+                "version": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "Audience": {
         "properties": {
           "createdAt": {
@@ -22879,6 +23755,20 @@
         },
         "type": "object"
       },
+      "EnvVarJSON": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "secret": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
       "FinanceOut": {
         "properties": {
           "data": {
@@ -23211,6 +24101,136 @@
         },
         "type": "object"
       },
+      "ListOut": {
+        "properties": {
+          "data": {
+            "items": {
+              "properties": {
+                "addr": {
+                  "type": "string"
+                },
+                "error": {
+                  "description": "Err is set when a peer could not be reached. Its plugins are then\nunknown, which is NOT the same as none, so the list stays empty and the\ndrift below refuses to conclude anything from it.",
+                  "type": "string"
+                },
+                "host": {
+                  "description": "Host is the pod's stable id, and Addr where it was reached. Self is true\nfor the host that answered the request.",
+                  "type": "string"
+                },
+                "plugins": {
+                  "items": {
+                    "properties": {
+                      "addr": {
+                        "type": "string"
+                      },
+                      "disabled": {
+                        "type": "boolean"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "pid": {
+                        "type": "integer"
+                      },
+                      "prefix": {
+                        "type": "string"
+                      },
+                      "prefixes": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "reloads": {
+                        "type": "integer"
+                      },
+                      "restarts": {
+                        "type": "integer"
+                      },
+                      "running": {
+                        "type": "boolean"
+                      },
+                      "since": {
+                        "properties": {},
+                        "type": "object"
+                      },
+                      "source": {
+                        "type": "string"
+                      },
+                      "usage": {
+                        "properties": {
+                          "cpuNs": {
+                            "type": "integer"
+                          },
+                          "fds": {
+                            "type": "integer"
+                          },
+                          "rssBytes": {
+                            "type": "integer"
+                          },
+                          "threads": {
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "self": {
+                  "type": "boolean"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "data2": {
+            "type": "integer"
+          },
+          "drift": {
+            "items": {
+              "properties": {
+                "disabled": {
+                  "type": "integer"
+                },
+                "down": {
+                  "type": "integer"
+                },
+                "drifted": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "running": {
+                  "type": "integer"
+                },
+                "versions": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "MetricsOut": {
         "properties": {
           "data": {
@@ -23437,6 +24457,192 @@
         },
         "type": "object"
       },
+      "MoneyOut": {
+        "properties": {
+          "data": {
+            "properties": {
+              "byOrg": {
+                "items": {
+                  "properties": {
+                    "balanceCents": {
+                      "type": "integer"
+                    },
+                    "display": {
+                      "type": "string"
+                    },
+                    "grantedCents": {
+                      "type": "integer"
+                    },
+                    "grants": {
+                      "type": "integer"
+                    },
+                    "mrrCents": {
+                      "type": "integer"
+                    },
+                    "org": {
+                      "type": "string"
+                    },
+                    "plan": {
+                      "type": "string"
+                    },
+                    "spendCents": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "credits": {
+                "properties": {
+                  "consumedCents": {
+                    "type": "integer"
+                  },
+                  "grantedCents": {
+                    "type": "integer"
+                  },
+                  "grantedPrepaidCents": {
+                    "description": "real money added",
+                    "type": "integer"
+                  },
+                  "grantedTrialCents": {
+                    "description": "non-cash comps/promos",
+                    "type": "integer"
+                  },
+                  "grants": {
+                    "type": "integer"
+                  },
+                  "outstandingCents": {
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "generatedAt": {
+                "type": "string"
+              },
+              "infrastructure": {
+                "properties": {
+                  "doAvgDailyBurnCents": {
+                    "type": "integer"
+                  },
+                  "doCreditRemainingCents": {
+                    "type": "integer"
+                  },
+                  "doMonthToDateCents": {
+                    "type": "integer"
+                  },
+                  "period": {
+                    "type": "string"
+                  },
+                  "treasuryReserveCents": {
+                    "type": "integer"
+                  },
+                  "vendorCogsCents": {
+                    "type": "integer"
+                  },
+                  "vendors": {
+                    "items": {
+                      "properties": {
+                        "amountCents": {
+                          "type": "integer"
+                        },
+                        "note": {
+                          "type": "string"
+                        },
+                        "service": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "string"
+                        },
+                        "vendor": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "margin": {
+                "properties": {
+                  "grossCents": {
+                    "type": "integer"
+                  },
+                  "grossPct": {
+                    "type": "number"
+                  },
+                  "profitable": {
+                    "type": "boolean"
+                  },
+                  "runwayDays": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "revenue": {
+                "properties": {
+                  "arpuCents": {
+                    "type": "integer"
+                  },
+                  "arrCents": {
+                    "type": "integer"
+                  },
+                  "customers": {
+                    "type": "integer"
+                  },
+                  "mrrCents": {
+                    "type": "integer"
+                  },
+                  "paying": {
+                    "type": "integer"
+                  },
+                  "realizedCents": {
+                    "description": "consumed spend, fleet-wide",
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "sources": {
+                "items": {
+                  "properties": {
+                    "at": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "rows": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "MutationOut": {
         "properties": {
           "data": {
@@ -23446,6 +24652,19 @@
             "type": "string"
           },
           "status": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "NameIn": {
+        "properties": {
+          "name": {
+            "description": "Name is the app, from the path.",
+            "type": "string"
+          },
+          "scope": {
+            "description": "Scope \"host\" applies here only; default \"fleet\" applies everywhere.",
             "type": "string"
           }
         },
@@ -23770,6 +24989,10 @@
                   },
                   "volumesMonthly": {
                     "type": "integer"
+                  },
+                  "wastedMonthly": {
+                    "description": "WastedMonthly is what the fleet pays every month for provisioned-but-empty space on\nthe volumes a kubelet actually measured.\n\nIt is NOT ReclaimableMonthly and must never be added to it. Reclaimable is money a\nbutton on this board collects, by deleting volumes proven to belong to no one.\nWasted is money locked inside volumes that are IN USE and holding live data:\nDigitalOcean can only ever grow a volume, so collecting it means copying a database\nonto a smaller one. See shrinkRecipe.\n\nIt is also a LOWER BOUND — unmeasured volumes contribute nothing.",
+                    "type": "integer"
                   }
                 },
                 "type": "object"
@@ -23978,7 +25201,20 @@
                   "localDiskGiB": {
                     "type": "integer"
                   },
+                  "measuredGiB": {
+                    "type": "integer"
+                  },
+                  "measuredVolumes": {
+                    "description": "Fill. MeasuredVolumes/UnmeasuredVolumes are the honesty denominator: UsedGiB and\nWastedGiB describe the measured set ONLY, so a board showing waste must show how\nmuch of the fleet the figure was computed from. Unmeasured capacity contributes\nnothing to either — it is not assumed empty, and it is not assumed full.",
+                    "type": "integer"
+                  },
                   "nodes": {
+                    "type": "integer"
+                  },
+                  "unmeasuredGiB": {
+                    "type": "integer"
+                  },
+                  "unmeasuredVolumes": {
                     "type": "integer"
                   },
                   "unreferencedGiB": {
@@ -23987,10 +25223,16 @@
                   "unreferencedVolumes": {
                     "type": "integer"
                   },
+                  "usedGiB": {
+                    "type": "integer"
+                  },
                   "volumeGiB": {
                     "type": "integer"
                   },
                   "volumes": {
+                    "type": "integer"
+                  },
+                  "wastedGiB": {
                     "type": "integer"
                   }
                 },
@@ -24009,6 +25251,10 @@
                     "clusterId": {
                       "type": "string"
                     },
+                    "controller": {
+                      "description": "Controller is the workload owning the pod that mounts this volume\n(\"StatefulSet/luxd\"), or \"\" when nothing mounts it. It names who has to act.",
+                      "type": "string"
+                    },
                     "createdAt": {
                       "type": "string"
                     },
@@ -24020,6 +25266,17 @@
                         "type": "integer"
                       },
                       "type": "array"
+                    },
+                    "expandBlockedReason": {
+                      "type": "string"
+                    },
+                    "expandable": {
+                      "description": "Expandable/ExpandBlockedReason are the GROW verdict, kept separate from Deletable\nbecause the two ask opposite questions: a volume is deletable when nothing uses it,\nand expandable when something uses it in a way this board can grow completely.",
+                      "type": "boolean"
+                    },
+                    "hasUsage": {
+                      "description": "HasUsage reports whether a kubelet actually MEASURED this volume's filesystem.\n\nFalse means NOT MEASURED. It does NOT mean empty, and the three fields below are\nmeaningless — not zero — when it is false. A reading exists only while a running pod\nhas the volume mounted on a node that answered; a detached, idle or unreferenced\nvolume has none. Rendering an unmeasured volume as \"0 used / 100% wasted\" would\ninvent the single most expensive lie this board could tell, so every consumer must\nbranch on this flag and show unknown.",
+                      "type": "boolean"
                     },
                     "id": {
                       "type": "string"
@@ -24066,6 +25323,17 @@
                     "tagCluster": {
                       "description": "TagCluster is the `k8s:\u003cuuid\u003e` tag. ADVISORY ONLY: it outlives the cluster that\nset it. Shown so the operator can see tag-vs-truth disagree, never acted on.",
                       "type": "string"
+                    },
+                    "usedBytes": {
+                      "description": "UsedBytes is the measured filesystem usage. BYTES, not GiB: the volumes this exists\nto catch hold a fraction of a GiB in 200, and rounding that to an integer GiB would\nprint the very 0 the flag above exists to prevent.",
+                      "type": "integer"
+                    },
+                    "wastedGiB": {
+                      "description": "WastedGiB is provisioned minus measured, in the unit DigitalOcean BILLS: whole GiB\nof the volume's own size, never the filesystem's capacity — a 200 GiB volume carries\na 196 GiB filesystem after format overhead, and the invoice says 200.",
+                      "type": "integer"
+                    },
+                    "wastedMonthlyCents": {
+                      "type": "integer"
                     }
                   },
                   "type": "object"
@@ -24210,6 +25478,30 @@
           },
           "seats": {
             "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "ReloadIn": {
+        "properties": {
+          "name": {
+            "description": "Name is the app, from the path. It must be one the manifest declares.",
+            "type": "string"
+          },
+          "scope": {
+            "description": "Scope \"host\" applies here only. Default \"fleet\" rolls it out one host at\na time, halting on the first host that fails to come up.",
+            "type": "string"
+          },
+          "sum": {
+            "type": "string"
+          },
+          "url": {
+            "description": "URL is the artifact directly, for an origin with no index. Sum is its hex\nSHA-256 and is REQUIRED with it: zip refuses an unverified download, and\nso does this.",
+            "type": "string"
+          },
+          "version": {
+            "description": "Version is a release tag, resolved to a URL and digest through the\norigin's binaries.json index — the same index CI publishes, so there is\nno second table mapping versions to digests.",
+            "type": "string"
           }
         },
         "type": "object"
@@ -24647,6 +25939,136 @@
         },
         "type": "object"
       },
+      "SubsystemsOut": {
+        "properties": {
+          "data": {
+            "properties": {
+              "end": {
+                "type": "string"
+              },
+              "range": {
+                "type": "string"
+              },
+              "rows": {
+                "items": {
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "errorRate": {
+                      "description": "percent (0..100)",
+                      "type": "number"
+                    },
+                    "errors": {
+                      "type": "integer"
+                    },
+                    "lastErrorAt": {
+                      "type": "string"
+                    },
+                    "lastErrorMessage": {
+                      "type": "string"
+                    },
+                    "lastErrorRoute": {
+                      "type": "string"
+                    },
+                    "lastErrorStatus": {
+                      "type": "string"
+                    },
+                    "latencyP50Ms": {
+                      "type": "number"
+                    },
+                    "latencyP95Ms": {
+                      "type": "number"
+                    },
+                    "latencyP99Ms": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "prefixes": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "requests": {
+                      "type": "integer"
+                    },
+                    "requestsPerMin": {
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "sources": {
+                "items": {
+                  "properties": {
+                    "at": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "rows": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "start": {
+                "type": "string"
+              },
+              "totals": {
+                "properties": {
+                  "disabled": {
+                    "type": "integer"
+                  },
+                  "enabled": {
+                    "type": "integer"
+                  },
+                  "errorRate": {
+                    "description": "percent (0..100)",
+                    "type": "number"
+                  },
+                  "errors": {
+                    "type": "integer"
+                  },
+                  "reporting": {
+                    "description": "enabled AND served ≥1 traced request in the window",
+                    "type": "integer"
+                  },
+                  "requests": {
+                    "type": "integer"
+                  },
+                  "subsystems": {
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "Summary": {
         "properties": {
           "active": {
@@ -24808,6 +26230,10 @@
           "name": {
             "description": "Name is the snapshot name on the snapshot action. Blank gets a deterministic\n\"\u003cvolume\u003e-predelete-\u003cunix\u003e\" so the undo is findable in the DO console.",
             "type": "string"
+          },
+          "sizeGiB": {
+            "description": "SizeGiB is the target size on the resize action. A volume only ever grows —\nExpandTo is the verdict that refuses a shrink, so this is not validated here.",
+            "type": "integer"
           },
           "snapshot": {
             "description": "Snapshot is the snapshot-first switch on DELETE. Anything other than the literal\n\"false\" snapshots before destroying — the snapshot IS the undo, so waiving it is\ndeliberate and explicit.",
@@ -25309,6 +26735,95 @@
           }
         },
         "type": "object"
+      },
+      "appView": {
+        "type": "object",
+        "properties": {
+          "buildType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "integer"
+          },
+          "currentDeploymentId": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dockerfile": {
+            "type": "string"
+          },
+          "domains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "env": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnvVarJSON"
+            }
+          },
+          "environment": {
+            "type": "string"
+          },
+          "health": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "image": {
+            "$ref": "#/components/schemas/imageView"
+          },
+          "name": {
+            "type": "string"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "org": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "replicas": {
+            "type": "integer"
+          },
+          "repo": {
+            "$ref": "#/components/schemas/repoView"
+          },
+          "secretSync": {
+            "type": "string"
+          },
+          "secretSyncDetail": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "storageGb": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "type": "integer"
+          }
+        }
       },
       "authorizeOut": {
         "properties": {
@@ -26169,6 +27684,75 @@
         },
         "type": "object"
       },
+      "createAppReq": {
+        "type": "object",
+        "properties": {
+          "buildType": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dockerfile": {
+            "type": "string"
+          },
+          "domains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "env": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnvVarJSON"
+            }
+          },
+          "environment": {
+            "type": "string"
+          },
+          "image": {
+            "type": "object",
+            "properties": {
+              "repository": {
+                "type": "string"
+              },
+              "tag": {
+                "type": "string"
+              }
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer"
+          },
+          "replicas": {
+            "type": "integer"
+          },
+          "repo": {
+            "type": "object",
+            "properties": {
+              "branch": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            }
+          },
+          "slug": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "storageGb": {
+            "type": "integer"
+          }
+        }
+      },
       "createClusterReq": {
         "properties": {
           "name": {
@@ -26851,6 +28435,17 @@
           }
         },
         "type": "object"
+      },
+      "imageView": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          }
+        }
       },
       "jobCancel": {
         "properties": {
@@ -27767,6 +29362,29 @@
         },
         "type": "object"
       },
+      "projectView": {
+        "type": "object",
+        "properties": {
+          "applications": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "org": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
       "promoIn": {
         "properties": {
           "active": {
@@ -28190,6 +29808,61 @@
         },
         "type": "object"
       },
+      "runReq": {
+        "type": "object",
+        "properties": {
+          "env": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnvVarJSON"
+            }
+          },
+          "gpu": {
+            "type": "integer"
+          },
+          "image": {
+            "type": "string"
+          },
+          "maxScale": {
+            "type": "integer"
+          },
+          "minScale": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer"
+          },
+          "runtime": {
+            "type": "string"
+          },
+          "shape": {
+            "type": "string"
+          }
+        }
+      },
+      "runView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "shape": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
       "sampleAccepted": {
         "properties": {
           "recorded": {
@@ -28415,6 +30088,17 @@
           }
         },
         "type": "object"
+      },
+      "setEnvReq": {
+        "type": "object",
+        "properties": {
+          "env": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnvVarJSON"
+            }
+          }
+        }
       },
       "setFlagIn": {
         "properties": {

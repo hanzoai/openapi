@@ -1528,6 +1528,146 @@ paths:
                     $ref: '#/components/schemas/admin_OverviewData'
         '401':
           $ref: '#/components/responses/admin_Unauthorized'
+  /v1/admin/plugins:
+    get:
+      tags:
+      - Admin
+      summary: List what each host is running
+      description: "list reports what each host is actually running: every loaded plugin with its\nversion, pid, uptime, reload\
+        \ and restart counts, and its measured CPU, RSS,\nthread and fd cost \u2014 read from the kernel, which is only answerable\
+        \ at all\nbecause a plugin is a process.\n\nReading this from deployment config would answer what was INTENDED. Only\
+        \ the\nprocess knows what is TRUE, and during a rolling upgrade the two disagree on\npurpose.\n"
+      operationId: plugin_adminPlugins
+      parameters:
+      - name: scope
+        in: query
+        required: false
+        description: 'Scope "host" answers for THIS host only. Default "fleet" fans out to every
+
+          live peer. A peer answers a host-scoped read, which is what stops the
+
+          fan-out recursing.
+
+          '
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Per-host plugin inventory plus the fleet drift roll-up.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/plugin_ListOut'
+        '401':
+          $ref: '#/components/responses/plugin_Unauthorized'
+  /v1/admin/plugins/{name}/disable:
+    post:
+      tags:
+      - Admin
+      summary: "Disable a plugin \u2014 its routes answer 503, not 404"
+      description: "disable stops the plugin. Its routes STAY REGISTERED and answer 503 \u2014 not 404.\n\nThat is zip's choice\
+        \ and this keeps it. Removing the routes would mutate the\nroute table, and re-adding them on enable would grow it\
+        \ without bound across\nrepeated cycles, which is the invariant that makes reloads flat in memory. It\nis also the\
+        \ better answer: 404 says \"no such API\" and a client may cache it\nand stop retrying, while 503 says \"this API\
+        \ exists and is down right now\",\nwhich is true and retryable. Which of the two 503s this is \u2014 deliberate stop\n\
+        or crash \u2014 is what the status's disabled flag reports.\n"
+      operationId: plugin_adminDisablePlugin
+      parameters:
+      - $ref: '#/components/parameters/plugin_PluginName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/plugin_NameIn'
+      responses:
+        '200':
+          description: Per-host result of the disable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/plugin_ActionOut'
+        '401':
+          $ref: '#/components/responses/plugin_Unauthorized'
+  /v1/admin/plugins/{name}/enable:
+    post:
+      tags:
+      - Admin
+      summary: Enable a stopped or disabled plugin
+      description: 'enable brings a stopped or disabled plugin back on the artifact it already
+
+        has: the zero Plugin names no new artifact, so Reload reuses the loaded spec
+
+        and clears the disabled flag. Named for what an operator means by it.
+
+        '
+      operationId: plugin_adminEnablePlugin
+      parameters:
+      - $ref: '#/components/parameters/plugin_PluginName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/plugin_NameIn'
+      responses:
+        '200':
+          description: Per-host result of the enable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/plugin_ActionOut'
+        '401':
+          $ref: '#/components/responses/plugin_Unauthorized'
+  /v1/admin/plugins/{name}/reload:
+    post:
+      tags:
+      - Admin
+      summary: Reload a plugin onto another build
+      description: 'reload swaps a plugin for another build without dropping a request. The
+
+        replacement is started and proven to be LISTENING before any traffic moves to
+
+        it, so a bad build leaves the old one serving and returns an error rather
+
+        than a hole; the old process then drains before it is killed.
+
+
+        With a version or url+sum it pins; naming a digest this host has run before is
+
+        the rollback, and costs no network because the digest IS the cache key. With
+
+        neither it restarts what is already loaded.
+
+
+        Fleet scope applies it to one host at a time and STOPS at the first failure,
+
+        so a build that cannot come up reaches exactly one host.
+
+        '
+      operationId: plugin_adminReloadPlugin
+      parameters:
+      - name: name
+        in: path
+        required: true
+        description: Name is the app, from the path. It must be one the manifest declares.
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/plugin_ReloadIn'
+      responses:
+        '200':
+          description: Per-host result of the reload, with the digest now running.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/plugin_ActionOut'
+        '401':
+          $ref: '#/components/responses/plugin_Unauthorized'
   /v1/admin/products:
     get:
       tags:
@@ -81076,6 +81216,48 @@ components:
           type: string
         description:
           type: string
+    plugin_ActionOut:
+      type: object
+      description: 'The envelope every mutation answers with. Data is per host and in the order
+
+        applied, so a halted rollout reads as the prefix that succeeded followed by
+
+        the one that did not.
+
+        '
+      properties:
+        status:
+          type: string
+        msg:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/plugin_Result'
+    plugin_Drift:
+      type: object
+      description: 'One plugin''s agreement across the fleet. Versions holds every distinct
+
+        digest seen running; more than one means a rollout is incomplete or stuck,
+
+        which is the single question this whole view exists to answer.
+
+        '
+      properties:
+        name:
+          type: string
+        versions:
+          type: array
+          items:
+            type: string
+        running:
+          type: integer
+        down:
+          type: integer
+        disabled:
+          type: integer
+        drifted:
+          type: boolean
     plugin_Error:
       type: object
       description: Standard error envelope.
@@ -81089,6 +81271,72 @@ components:
               type: string
             code:
               type: string
+    plugin_Host:
+      type: object
+      description: 'One host''s own account of what it is running. Reported per host rather than
+
+        merged, because during a rollout the hosts disagree BY DESIGN and a merged
+
+        view hides exactly the state an operator is watching for.
+
+        '
+      properties:
+        host:
+          type: string
+          description: 'Host is the pod''s stable id, and Addr where it was reached. Self is true
+
+            for the host that answered the request.
+
+            '
+        addr:
+          type: string
+        self:
+          type: boolean
+        error:
+          type: string
+          description: 'Err is set when a peer could not be reached. Its plugins are then
+
+            unknown, which is NOT the same as none, so the list stays empty and the
+
+            drift below refuses to conclude anything from it.
+
+            '
+        plugins:
+          type: array
+          items:
+            $ref: '#/components/schemas/plugin_PluginStatus'
+    plugin_ListOut:
+      type: object
+      description: "The fleet board \u2014 one entry per host, plus the drift roll-up."
+      properties:
+        status:
+          type: string
+        msg:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/plugin_Host'
+        drift:
+          type: array
+          items:
+            $ref: '#/components/schemas/plugin_Drift'
+        data2:
+          type: integer
+    plugin_NameIn:
+      type: object
+      description: 'Addresses one plugin by name, for the operations that take nothing else.
+
+        '
+      properties:
+        name:
+          type: string
+          description: Name is the app, from the path.
+        scope:
+          type: string
+          description: 'Scope "host" applies here only; default "fleet" applies everywhere.
+
+            '
     plugin_PluginInfo:
       type: object
       description: 'Introspection view of one mounted plugin. Derived from the manifest
@@ -81120,6 +81368,157 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/plugin_PluginInfo'
+    plugin_PluginStatus:
+      type: object
+      description: "One plugin's process view on one host \u2014 what `GET /v1/plugins` cannot\nanswer, because that reports\
+        \ the manifest and this reports the kernel.\n"
+      properties:
+        name:
+          type: string
+        prefix:
+          type: string
+          description: "Prefix is the FIRST subtree this plugin answers \u2014 the one a log line\nnames it by. Prefixes is\
+            \ every subtree, and a plugin may own several.\nReporting only the first would understate the blast radius of\
+            \ taking\nthis plugin down, which is the question a fleet view exists to answer.\n"
+        prefixes:
+          type: array
+          items:
+            type: string
+        source:
+          type: string
+          description: 'Source is where the binary came from: "embedded", "path", "url", or
+
+            "remote" for an instance this host did not start.
+
+            '
+          enum:
+          - embedded
+          - path
+          - url
+          - remote
+        version:
+          type: string
+          description: "Version is the artifact's SHA-256 when it was installed from a URL \u2014\nthe only version identifier\
+            \ that cannot drift from the bits actually\nrunning, since it IS the bits. Empty for the other sources.\n"
+        addr:
+          type: string
+          description: Addr is the socket or address serving it.
+        pid:
+          type: integer
+          description: PID is the child process, or 0 when this host did not start it.
+        running:
+          type: boolean
+          description: 'Running is false after Unload, or after a child exited and no Reload has
+
+            replaced it. Its routes stay registered and answer 503, so a false here
+
+            is the difference between "not deployed" and "deployed but down".
+
+            '
+        disabled:
+          type: boolean
+          description: "Disabled is true when Unload stopped it deliberately, as opposed to it\nhaving crashed. Both answer\
+            \ 503, so without this an operator cannot tell\na maintenance window from an outage \u2014 and would page for\
+            \ the former.\n"
+        since:
+          type: string
+          format: date-time
+          description: "Since is when the CURRENT instance started \u2014 it resets on Reload, so it\nreports the age of what\
+            \ is running, not of the mount.\n"
+        reloads:
+          type: integer
+          description: 'Reloads counts successful swaps since Load. A climbing number on one
+
+            host and not its peers is the signal that a rollout is uneven.
+
+            '
+        restarts:
+          type: integer
+          description: 'Restarts counts times the supervisor brought this plugin back after it
+
+            died on its own. Distinct from Reloads, which are deliberate: a nonzero
+
+            Restarts is a plugin crashing, and a climbing one is a crash loop.
+
+            '
+        usage:
+          $ref: '#/components/schemas/plugin_PluginUsage'
+    plugin_PluginUsage:
+      type: object
+      description: "A plugin's resource cost, measured rather than self-reported.\n\nThis exists because a plugin is a process.\
+        \ A linked-in subsystem cannot be\nmeasured this way at any price \u2014 one process has one RSS and one CPU clock,\n\
+        and nothing inside it can be attributed to a subsystem. Running a service as\nits own process makes \"which app is\
+        \ eating the memory\" a question with an\nexact answer instead of an argument.\n\nZero means not measured (no /proc,\
+        \ or nothing running), not measured-as-zero.\n"
+      properties:
+        cpuNs:
+          type: integer
+          format: int64
+          description: 'CPU is total user+system time this instance has consumed since it
+
+            started, in nanoseconds. It only ever climbs, so a rate is the
+
+            interesting derivative.
+
+            '
+        rssBytes:
+          type: integer
+          format: int64
+          description: "RSS is resident memory in bytes \u2014 the honest number for \"what does this\nplugin cost\", as opposed\
+            \ to virtual size.\n"
+        threads:
+          type: integer
+          description: 'Threads and FDs are the two limits a busy service hits first, and both
+
+            are leaks when they climb without bound.
+
+            '
+        fds:
+          type: integer
+    plugin_ReloadIn:
+      type: object
+      description: "Names an artifact to run. Exactly one of Version or URL+Sum, or neither to\nrestart the artifact already\
+        \ loaded \u2014 which is how a wedged plugin is\nbounced without changing what it runs.\n"
+      properties:
+        name:
+          type: string
+          description: 'Name is the app, from the path. It must be one the manifest declares.
+
+            '
+        version:
+          type: string
+          description: "Version is a release tag, resolved to a URL and digest through the\norigin's binaries.json index \u2014\
+            \ the same index CI publishes, so there is\nno second table mapping versions to digests.\n"
+        url:
+          type: string
+          description: 'URL is the artifact directly, for an origin with no index. Sum is its hex
+
+            SHA-256 and is REQUIRED with it: zip refuses an unverified download, and
+
+            so does this.
+
+            '
+        sum:
+          type: string
+        scope:
+          type: string
+          description: 'Scope "host" applies here only. Default "fleet" rolls it out one host at
+
+            a time, halting on the first host that fails to come up.
+
+            '
+    plugin_Result:
+      type: object
+      description: One host's outcome for one action.
+      properties:
+        host:
+          type: string
+        ok:
+          type: boolean
+        version:
+          type: string
+        msg:
+          type: string
     pricing_BlockStoragePricing:
       type: object
       properties:
@@ -87382,6 +87781,13 @@ components:
       name: input
       in: query
       description: URL-encoded JSON input for tRPC queries
+      schema:
+        type: string
+    plugin_PluginName:
+      name: name
+      in: path
+      required: true
+      description: Name is the app, from the path.
       schema:
         type: string
     projects_DeploymentId:
