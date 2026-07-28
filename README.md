@@ -32,7 +32,7 @@ curl -H "Authorization: Bearer ${HANZO_TOKEN}" \
 OIDC discovery:
 `https://hanzo.id/.well-known/openid-configuration`
 
-**Canonical capability index:** [CAPABILITIES.md](CAPABILITIES.md) — one name per capability, grouped into eight categories. The master `hanzo.yaml` is grouped by those categories via `x-tagGroups`.
+**Canonical capability index:** [CAPABILITIES.md](CAPABILITIES.md) — one name per capability, grouped into eight categories. The unified `hanzo.yaml` is grouped by those categories via `x-tagGroups`.
 
 ## Service Index
 
@@ -137,7 +137,7 @@ sha256 of every skill file.
 
 ```bash
 python3 skills.py                 # dist/agent-skills/<brand>/…  (hanzo, lux, zoo)
-python3 skills.py --no-services   # master tree only (what the cloud binary embeds)
+python3 skills.py --no-services   # unified tree only (what the cloud binary embeds)
 python3 skills.py --check         # drift gate: diff a fresh gen against dist/
 python3 test_skills.py            # golden test (determinism, digests, white-label, read-only)
 ```
@@ -147,7 +147,7 @@ Output is white-labeled per brand: a Lux surface reads `Lux` / `api.lux.network`
 and issuer tokens in spec prose are rebranded at render time). `dist/` is
 generated at build/serve time and is NOT committed (`.gitignore`); the committed
 artefacts are the generator + its golden test. Serving: the `cloud` unified
-binary embeds the master tree and serves it (host decides the brand) at
+binary embeds the unified tree and serves it (host decides the brand) at
 `GET /.well-known/agent-skills/index.json` + `…/<skill>/SKILL.md`.
 
 ## Code generation

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the unified master `hanzo.yaml` AND `CAPABILITIES.md` from the ONE
+"""Regenerate the unified `hanzo.yaml` AND `CAPABILITIES.md` from the ONE
 source of truth, `capabilities.yaml`, plus every per-service spec.
 
     python3 merge.py
@@ -21,7 +21,7 @@ Build invariant (fail loud — orthogonality is enforced, not hoped):
   • every present `<svc>/openapi.yaml` dir maps to EXACTLY ONE entry across
     `domains ∪ core` (orphan / unlisted / double-listed → sys.exit);
   • a `collapsed` name MUST have NO spec dir (a reappeared dir → sys.exit);
-  • `internal` services are EXCLUDED from the master + x-tagGroups (their dirs,
+  • `internal` services are EXCLUDED from the unified + x-tagGroups (their dirs,
     if any, are skipped);
   • `pending` / `review` / domain names WITHOUT a dir are fine (not-yet-authored
     or future-fold candidates) — only a dir on disk is load-bearing.
@@ -74,11 +74,11 @@ def check_invariant(present, categories, internal, collapsed):
         sys.exit(f"merge: `collapsed` name(s) still have a spec dir "
                  f"(group them in a domain or delete the dir): {collapsed_with_dir}")
 
-    # Internal dirs are excluded from the master; they must NOT be grouped.
+    # Internal dirs are excluded from the unified; they must NOT be grouped.
     internal_grouped = sorted(internal & grouped)
     if internal_grouped:
         sys.exit(f"merge: `internal` name(s) also listed in a domain/core "
-                 f"(internal is excluded from the master): {internal_grouped}")
+                 f"(internal is excluded from the unified): {internal_grouped}")
 
     # Every present (non-internal) spec dir must be grouped exactly once.
     orphans = sorted(s for s in present if s not in grouped and s not in internal)
@@ -169,7 +169,7 @@ def namespace_ops(item, svc, path):
     return item
 
 
-def build_master(present, categories, internal):
+def build_unified(present, categories, internal):
     """Aggregate every present per-service spec into the unified hanzo.yaml dict.
 
     Internal services are excluded (their dirs, if any, are skipped)."""
@@ -193,6 +193,44 @@ def build_master(present, categories, internal):
             secschemes.setdefault(n, x)
         tags.append({"name": svc, "description": spec.get("info", {}).get("title", svc)})
 
+    # Case-canonicalize operation tags — the LAST codegen-identity normalization,
+    # and the one this file claimed but never did. openapi-generator emits one
+    # class/module PER TAG STRING and sanitizes the name (strip non-alnum, Pascal),
+    # so `AI` and `ai`, `API Keys` and `api-keys`, `Users` and `users` map to the
+    # SAME module under different keys: the second silently overwrites the first,
+    # and 127 of 411 operations in 23 colliding groups vanished from every SDK.
+    # One spelling per concept, chosen deterministically — most uppercase wins
+    # (the designed `AI`/`MCP`/`Users` over the lazy lowercase), ties by the
+    # lexicographically smallest (the human-readable `Object Store` over
+    # `ObjectStore`). Applied to the merged surface so no per-service spec's
+    # casing can ever reach a generator uncanonicalized.
+    canon = {}
+    for item in paths.values():
+        for op in (item or {}).values():
+            for t in (op.get("tags") or []) if isinstance(op, dict) else []:
+                key = "".join(c for c in t.lower() if c.isalnum())
+                best = canon.get(key)
+                rank = (sum(c.isupper() for c in t), tuple(-ord(c) for c in t))
+                if best is None or rank > best[1]:
+                    canon[key] = (t, rank)
+    for item in paths.values():
+        for op in (item or {}).values():
+            if isinstance(op, dict) and op.get("tags"):
+                op["tags"] = [canon["".join(c for c in t.lower() if c.isalnum())][0]
+                              for t in op["tags"]]
+    # The permanent gate: after canonicalization no two distinct tag strings may
+    # share a key. If this fires, a tag differs from another by something other
+    # than case/space/punctuation and the picker needs to see it — fail the build
+    # rather than ship a client missing operations, the exact failure this closes.
+    seen = {}
+    for item in paths.values():
+        for op in (item or {}).values():
+            for t in (op.get("tags") or []) if isinstance(op, dict) else []:
+                key = "".join(c for c in t.lower() if c.isalnum())
+                if seen.setdefault(key, t) != t:
+                    sys.exit(f"merge: tag collision survives canonicalization: "
+                             f"{seen[key]!r} vs {t!r} both key {key!r}")
+
     # x-tagGroups: one group per capabilities.yaml category, present tags only,
     # in registry order.
     tag_groups = []
@@ -212,7 +250,7 @@ def build_master(present, categories, internal):
     if reqbodies:
         components["requestBodies"] = dict(sorted(reqbodies.items()))
 
-    master = {
+    unified = {
         "openapi": "3.1.0",
         "info": {
             "title": "Hanzo Cloud — Unified API (V8 · Open Edition)",
@@ -235,7 +273,7 @@ def build_master(present, categories, internal):
         "paths": dict(sorted(paths.items())),
         "components": components,
     }
-    return master, len(included), len(paths), len(schemas), len(responses), len(params), len(tag_groups)
+    return unified, len(included), len(paths), len(schemas), len(responses), len(params), len(tag_groups)
 
 
 def render_capabilities_md(present, categories, cap):
@@ -254,7 +292,7 @@ def render_capabilities_md(present, categories, cap):
         "GENERATED from `capabilities.yaml`, the ONE registry of Hanzo "
         "capabilities. Do NOT edit this file by hand — edit `capabilities.yaml` "
         "and run `python3 merge.py`. `merge.py` reads the same registry to emit "
-        "`hanzo.yaml`'s `x-tagGroups`, so this index and the master never drift."
+        "`hanzo.yaml`'s `x-tagGroups`, so this index and the unified never drift."
     )
     lines.append("")
     lines.append(
@@ -319,7 +357,7 @@ def render_capabilities_md(present, categories, cap):
         lines.append("## Internal — NOT public capabilities")
         lines.append("")
         lines.append("Trust boundaries and runtime hosts with no public API surface. "
-                     "Excluded from the master, `x-tagGroups`, SDKs and docs.")
+                     "Excluded from the unified, `x-tagGroups`, SDKs and docs.")
         lines.append("")
         lines.append(", ".join(f"`{s}`" for s in internal))
         lines.append("")
@@ -332,9 +370,9 @@ def main():
     present = spec_dirs()
     check_invariant(present, categories, internal, collapsed)
 
-    master, n_svc, n_paths, n_schemas, n_resp, n_params, n_groups = build_master(
+    unified, n_svc, n_paths, n_schemas, n_resp, n_params, n_groups = build_unified(
         present, categories, internal)
-    yaml.dump(master, open(os.path.join(ROOT, "hanzo.yaml"), "w"),
+    yaml.dump(unified, open(os.path.join(ROOT, "hanzo.yaml"), "w"),
               default_flow_style=False, sort_keys=False, width=120)
 
     md = render_capabilities_md(present, categories, cap)
