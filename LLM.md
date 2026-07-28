@@ -18,6 +18,10 @@ prefixes, no cross-brand references.
   grouped (`x-tagGroups`) by `merge.py` straight from `capabilities.yaml`.
 - `<service>/openapi.yaml` — one self-contained spec per service.
 - `shared/` — shared schemas usable by individual specs in their `components`.
+- `generated/<name>.json` — specs a SERVICE EMITTED from its own routes. Not
+  hand-written, not merged into the master; the measured counterpart of the
+  contract of the same name (see below).
+- `audit.py` — measures a generated spec against that contract.
 - `README.md` — service index and usage.
 - `CHANGELOG.md` — release notes.
 
@@ -63,6 +67,33 @@ python3 -c "import yaml, glob; [yaml.safe_load(open(s)) for s in glob.glob('*/op
 7. Run `python3 merge.py` (regenerates `hanzo.yaml` AND `CAPABILITIES.md`) and
    commit all three.
 
+## Generated specs — a spec cannot describe a route its service does not serve
+
+The 69 `<service>/openapi.yaml` files are hand-written, and a hand-written spec
+drifts silently in both directions: it declares operations nothing serves, and
+it misses operations that are served. `generated/` is the other reading — what
+a binary emits from its OWN route table — and `audit.py` is the measurement
+between the two. Nothing is overwritten by a generated spec until it measurably
+covers the contract it would replace; `derived:` in `capabilities.yaml` is the
+ratchet, and `audit.py --check` fails the build only for a name on that list.
+
+| generated | emitted by | the ONE command |
+|---|---|---|
+| `hanzo.json` | `hanzoai/cloud` — the whole `/v1` binary | `make openapi OPENAPI_DIR=<this repo>` in `~/work/hanzo/cloud` |
+| `iam.json` | `hanzoai/iam` — zip typed ops | zip's `App.OpenAPISpec()` |
+
+`hanzo.json` is named for `hanzo.yaml`, not for `cloud/`: the binary serves the
+whole fused surface, so it is the generated counterpart of the MASTER. It is
+one document folded from two readings of one router — the live route table
+(every operation, its address, its product tag) over zip's typed-op registry
+(`zip.Get[In, Out]` → JSON Schema, parameters, responses, plus the prose
+`cmd/zipdoc` lifts out of the handlers' doc comments at build time). A route
+that is not a typed op appears with its address and nothing invented.
+
+Its `info` block comes from the emitting binary, so it carries the API contract
+version (`v1`) rather than this repo's V8 release generation — it is a machine
+artifact, not one of the authored specs the `8.0.0` convention governs.
+
 ## SDK generation — the ONE way (Stainless RETIRED, 2026-07)
 
 The one interface is `hanzo.yaml`; the generator backend is
@@ -90,15 +121,21 @@ tags + discriminator mappings per-service and collapses to one primary tag).
 There is NO unified `hanzoai/sdk` multi-lang monorepo generator — that repo's
 `gen/` is the retired SECOND way; `hanzoai/sdk` is CLI-only now.
 
-### Remaining spec-coverage gaps (SDKs cover the spec faithfully; the spec
-lacks these live prefixes — author from the Go routes, then the SDKs pick
-them up automatically on the next regeneration):
+### Remaining spec-coverage gaps — measured, not remembered
 
-- **`/v1/memory`** and **`/v1/videos`** are LIVE (cloud binary) but have no
-  paths in `hanzo.yaml` yet.
-- The broader "author the remaining `/v1` product specs from
-  `cloud/clients/<x>/*.go`" backlog still applies for any prefix not yet
-  present in the per-service specs.
+`python3 audit.py hanzo` is the answer to "how far has the contract drifted
+from the binary", and it replaces every anecdote that used to live here. It
+reads `hanzo.yaml` against `generated/hanzo.json`, so both numbers move on
+their own the moment either side changes. Neither `/v1/memory` nor
+`/v1/videos` is in the live router at all — the earlier note that they were is
+exactly the kind of claim this measurement exists to stop repeating.
+
+Read the two columns as two different bugs. `missing` = the contract declares
+operations nothing serves, so every SDK ships methods that 404. `undeclared` =
+the routes serve operations the contract never named, so no SDK can reach
+them. `prose lost` = an operation both sides have, where only the hand-written
+side has the words — the reason a generated spec does not simply overwrite a
+contract on the day it first covers it.
 
 The SDK-generation surface is the FUSED `api.hanzo.ai/v1` binary. `merge.py`
 unions the per-service specs into it.
