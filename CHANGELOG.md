@@ -102,7 +102,7 @@ fabricated:
   `cloud`/`nexus` query-param file/connection + signin/signout actions.
 - **No live handler (23) — flagged, not authored:** iam
   user-keys/orders-cancel/invoice-payment/pay-order/place-order/refresh-engines
-  (Casdoor-era swagger; billing moved to commerce); kms token-renew,
+  (legacy swagger; billing moved to commerce); kms token-renew,
   token-auth-identity-tokens, webhook-test, secret-sync-trigger (absent from the
   Go KMS); framework install/submit/cancel (repo not in tree); flow
   solutions-apply, git-repos-pull (no such routes); bot skill undelete/stars
@@ -314,7 +314,7 @@ All 34 service specifications plus the master discovery spec
 
 ### IAM
 
-- 227 legacy Casdoor RPC-style `/api/<verb>-<resource>` routes rewritten to
+- 227 legacy RPC-style `/api/<verb>-<resource>` routes rewritten to
   REST under `/v1/iam/<resource>[/{id}]`. Verb is encoded in the HTTP method.
 - 233 input paths consolidated to 150 REST paths after collision merging.
 - OIDC and OAuth2 endpoints (`/oauth/token`, `/oauth/authorize`,
