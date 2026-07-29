@@ -76,8 +76,9 @@ OIDC discovery:
 | visor | [visor/openapi.yaml](visor/openapi.yaml) | `vm.hanzo.ai` | `/v1/visor` |
 | zt | [zt/openapi.yaml](zt/openapi.yaml) | `zt.hanzo.ai` | `/v1/zt` |
 
-Discovery: [hanzo.yaml](hanzo.yaml) at `https://api.hanzo.ai/v1/discovery`
-returns the canonical list of services with their spec URLs.
+Discovery: [hanzo.yaml](hanzo.yaml) is the canonical list of services with their
+spec URLs. It is a file in this repo, not a served endpoint — `/v1/discovery` was
+PROBED on 2026-07-28 and returns 404, and no handler for it exists in cloud.
 
 **Status** is blank when the service answers at the hostname above. `UNSERVED`
 means it was PROBED on 2026-07-28 and nothing answered — not at `api.hanzo.ai`
