@@ -1,0 +1,58 @@
+# The staleness gate on the ONE spec here that is not authored here.
+#
+# `cloud/openapi.yaml` is hanzoai/cloud's woven document, and `merge.py` lets it
+# WIN every route an authored spec also claims. That makes it the most load-bearing
+# file in the repo and the only one whose correctness depends on a DIFFERENT repo's
+# HEAD — so it goes stale on a push nobody makes here, which is exactly the kind of
+# drift no push-triggered CI can catch.
+#
+# Measured before this existed: cloud/openapi.yaml lagged cloud's origin/main twice
+# in one afternoon, and each time every SDK, doc page and MCP tool generated from
+# `hanzo.yaml` was describing a router that had already moved. The resync itself is
+# one command and always was; what was missing is anything that NOTICES.
+#
+# So the trigger is a clock, not a push. A push here cannot be the signal, because
+# the event that invalidates the file happens in hanzoai/cloud.
+#
+# --check only. This job does not resync and does not commit: a bot pushing a 2 MB
+# regenerated document into main is a second writer on the file merge.py owns, and
+# the failure mode — an unreviewed spec change reaching every SDK — is worse than
+# the staleness it would fix. Red build, one command in the log, a person runs it.
+name: spec sync
+
+on:
+  schedule:
+    # Hourly. Cloud deploys many times a day and each one can move the document;
+    # a daily check would let a stale spec ship SDKs for most of a working day.
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: spec-sync
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: hanzo-build-linux-amd64
+    steps:
+      - uses: actions/checkout@v4
+
+      # sync.py reads a hanzoai/cloud CHECKOUT's origin/main rather than a release
+      # artifact, because the document it wants is the one cloud's own drift gate
+      # just proved equal to its router. fetch-depth 1 is enough: it reads one ref.
+      - name: Check out hanzoai/cloud
+        uses: actions/checkout@v4
+        with:
+          repository: hanzoai/cloud
+          path: .cloud
+          fetch-depth: 1
+
+      - name: Is cloud/openapi.yaml current?
+        run: |
+          python3 -m pip install --quiet pyyaml
+          # Fail loudly and say the ONE command that fixes it. A gate whose message
+          # is "differs" and nothing else sends the reader looking for a diff tool.
+          if ! python3 sync.py --check --cloud .cloud; then
+            echo "::error::cloud/openapi.yaml is behind hanzoai/cloud. Every SDK and doc page generated from hanzo.yaml is describing a router that moved. Fix: python3 sync.py && git commit -am 'sync: resync cloud'"
+            exit 1
+          fi

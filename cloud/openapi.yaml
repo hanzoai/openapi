@@ -2049,6 +2049,8 @@ components:
           type: object
         time:
           type: string
+        type:
+          type: string
       type: object
     Exception:
       properties:
@@ -4491,6 +4493,18 @@ components:
           description: '"ledger" (live) | "chain" (seam)'
           type: string
         txHash:
+          type: string
+      type: object
+    Record:
+      properties:
+        name:
+          description: the record name the customer creates
+          type: string
+        type:
+          description: TXT | CNAME
+          type: string
+        value:
+          description: the record value
           type: string
       type: object
     RecordsOut:
@@ -14990,9 +15004,6 @@ components:
           description: Stream is the stream name, from the path.
           type: string
       type: object
-    noContent:
-      properties: {}
-      type: object
     nodeList:
       properties:
         nodes:
@@ -16386,6 +16397,241 @@ components:
             active licensing subscription — which the console treats as its free default.
           type: string
       type: object
+    projectsBoundDomains:
+      properties:
+        bound:
+          description: |-
+            Bound is the result of THIS call, one row per host in the request: live for
+            an already-vouched host, pending with the DNS records to publish otherwise.
+          items:
+            $ref: '#/components/schemas/projectsDomain'
+          type: array
+        domains:
+          description: |-
+            Domains are the hostnames that are VERIFIED and routing right now, after
+            this bind.
+          items:
+            type: string
+          type: array
+        org:
+          description: Org and Slug identify the site the hosts were bound to.
+          type: string
+        slug:
+          type: string
+      type: object
+    projectsBuildSite:
+      properties:
+        brief:
+          type: string
+        model:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+      type: object
+    projectsComplete:
+      properties:
+        bytes:
+          type: integer
+        commit:
+          type: string
+        files:
+          type: integer
+        id:
+          description: ID is the queued deployment to complete, from the path.
+          type: string
+        keys:
+          description: |-
+            Keys is the manifest CI just uploaded, RELATIVE to the deployment prefix. It
+            is what replaces `aws s3 sync --delete`: an upload grant authorizes writes
+            only, so CI cannot remove a file, and cloud reconciles the prefix against
+            this list instead (grant.go). Omit it and nothing is deleted — the prefix
+            only grows, which is the old pre-grant behaviour and a safe default.
+          items:
+            type: string
+          type: array
+        liveUrl:
+          type: string
+        message:
+          type: string
+        slug:
+          description: Slug is the project the deployment belongs to, from the path.
+          type: string
+        status:
+          description: live | error
+          type: string
+      type: object
+    projectsCreate:
+      properties:
+        analytics:
+          description: |-
+            Analytics is the opt-OUT for the wired-by-default analytics beacon: absent
+            (nil) ⇒ ON (the default); explicit false ⇒ off. A pointer so "unset" is
+            distinguishable from "false" — the only way to turn the default off.
+          type: boolean
+        description:
+          type: string
+        framework:
+          type: string
+        license:
+          type: string
+        name:
+          type: string
+        repo:
+          properties:
+            branch:
+              type: string
+            url:
+              type: string
+          type: object
+        slug:
+          type: string
+        upstream:
+          description: |-
+            Upstream/License credit the third-party work this project was published
+            from. Taken from any caller: disclaiming authorship can only cost the
+            publisher credit, so it needs no gate (see Project.Upstream).
+          type: string
+        visibility:
+          description: |-
+            Visibility is "public" (the default when absent) or "private". Publishing
+            publicly is ungated — that is the point of a community. Going PRIVATE is
+            the paid feature, so an unfunded org asking for it is refused rather than
+            silently downgraded (see resolve).
+          type: string
+      type: object
+    projectsDeploySite:
+      properties:
+        files:
+          items:
+            $ref: '#/components/schemas/projectsFile'
+          type: array
+        name:
+          type: string
+        slug:
+          type: string
+      type: object
+    projectsDeployment:
+      properties:
+        bucket:
+          type: string
+        bytes:
+          type: integer
+        commit:
+          type: string
+        createdAt:
+          type: integer
+        files:
+          type: integer
+        id:
+          type: string
+        liveUrl:
+          type: string
+        message:
+          type: string
+        prefix:
+          type: string
+        projectId:
+          type: string
+        source:
+          type: string
+        status:
+          type: string
+        updatedAt:
+          type: integer
+        upload:
+          $ref: '#/components/schemas/projectsUploadGrant'
+          description: |-
+            Upload is the prefix-scoped, short-lived S3 write grant handed to CI with a
+            queued git deployment, so it needs no bucket credential (grant.go). Present
+            ONLY on the 202 that creates the deployment — it is never stored and never
+            replayed on a later read, so a grant cannot outlive the build it was minted
+            for by being fetched again.
+        version:
+          type: integer
+      type: object
+    projectsDomain:
+      properties:
+        createdAt:
+          type: integer
+        detail:
+          type: string
+        host:
+          type: string
+        records:
+          items:
+            $ref: '#/components/schemas/Record'
+          type: array
+        status:
+          type: string
+        url:
+          type: string
+        verified:
+          type: boolean
+      type: object
+    projectsDomains:
+      properties:
+        claims:
+          description: |-
+            Claims is one row per host — live, or pending with the DNS records it still
+            owes.
+          items:
+            $ref: '#/components/schemas/projectsDomain'
+          type: array
+        domains:
+          description: Domains are the hostnames that are VERIFIED and routing right
+            now.
+          items:
+            type: string
+          type: array
+        org:
+          description: Org and Slug identify the site the panel belongs to.
+          type: string
+        slug:
+          type: string
+      type: object
+    projectsDomainsBind:
+      properties:
+        domains:
+          description: |-
+            Domains are the custom hostnames to attach, in order. An empty list is a
+            400 rather than a clear — releasing a host is its own call.
+          items:
+            type: string
+          type: array
+        slug:
+          description: Slug is the site the hosts attach to, from the path.
+          type: string
+      type: object
+    projectsFile:
+      properties:
+        content:
+          type: string
+        path:
+          type: string
+      type: object
+    projectsFork:
+      properties:
+        name:
+          description: target project name (optional; defaults to the parent's title)
+          type: string
+        slug:
+          description: parent slug to fork — catalog template or published project
+            (required)
+          type: string
+        target:
+          description: |-
+            Target overrides the derived project slug (optional; defaults to the
+            parent slug). Kept distinct from Slug so callers can rename on fork.
+          type: string
+        variant:
+          description: |-
+            Variant picks a template's format/page/theme (optional; defaults to the
+            template's first shape). This is the axis the catalog used to spend
+            sibling slugs on, so it is expressed here, where the user's preference is.
+          type: string
+      type: object
     projectsOut:
       properties:
         data:
@@ -16396,6 +16642,220 @@ components:
         total:
           description: Total is len(data).
           type: integer
+      type: object
+    projectsProject:
+      properties:
+        analytics:
+          description: |-
+            Analytics is the wired-by-default web-analytics flag (default true). It is the
+            value the app's static-builder reads as deployment.analytics to inject the
+            beacon. Space is the project's Base data space ("<org>/<slug>") a deployed
+            site posts form/forum/data submissions to under /v1/base.
+          type: boolean
+        bucket:
+          type: string
+        cacheControl:
+          description: |-
+            Cache is the site's edge-cache state: the HTML/document Cache-Control policy
+            in effect (TTL) and the last edge-purge time, so a console can show freshness.
+          type: string
+        createdAt:
+          type: integer
+        currentDeploymentId:
+          type: string
+        description:
+          type: string
+        forkedFrom:
+          description: |-
+            ForkedFrom is the parent this project was forked from ("<org>/<slug>" of a
+            published project, or a catalog template slug) — the attribution edge a
+            gallery credits.
+          type: string
+        framework:
+          type: string
+        hidden:
+          type: boolean
+        hiddenReason:
+          type: string
+        id:
+          type: string
+        lastPurgeAt:
+          type: integer
+        license:
+          type: string
+        liveUrl:
+          type: string
+        name:
+          type: string
+        org:
+          type: string
+        repo:
+          $ref: '#/components/schemas/projectsRepo'
+        slug:
+          type: string
+        space:
+          type: string
+        status:
+          type: string
+        updatedAt:
+          type: integer
+        upstream:
+          description: |-
+            Upstream/License credit the third-party work this project was published
+            from, and the terms it carries. Omitted when nothing is declared: an absent
+            credit means "nobody has said", not "there is nothing to say".
+          type: string
+        visibility:
+          description: |-
+            Visibility is "public" or "private", and Hidden reports platform
+            moderation. Both are always present (never omitempty) so a consumer can
+            tell a real answer from "this API is too old to say" — and so a console
+            never renders a project as public because a field was missing.
+
+            Authorship is deliberately absent: it is Org, above.
+          type: string
+      type: object
+    projectsPublish:
+      properties:
+        slug:
+          description: Slug is the site to publish, from the path.
+          type: string
+        source:
+          description: |-
+            Source is the build output to promote, as a path RELATIVE to your org's own
+            storage space — never a URL and never a bucket. The org segment is prepended
+            server-side from the validated principal, so the worst a hostile source can
+            address is something your own org already owns.
+          type: string
+      type: object
+    projectsRelease:
+      properties:
+        active:
+          type: boolean
+        bytes:
+          type: integer
+        createdAt:
+          type: integer
+        objects:
+          type: integer
+        releaseId:
+          type: string
+        slug:
+          type: string
+        source:
+          type: string
+        url:
+          type: string
+      type: object
+    projectsRepo:
+      properties:
+        branch:
+          type: string
+        provider:
+          type: string
+        url:
+          type: string
+      type: object
+    projectsSite:
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        status:
+          type: string
+        updatedAt:
+          type: integer
+        url:
+          type: string
+      type: object
+    projectsSiteDeploy:
+      properties:
+        deploymentId:
+          description: DeploymentID is the deployment this publish recorded, for the
+            history.
+          type: string
+        files:
+          description: Files are the site-relative paths that were uploaded, sorted.
+          items:
+            type: string
+          type: array
+        name:
+          description: Name is the project's display name.
+          type: string
+        slug:
+          description: |-
+            Slug is the project the site was published into, created on the fly when
+            the slug was free.
+          type: string
+        status:
+          description: Status is the deployment status, "live" on success.
+          type: string
+        url:
+          description: |-
+            URL is the canonical live URL, https://<slug>.<apex> — empty when the
+            subdomain belongs to another tenant and this site has none.
+          type: string
+      type: object
+    projectsUpdate:
+      properties:
+        cacheControl:
+          type: string
+        description:
+          type: string
+        framework:
+          type: string
+        hidden:
+          description: |-
+            Hidden is MODERATION, and the only admin-gated field on this body: it pulls
+            a public project out of the catalogue from admin.hanzo.ai without editing
+            the publisher's own visibility choice, so un-hiding restores exactly what
+            they asked for. A tenant sending it is ignored.
+          type: boolean
+        hiddenReason:
+          type: string
+        license:
+          type: string
+        name:
+          type: string
+        repo:
+          properties:
+            branch:
+              type: string
+            url:
+              type: string
+          type: object
+        slug:
+          description: |-
+            Slug is the project to update, from the path. The URL is the addressing
+            authority — a `slug` in the body cannot move the write to another project.
+          type: string
+        upstream:
+          description: |-
+            Upstream/License credit the third-party work this app was published from —
+            settable after the fact, because the demos that need crediting most are the
+            ones already live. Pointers so "" clears a credit and absent leaves it.
+          type: string
+        visibility:
+          description: |-
+            Visibility flips an existing project between "public" and "private". Same
+            ONE rule as at create: public is free, private needs a paid plan.
+          type: string
+      type: object
+    projectsUploadGrant:
+      properties:
+        expiresAt:
+          type: integer
+        fields:
+          additionalProperties:
+            type: string
+          type: object
+        maxBytes:
+          type: integer
+        prefix:
+          type: string
+        url:
+          type: string
       type: object
     promoIn:
       properties:
@@ -39384,12 +39844,8 @@ paths:
         schema:
           type: string
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/noContent'
-          description: ok
+        "204":
+          description: no content
       summary: 'Removes a registered SSH key, scoped to the caller''s org: an org
         can only delete its own, and a key id it does not own is not found.'
       tags:
@@ -39470,12 +39926,8 @@ paths:
         schema:
           type: string
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/noContent'
-          description: ok
+        "204":
+          description: no content
       summary: Removes a repo's metadata and purges its storage.
       tags:
       - git
@@ -39867,12 +40319,8 @@ paths:
         schema:
           type: string
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/noContent'
-          description: ok
+        "204":
+          description: no content
       summary: Removes one outbound mirror target; later pushes stop being forwarded
         to it.
       tags:
@@ -40091,12 +40539,8 @@ paths:
         schema:
           type: string
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/noContent'
-          description: ok
+        "204":
+          description: no content
       summary: Removes one Slack subscription from a repo; the notifier stops posting
         that repo's events to that channel.
       tags:
@@ -48140,68 +48584,174 @@ paths:
       - platform
   /v1/platform/sites:
     get:
-      description: Lists the caller org's sites with their slug, name, framework,
-        visibility, status and live URL. The same rows the project list answers —
-        one store, two namespaces — so nothing created through either surface is missing
-        here. Requires a validated principal (403 without one) and is keyed by that
-        principal's org.
+      description: |-
+        ListProjects returns every project your org owns.
+
+        Each row carries the slug, name, framework, visibility, status and live URL —
+        the same rows console and the builder render, because there is only one store
+        behind both. It requires a validated principal (403 without one) and is keyed
+        by that principal's org, so it never contains another tenant's project.
       operationId: get_v1_platform_sites
-      summary: Every static site your org owns
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/projectsProject'
+                type: array
+          description: ok
+      summary: ListProjects returns every project your org owns.
       tags:
       - platform
     post:
       description: |-
-        Creates a site and answers 201 with it in `draft`. It is the SAME operation as creating a project — one engine, one store — surfaced under the platform namespace where container apps live next door, so a site created here is the same row a project call sees. `name` is required and `slug` defaults from it; the slug becomes the storage prefix and the public host `<slug>.hanzo.app`, so it must match `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$` and may not be a reserved label. Analytics is on unless explicitly disabled, and `private` visibility is the paid option — an unfunded org asking for it is 402, never silently public.
+        CreateProject creates a project — the handle a site is deployed and served
+        under — and answers 201 with it in `draft`.
 
-        Scope: a validated principal is required (403 without one) and the site is created in that principal's org, where its slug must be unique — a collision within the caller's own org is a 409.
+        `name` is required; `slug` is derived from the name when omitted and is the
+        identifier that matters — it becomes the S3 key segment, the public host
+        `<slug>.hanzo.app`, and the handle every later call addresses, so it must
+        match `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$` and may not be a reserved label
+        such as `api` or `admin`. `framework` is a build hint from a closed set,
+        defaulting to `static`; it never gates a deploy, it only tells CI how to build
+        a linked repo.
+
+        Two defaults are worth knowing: the analytics beacon is ON unless `analytics`
+        is explicitly false, and `visibility` is `public` unless asked otherwise.
+        Publishing publicly is free; PRIVATE is the paid feature, and an unfunded org
+        asking for it is refused rather than quietly published as public. Creation
+        also provisions the project's data space and a canonical git repo, both
+        best-effort — neither can fail the create.
+
+        Scope: a validated principal is required (403 without one) and the project is
+        created in THAT principal's org. The slug is unique per org, so a slug already
+        used in the caller's own org is a 409 while the same slug in another org is
+        irrelevant.
       operationId: post_v1_platform_sites
-      summary: Create a static site on the platform
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projectsCreate'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsProject'
+          description: created
+      summary: CreateProject creates a project — the handle a site is deployed and
+        served under — and answers 201 with it in `draft`.
       tags:
       - platform
   /v1/platform/sites/{slug}:
     delete:
       description: |-
-        Removes the site and answers 204, releasing its subdomain binding so the slug can be reclaimed, dropping its release rows so a future owner inherits no rollback menu, purging the stored objects from both the live prefix and the release space, and flushing the edge cache. The metadata delete is the point of no return; the cleanup after it is best-effort, so a 204 means the site is gone even where some bytes are reclaimed late.
+        DeleteProject deletes a project and takes its site off the internet.
 
-        Scope: a validated principal is required (403 without one) and the site is resolved within that principal's org, so another tenant's slug is a 404.
-      operationId: delete_v1_platform_sites_by_slug
+        The metadata delete is authoritative and everything after it is best-effort,
+        in this order: the public `<slug>` subdomain binding is released so the slug is
+        free to reclaim, the release rows are dropped so a reclaimed slug never
+        inherits the previous owner's rollback menu, the S3 origin is purged under
+        BOTH `<org>/<slug>/` and the site's sibling release space, and the edge
+        cache-tag is flushed. A failure in any of those is logged and the delete still
+        answers 204 — resurrecting a project because a purge missed would be worse
+        than a leaked prefix.
+
+        Scope: a validated principal is required (403 without one) and the project is
+        resolved within that principal's org, so another tenant's slug is a 404 and
+        nothing of theirs is touched.
+      operationId: delete_v1_platform_sites_slug
       parameters:
-      - in: path
+      - description: |-
+          Slug is the project to act on, from the path. It is unique within the
+          caller's org and nowhere else, so another tenant's slug is a 404.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: Delete a static site and take it down
+      responses:
+        "204":
+          description: no content
+      summary: DeleteProject deletes a project and takes its site off the internet.
       tags:
       - platform
     get:
-      description: Answers the site's name, framework, visibility, status, linked
-        repo, live URL and timestamps. Requires a validated principal (403 without
-        one) and resolves the slug within THAT principal's org, so another tenant's
-        slug is a 404 and cannot be distinguished from one that never existed.
-      operationId: get_v1_platform_sites_by_slug
+      description: |-
+        GetProject returns one project of yours by slug — its settings, its live URL
+        and the deployment currently serving it.
+
+        Scope: a validated principal is required (403 without one) and the lookup is
+        keyed by (org, slug), so another tenant's slug is a 404 exactly like a
+        nonexistent one.
+      operationId: get_v1_platform_sites_slug
       parameters:
-      - in: path
+      - description: |-
+          Slug is the project to act on, from the path. It is unique within the
+          caller's org and nowhere else, so another tenant's slug is a 404.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: One static site by its slug
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsProject'
+          description: ok
+      summary: GetProject returns one project of yours by slug — its settings, its
+        live URL and the deployment currently serving it.
       tags:
       - platform
     patch:
       description: |-
-        Updates only the fields present in the body — `name`, `description`, `framework`, `cacheControl`, the linked `repo`, `visibility` and the `upstream`/`license` credits — and answers the whole site afterwards. The SLUG IS NOT SETTABLE: it is the public host and the storage prefix, so a rename would move a live site out from under its own URL. Going private runs the paid gate and answers 402 for an unfunded org; `hidden` is moderation and is honoured only for a global admin, ignored from a tenant.
+        UpdateProject changes a project's settings, and only the settings you send.
 
-        Scope: a validated principal is required (403 without one) and the site is resolved within that principal's org, so another tenant's slug is a 404.
-      operationId: patch_v1_platform_sites_by_slug
+        Every field is optional and absent means "leave it": `name` may not be blanked,
+        `framework` must stay a known build hint, and `cacheControl` is capped at 256
+        characters with no newlines (it becomes a response header). `visibility` flips
+        public/private under the same rule as create — public is free, private needs a
+        funded org. `upstream` and `license` are free-text credit for third-party work,
+        and sending "" clears one. Changing anything reconciles the project's canonical
+        git repo, so a visibility change reaches the source and not just the listing.
+
+        `hidden`/`hiddenReason` are platform MODERATION and are ignored unless the
+        caller is a platform admin; they remove a project from the public catalogue
+        without touching the publisher's own visibility choice, so un-hiding restores
+        exactly what they asked for.
+
+        Scope: a validated principal is required (403 without one) and the project is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: patch_v1_platform_sites_slug
       parameters:
-      - in: path
+      - description: |-
+          Slug is the project to update, from the path. The URL is the addressing
+          authority — a `slug` in the body cannot move the write to another project.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: Change a site's settings, leaving the rest alone
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projectsUpdate'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsProject'
+          description: ok
+      summary: UpdateProject changes a project's settings, and only the settings you
+        send.
       tags:
       - platform
   /v1/platform/sites/{slug}/deploy:
@@ -48224,210 +48774,445 @@ paths:
       - platform
   /v1/platform/sites/{slug}/deployments:
     get:
-      description: Lists the site's deployments — version, status, source, commit,
-        file and byte counts, live URL and timestamps — and is where a deployment
-        id for the detail route comes from. Requires a validated principal (403 without
-        one); the site is resolved within that principal's org, so another tenant's
-        slug is a 404.
-      operationId: get_v1_platform_sites_by_slug_deployments
+      description: |-
+        ListDeployments returns a project's deploy history, newest version first.
+
+        Every deploy of the project is a row — uploads, generated sites, and git/CI
+        builds alike — carrying its version, status, source, commit, live URL, file
+        count and byte count. The short-lived upload grant a queued git deployment was
+        handed is NOT replayed here: it exists only on the 202 that minted it, so a
+        grant cannot outlive its build by being fetched again.
+
+        Scope: a validated principal is required (403 without one) and the project is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: get_v1_platform_sites_slug_deployments
       parameters:
-      - in: path
+      - description: |-
+          Slug is the project to act on, from the path. It is unique within the
+          caller's org and nowhere else, so another tenant's slug is a 404.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: The site's deploy history
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/projectsDeployment'
+                type: array
+          description: ok
+      summary: ListDeployments returns a project's deploy history, newest version
+        first.
       tags:
       - platform
   /v1/platform/sites/{slug}/deployments/{id}:
     get:
-      description: Answers a single deployment's status, version, source, commit,
-        counts and live URL — how a queued build is polled to completion. Requires
-        a validated principal (403 without one); both the site and the deployment
-        are read within that principal's org, so a deployment belonging to another
-        tenant, or to another site, is a 404. The completion hook that finishes a
-        queued build lives on the project surface.
-      operationId: get_v1_platform_sites_by_slug_deployments_by_id
+      description: |-
+        GetDeployment returns one deployment of a project by id.
+
+        It is how a console follows a build: the status (`queued`, `uploading`,
+        `live`, `error`), the message a failure left, and the URL and prefix it went
+        live at. Like the history, it never replays the upload grant.
+
+        Scope: a validated principal is required (403 without one). Both the project
+        and the deployment are resolved within that principal's org, so a deployment
+        of another project — or of another tenant — is a 404.
+      operationId: get_v1_platform_sites_slug_deployments_id
       parameters:
-      - in: path
+      - description: Slug is the project the deployment belongs to, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      - in: path
+      - description: |-
+          ID is the deployment id, from the path. A deployment of another project —
+          or of another tenant's project — is not found.
+        in: path
         name: id
         required: true
         schema:
           type: string
-      summary: One deployment
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsDeployment'
+          description: ok
+      summary: GetDeployment returns one deployment of a project by id.
       tags:
       - platform
   /v1/platform/sites/{slug}/domains:
     get:
-      description: Answers the site's verified hosts plus every pending claim, and
-        for each pending one the exact DNS records still owed and the hostname to
-        point them at. A claim holds the name against anyone else taking it, but only
-        a verified host actually routes. Requires a validated principal (403 without
-        one); the site is resolved within that principal's org, so another tenant's
-        slug is a 404.
-      operationId: get_v1_platform_sites_by_slug_domains
+      description: |-
+        ListDomains returns every custom hostname this site holds: the live ones, plus
+        any pending claim with the DNS records it still owes.
+
+        `domains` is the routing answer — the hosts that are verified right now —
+        while `claims` is the full panel, one row per host, each saying whether it is
+        live or pending and, if pending, exactly what to publish.
+
+        Scope: a validated principal is required (403 without one) and the site is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: get_v1_platform_sites_slug_domains
       parameters:
-      - in: path
+      - description: |-
+          Slug is the project to act on, from the path. It is unique within the
+          caller's org and nowhere else, so another tenant's slug is a 404.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: Every custom hostname this site holds, live or pending
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsDomains'
+          description: ok
+      summary: 'ListDomains returns every custom hostname this site holds: the live
+        ones, plus any pending claim with the DNS records it still owes.'
       tags:
       - platform
     post:
       description: |-
-        Attaches one or more custom hostnames and answers a row per host. A global admin, or the platform-operator org that manages customer DNS, binds VERIFIED immediately — that bind is itself the vouch; every other org gets a PENDING claim plus the DNS challenge to publish, and the host does not route until it is verified. Claims are first-come and idempotent for the same site, so repeating the call returns the SAME token rather than invalidating a record already published.
+        BindDomains attaches one or more CUSTOM public hostnames to this org's site.
 
-        A host already bound to another site is a 409, a reserved label is a 400, and a hostname we operate is 403 for a non-vouched caller — those are assigned by the platform, and no DNS proof is possible in a zone we run. Scope: a validated principal is required (403 without one), the site is resolved within that principal's org, and the claim is recorded against that org.
-      operationId: post_v1_platform_sites_by_slug_domains
+        Binding a host you do not own would let you shadow it at the edge, so which
+        outcome you get depends on whether ownership is already established: a
+        platform admin or the platform-operator org — which manages customer DNS, so
+        its bind IS the vouch — binds VERIFIED immediately; any other org has the host
+        CLAIMED as pending and gets the DNS challenge back in `bound[].records`. A
+        pending claim HOLDS the name so nobody else can take it, but it does not route
+        until POST .../domains/{host}/verify proves control.
+
+        A hostname we operate is refused to a non-vouched caller (those are assigned
+        by the platform, never claimed), a host another site already holds is a 409,
+        and a reserved label is a 400. Claims and binds are idempotent for the same
+        (org, slug), and re-claiming returns the SAME token rather than invalidating a
+        record the customer has already published. The edge cache-tag is flushed
+        afterwards so a newly-verified host serves the current build immediately.
+
+        Scope: a validated principal is required (403 without one) and the site is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: post_v1_platform_sites_slug_domains
       parameters:
-      - in: path
+      - description: Slug is the site the hosts attach to, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: Point your own domain at this site
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projectsDomainsBind'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsBoundDomains'
+          description: ok
+      summary: BindDomains attaches one or more CUSTOM public hostnames to this org's
+        site.
       tags:
       - platform
   /v1/platform/sites/{slug}/domains/{host}:
     delete:
       description: |-
-        Unbinds the hostname and answers 204. The host stops routing here and the edge cache is flushed so nothing keeps answering from cache; the name is released and can be claimed again by this or any other site. The site itself is untouched and keeps serving at its own `<slug>.hanzo.app` host.
+        ReleaseDomain gives a custom hostname back, so the name is free to reuse.
 
-        Scope: a validated principal is required (403 without one) and the site is resolved within that principal's org, so another tenant's slug is a 404.
-      operationId: delete_v1_platform_sites_by_slug_domains_by_host
+        A claim is FIRST-COME and global, so an add-only surface was not ownership but
+        a leak: a customer who mistyped a domain, or claimed one they later moved
+        elsewhere, could neither reuse it nor let anyone else. This is the third
+        writer that closes it. The release is scoped to (host, org, slug), so it can
+        only ever drop THIS tenant's own claim, and it is IDEMPOTENT: releasing a host
+        we do not hold is a clean 204, never a 404 that would let a caller probe which
+        hosts other tenants hold. The edge cache-tag is flushed, since the host stops
+        routing here.
+
+        Scope: a validated principal is required (403 without one) and the site is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: delete_v1_platform_sites_slug_domains_host
       parameters:
-      - in: path
+      - description: Slug is the project the host is attached to, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      - in: path
+      - description: |-
+          Host is the custom hostname, from the path. It is cleaned to its canonical
+          form (lowercased, trailing dot dropped) before anything is looked up.
+        in: path
         name: host
         required: true
         schema:
           type: string
-      summary: Stop serving this site on a custom domain
+      responses:
+        "204":
+          description: no content
+      summary: ReleaseDomain gives a custom hostname back, so the name is free to
+        reuse.
       tags:
       - platform
   /v1/platform/sites/{slug}/domains/{host}/verify:
     post:
       description: |-
-        Resolves the ownership challenge for a pending claim. On success the host is promoted, starts routing at the edge immediately, and the edge cache is flushed so it serves the right site from the first request; an already-verified host answers unchanged, so the call is safe to repeat. A proof not yet visible is NOT an error — the answer is 200 with the claim still pending and a detail saying what the lookup found, because the check ran and DNS has simply not propagated. A host this site has not claimed is a 404.
+        VerifyDomain checks the DNS challenge for a pending custom hostname and, when
+        it passes, promotes the host so it begins routing at the edge.
 
-        Scope: a validated principal is required (403 without one), and both the site and the claim are looked up within that principal's org, so another tenant's claim cannot be verified from here.
-      operationId: post_v1_platform_sites_by_slug_domains_by_host_verify
+        It answers 200 either way, with the host's honest current state: verified once
+        the TXT record is found, still pending — with the records to publish and the
+        resolver's own explanation in `detail` — when it is not. A not-yet is not an
+        error: the check ran, DNS simply has not propagated, and the customer retries.
+        An already-verified host is returned unchanged without re-resolving. On a
+        successful promotion the edge cache-tag is flushed, since the host routes as
+        of that moment.
+
+        Scope: a validated principal is required (403 without one). Both the site and
+        the claim are resolved within that principal's org, so a host claimed by
+        another tenant is "not claimed by this site".
+      operationId: post_v1_platform_sites_slug_domains_host_verify
       parameters:
-      - in: path
+      - description: Slug is the project the host is attached to, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      - in: path
+      - description: |-
+          Host is the custom hostname, from the path. It is cleaned to its canonical
+          form (lowercased, trailing dot dropped) before anything is looked up.
+        in: path
         name: host
         required: true
         schema:
           type: string
-      summary: Check the DNS proof for a claimed domain and go live if it passes
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsDomain'
+          description: ok
+      summary: VerifyDomain checks the DNS challenge for a pending custom hostname
+        and, when it passes, promotes the host so it begins routing at the edge.
       tags:
       - platform
   /v1/platform/sites/{slug}/publish:
     post:
       description: |-
-        Promotes a build output into a new immutable release and points the site at it, answering the release marked active with the live URL — create-plus-activate in one call, the same operation the sites surface offers, over the same single store.
+        PublishSite promotes a build output into a new release AND goes live with it —
+        create+activate in one call, which is the 99% path.
 
-        No bytes traverse the API: `source` is a path RELATIVE to the caller org's own storage space, the org segment is prepended server-side from the validated principal, and the bucket never appears in the request — so a source can only ever name bytes the caller's org already owns, and no client holds a storage credential. A release id is a digest of its manifest, making re-publishing identical bytes idempotent by construction.
+        It is exactly the two halves in sequence with no extra semantics, so the
+        staged flow and the one-shot flow can never drift apart: `source` is promoted
+        under the same org-relative rule and the same guards CreateRelease applies,
+        then the site's pointer is flipped to it, the public host is claimed and the
+        edge is purged. Idempotent on unchanged bytes — same manifest, same release id,
+        no copy — and billed once, after the release exists.
 
-        Promoting is the billable work and the gate runs before any copy: 402 unfunded, 503 unreachable. Scope: a validated principal is required (403 without one) and the site is resolved within that principal's org, so another tenant's slug is a 404. Object storage must be configured (503); a source breaking the object or byte guards is a 400 or 413, and one that moved under the scan is a 409.
-      operationId: post_v1_platform_sites_by_slug_publish
+        Scope: a validated principal is required (403 without one) and the site is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: post_v1_platform_sites_slug_publish
       parameters:
-      - in: path
+      - description: Slug is the site to publish, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: Publish a build output and take it live in one call
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projectsPublish'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsRelease'
+          description: ok
+      summary: PublishSite promotes a build output into a new release AND goes live
+        with it — create+activate in one call, which is the 99% path.
       tags:
       - platform
   /v1/platform/sites/{slug}/purge:
     post:
       description: |-
-        Purges the site's edge cache tag, stamps the purge time, and answers the updated site. Stored objects are never written or deleted — the live build keeps serving from the origin and only cached copies drop — so this is the right tool when the origin is already correct and the edge is stale. An edge that cannot be reached is non-fatal: the timestamp is stamped and the answer is still 200, so read it as 'requested', not 'every node has dropped it'.
+        PurgeProject flushes the site's edge cache without redeploying anything.
 
-        Scope: a validated principal is required (403 without one) and the site is resolved within that principal's org, so another tenant's slug is a 404.
-      operationId: post_v1_platform_sites_by_slug_purge
+        It invalidates the edge cache-tag `site-<org>-<slug>` and stamps `lastPurgeAt`
+        (unix seconds), and it NEVER writes or deletes the S3 origin — the live build
+        keeps serving; only stale copies held at the edge drop, so the next request
+        re-fetches the current artifact from origin. Idempotent, and an edge that is
+        unconfigured or failing is not fatal: `lastPurgeAt` is still stamped and the
+        answer is still the updated project.
+
+        Scope: a validated principal is required (403 without one) and the project is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: post_v1_platform_sites_slug_purge
       parameters:
-      - in: path
+      - description: |-
+          Slug is the project to act on, from the path. It is unique within the
+          caller's org and nowhere else, so another tenant's slug is a 404.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: Flush the edge cache for a site without redeploying it
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsProject'
+          description: ok
+      summary: PurgeProject flushes the site's edge cache without redeploying anything.
       tags:
       - platform
   /v1/platform/sites/{slug}/releases:
     get:
-      description: 'Lists the site''s retained releases with their id, object and
-        byte counts, source and creation time, marking which is active. Retention
-        is bounded: each publish reclaims releases past the retention depth, and the
-        live release is never a reclaim candidate — so this list is what a rollback
-        can actually reach. Requires a validated principal (403 without one); the
-        site is resolved within that principal''s org, so another tenant''s slug is
-        a 404.'
-      operationId: get_v1_platform_sites_by_slug_releases
+      description: |-
+        ListReleases returns a site's releases newest-first, marking the active one —
+        the rollback menu.
+
+        Each row carries the release id to activate, the source it was promoted from,
+        its object and byte counts, and the URL if it is the one serving. Retention
+        bounds the list, so it is the set that can actually still be rolled back to,
+        not a full history.
+
+        Scope: a validated principal is required (403 without one) and the site is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: get_v1_platform_sites_slug_releases
       parameters:
-      - in: path
+      - description: |-
+          Slug is the project to act on, from the path. It is unique within the
+          caller's org and nowhere else, so another tenant's slug is a 404.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: The site's releases, newest first — the rollback menu
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/projectsRelease'
+                type: array
+          description: ok
+      summary: ListReleases returns a site's releases newest-first, marking the active
+        one — the rollback menu.
       tags:
       - platform
     post:
       description: |-
-        Creates a new immutable release from `source` and answers 201 with it — the staged half of publishing, for checking a release before anyone sees it. The live site is untouched until the activate call.
+        CreateRelease promotes a build output into a new immutable release WITHOUT
+        serving it — the staged half of publishing, for when you want to check a
+        release before it goes live. Answers 201.
 
-        The source is relative to the caller org's OWN storage space, with the org segment prepended server-side and the bucket never in the request, so a release can only be built from bytes that org already owns; the id is a digest of the manifest, so promoting unchanged content returns the existing release instead of copying again. The copy happens here, so the hosting gate runs here: 402 unfunded, 503 unreachable, before any bytes move.
+        `source` is a path RELATIVE to your org's own storage space: the org segment
+        is prepended server-side from the validated principal and the bucket is never
+        in the request at all, so a server-side copy can only ever reach bytes your
+        org already owns. The prefix is listed, content-addressed (SHA-256 over the
+        sorted manifest of key/size/etag), and copied into an immutable
+        `<org>/.releases/<slug>/<id>/` prefix; the row is written LAST, so a partial
+        copy is unreachable rather than merely unlikely. Re-publishing an unchanged
+        source is idempotent BY CONSTRUCTION — same bytes, same id, no copy at all.
 
-        Scope: a validated principal is required (403 without one) and the site is resolved within that principal's org, so another tenant's slug is a 404. Object storage must be configured (503).
-      operationId: post_v1_platform_sites_by_slug_releases
+        The source must contain index.html at its root and stay under the same file
+        and byte caps an artifact deploy does (413 past them); a source that changes
+        mid-copy is a 409 and the release is abandoned. Each publish also reclaims
+        releases past the retention depth, so a site's release space stays bounded.
+        This is the billable half — the hosting gate runs before any copy, and the
+        debit lands once the release exists.
+
+        Scope: a validated principal is required (403 without one) and the site is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: post_v1_platform_sites_slug_releases
       parameters:
-      - in: path
+      - description: Slug is the site to publish, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: Promote a build output into a release WITHOUT serving it
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projectsPublish'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsRelease'
+          description: created
+      summary: CreateRelease promotes a build output into a new immutable release
+        WITHOUT serving it — the staged half of publishing, for when you want to check
+        a release before it goes live.
       tags:
       - platform
   /v1/platform/sites/{slug}/releases/{release}/activate:
     post:
       description: |-
-        Flips the site's pointer to an existing release and answers it marked active. Serving reads through that pointer, so this is one atomic update with nothing rebuilt and nothing re-copied, and rolling back is the SAME operation aimed at an older release, for free.
+        ActivateRelease points the site at an existing release — the go-live, and
+        equally the ROLLBACK.
 
-        The bytes are checked before the flip, so the two failures are distinguishable and the difference is the fix: an unknown release, or one whose row is gone, is a 404; a release still listed but whose bytes were reclaimed by retention is a 410 — that target is not coming back and the content must be published again. Not billed: no new content is produced, only a pointer moved.
+        Aim it at an older release and the site serves that one again: releases are
+        immutable and retained to the retention depth, so nothing is rebuilt or
+        re-copied and the flip is one atomic statement. Before the flip, two
+        conditions run in the order that gives each its own honest answer — the ROW
+        says whether this release exists for this tenant at all (404, with no signal
+        about a foreign id), and only then do the BYTES say whether it can still serve
+        (410 GONE when retention has reclaimed them; that rollback target is not
+        coming back, so publish again). Going live also claims the public host and
+        purges the edge, so the release is reachable and no cached predecessor is
+        served. NOT billed: no new content is produced, only a pointer moved.
 
-        Scope: a validated principal is required (403 without one) and the site is resolved within that principal's org, so another tenant's slug is a 404.
-      operationId: post_v1_platform_sites_by_slug_releases_by_release_activate
+        Scope: a validated principal is required (403 without one) and the site is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: post_v1_platform_sites_slug_releases_release_activate
       parameters:
-      - in: path
+      - description: Slug is the site the release belongs to, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      - in: path
+      - description: |-
+          Release is the content-addressed release id ("rel_" + 32 hex chars), from
+          the path. Anything that is not that shape is not found, rather than being
+          interpolated into a storage prefix.
+        in: path
         name: release
         required: true
         schema:
           type: string
-      summary: Point the site at a release — going live, and equally rolling back
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsRelease'
+          description: ok
+      summary: ActivateRelease points the site at an existing release — the go-live,
+        and equally the ROLLBACK.
       tags:
       - platform
   /v1/plugins:
@@ -49061,73 +49846,174 @@ paths:
       - pricing
   /v1/projects:
     get:
-      description: Lists the caller org's projects with their slug, name, framework,
-        visibility, status and live URL — the same rows console and the builder render,
-        because there is only one store behind both. Requires a validated principal
-        (403 without one) and is keyed by that principal's org, so it never contains
-        another tenant's project.
+      description: |-
+        ListProjects returns every project your org owns.
+
+        Each row carries the slug, name, framework, visibility, status and live URL —
+        the same rows console and the builder render, because there is only one store
+        behind both. It requires a validated principal (403 without one) and is keyed
+        by that principal's org, so it never contains another tenant's project.
       operationId: get_v1_projects
-      summary: Every project your org owns
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/projectsProject'
+                type: array
+          description: ok
+      summary: ListProjects returns every project your org owns.
       tags:
       - projects
     post:
       description: |-
-        Creates a project and answers 201 with it in `draft`. `name` is required; `slug` is derived from the name when omitted and is the identifier that matters — it becomes the S3 key segment, the public host `<slug>.hanzo.app`, and the handle every later call addresses, so it must match `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$` and may not be a reserved label such as `api` or `admin`. `framework` is a build hint from a closed set, defaulting to `static`; it never gates a deploy, it only tells CI how to build a linked repo.
+        CreateProject creates a project — the handle a site is deployed and served
+        under — and answers 201 with it in `draft`.
 
-        Two defaults are worth knowing: the analytics beacon is ON unless `analytics` is explicitly false, and `visibility` is `public` unless asked otherwise. Publishing publicly is free; PRIVATE is the paid feature, and an unfunded org asking for it is refused with 402 rather than quietly published as public. Creation also provisions the project's data space and a canonical git repo, both best-effort — neither can fail the create.
+        `name` is required; `slug` is derived from the name when omitted and is the
+        identifier that matters — it becomes the S3 key segment, the public host
+        `<slug>.hanzo.app`, and the handle every later call addresses, so it must
+        match `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$` and may not be a reserved label
+        such as `api` or `admin`. `framework` is a build hint from a closed set,
+        defaulting to `static`; it never gates a deploy, it only tells CI how to build
+        a linked repo.
 
-        Scope: a validated principal is required (403 without one) and the project is created in THAT principal's org. The slug is unique per org, so a slug already used in the caller's own org is a 409 while the same slug in another org is irrelevant.
+        Two defaults are worth knowing: the analytics beacon is ON unless `analytics`
+        is explicitly false, and `visibility` is `public` unless asked otherwise.
+        Publishing publicly is free; PRIVATE is the paid feature, and an unfunded org
+        asking for it is refused rather than quietly published as public. Creation
+        also provisions the project's data space and a canonical git repo, both
+        best-effort — neither can fail the create.
+
+        Scope: a validated principal is required (403 without one) and the project is
+        created in THAT principal's org. The slug is unique per org, so a slug already
+        used in the caller's own org is a 409 while the same slug in another org is
+        irrelevant.
       operationId: post_v1_projects
-      summary: Create a project — the handle a site is deployed and served under
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projectsCreate'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsProject'
+          description: created
+      summary: CreateProject creates a project — the handle a site is deployed and
+        served under — and answers 201 with it in `draft`.
       tags:
       - projects
   /v1/projects/{slug}:
     delete:
       description: |-
-        Removes the project and answers 204. This is not just a row: the public subdomain binding is released so the slug can be reclaimed, every release row is dropped so a future owner of that slug never inherits the previous one's rollback menu, the stored site objects are purged from both the live prefix and the release space, and the edge cache tag is flushed so nothing keeps serving from cache.
+        DeleteProject deletes a project and takes its site off the internet.
 
-        The metadata delete is the point of no return — the cleanup that follows is best-effort and a failure in it is logged rather than resurrecting the project, so a successful 204 means the project is gone even if some bytes are reclaimed late. Scope: a validated principal is required (403 without one) and the project is resolved within that principal's org, so another tenant's slug is a 404 and cannot be deleted.
-      operationId: delete_v1_projects_by_slug
+        The metadata delete is authoritative and everything after it is best-effort,
+        in this order: the public `<slug>` subdomain binding is released so the slug is
+        free to reclaim, the release rows are dropped so a reclaimed slug never
+        inherits the previous owner's rollback menu, the S3 origin is purged under
+        BOTH `<org>/<slug>/` and the site's sibling release space, and the edge
+        cache-tag is flushed. A failure in any of those is logged and the delete still
+        answers 204 — resurrecting a project because a purge missed would be worse
+        than a leaked prefix.
+
+        Scope: a validated principal is required (403 without one) and the project is
+        resolved within that principal's org, so another tenant's slug is a 404 and
+        nothing of theirs is touched.
+      operationId: delete_v1_projects_slug
       parameters:
-      - in: path
+      - description: |-
+          Slug is the project to act on, from the path. It is unique within the
+          caller's org and nowhere else, so another tenant's slug is a 404.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: Delete a project and take its site down
+      responses:
+        "204":
+          description: no content
+      summary: DeleteProject deletes a project and takes its site off the internet.
       tags:
       - projects
     get:
-      description: Answers the project — its name, framework, visibility, status,
-        linked repo, live URL and timestamps. Requires a validated principal (403
-        without one) and resolves the slug within THAT principal's org, so a slug
-        that belongs to another tenant is a 404, indistinguishable from one that was
-        never created.
-      operationId: get_v1_projects_by_slug
+      description: |-
+        GetProject returns one project of yours by slug — its settings, its live URL
+        and the deployment currently serving it.
+
+        Scope: a validated principal is required (403 without one) and the lookup is
+        keyed by (org, slug), so another tenant's slug is a 404 exactly like a
+        nonexistent one.
+      operationId: get_v1_projects_slug
       parameters:
-      - in: path
+      - description: |-
+          Slug is the project to act on, from the path. It is unique within the
+          caller's org and nowhere else, so another tenant's slug is a 404.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: One project by its slug
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsProject'
+          description: ok
+      summary: GetProject returns one project of yours by slug — its settings, its
+        live URL and the deployment currently serving it.
       tags:
       - projects
     patch:
       description: |-
-        Updates only the fields present in the body and answers the whole project after the change. `name`, `description`, `framework`, `cacheControl`, the linked `repo`, `visibility` and the `upstream`/`license` credits are all settable; an omitted field is untouched, and a credit sent as an empty string is cleared.
+        UpdateProject changes a project's settings, and only the settings you send.
 
-        The SLUG IS NOT SETTABLE. It is the public host and the storage prefix, so renaming it would move a live site out from under its own URL — create a new project instead. Flipping `visibility` to private runs the same paid gate as at create and answers 402 for an unfunded org rather than leaving it public. `hidden` and `hiddenReason` are MODERATION and are honoured only for a global admin; a tenant sending them is silently ignored, which is deliberate — moderation must not edit the publisher's own visibility choice, so lifting it restores exactly what they asked for.
+        Every field is optional and absent means "leave it": `name` may not be blanked,
+        `framework` must stay a known build hint, and `cacheControl` is capped at 256
+        characters with no newlines (it becomes a response header). `visibility` flips
+        public/private under the same rule as create — public is free, private needs a
+        funded org. `upstream` and `license` are free-text credit for third-party work,
+        and sending "" clears one. Changing anything reconciles the project's canonical
+        git repo, so a visibility change reaches the source and not just the listing.
 
-        Scope: a validated principal is required (403 without one) and the project is resolved within that principal's org, so another tenant's slug is a 404.
-      operationId: patch_v1_projects_by_slug
+        `hidden`/`hiddenReason` are platform MODERATION and are ignored unless the
+        caller is a platform admin; they remove a project from the public catalogue
+        without touching the publisher's own visibility choice, so un-hiding restores
+        exactly what they asked for.
+
+        Scope: a validated principal is required (403 without one) and the project is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: patch_v1_projects_slug
       parameters:
-      - in: path
+      - description: |-
+          Slug is the project to update, from the path. The URL is the addressing
+          authority — a `slug` in the body cannot move the write to another project.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: Change a project's settings, leaving the rest alone
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projectsUpdate'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsProject'
+          description: ok
+      summary: UpdateProject changes a project's settings, and only the settings you
+        send.
       tags:
       - projects
   /v1/projects/{slug}/deploy:
@@ -49151,171 +50037,375 @@ paths:
       - projects
   /v1/projects/{slug}/deployments:
     get:
-      description: Lists the project's deployments — version, status, source, commit,
-        file and byte counts, live URL and timestamps — which is where a deployment
-        id for the detail and completion routes comes from. Requires a validated principal
-        (403 without one); the project is resolved within that principal's org, so
-        another tenant's slug is a 404 and its deployments are unreachable.
-      operationId: get_v1_projects_by_slug_deployments
+      description: |-
+        ListDeployments returns a project's deploy history, newest version first.
+
+        Every deploy of the project is a row — uploads, generated sites, and git/CI
+        builds alike — carrying its version, status, source, commit, live URL, file
+        count and byte count. The short-lived upload grant a queued git deployment was
+        handed is NOT replayed here: it exists only on the 202 that minted it, so a
+        grant cannot outlive its build by being fetched again.
+
+        Scope: a validated principal is required (403 without one) and the project is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: get_v1_projects_slug_deployments
       parameters:
-      - in: path
+      - description: |-
+          Slug is the project to act on, from the path. It is unique within the
+          caller's org and nowhere else, so another tenant's slug is a 404.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: The project's deploy history
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/projectsDeployment'
+                type: array
+          description: ok
+      summary: ListDeployments returns a project's deploy history, newest version
+        first.
       tags:
       - projects
   /v1/projects/{slug}/deployments/{id}:
     get:
-      description: Answers a single deployment's status, version, source, commit,
-        counts and live URL — how a queued git build is polled to completion. Requires
-        a validated principal (403 without one); both the project and the deployment
-        are read within that principal's org, so a deployment id belonging to another
-        tenant, or to another project, is a 404.
-      operationId: get_v1_projects_by_slug_deployments_by_id
+      description: |-
+        GetDeployment returns one deployment of a project by id.
+
+        It is how a console follows a build: the status (`queued`, `uploading`,
+        `live`, `error`), the message a failure left, and the URL and prefix it went
+        live at. Like the history, it never replays the upload grant.
+
+        Scope: a validated principal is required (403 without one). Both the project
+        and the deployment are resolved within that principal's org, so a deployment
+        of another project — or of another tenant — is a 404.
+      operationId: get_v1_projects_slug_deployments_id
       parameters:
-      - in: path
+      - description: Slug is the project the deployment belongs to, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      - in: path
+      - description: |-
+          ID is the deployment id, from the path. A deployment of another project —
+          or of another tenant's project — is not found.
+        in: path
         name: id
         required: true
         schema:
           type: string
-      summary: One deployment
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsDeployment'
+          description: ok
+      summary: GetDeployment returns one deployment of a project by id.
       tags:
       - projects
   /v1/projects/{slug}/deployments/{id}/complete:
     post:
       description: |-
-        Closes out a deployment that the git path queued, flipping it to `live` or `error` and answering the deployment. `status` is required and must be exactly one of those two (400 otherwise); `commit`, `message`, `files` and `bytes` are recorded as reported.
+        CompleteDeployment is the CI completion hook that flips a queued git
+        deployment to live (or error) once CI has synced the built site to S3.
 
-        On a live completion the platform claims the public host itself and reports the URL it OWNS — a `liveUrl` in the body is a hint that can refine that, never a way to assert a subdomain another tenant holds. `keys`, the manifest CI just uploaded, is what replaces a delete-enabled sync: an upload grant authorizes writes only, so CI cannot remove anything, and the prefix is reconciled against this list instead. Omit `keys` and NOTHING is deleted — the prefix only grows, which is the safe default. Reconciliation runs only on a live completion, so a failed build can never prune the site the previous good one published.
+        `status` must be `live` or `error`. On a LIVE completion the public host is
+        claimed FIRST, so the deployment reports the URL it actually OWNS — a
+        CI-supplied `liveUrl` is a hint that can refine that URL but can never assert
+        a subdomain another tenant holds. `keys` is the manifest CI just uploaded,
+        relative to the deployment prefix: cloud reconciles the prefix against it so a
+        page deleted from the build actually stops serving. Omit `keys` and nothing is
+        deleted — the prefix only grows. Reconciliation runs only on a live completion
+        (pruning against a failed build's manifest would delete the site the last good
+        build is still serving) and is best-effort, so a stale leftover never turns a
+        successful deploy into a 500. A live completion is also the one billable
+        moment on the git path; an error completion bills nothing.
 
-        Scope: this is an ordinary org-scoped route, not an unauthenticated webhook — CI calls it with an org-scoped token, and the project and deployment are both resolved within that org, so another tenant's deployment is a 404.
-      operationId: post_v1_projects_by_slug_deployments_by_id_complete
+        Scope: a validated principal is required (403 without one). CI authenticates
+        with an org-scoped token through the gateway, so the deployment is resolved
+        within that principal's org and another tenant's slug or deployment id is a
+        404.
+      operationId: post_v1_projects_slug_deployments_id_complete
       parameters:
-      - in: path
+      - description: Slug is the project the deployment belongs to, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      - in: path
+      - description: ID is the queued deployment to complete, from the path.
+        in: path
         name: id
         required: true
         schema:
           type: string
-      summary: Finish a queued build — the CI completion hook
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projectsComplete'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsDeployment'
+          description: ok
+      summary: CompleteDeployment is the CI completion hook that flips a queued git
+        deployment to live (or error) once CI has synced the built site to S3.
       tags:
       - projects
   /v1/projects/{slug}/domains:
     get:
-      description: 'Answers the site''s verified hosts plus every pending claim, and
-        for each pending one the EXACT DNS records still owed and the hostname to
-        point them at. It is the domains panel in one call: a claim holds the name
-        so nobody else can take it, but only a verified host actually routes. Requires
-        a validated principal (403 without one); the project is resolved within that
-        principal''s org, so another tenant''s slug is a 404.'
-      operationId: get_v1_projects_by_slug_domains
+      description: |-
+        ListDomains returns every custom hostname this site holds: the live ones, plus
+        any pending claim with the DNS records it still owes.
+
+        `domains` is the routing answer — the hosts that are verified right now —
+        while `claims` is the full panel, one row per host, each saying whether it is
+        live or pending and, if pending, exactly what to publish.
+
+        Scope: a validated principal is required (403 without one) and the site is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: get_v1_projects_slug_domains
       parameters:
-      - in: path
+      - description: |-
+          Slug is the project to act on, from the path. It is unique within the
+          caller's org and nowhere else, so another tenant's slug is a 404.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: Every custom hostname this site holds, live or pending
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsDomains'
+          description: ok
+      summary: 'ListDomains returns every custom hostname this site holds: the live
+        ones, plus any pending claim with the DNS records it still owes.'
       tags:
       - projects
     post:
       description: |-
-        Attaches one or more custom hostnames and answers a row per host. WHICH OUTCOME YOU GET depends on whether ownership is already established: a global admin, or the platform-operator org that manages customer DNS, binds VERIFIED immediately, because that bind is itself the vouch; every other org gets a PENDING claim plus the DNS challenge to publish, and the host does not route until the verify call proves control.
+        BindDomains attaches one or more CUSTOM public hostnames to this org's site.
 
-        Claims are first-come and idempotent for the same site: repeating the call returns the SAME token rather than invalidating a record the customer has already published. A host already bound to another site is a 409, a reserved label is a 400, and a hostname we operate is refused with 403 for a non-vouched caller — those names are assigned by the platform, and no DNS proof is even possible in a zone we run.
+        Binding a host you do not own would let you shadow it at the edge, so which
+        outcome you get depends on whether ownership is already established: a
+        platform admin or the platform-operator org — which manages customer DNS, so
+        its bind IS the vouch — binds VERIFIED immediately; any other org has the host
+        CLAIMED as pending and gets the DNS challenge back in `bound[].records`. A
+        pending claim HOLDS the name so nobody else can take it, but it does not route
+        until POST .../domains/{host}/verify proves control.
 
-        Scope: a validated principal is required (403 without one), the project is resolved within that principal's org, and the claim is recorded against that org — so proving a domain for one tenant never lets another bind it.
-      operationId: post_v1_projects_by_slug_domains
+        A hostname we operate is refused to a non-vouched caller (those are assigned
+        by the platform, never claimed), a host another site already holds is a 409,
+        and a reserved label is a 400. Claims and binds are idempotent for the same
+        (org, slug), and re-claiming returns the SAME token rather than invalidating a
+        record the customer has already published. The edge cache-tag is flushed
+        afterwards so a newly-verified host serves the current build immediately.
+
+        Scope: a validated principal is required (403 without one) and the site is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: post_v1_projects_slug_domains
       parameters:
-      - in: path
+      - description: Slug is the site the hosts attach to, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: Point your own domain at this site
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projectsDomainsBind'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsBoundDomains'
+          description: ok
+      summary: BindDomains attaches one or more CUSTOM public hostnames to this org's
+        site.
       tags:
       - projects
   /v1/projects/{slug}/domains/{host}:
     delete:
       description: |-
-        Unbinds the hostname from the site and answers 204. The host stops routing here and the edge cache is flushed so nothing keeps answering from cache; the name is released, so it can then be claimed again — by this site or by any other. The site itself is untouched and keeps serving at its own `<slug>.hanzo.app` host.
+        ReleaseDomain gives a custom hostname back, so the name is free to reuse.
 
-        Scope: a validated principal is required (403 without one) and the project is resolved within that principal's org, so another tenant's slug is a 404 and its domains cannot be released from here.
-      operationId: delete_v1_projects_by_slug_domains_by_host
+        A claim is FIRST-COME and global, so an add-only surface was not ownership but
+        a leak: a customer who mistyped a domain, or claimed one they later moved
+        elsewhere, could neither reuse it nor let anyone else. This is the third
+        writer that closes it. The release is scoped to (host, org, slug), so it can
+        only ever drop THIS tenant's own claim, and it is IDEMPOTENT: releasing a host
+        we do not hold is a clean 204, never a 404 that would let a caller probe which
+        hosts other tenants hold. The edge cache-tag is flushed, since the host stops
+        routing here.
+
+        Scope: a validated principal is required (403 without one) and the site is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: delete_v1_projects_slug_domains_host
       parameters:
-      - in: path
+      - description: Slug is the project the host is attached to, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      - in: path
+      - description: |-
+          Host is the custom hostname, from the path. It is cleaned to its canonical
+          form (lowercased, trailing dot dropped) before anything is looked up.
+        in: path
         name: host
         required: true
         schema:
           type: string
-      summary: Stop serving this site on a custom domain
+      responses:
+        "204":
+          description: no content
+      summary: ReleaseDomain gives a custom hostname back, so the name is free to
+        reuse.
       tags:
       - projects
   /v1/projects/{slug}/domains/{host}/verify:
     post:
       description: |-
-        Resolves the ownership challenge for a pending claim. On success the host is promoted and starts routing at the edge immediately, and the edge cache is flushed so it serves the right site from the first request. An already-verified host answers its current state unchanged, so the call is safe to repeat.
+        VerifyDomain checks the DNS challenge for a pending custom hostname and, when
+        it passes, promotes the host so it begins routing at the edge.
 
-        A proof that is NOT yet visible is not an error: the answer is 200 with the claim still pending and a detail saying what the lookup found, because the check genuinely ran and DNS simply has not propagated — retry rather than re-claiming. A host this site has not claimed is a 404.
+        It answers 200 either way, with the host's honest current state: verified once
+        the TXT record is found, still pending — with the records to publish and the
+        resolver's own explanation in `detail` — when it is not. A not-yet is not an
+        error: the check ran, DNS simply has not propagated, and the customer retries.
+        An already-verified host is returned unchanged without re-resolving. On a
+        successful promotion the edge cache-tag is flushed, since the host routes as
+        of that moment.
 
-        Scope: a validated principal is required (403 without one), and both the project and the claim are looked up within that principal's org, so a claim held by another tenant cannot be verified from here.
-      operationId: post_v1_projects_by_slug_domains_by_host_verify
+        Scope: a validated principal is required (403 without one). Both the site and
+        the claim are resolved within that principal's org, so a host claimed by
+        another tenant is "not claimed by this site".
+      operationId: post_v1_projects_slug_domains_host_verify
       parameters:
-      - in: path
+      - description: Slug is the project the host is attached to, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      - in: path
+      - description: |-
+          Host is the custom hostname, from the path. It is cleaned to its canonical
+          form (lowercased, trailing dot dropped) before anything is looked up.
+        in: path
         name: host
         required: true
         schema:
           type: string
-      summary: Check the DNS proof for a claimed domain and go live if it passes
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsDomain'
+          description: ok
+      summary: VerifyDomain checks the DNS challenge for a pending custom hostname
+        and, when it passes, promotes the host so it begins routing at the edge.
       tags:
       - projects
   /v1/projects/{slug}/purge:
     post:
       description: |-
-        Purges the project's edge cache tag so stale copies stop being served, stamps the purge time, and answers the updated project. It NEVER writes or deletes stored objects — the live build keeps serving from the origin, only cached copies drop — so it is safe to call at any time and is the right tool when the origin is already correct and the edge is not.
+        PurgeProject flushes the site's edge cache without redeploying anything.
 
-        A purge that cannot reach the edge is non-fatal: the timestamp is still stamped and the answer is still 200, so treat the response as 'the purge was requested', not 'every edge node has dropped it'. Scope: a validated principal is required (403 without one) and the project is resolved within that principal's org, so another tenant's slug is a 404.
-      operationId: post_v1_projects_by_slug_purge
+        It invalidates the edge cache-tag `site-<org>-<slug>` and stamps `lastPurgeAt`
+        (unix seconds), and it NEVER writes or deletes the S3 origin — the live build
+        keeps serving; only stale copies held at the edge drop, so the next request
+        re-fetches the current artifact from origin. Idempotent, and an edge that is
+        unconfigured or failing is not fatal: `lastPurgeAt` is still stamped and the
+        answer is still the updated project.
+
+        Scope: a validated principal is required (403 without one) and the project is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: post_v1_projects_slug_purge
       parameters:
-      - in: path
+      - description: |-
+          Slug is the project to act on, from the path. It is unique within the
+          caller's org and nowhere else, so another tenant's slug is a 404.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: Flush the edge cache for a site without redeploying it
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsProject'
+          description: ok
+      summary: PurgeProject flushes the site's edge cache without redeploying anything.
       tags:
       - projects
   /v1/projects/fork:
     post:
       description: |-
-        Creates a NEW project in the caller's org seeded from a parent named by `slug`, and answers 201 with the child. The parent is resolved templates FIRST — the caller org's own private templates ahead of the public gallery — and only then as the live project uniquely serving that slug, which is the same resolution the edge uses to serve `<slug>.hanzo.app`: what you can browse is what you can fork. A template's `variant` picks its format, page or theme.
+        ForkProject creates a project seeded from a PUBLISHED EXAMPLE — either a
+        starter-kit template from the ONE embedded gallery catalog, or any live
+        project on the platform (an example a seeded creator published, or another
+        org's app serving at <slug>.hanzo.app). Answers 201 with the new project.
 
-        A fork copies the recipe, not the bytes. A live parent contributes its linked repo so the child builds from the same source, but the parent's deployed release is never copied — releases are per-tenant, and the fork publishes its own. `name` and `target` override the child's name and slug, defaulting to the parent's. Lineage is stamped server-side from the parent actually resolved and cannot be supplied by the caller, so an attribution edge always names a real ancestor.
+        `slug` names the PARENT to fork and is required. Templates resolve first, and
+        the caller org's own private templates ahead of the public gallery, so a
+        curated template slug keeps meaning the same thing even if someone later
+        publishes a live project under it; `variant` picks that template's
+        format/page/theme. If no template matches, the slug resolves to the UNIQUE
+        live project that owns it across all orgs — the same resolution the site edge
+        uses to serve <slug>.hanzo.app, so what you can browse is what you can fork.
 
-        Scope: a validated principal is required (403 without one) and the child lands in that principal's org. It goes through the same create path as a plain create, so the same slug rules, the same 409 on a slug already taken in the caller's org, and the same 402 when an unfunded org asks for private all apply. An unknown parent slug, or a template variant that does not exist, is a 404.
+        `name` and `target` override the derived project name and slug; everything
+        else is inherited from the parent. A live parent contributes its REPO, so the
+        child builds from the same source — the parent's deployed bytes are never
+        copied, because releases are per-tenant by design and the fork publishes its
+        own. The parent it actually resolved is stamped on the child as `forkedFrom`,
+        so attribution is a fact recorded at fork time rather than a claim
+        reconstructed later.
+
+        It funnels through the SAME create path POST /v1/projects uses, so slug
+        validation, org scoping, ID minting and the 409 on a slug the caller's own org
+        already uses are identical.
+
+        Scope: a validated principal is required (403 without one) and the child is
+        created in THAT principal's org.
       operationId: post_v1_projects_fork
-      summary: Fork a starter template or a published project into your own org
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projectsFork'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsProject'
+          description: created
+      summary: ForkProject creates a project seeded from a PUBLISHED EXAMPLE — either
+        a starter-kit template from the ONE embedded gallery catalog, or any live
+        project on the platform (an example a seeded creator published, or another
+        org's app serving at <slug>.hanzo.app).
       tags:
       - projects
   /v1/prompts:
@@ -51271,113 +52361,284 @@ paths:
       - share
   /v1/sites:
     get:
-      description: Lists only the projects that are actually LIVE, each with its pretty
-        URL, name and last update — narrower than the project list, which includes
-        drafts and failures, and the right read for 'what is my org currently serving'.
-        Requires a validated principal (403 without one) and is keyed by that principal's
-        org.
+      description: |-
+        ListSites returns the org's deployed sites at the pretty URLs they serve at.
+
+        It reads the SAME org-scoped store as /v1/projects and keeps only the projects
+        that are actually `live`, so a draft or a failed build is not advertised as a
+        site.
+
+        Scope: a validated principal is required (403 without one) and the list is
+        keyed by that principal's org.
       operationId: get_v1_sites
-      summary: Your org's live sites and their URLs
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/projectsSite'
+                type: array
+          description: ok
+      summary: ListSites returns the org's deployed sites at the pretty URLs they
+        serve at.
       tags:
       - sites
     post:
       description: |-
-        Generates a responsive static site from a natural-language `brief`, deploys it, and answers the live URL with the resolved slug, the deployment id and the file list. The project is created if the slug does not exist yet and reused if it does, so this one call covers both the first publish and a regeneration. `slug` and `name` are optional — a slug is derived from the generated title, and a usable one is minted when nothing good can be derived, so a deploy never fails purely for lack of a name.
+        BuildSite generates a self-contained, mobile-responsive static site from a
+        natural-language brief and deploys it live in one call.
 
-        Order matters and is fail-closed: the hosting gate runs BEFORE any inference, so a denied caller is 402 or 503 with nothing generated, nothing uploaded and no model tokens spent. Generation and hosting are billed to the same payer. A brief that is empty or over the cap is a 400, as is a generation that does not parse; a failed upload is never billed.
+        One inference call turns `brief` (capped at 8 KiB) into a file manifest, which
+        then runs through the SAME validation, guards and viewport guarantee as a
+        hand-supplied manifest: index.html required at the root, absolute and
+        traversal paths rejected, per-file and total size capped, and a mobile
+        viewport meta tag injected into every HTML document that lacks one. The
+        generated site is fully inline — no CDNs, no remote fonts or images — so it is
+        CSP-safe. `slug` and `name` are optional: the model's own title is preferred,
+        and a slug is derived or minted when none is given.
 
-        Scope: a validated principal is required (403 without one) and the site is created and stored under THAT principal's org — the same org rule as the project plane, which is why a site made here is an ordinary project visible at `/v1/projects`. Object storage must be configured (503), and so must inference (503).
+        It writes into the SAME org-scoped store as /v1/projects — it ensures a
+        project (framework `static`) for the resolved slug and records a deployment —
+        so this is a second door onto one publish pipeline, not a second copy of
+        project state. Ordering is the billing contract: the hosting gate runs BEFORE
+        any inference or upload, so a denied gate generates and uploads NOTHING, and
+        the debit lands once, only after the site is actually live. The tokens are
+        billed to the same ledger the hosting fee was reserved against.
+
+        Answers 503 when object storage or inference is unconfigured, and 400 when the
+        model's manifest cannot be parsed or fails the guards.
+
+        Scope: a validated principal is required (403 without one) and the site is
+        published into THAT principal's org.
       operationId: post_v1_sites
-      summary: Describe a site in words and get it generated and deployed live
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projectsBuildSite'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsSiteDeploy'
+          description: ok
+      summary: BuildSite generates a self-contained, mobile-responsive static site
+        from a natural-language brief and deploys it live in one call.
       tags:
       - sites
   /v1/sites/{slug}/publish:
     post:
       description: |-
-        Promotes a build output into a new immutable release and points the site at it, answering the release marked active with the live URL. This is create-plus-activate in sequence with no extra semantics — the two halves stay separately callable for a staged rollout, and they cannot drift because this path is literally both.
+        PublishSite promotes a build output into a new release AND goes live with it —
+        create+activate in one call, which is the 99% path.
 
-        No bytes traverse the API. `source` is a path RELATIVE to the caller org's own storage space, and the org segment is prepended server-side from the validated principal while the bucket never appears in the request at all — so the worst a hostile source can name is something the caller's own org already owns, and no client ever holds a storage credential. A release id is a digest of the manifest it was built from, which makes re-publishing identical bytes idempotent by construction: same content, same id, no copy.
+        It is exactly the two halves in sequence with no extra semantics, so the
+        staged flow and the one-shot flow can never drift apart: `source` is promoted
+        under the same org-relative rule and the same guards CreateRelease applies,
+        then the site's pointer is flipped to it, the public host is claimed and the
+        edge is purged. Idempotent on unchanged bytes — same manifest, same release id,
+        no copy — and billed once, after the release exists.
 
-        Promoting is the billable work and the hosting gate runs before any copy, so this can never become a way to deploy for free: 402 unfunded, 503 unreachable. Scope: a validated principal is required (403 without one) and the site is resolved within that principal's org, so another tenant's slug is a 404. Object storage must be configured (503); a source that breaks the object or byte guards is a 400 or 413 and a source that moved under the scan is a 409.
-      operationId: post_v1_sites_by_slug_publish
+        Scope: a validated principal is required (403 without one) and the site is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: post_v1_sites_slug_publish
       parameters:
-      - in: path
+      - description: Slug is the site to publish, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: Publish a build output and take it live in one call
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projectsPublish'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsRelease'
+          description: ok
+      summary: PublishSite promotes a build output into a new release AND goes live
+        with it — create+activate in one call, which is the 99% path.
       tags:
       - sites
   /v1/sites/{slug}/releases:
     get:
-      description: 'Lists the site''s retained releases with their id, object and
-        byte counts, source and creation time, marking which one is currently active.
-        This is what a rollback picks from, so the retention bound matters: each publish
-        reclaims releases past the retention depth, and the live release is never
-        a reclaim candidate. Requires a validated principal (403 without one); the
-        site is resolved within that principal''s org, so another tenant''s slug is
-        a 404.'
-      operationId: get_v1_sites_by_slug_releases
+      description: |-
+        ListReleases returns a site's releases newest-first, marking the active one —
+        the rollback menu.
+
+        Each row carries the release id to activate, the source it was promoted from,
+        its object and byte counts, and the URL if it is the one serving. Retention
+        bounds the list, so it is the set that can actually still be rolled back to,
+        not a full history.
+
+        Scope: a validated principal is required (403 without one) and the site is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: get_v1_sites_slug_releases
       parameters:
-      - in: path
+      - description: |-
+          Slug is the project to act on, from the path. It is unique within the
+          caller's org and nowhere else, so another tenant's slug is a 404.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: The site's releases, newest first — the rollback menu
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/projectsRelease'
+                type: array
+          description: ok
+      summary: ListReleases returns a site's releases newest-first, marking the active
+        one — the rollback menu.
       tags:
       - sites
     post:
       description: |-
-        Creates a new immutable release from `source` and answers 201 with it — the staged half of publishing, for running whatever check you want against a release before anyone sees it. Nothing is served until the activate call; the live site is untouched.
+        CreateRelease promotes a build output into a new immutable release WITHOUT
+        serving it — the staged half of publishing, for when you want to check a
+        release before it goes live. Answers 201.
 
-        The source is a path relative to the caller org's OWN storage space, with the org segment prepended server-side from the validated principal and the bucket never in the request, so a release can only ever be built from bytes the caller's org already owns. The id is a digest of the manifest, so promoting unchanged content returns the existing release rather than copying again.
+        `source` is a path RELATIVE to your org's own storage space: the org segment
+        is prepended server-side from the validated principal and the bucket is never
+        in the request at all, so a server-side copy can only ever reach bytes your
+        org already owns. The prefix is listed, content-addressed (SHA-256 over the
+        sorted manifest of key/size/etag), and copied into an immutable
+        `<org>/.releases/<slug>/<id>/` prefix; the row is written LAST, so a partial
+        copy is unreachable rather than merely unlikely. Re-publishing an unchanged
+        source is idempotent BY CONSTRUCTION — same bytes, same id, no copy at all.
 
-        This is where the copy happens, so this is where the hosting gate runs: 402 for an unfunded org, 503 for unreachable commerce, before any bytes move. Scope: a validated principal is required (403 without one) and the site is resolved within that principal's org, so another tenant's slug is a 404. Object storage must be configured (503).
-      operationId: post_v1_sites_by_slug_releases
+        The source must contain index.html at its root and stay under the same file
+        and byte caps an artifact deploy does (413 past them); a source that changes
+        mid-copy is a 409 and the release is abandoned. Each publish also reclaims
+        releases past the retention depth, so a site's release space stays bounded.
+        This is the billable half — the hosting gate runs before any copy, and the
+        debit lands once the release exists.
+
+        Scope: a validated principal is required (403 without one) and the site is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: post_v1_sites_slug_releases
       parameters:
-      - in: path
+      - description: Slug is the site to publish, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      summary: Promote a build output into a release WITHOUT serving it
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projectsPublish'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsRelease'
+          description: created
+      summary: CreateRelease promotes a build output into a new immutable release
+        WITHOUT serving it — the staged half of publishing, for when you want to check
+        a release before it goes live.
       tags:
       - sites
   /v1/sites/{slug}/releases/{release}/activate:
     post:
       description: |-
-        Flips the site's pointer to an existing release and answers it marked active. Serving reads through that pointer, so the change is one atomic update with nothing rebuilt and nothing re-copied — which is exactly why rolling back is the SAME operation aimed at an older release, and is free.
+        ActivateRelease points the site at an existing release — the go-live, and
+        equally the ROLLBACK.
 
-        It verifies the bytes before it flips, so it can fail two distinguishable ways and the difference is the fix: a release nobody can name, or whose row is gone, is a 404; a release still listed but whose bytes were reclaimed by retention is a 410, meaning that rollback target is not coming back and the content must be published again. Not billed — no new content is produced, only a pointer moved.
+        Aim it at an older release and the site serves that one again: releases are
+        immutable and retained to the retention depth, so nothing is rebuilt or
+        re-copied and the flip is one atomic statement. Before the flip, two
+        conditions run in the order that gives each its own honest answer — the ROW
+        says whether this release exists for this tenant at all (404, with no signal
+        about a foreign id), and only then do the BYTES say whether it can still serve
+        (410 GONE when retention has reclaimed them; that rollback target is not
+        coming back, so publish again). Going live also claims the public host and
+        purges the edge, so the release is reachable and no cached predecessor is
+        served. NOT billed: no new content is produced, only a pointer moved.
 
-        Scope: a validated principal is required (403 without one) and the site is resolved within that principal's org, so another tenant's slug is a 404.
-      operationId: post_v1_sites_by_slug_releases_by_release_activate
+        Scope: a validated principal is required (403 without one) and the site is
+        resolved within that principal's org, so another tenant's slug is a 404.
+      operationId: post_v1_sites_slug_releases_release_activate
       parameters:
-      - in: path
+      - description: Slug is the site the release belongs to, from the path.
+        in: path
         name: slug
         required: true
         schema:
           type: string
-      - in: path
+      - description: |-
+          Release is the content-addressed release id ("rel_" + 32 hex chars), from
+          the path. Anything that is not that shape is not found, rather than being
+          interpolated into a storage prefix.
+        in: path
         name: release
         required: true
         schema:
           type: string
-      summary: Point the site at a release — going live, and equally rolling back
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsRelease'
+          description: ok
+      summary: ActivateRelease points the site at an existing release — the go-live,
+        and equally the ROLLBACK.
       tags:
       - sites
   /v1/sites/deploy:
     post:
       description: |-
-        Takes a map of path to file content, deploys it, and answers the live URL with the resolved slug, the deployment id and the file list — the raw half of the site capability, for a site that is already written rather than generated. The project is created if the slug is new and reused if not.
+        DeploySite deploys a caller-supplied file manifest — the deploy_site
+        capability an agent calls — and answers with where it went live.
 
-        Hand-built files run through the SAME validation, viewport injection and guards a generated site does, so they are exactly as safe and as responsive; and it funnels into the same publish core as every other deploy path, so versioning, host binding and metering happen once, in one place. The hosting gate is fail-closed and runs before the upload: 402 unfunded, 503 unreachable, nothing written. `files` is required (400), a manifest over the file-count cap is a 400, and a file set that does not validate is a 400 naming why.
+        `files` is a list of {path, content} pairs, the same shape the brief build
+        emits, and it runs through the SAME guards: index.html required at the root,
+        absolute and traversal paths rejected, per-file and total size capped, and a
+        mobile viewport meta tag injected into every HTML document that lacks one — so
+        a hand-built site is exactly as safe and as responsive as a generated one.
+        `slug` and `name` are optional; a slug is derived from the name or minted.
 
-        Scope: a validated principal is required (403 without one) and the site is stored under THAT principal's org. Object storage must be configured, else 503.
+        It writes into the SAME org-scoped store as /v1/projects, ensuring a project
+        (framework `static`) for the resolved slug and recording a deployment. The
+        hosting gate runs before the upload and the debit lands once, after the site
+        is live — a failed upload is never billed. Answers 503 when object storage is
+        unconfigured.
+
+        Scope: a validated principal is required (403 without one) and the site is
+        published into THAT principal's org.
       operationId: post_v1_sites_deploy
-      summary: Deploy a site from a file manifest you supply
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/projectsDeploySite'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projectsSiteDeploy'
+          description: ok
+      summary: DeploySite deploys a caller-supplied file manifest — the deploy_site
+        capability an agent calls — and answers with where it went live.
       tags:
       - sites
   /v1/skills:
