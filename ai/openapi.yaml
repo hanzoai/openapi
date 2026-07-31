@@ -5898,6 +5898,22 @@ components:
         tool_calls:
           type: array
           items: { type: object }
+    ChatChoice:
+      title: ChatChoice
+      # The one field of the one route every SDK user calls first. As a bare
+      # `type: object` it generated `Array<object>` / `List[object]`, so reading
+      # the reply — choices[0].message.content, the whole point of the call —
+      # needed a cast in every language, on the endpoint we most want to feel
+      # typed. This is not a guess about the wire: the route is
+      # OpenAI-compatible (that is its tag), and `message` is the ChatMessage
+      # already defined above and already accepted on the request.
+      type: object
+      properties:
+        index: { type: integer }
+        message: { $ref: '#/components/schemas/ChatMessage' }
+        finish_reason:
+          type: string
+          examples: [stop, length, tool_calls, content_filter]
     ChatCompletionResponse:
       title: ChatCompletionResponse
       type: object
@@ -5908,7 +5924,7 @@ components:
         model: { type: string }
         choices:
           type: array
-          items: { type: object }
+          items: { $ref: '#/components/schemas/ChatChoice' }
         usage: { $ref: '#/components/schemas/Usage' }
     CompletionRequest:
       title: CompletionRequest
