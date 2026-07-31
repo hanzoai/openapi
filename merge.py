@@ -48,6 +48,27 @@ TRUTH = "cloud"
 UNTYPED = ("The route answers; its response shape is not declared at the source "
            "(not a typed op).")
 
+# The fields an authored spec KEEPS when TRUTH takes its route and declares none
+# of its own. TRUTH wins existence, identity and prose unconditionally; it wins
+# these too whenever it populates them. What it may not do is delete them by
+# being silent, because its silence about an untyped route means UNKNOWN and not
+# EMPTY — and this file spent one whole revision reading the first as the second.
+#
+# `parameters` is deliberately NOT here, and the asymmetry is the point. Every
+# one of these is about what a client can express:
+#   • a requestBody IS the operation. Without it `POST /v1/agents/{ref}/run`
+#     generates a method that takes nothing and posts nothing, so no client can
+#     start an agent run at all, and the CLI degrades a typed command to
+#     `--data '{...}'` — the raw escape hatch this pipeline exists to remove.
+#     Silence does not prevent a lie here, it prevents the CALL.
+#   • `responses` describe what comes BACK. A stale one costs a decode; it
+#     cannot corrupt a request, and it is the only description that exists.
+#   • a query PARAMETER is different in kind: the client sends it and an untyped
+#     handler may ignore it, so restoring one asserts a filter that silently
+#     does nothing — a wrong answer rather than a missing method. Those stay
+#     dropped, counted, and handed to the typing lane (see LLM.md).
+KEEP = ("requestBody", "responses")
+
 
 def load_registry():
     """The ONE source of truth. Returns (categories, internal, collapsed, cap).
@@ -238,6 +259,41 @@ def inputs(item, comps):
     return out
 
 
+def fuse(old, new):
+    """Overlay the source-true path item onto the authored one, FIELD BY FIELD.
+
+    Taking the whole operation object was the defect: it replaced a described
+    operation with an undescribed one wherever cloud serves a route untyped, and
+    47 request bodies, 100 response sets and 23 parameter lists left the document
+    that way — `POST /v1/authz/check` and `POST /v1/agents/{ref}/run` among them.
+    Every populated field of TRUTH's still wins. Only its EMPTY fields stop
+    counting as an answer.
+
+    Returns (item, kept) where `kept` counts the KEEP fields that survived
+    because TRUTH declared nothing there — the honest measure of how much of this
+    document still rests on hand-authored shapes."""
+    kept = 0
+    out = dict(old)
+    for name, node in new.items():
+        prev = old.get(name)
+        if name not in HTTP_METHODS or not isinstance(node, dict) or not isinstance(prev, dict):
+            # A path-item field, or a method only one side has. Existence is
+            # TRUTH's to declare, so a method it adds arrives whole; one it does
+            # not mention is left alone rather than deleted, since a wildcard
+            # mount can serve a method the emission never names.
+            if node or prev is None:
+                out[name] = node
+            continue
+        op = dict(prev)
+        op.update({k: v for k, v in node.items() if v or isinstance(v, (int, float))})
+        for f in KEEP:
+            if not node.get(f) and prev.get(f):
+                op[f] = prev[f]
+                kept += 1
+        out[name] = op
+    return out, kept
+
+
 def key(tag):
     """A tag's identity, ignoring case, space and punctuation. `AI` and `ai`,
     `API Keys` and `api-keys` name one concept and become one module in every
@@ -255,13 +311,13 @@ def build_unified(present, categories, internal):
 
     paths, schemas, responses, params, reqbodies, secschemes = {}, {}, {}, {}, {}, {}
     claim, owner, described, titles = {}, {}, {}, {}
-    overrides = dropped = 0
+    overrides = dropped = kept = 0
     for svc in included:
         spec = yaml.safe_load(open(os.path.join(ROOT, svc, "openapi.yaml")))
         comps = spec.get("components", {}) or {}
         titles[key(svc)] = (spec.get("info") or {}).get("title") or svc
         for p, raw in (spec.get("paths", {}) or {}).items():
-            item, accepts = namespace_ops(prefix(raw, svc), svc, p), inputs(raw, comps)
+            item, accepts = prefix(raw, svc), inputs(raw, comps)
             if p in claim:
                 # Two hand-written specs claiming one route is ambiguity with no
                 # right answer — the resolution used to be alphabetical. Only
@@ -272,8 +328,13 @@ def build_unified(present, categories, internal):
                              f"both claim {p} — one route has one owner")
                 overrides += 1
                 dropped += len(claim[p][1] - accepts)
+                item, survived = fuse(paths[p], item)
+                kept += survived
             claim[p] = (svc, accepts)
-            paths[p] = item
+            # namespace_ops LAST, so the `default` it synthesizes for an
+            # undescribed operation can only fire once the authored side has had
+            # its chance to describe it.
+            paths[p] = item = namespace_ops(item, svc, p)
             for op in (item or {}).values():
                 for t in (op.get("tags") or []) if isinstance(op, dict) else []:
                     owner.setdefault(key(t), svc)
@@ -424,6 +485,7 @@ def build_unified(present, categories, internal):
         "described_ops": sum(1 for op in ops if (op.get("description") or "").strip()),
         "overrides": overrides,
         "dropped": dropped,
+        "kept": kept,
         "renamed": renamed,
     }
 
@@ -535,8 +597,9 @@ def main():
           f"{n['tags']} tags, {n['described_tags']} described; "
           f"{n['overrides']} paths taken by {TRUTH} (source-true), "
           f"{n['renamed']} operationIds suffixed to stay distinct in codegen")
-    print(f"{n['dropped']} authored parameters dropped where {TRUTH} took the route "
-          f"— they belong in the binary's typed input, not back here")
+    print(f"{n['kept']} authored bodies/responses kept where {TRUTH} took the route "
+          f"untyped; {n['dropped']} query parameters dropped the same way — "
+          f"both belong in the binary's typed op")
     print(f"generated CAPABILITIES.md ({n['groups']} categories) from capabilities.yaml")
     return 0
 

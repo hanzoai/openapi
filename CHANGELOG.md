@@ -2,6 +2,46 @@
 
 ## v1.0.0
 
+### An empty field from the winner was deleting a populated one — 182 shapes back
+
+The resync's worst defect, and it outlived two rounds of measurement here
+because both measured `parameters` and never looked at `requestBody`.
+
+`merge.py` took the whole operation OBJECT from cloud wherever it took a route,
+and an untyped route's emission is an address and nothing else — so described
+operations were replaced by undescribed ones. **47 request bodies** and **135
+response sets** (100 of them reduced to the synthesized `default`) had left the
+document: `POST /v1/authz/check`, `POST /v1/agents/{ref}/run`,
+`POST /v1/kms/secrets`, the five agent-session control ops, and more. The CLI
+measured it downstream: typed-flag operations 574 → 515, raw `--data` fallbacks
+187 → 378, and `hanzo kms secrets create` lost the `value` field whose
+stdin-only guard then had nothing to guard.
+
+The mistake was reading cloud's silence about an untyped route as EMPTY when it
+means UNKNOWN. `fuse()` overlays field by field now: cloud still wins existence,
+operationId, tags and prose unconditionally, and wins any field it POPULATES. It
+simply cannot delete one by being silent.
+
+`requestBody` and `responses` are kept; query `parameters` are not, and the
+asymmetry is the rule rather than an exception. A body IS the operation — silence
+there does not prevent a lie, it prevents the CALL. A response describes what
+comes back and cannot corrupt a request. A query parameter is the one a client
+SENDS to a handler that may ignore it, so restoring it asserts a filter that may
+silently do nothing — a wrong answer rather than a missing method.
+
+Restored: 0 operations still missing a body d86248f had, 0 still reduced to the
+synthesized `default`. Operations carrying parameters-or-body 1687 → **1767** of
+2454. And the response-schema gap this repo had been reporting was partly its
+own damage: **728 → 637**, with 91 of the "missing" schemas simply deleted by
+the merge. Every figure published for that gap (754, 728, 696) was measuring
+this defect alongside the real one. A number that only ever went up should have
+been suspicious.
+
+All 47 body losses were routes cloud serves UNTYPED; **zero** were typed-with-
+no-body, so there is no emission bug to chase — only untyped routes to type.
+`merge.py` prints both halves every build: kept, and the 53 query parameters
+still dropped.
+
 ### 53 parameters the handover dropped, and the rule for them
 
 `/v1/billing/usage` lost `start` and `end` when cloud's document took the route,

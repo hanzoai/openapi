@@ -290,28 +290,55 @@ the day it started carrying prose of its own.
 The SDK-generation surface is the FUSED `api.hanzo.ai/v1` binary. `merge.py`
 unions the per-service specs into it, cloud's document last.
 
-### 53 authored parameters the handover dropped — a cloud fix, not a re-author
+### An empty field from the winner must not delete a populated one
 
-The same cause as the response-schema gap, from the input side, and it is the
-sharper demonstration of it. Where cloud's document took a route an authored
-spec also had, the merged document keeps the inputs the BINARY declares — and an
-untyped route declares none. 28 routes lost 53 parameters that way. `merge.py`
-prints the number on every build; it is not a gate, because the fix is not here.
+This was the resync's worst defect and it survived two rounds of measurement
+here, because I measured `parameters` and never looked at `requestBody`.
 
-Every one of the 53 is a QUERY parameter. **Zero path parameters were lost**,
-and that is the mechanism showing through: a path parameter is structural, so
-the weave reads it off the route template, while a query parameter is only
-knowable from a typed `In` struct. 27 of the 28 routes are untyped in cloud
-(route-derived operationId, no responses) — same routes, both symptoms, one
-cause. The 28th is different and worth its own line: `GET /v1/ml/models` IS a
-typed op, and its `In` struct is simply missing `stage` and `search`.
+`merge.py` took the whole operation OBJECT from `cloud/openapi.yaml` wherever it
+took a route. But an untyped route's emission is an address and nothing else, so
+that replaced described operations with undescribed ones: **47 request bodies**
+and **135 response sets** (100 of them reduced to the synthesized `default`)
+left the document. `POST /v1/authz/check`, `POST /v1/agents/{ref}/run`,
+`POST /v1/kms/secrets`, the five agent-session control ops. Downstream the CLI's
+typed-flag operations fell 574 → 515 and its raw `--data` fallbacks rose
+187 → 378; `hanzo kms secrets create` lost the `value` field its stdin-only
+guard exists to protect, so the guard had nothing to guard.
 
-**The rule: do not put them back.** A parameter re-authored here is a claim that
-a handler accepting nothing will honour it — the same invention the `default`
-response refuses, and worse, because a generated method that takes `start` and
-`end` and silently drops them is a lie a caller cannot see. They belong in
-cloud's typed input; `sync.py` picks them up the day they land there. Until then
-the document says what is true: the route takes nothing.
+The error was reading cloud's silence about an untyped route as EMPTY when it
+means UNKNOWN. `fuse()` now overlays field by field: TRUTH still wins existence,
+operationId, tags and prose unconditionally, and wins any field it POPULATES —
+it just no longer deletes by being silent.
+
+**`requestBody` and `responses` are kept; `parameters` are not**, and the
+asymmetry is the whole rule. Each is judged by what it costs a client:
+
+| field | if the authored one is dropped | if it is kept but stale |
+|---|---|---|
+| `requestBody` | the call is impossible — a method that posts nothing | wrong field names, visible immediately |
+| `responses` | nothing to decode into | a decode error; a request cannot be corrupted |
+| query `parameters` | a filter is unavailable | **a filter that silently does nothing** |
+
+A body IS the operation: silence there does not prevent a lie, it prevents the
+CALL. A response describes what comes back and cannot corrupt a request. A query
+parameter is the one a client SENDS to a handler that may ignore it — restoring
+that asserts a filter which may quietly do nothing, which is a wrong answer
+rather than a missing method. So the 53 query parameters below stay dropped and
+counted.
+
+Both halves are printed on every build (`kept` and `dropped`) — not gates,
+because neither fix belongs here. Both end the same way: a typed
+`zip.Get[In, Out]` in hanzoai/cloud, which `sync.py` picks up with no change to
+this repo. **All 47 body losses were routes cloud serves UNTYPED. Zero were
+typed-with-no-body**, so there is no cloud-side emission bug to chase — only
+untyped routes to type.
+
+The 53 query parameters, 28 routes, and every one of them a QUERY parameter —
+**zero path parameters were lost**, which is the mechanism showing through: a
+path parameter is structural and readable off the route template, a query
+parameter is only knowable from a typed `In`. 27 of the 28 routes are untyped.
+The 28th is a real cloud bug worth its own line: `GET /v1/ml/models` IS typed
+and its `In` struct is simply missing `stage` and `search`.
 
 | route | parameters the binary does not declare |
 |---|---|
@@ -350,15 +377,18 @@ takes `query` — a query endpoint that declares no query. If the server honours
 them (it presumably does, or they would not have been authored), the typed
 input is the one place that makes them callable from any client.
 
-### The next quality lever — 754 of 2479 operations declare no 2xx schema
+### The next quality lever — 637 of 2454 operations declare no 2xx schema
 
-30%, measured from three sides now (728/2452 and 696/2425 from the SDK lanes,
-754/2479 here — same set, different merges), and **growing**. Nothing regressed
-to cause that: 668 of the 754 are the `default` this repo synthesizes for a
-route the cloud weave publishes with an address and nothing else, so the number
-rises with every untyped route cloud adds. The ratio measures cloud's typed
-coverage, not anything editable here. The other 86 declare a 2xx with no
-content — those are authored, mostly `s3` (9), `commerce` (7), `kms` (4).
+**It was 728, and 91 of those were self-inflicted** — authored response schemas
+the whole-object handover had deleted, restored by `fuse()`. Every number this
+repo reported for that gap before the fix (754, 728, 696) was measuring its own
+damage along with the real thing. The honest figure is 637, 26%, and it is a
+measure of cloud's typed coverage rather than of anything editable here: the
+remainder is the `default` synthesized for routes the weave publishes with an
+address and nothing else, so it still rises with every untyped route cloud adds.
+
+The corollary is worth keeping: a number that only ever went up should have been
+suspicious. This one went up because the pipeline was eating its own inputs.
 
 **What it costs is language-dependent, and worse than it looks.** Go returns
 `*http.Response`, so the body is still there and a caller can decode it by hand.
@@ -367,10 +397,12 @@ unreachable from the generated client at any effort. An operation with no
 response schema projects to a method that returns nothing, which is a method not
 worth calling.
 
-`/v1/billing/balance`, `/v1/billing/usage` and `/v1/agents/{ref}/run` are all in
-the set, and all three sit on canonical `flows.yaml` paths — two SDK lanes had
-to hand-write raw-decode helpers, marked for deletion, to make the six examples
-print anything. All 25 `/v1/billing` operations are in it.
+`/v1/billing/balance`, `/v1/billing/usage` and `/v1/agents/{ref}/run` — the
+three canonical `flows.yaml` operations two SDK lanes had to hand-write
+raw-decode helpers for — are now OUT of the set: their authored schemas were
+among the 91 restored, and `agents/{ref}/run` has its request body back too.
+Those helpers can be deleted. 16 of the 25 `/v1/billing` operations remain in
+the gap, and 602 of the 637 are cloud's.
 
 **The lever is in hanzoai/cloud, not here.** A route becomes typed when its
 handler becomes a `zip.Get[In, Out]`; the weave then carries the schema and
