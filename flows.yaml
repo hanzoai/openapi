@@ -94,9 +94,20 @@ flows:
     notes: >-
       Assert the count is greater than zero and print three names. This is the
       served tool list — every tool the caller's org can call, which is what
-      tools/list answers. There is no JSON-RPC door to send that method to:
-      /v1/mcp is not routed (404 page not found) and the document holds only
-      /v1/mcp/servers, the registry of external MCP servers, while the
-      automations door (/v1/automations/mcp — automations_mcp) replies 404 to
-      GET and 405 to POST. To CALL a tool, the next route is
+      tools/list answers, and it is auth-gated: GET /v1/tools replies 403 "a
+      validated principal is required". To CALL a tool, the next route is
       cloud_post_v1_tools_call.
+
+
+      A JSON-RPC door DOES exist and is deliberately not used here. POST /v1/mcp
+      answers 200 with a full tools/list result (730 tools), unauthenticated;
+      only GET /v1/mcp is 404, because the route is POST-only. That is the one
+      shape this file's probe rule reads wrong — "404 to GET and 405 to every
+      other method" identifies a route the binary lacks, but a POST-only route
+      also 404s on GET, so method matters and GET alone cannot retire a route.
+      The reason to prefer cloud_get_v1_tools is not that /v1/mcp is dead: it is
+      that POST /v1/mcp is absent from hanzo.yaml, so an example built on it
+      would be a hand-rolled HTTP call inside a generated client — the exact
+      drift these SDKs exist to prevent. The automations door
+      (/v1/automations/mcp — automations_mcp) IS retired: it replies 405 to
+      POST, the method it documents.
