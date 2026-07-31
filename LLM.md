@@ -208,14 +208,38 @@ openapi-generator against this `hanzo.yaml`, plus a `generate.yml` workflow
 that regenerates + opens a PR on the `spec-update` repository_dispatch fired
 by this repo's `regenerate-sdks.yml`.
 
-| Lang | Repo | Generator | Package | Publish |
+| Lang | Canonical repo | Generator | Ships as | Driven by |
 |------|------|-----------|---------|---------|
-| Python | `hanzoai/python-sdk` (`pkg/hanzoai`) | `python` (urllib3, pydantic v2) | `hanzoai` on PyPI | tag `v*` → twine |
-| Go | `hanzoai/go-sdk` | `go` (package `hanzoai`) | `github.com/hanzoai/go-sdk` | tag `v*` → pkg.go.dev |
-| TypeScript | `hanzoai/js-sdk` | `typescript-axios` | `hanzoai` on npm | tag `v*` → npm publish |
-| C++ | `hanzoai/cpp-sdk` | `cpp-restsdk` | — | artifact (this repo's matrix) |
-| Dart | `hanzoai/dart-sdk` | `dart-dio` | — | artifact (this repo's matrix) |
-| Rust | `hanzoai/rust-sdk` | hand-written | `hanzo` crate | reconcile (openapi-generator emits no Rust) |
+| Python | `hanzoai/python-sdk` | `python` (urllib3, pydantic v2) | `hanzoai` on PyPI (`pkg/hanzoai/cloud`) | `generate.py` |
+| TypeScript | `hanzoai/js-sdk` | `typescript-axios` | `hanzoai` on npm (`src/`) | `generate.py` |
+| Java | `hanzoai/java-sdk` | `java` (okhttp-gson) | `ai.hanzo:hanzo-java-cloud` | `generate.py` |
+| Kotlin | `hanzoai/kotlin-sdk` | `kotlin` (okhttp4+gson) | `ai.hanzo:hanzo-kotlin-cloud` | `generate.py` |
+| Ruby | `hanzoai/ruby-sdk` | `ruby` | gem | `generate.py` |
+| Rust | **`hanzo-rs/sdk`** | `rust` (reqwest) | `crates/hanzo-client`, not on crates.io | `generate.py` |
+| Go | **`hanzo-go/sdk`** | `go` | `package hanzoai` at the MODULE ROOT, imported as `github.com/hanzoai/go-sdk` | its own `scripts/generate.sh` |
+
+Three of those repos were RENAMED and answer through a redirect —
+`hanzoai/go-sdk` → `hanzo-go/sdk`, `hanzoai/rust-sdk` → `hanzo-rs/sdk`,
+`hanzoai/cpp-sdk` → `hanzo-cpp/sdk` — so a stale name still resolves and hides
+the move. `gh api repos/<old> --jq .full_name` prints the new one. Go's module
+path stays `github.com/hanzoai/go-sdk` regardless: that is what the proxy has
+and what consumers require.
+
+Go is the one row `sdks.yaml` cannot hold, and the reason is structural rather
+than clerical. Every `take` is a promise that the generator OWNS a directory —
+`sdk()` rmtree's it and copies the fresh tree in — and the Go client has no such
+directory: `package hanzoai` sits at the module root beside `go.mod`, `LICENSE`
+and `.git`. `take: { . : . }` would delete the repository. It regenerates from
+its own `scripts/generate.sh` instead: same generator, same 7.14.0 pin, same
+`hanzo.yaml` pulled from here (with the private-repo token fallback). That is
+the pull model working, not a gap.
+
+Two rows had gone stale the same way and would have written a SECOND client
+beside the shipped one rather than updating it: `go` (`take: {.: cloud}`,
+`packageName: cloud` — deleted) and `rust` (`crates/hanzo-cloud`, when the
+canonical remote ships `crates/hanzo-client` — corrected). Both were verified
+against the LOCAL checkout at some point, and both local checkouts are behind.
+Check a `take` against the canonical remote.
 
 Generator version pinned to **7.14.0** everywhere. The merged surface is
 verified codegen-clean AND compile-clean for go / python / typescript-axios
@@ -253,27 +277,59 @@ the day it started carrying prose of its own.
 The SDK-generation surface is the FUSED `api.hanzo.ai/v1` binary. `merge.py`
 unions the per-service specs into it, cloud's document last.
 
-### The next quality lever — 749 of 2479 operations model no response body
+### The next quality lever — 754 of 2479 operations declare no 2xx schema
 
-30%, and **growing**: it was 696 of 2425 one merge ago. Nothing regressed to
-cause that. 668 of the 749 are the `default` this repo synthesizes for a route
-the cloud weave publishes with an address and nothing else, so the number rises
-with every untyped route cloud adds, and the ratio is a measure of cloud's typed
-coverage rather than of anything editable here. The other 81 declare a status
-and no content — those are authored, mostly `s3` (9), `commerce` (7), `kms` (4).
+30%, measured from three sides now (728/2452 and 696/2425 from the SDK lanes,
+754/2479 here — same set, different merges), and **growing**. Nothing regressed
+to cause that: 668 of the 754 are the `default` this repo synthesizes for a
+route the cloud weave publishes with an address and nothing else, so the number
+rises with every untyped route cloud adds. The ratio measures cloud's typed
+coverage, not anything editable here. The other 86 declare a 2xx with no
+content — those are authored, mostly `s3` (9), `commerce` (7), `kms` (4).
 
-All 25 `/v1/billing` operations are in the set, which is the sharpest way to
-say why it matters: a typed response is what makes a generated method worth
-calling, and `balance` returning an untyped body means every SDK hands back
-bytes for the one number the user asked for.
+**What it costs is language-dependent, and worse than it looks.** Go returns
+`*http.Response`, so the body is still there and a caller can decode it by hand.
+**Rust returns `Result<(), _>` and DROPS THE BODY ENTIRELY** — the response is
+unreachable from the generated client at any effort. An operation with no
+response schema projects to a method that returns nothing, which is a method not
+worth calling.
+
+`/v1/billing/balance`, `/v1/billing/usage` and `/v1/agents/{ref}/run` are all in
+the set, and all three sit on canonical `flows.yaml` paths — two SDK lanes had
+to hand-write raw-decode helpers, marked for deletion, to make the six examples
+print anything. All 25 `/v1/billing` operations are in it.
 
 **The lever is in hanzoai/cloud, not here.** A route becomes typed when its
-handler becomes a `zip.Get[In, Out]`; the weave then carries the schema, and
-`sync.py` picks it up with no change in this repo. Anything done here instead
-would be inventing shapes — which is the one thing the `default` exists to
-refuse. Two generator-blocking defects the SDK lane fixed at the source ARE
-holding: `/v1/platform` is 41 operations with 0 missing `responses`, and
+handler becomes a `zip.Get[In, Out]`; the weave then carries the schema and
+`sync.py` picks it up with no change in this repo. Doing it here instead would
+mean inventing shapes, which is the one thing the `default` exists to refuse.
+Two generator-blocking defects the SDK lanes fixed at the source ARE holding:
+`/v1/platform` is 41 operations with 0 missing `responses`, and
 `ai_ChatCompletionResponse.choices` items now `$ref` `ai_ChatChoice`.
+
+### operationId is the SDK method name — and 249 of them changed
+
+Say it plainly: the resync renamed methods in every language, and it was a
+consequence I did not enumerate at the time. Where cloud's woven document took a
+route an authored spec also described (366 operations), the document now carries
+cloud's operationId. For 117 of those, cloud's id is its handler's own name
+(`adminAnalytics`) and nothing was lost. For **249**, cloud's id is synthesized
+from the route, so `affiliates_adminListAffiliates` became
+`cloud_get_v1_admin_affiliates` — `AdminListAffiliates()` became
+`CloudGetV1AdminAffiliates()` for every consumer.
+
+It stands, deliberately, and the reason is stability rather than beauty. A
+route-derived id is a total function of the `/v1` path, which is the immutable
+contract: it cannot move unless the route moves. A hand-authored id is owned by
+a spec that no longer describes the route, so it changes whenever that spec is
+edited and VANISHES when the spec is deleted — and this repo deletes specs
+routinely, which would make the same break happen again, later, silently. The
+route-derived name is also the one the MCP door already uses (a tool name is the
+operationId minus its `<service>_` prefix), so one name identifies an operation
+in the SDK, in the tool catalogue and in the URL.
+
+The break is therefore once, now, and cannot recur for these operations. Pin
+against the document, not against a remembered method name.
 
 ### What is still authored and not served — and how to tell
 

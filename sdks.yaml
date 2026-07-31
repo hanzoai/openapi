@@ -58,20 +58,26 @@ sdks:
       library: urllib3
       generateSourceCodeOnly: "true"
 
-  go:
-    repo: go-sdk
-    generator: go
-    take: { .: cloud }
-    properties:
-      packageName: cloud
-      withGoMod: "false"
-      isGoSubmodule: "false"
-      # Go enums are package-scope consts, not nested types, so two schemas with
-      # a member of the same name collide: commerce PaymentStatus and OrderStatus
-      # both have CANCELLED and the package does not compile. Prefixing with the
-      # enum's own class is the generator's answer and is what every other
-      # language already gets for free from its namespacing.
-      enumClassPrefix: "true"
+  # go is DELIBERATELY ABSENT, and it is the row this file cannot hold.
+  #
+  # Every `take` above is a promise that the generator OWNS a directory: sdk()
+  # rmtree's the destination and copies the fresh tree in. The shipped Go client
+  # has no such directory — `package hanzoai` sits at the MODULE ROOT, beside
+  # go.mod, LICENSE, README.md, scripts/ and .git, because that is what
+  # `import "github.com/hanzoai/go-sdk"` requires. `take: { . : . }` would
+  # therefore delete the repository and replace it with generated files.
+  #
+  # The row that used to be here promised something else again: `take: {.: cloud}`
+  # with `packageName: cloud`, writing a SECOND client into a cloud/ subdir that
+  # the shipped module does not have and no consumer imports.
+  #
+  # The Go client regenerates from its own `scripts/generate.sh` — the same
+  # generator, the same pin, the same hanzo.yaml, pulled from this repo (it even
+  # handles the private-repo token fallback). That is the pull model working, not
+  # a gap: `packageName=hanzoai, withGoMod=false, structPrefix=true,
+  # enumClassPrefix=true`, output at the root. Canonical repo is hanzo-go/sdk;
+  # `hanzoai/go-sdk` is a rename redirect and stays the MODULE PATH, because
+  # that is what the proxy has and what consumers require.
 
   typescript:
     repo: js-sdk
@@ -166,13 +172,21 @@ sdks:
 
   rust:
     repo: rust-sdk
+    # Canonical repo is hanzo-rs/sdk (hanzoai/rust-sdk is a rename redirect);
+    # the published crate is `hanzo-client`, not yet on crates.io.
     # openapi-generator DOES emit Rust (reqwest); the client is a normal
     # workspace member, so it needs its Cargo.toml and is the one language whose
     # `take` root is the crate root.
+    # `hanzo-client`, not `hanzo-cloud`: hanzo-rs/sdk ships crates/hanzo-client
+    # ("Generated client for the Hanzo API — every service, one crate") and has
+    # no hanzo-cloud at all. Pointing this row at the old name would not update
+    # the client, it would add a SECOND one beside it — the same failure the
+    # deleted go row had, and it is worth checking any `take` against the
+    # canonical remote rather than a local checkout, which is how both got stale.
     generator: rust
-    take: { .: crates/hanzo-cloud }
+    take: { .: crates/hanzo-client }
     properties:
-      packageName: hanzo-cloud
+      packageName: hanzo-client
       packageVersion: 8.0.0
       library: reqwest
       supportAsync: "true"

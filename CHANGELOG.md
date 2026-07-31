@@ -2,6 +2,41 @@
 
 ## v1.0.0
 
+### The SDK matrix pointed at two clients that do not exist
+
+`sdks.yaml`'s `go` and `rust` rows were verified against local checkouts, and
+both local checkouts are behind their canonical remotes. Running either would
+not have updated a client — it would have written a SECOND one beside the
+shipped one. `go` said `take: {.: cloud}` / `packageName: cloud` while
+`hanzo-go/sdk` ships `package hanzoai` at the module root and has no `cloud/`
+at all; `rust` said `crates/hanzo-cloud` while `hanzo-rs/sdk` ships
+`crates/hanzo-client`.
+
+The rust row is corrected. The go row is DELETED, because the mismatch there is
+structural: every `take` is a promise that the generator owns a directory —
+`sdk()` rmtree's it — and the Go client has no such directory, so `take: {.: .}`
+would delete the repository around it. Go regenerates from its own
+`scripts/generate.sh`: same generator, same pin, same `hanzo.yaml` pulled from
+here. That is the pull model working.
+
+Three SDK repos answer through a rename redirect, which is how a stale name
+keeps resolving: `hanzoai/go-sdk` → `hanzo-go/sdk`, `hanzoai/rust-sdk` →
+`hanzo-rs/sdk`, `hanzoai/cpp-sdk` → `hanzo-cpp/sdk`. Go's module path stays
+`github.com/hanzoai/go-sdk` — the proxy has it and consumers require it.
+
+### operationId renamed 249 SDK methods — the decision, stated
+
+Where cloud's document took a route an authored spec also had (366 operations),
+the document now carries cloud's operationId. 117 of those are the handler's own
+name and lost nothing; **249 are synthesized from the route**, so
+`affiliates_adminListAffiliates` became `cloud_get_v1_admin_affiliates` — a
+cross-language method rename, not cosmetics. It fell out of the resync rather
+than being chosen, and on review it stands: a route-derived id is a total
+function of the immutable `/v1` path, while a hand-authored id is owned by a
+spec that no longer describes the route and vanishes when that spec is deleted —
+the same break again, later, silently. It is also the name the MCP door already
+uses. The break is once, now, and cannot recur for these operations.
+
 ### Declare the MCP door — `POST /v1/mcp`, the one address an MCP client speaks
 
 The fleet's JSON-RPC door has been answering all along and was in no spec:

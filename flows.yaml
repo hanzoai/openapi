@@ -16,13 +16,19 @@
 # the obvious route did not answer, `notes` says what answered instead and how
 # the dead one failed.
 #
-# PROBE THE METHOD THE DOCUMENT DECLARES, not GET. A served route replies
-# 401/403 unauthenticated — it routed, then refused. A route the binary lacks
-# replies 404 to GET and 405 to the rest, because the only thing matching it is
-# a GET-only wildcard. Those two look identical from a GET alone: POST /v1/mcp
-# answers 200 with 796 tools while GET /v1/mcp is 404, and reading that 404 as
-# absence is exactly how the fleet's one MCP door stayed undeclared. One verb is
-# never a liveness probe.
+# THE TEST, in two halves, because each half alone has been wrong here once:
+#
+#   • 403 PROVES THE ROUTE EXISTS. Auth middleware runs before the handler, so a
+#     mounted route refuses (401/403) and an unmounted one is 404/405. That is
+#     the only reliable liveness signal — a 404 BODY proves nothing, since a
+#     live handler says "not found" too.
+#   • PROBE THE METHOD THE DOCUMENT DECLARES, not GET. A POST-only route also
+#     404s on GET: POST /v1/mcp answers 200 with 796 tools while GET /v1/mcp is
+#     404, and reading that 404 as absence is how the fleet's one MCP door
+#     stayed undeclared. One verb is never a liveness probe.
+#
+# And a 200 is not proof either — see `hello`: /v1/ai/account answers 200 with
+# type="anonymous-user" to a request carrying no key at all.
 #
 # Nothing here is executable and no SDK repo duplicates it. What each example
 # prints is the language's business; WHICH routes it calls is not.
@@ -75,10 +81,17 @@ flows:
       The delete belongs in the language's finally/defer, so a failed read still
       cleans up instead of leaving the store for the next run to collide with.
       This is the provisioning plane, and it is here because it is the one that
-      answers: the value plane (/v1/kv/keys/{key} — kv_setKey, kv_getKey,
-      kv_deleteKey) is authored in kv/openapi.yaml but replies 404 to GET and
-      405 to PUT and DELETE at api.hanzo.ai, while /v1/kv and /v1/kv/namespaces
-      reply 403. An example may only call what routes.
+      answers. The value plane (/v1/kv/keys/{key} — kv_setKey, kv_getKey,
+      kv_deleteKey) is authored in kv/openapi.yaml and is mounted nowhere.
+
+
+      The discriminator, since a 404 body alone proves nothing: auth middleware
+      runs BEFORE the handler, so a route that EXISTS refuses with 403 and a
+      route that does not is 404/405. /v1/kv, /v1/kv/demo, /v1/kv/keys and the
+      control /v1/agents/{ref} all answer 403 "X-Org-Id required";
+      /v1/kv/keys/x answers 404. The parent collection routes and the child
+      does not — which is the shape of a plane that was authored and never
+      mounted, not of a key that is merely absent.
 
   agent:
     summary: Create an agent, run it, read the run back.
