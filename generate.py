@@ -96,7 +96,16 @@ def emit(name, cfg, spec, version, out):
             "apiDocs=false", "modelDocs=false", "apiTests=false", "modelTests=false"]
     glob += [f"{k}={v}" for k, v in cfg.get("global", {}).items()]
     cmd = [
-        "java", "-Xmx2g", "-jar", jar(version), "generate",
+        # -DmaxYamlCodePoints: swagger-parser hands the document to snakeyaml,
+        # which refuses anything over 3 * 1024 * 1024 = 3145728 code points.
+        # hanzo.yaml passed that mark at 1bac13f (3,654,449) and the parser does
+        # not say so plainly — it logs SnakeException, silently falls through to
+        # the Swagger 2.0 compat reader, and dies with "Issues with the OpenAPI
+        # input", which reads like a malformed spec. It is not: the document
+        # validates at 0 errors and 0 warnings. A parser default, nothing else,
+        # and it stops EVERY language at once — so it is set here, once, rather
+        # than discovered separately in seven repos.
+        "java", "-Xmx2g", "-DmaxYamlCodePoints=99999999", "-jar", jar(version), "generate",
         "-g", cfg["generator"],
         "-i", spec,
         "-o", out,

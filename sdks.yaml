@@ -233,3 +233,34 @@ sdks:
   # signature), `packageVersion: 8.0.0` (the SPEC's version — the crate shipped
   # 0.1.0 as a first publish), and it pointed at `crates/hanzo-cloud`, which
   # hanzo-rs/sdk does not have.
+
+  # cpp is DELIBERATELY ABSENT, and it is the third departure — for exactly the
+  # reason stated for rust, plus one of its own.
+  #
+  #   • TEMPLATES. Four `cpp-restsdk` mustache overrides are required before the
+  #     output compiles at all, and a template is a FILE that has to sit beside
+  #     the invocation. They fix five defect classes in the generator's own
+  #     codegen: oneOf explicit instantiations emitted HTML-escaped; oneOf
+  #     visitors calling members the alternatives do not have; a oneOf class that
+  #     stands outside ModelBase and so cannot be a FIELD of another model; a
+  #     free-form `object` held by value with no ModelBase overload; and an
+  #     API response container resolved separately from its element type.
+  #   • the GENERATOR VERSION. C++ needs 7.24.0, not the 7.14.0 pinned above. On
+  #     7.14.0 this document leaves 10 of 2370 translation units uncompilable
+  #     through two defects in the generator's Java type resolution that no
+  #     template reaches — mustache interpolates the strings resolution
+  #     produces, it cannot recompute a type. Both are fixed in 7.24.0:
+  #     `additionalProperties: {$ref: <array-typed schema>}` dropping the
+  #     aliased array's element type (9 TUs, vector_NamedVectors ->
+  #     vector_DenseVector), and an integer-backed enum declaring its conversion
+  #     helpers over utility::string_t while defining them over int32_t (1 TU,
+  #     framework_Document.docstatus).
+  #
+  # A row here says one version for everyone, so raising the pin fleet-wide
+  # would rewrite every other client's committed output — a separate, deliberate
+  # decision, not a side effect of adding C++. The floor is therefore stated
+  # once, where the invocation is: hanzo-cpp/sdk's own scripts/generate.sh. Same
+  # document, same driver-shaped seam, same --check contract.
+  #
+  # Canonical repo is hanzo-cpp/sdk; `hanzoai/cpp-sdk` is a rename redirect to
+  # it.
