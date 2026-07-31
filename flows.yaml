@@ -31,17 +31,18 @@
 flows:
   hello:
     summary: Identity — prove the key works and print who it belongs to.
-    # The AI plane's account read. Deliberately not /v1/bot/auth/me (bot-service
-    # scoped) and not the IAM OIDC userinfo endpoint, which lives on a DIFFERENT
-    # origin — that would force every example set to know two base URLs, and IAM
-    # answers 200 text/html for an unregistered path, so a typo there is silent
-    # breakage rather than a 404.
-    operations: [ai_getAccount]
+    # The route must FAIL on a bad key, which is the whole point of the flow, so
+    # this choice was made by probing api.hanzo.ai rather than by reading the
+    # spec. ai_getAccount reads like the obvious pick and is disqualified: it
+    # answers 200 with type="anonymous-user" to a request with NO Authorization
+    # header, so a `hello` built on it prints a cheerful identity for a key that
+    # would 401 everywhere else. Also not the IAM OIDC userinfo endpoint, which
+    # is on a different ORIGIN and also answers 200 unauthenticated.
+    operations: [bot_authMe]
     notes: >-
-      Every /v1/ai/* route answers with an envelope where `status` is the
-      OUTCOME, not the HTTP code: a handled failure is HTTP 200 with
-      status=error. This flow is where an SDK teaches that, because it is the
-      first call anyone makes. Print data.owner and data.name.
+      Verified: GET /v1/bot/auth/me returns 403 {"error":"no validated
+      principal"} with no key and with a bogus one, and returns the typed
+      bot_User with a real one. An SDK's hello must be the call that says no. Print data.owner and data.name.
 
   chat:
     summary: One completion.
