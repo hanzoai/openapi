@@ -2,6 +2,25 @@
 
 ## v1.0.0
 
+### 53 parameters the handover dropped, and the rule for them
+
+`/v1/billing/usage` lost `start` and `end` when cloud's document took the route,
+which is why `flows.yaml` could tell an SDK to "ask for a window" that no
+generated method can express. Measured across all 375 handover routes: **28
+routes lost 53 parameters**, and every one is a QUERY parameter — zero path
+parameters were lost. That is the mechanism showing through, since a path
+parameter is structural and readable off the route template while a query
+parameter is only knowable from a typed `In` struct. 27 of the 28 are untyped
+routes; the 28th, `GET /v1/ml/models`, is typed with an incomplete `In`.
+
+They are NOT re-authored here. A parameter this repo puts back is a claim that a
+handler accepting nothing will honour it, and a generated method that takes
+`start` and `end` and silently drops them is a lie a caller cannot see. The full
+list is in LLM.md as a handover to hanzoai/cloud — three OAuth callbacks lost
+`code` and `state`, and `GET /v1/o11y/vm/query` lost `query`. `merge.py` now
+prints the count on every build so it cannot drift back unseen, and `flows.yaml`
+says what the document can actually express.
+
 ### The SDK matrix pointed at two clients that do not exist
 
 `sdks.yaml`'s `go` and `rust` rows were verified against local checkouts, and
@@ -12,12 +31,22 @@ shipped one. `go` said `take: {.: cloud}` / `packageName: cloud` while
 at all; `rust` said `crates/hanzo-cloud` while `hanzo-rs/sdk` ships
 `crates/hanzo-client`.
 
-The rust row is corrected. The go row is DELETED, because the mismatch there is
-structural: every `take` is a promise that the generator owns a directory —
-`sdk()` rmtree's it — and the Go client has no such directory, so `take: {.: .}`
-would delete the repository around it. Go regenerates from its own
-`scripts/generate.sh`: same generator, same pin, same `hanzo.yaml` pulled from
-here. That is the pull model working.
+Both rows are now DELETED, and the boundary is written down rather than decided
+per case: a row exists while the WHOLE invocation is expressible as data, and a
+language leaves when it needs something that is not. `go` needs the client at
+the module root, which `take` cannot express — it rmtree's what it owns, so
+`{.: .}` deletes the repository. `rust` needs a `reqwest/api.mustache` override
+for 14 operations whose binary body is optional (`Option<Vec<u8>>`, which no
+type mapping reaches), and a template is a file that must sit beside the
+invocation — as must the `--type-mappings=file=Vec<u8>` it works with. The old
+rust row had neither, plus `useSingleRequestParameter` and the spec's version as
+the crate's.
+
+The remaining five rows stay, because the same test says so: `hanzoai/js-sdk`
+and `hanzoai/java-sdk` carry NO flags in their own scripts — they exec
+`generate.py` — and js-sdk removed its copy only after the two disagreed and
+built an orphan second copy of all 2143 files. A row here AND flags there is the
+lie; a row here and a bare call site there is one declaration.
 
 Three SDK repos answer through a rename redirect, which is how a stale name
 keeps resolving: `hanzoai/go-sdk` → `hanzo-go/sdk`, `hanzoai/rust-sdk` →

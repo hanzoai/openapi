@@ -215,7 +215,7 @@ by this repo's `regenerate-sdks.yml`.
 | Java | `hanzoai/java-sdk` | `java` (okhttp-gson) | `ai.hanzo:hanzo-java-cloud` | `generate.py` |
 | Kotlin | `hanzoai/kotlin-sdk` | `kotlin` (okhttp4+gson) | `ai.hanzo:hanzo-kotlin-cloud` | `generate.py` |
 | Ruby | `hanzoai/ruby-sdk` | `ruby` | gem | `generate.py` |
-| Rust | **`hanzo-rs/sdk`** | `rust` (reqwest) | `crates/hanzo-client`, not on crates.io | `generate.py` |
+| Rust | **`hanzo-rs/sdk`** | `rust` (reqwest) | `crates/hanzo-client`, not on crates.io | its own `scripts/generate.sh` |
 | Go | **`hanzo-go/sdk`** | `go` | `package hanzoai` at the MODULE ROOT, imported as `github.com/hanzoai/go-sdk` | its own `scripts/generate.sh` |
 
 Three of those repos were RENAMED and answer through a redirect —
@@ -225,20 +225,33 @@ the move. `gh api repos/<old> --jq .full_name` prints the new one. Go's module
 path stays `github.com/hanzoai/go-sdk` regardless: that is what the proxy has
 and what consumers require.
 
-Go is the one row `sdks.yaml` cannot hold, and the reason is structural rather
-than clerical. Every `take` is a promise that the generator OWNS a directory —
-`sdk()` rmtree's it and copies the fresh tree in — and the Go client has no such
-directory: `package hanzoai` sits at the module root beside `go.mod`, `LICENSE`
-and `.git`. `take: { . : . }` would delete the repository. It regenerates from
-its own `scripts/generate.sh` instead: same generator, same 7.14.0 pin, same
-`hanzo.yaml` pulled from here (with the private-repo token fallback). That is
-the pull model working, not a gap.
+**When a language leaves `sdks.yaml`** — the boundary, so it is a rule and not a
+mood: a row exists while the WHOLE invocation is expressible as data. A language
+leaves when its invocation needs something that is not data. Both departures are
+that, and neither is neglect.
 
-Two rows had gone stale the same way and would have written a SECOND client
-beside the shipped one rather than updating it: `go` (`take: {.: cloud}`,
-`packageName: cloud` — deleted) and `rust` (`crates/hanzo-cloud`, when the
-canonical remote ships `crates/hanzo-client` — corrected). Both were verified
-against the LOCAL checkout at some point, and both local checkouts are behind.
+- **go** needs the client at the MODULE ROOT, beside `go.mod` and `.git`, which
+  `take` cannot express: `sdk()` rmtree's what it owns, so `{.: .}` deletes the
+  repository.
+- **rust** needs a `reqwest/api.mustache` override for 14 operations whose
+  binary body is OPTIONAL (`Option<Vec<u8>>`, which no type mapping reaches —
+  the problem is the Option, not the type). A template is a FILE; it must sit
+  beside the invocation, and so must the `--type-mappings=file=Vec<u8>` it works
+  with, or the halves drift apart.
+
+Both then own their whole invocation in their own `scripts/generate.sh` — same
+generator, same 7.14.0 pin, same `hanzo.yaml` pulled from here. What is NOT
+allowed is a row here AND flags there: two declarations of one contract.
+`hanzoai/js-sdk` and `hanzoai/java-sdk` are the other shape and the reason the
+line matters — their scripts carry no flags at all, they exec `generate.py`, and
+js-sdk removed its own copy only after the two disagreed about `modelPackage`
+and about whether the client lands in `src/` or `src/cloud/`, which built an
+orphan second copy of all 2143 files. Stripping THEIR properties out of this
+file would recreate exactly that.
+
+Both deleted rows would have written a SECOND client beside the shipped one
+rather than updating it — `go` at `cloud/` with `packageName: cloud`, `rust` at
+`crates/hanzo-cloud` — and both had been verified against a LOCAL checkout.
 Check a `take` against the canonical remote.
 
 Generator version pinned to **7.14.0** everywhere. The merged surface is
@@ -276,6 +289,66 @@ the day it started carrying prose of its own.
 
 The SDK-generation surface is the FUSED `api.hanzo.ai/v1` binary. `merge.py`
 unions the per-service specs into it, cloud's document last.
+
+### 53 authored parameters the handover dropped — a cloud fix, not a re-author
+
+The same cause as the response-schema gap, from the input side, and it is the
+sharper demonstration of it. Where cloud's document took a route an authored
+spec also had, the merged document keeps the inputs the BINARY declares — and an
+untyped route declares none. 28 routes lost 53 parameters that way. `merge.py`
+prints the number on every build; it is not a gate, because the fix is not here.
+
+Every one of the 53 is a QUERY parameter. **Zero path parameters were lost**,
+and that is the mechanism showing through: a path parameter is structural, so
+the weave reads it off the route template, while a query parameter is only
+knowable from a typed `In` struct. 27 of the 28 routes are untyped in cloud
+(route-derived operationId, no responses) — same routes, both symptoms, one
+cause. The 28th is different and worth its own line: `GET /v1/ml/models` IS a
+typed op, and its `In` struct is simply missing `stage` and `search`.
+
+**The rule: do not put them back.** A parameter re-authored here is a claim that
+a handler accepting nothing will honour it — the same invention the `default`
+response refuses, and worse, because a generated method that takes `start` and
+`end` and silently drops them is a lie a caller cannot see. They belong in
+cloud's typed input; `sync.py` picks them up the day they land there. Until then
+the document says what is true: the route takes nothing.
+
+| route | parameters the binary does not declare |
+|---|---|
+| `GET /v1/admin/affiliates` | `limit` |
+| `GET /v1/admin/referrals` | `limit` |
+| `GET /v1/agents/sessions/stream` | `root` |
+| `GET /v1/billing/balance` | `currency` |
+| `GET /v1/billing/gpu-eligibility` | `amountCents`, `minPrepaidCents`, `currency` |
+| `GET /v1/billing/spend-alerts/authorize` | `user`, `project`, `service`, `amount`, `pv`, `currency` |
+| `GET /v1/billing/usage` | `start`, `end` |
+| `GET /v1/evals/scores` | `runName`, `limit` |
+| `GET /v1/functions/metrics` | `range` |
+| `GET /v1/functions/{name}/invocations` | `limit` |
+| `GET /v1/git/{org}/{repo}/info/refs` | `service` |
+| `GET /v1/integrations/slack/link` | `state` |
+| `GET /v1/integrations/slack/link/callback` | `code`, `state`, `error` |
+| `GET /v1/integrations/slack/link/slack` | `code`, `state`, `error` |
+| `GET /v1/integrations/{provider}/callback` | `state`, `code`, `error` |
+| `GET /v1/kms/secrets` | `path`, `env` |
+| `GET /v1/ml/models` | `stage`, `search` — TYPED op, `In` struct incomplete |
+| `POST /v1/notify/send` | `sync` |
+| `POST /v1/notify/send/email` | `sync` |
+| `POST /v1/notify/send/sms` | `sync` |
+| `GET /v1/o11y/vm/query` | `query` |
+| `GET /v1/o11y/vm/query_range` | `query`, `start`, `end`, `step` |
+| `GET /v1/platform/fleet` | `env`, `health`, `drift` |
+| `POST /v1/platform/fleet/{app}/deploy` | `env` |
+| `GET /v1/research/artifacts/{sha256}` | `project` |
+| `GET /v1/security/findings` | `scanId`, `minSeverity`, `limit` |
+| `GET /v1/security/scans` | `limit` |
+| `GET /v1/websearch/search` | `q`, `format` |
+
+Two of those are worse than a missing filter. The three OAuth callbacks take
+`code` and `state`, which is the whole protocol, and `GET /v1/o11y/vm/query`
+takes `query` — a query endpoint that declares no query. If the server honours
+them (it presumably does, or they would not have been authored), the typed
+input is the one place that makes them callable from any client.
 
 ### The next quality lever — 754 of 2479 operations declare no 2xx schema
 

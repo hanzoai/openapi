@@ -1,12 +1,34 @@
 # The SDK matrix — data only. The generator invocation is logic and lives once,
 # in generate.py; nothing in this file is executable and nothing in an SDK repo
-# duplicates it.
+# duplicates it. `hanzoai/js-sdk` and `hanzoai/java-sdk` are the shape: their
+# scripts/generate.sh carries NO flags, it execs this driver. js-sdk removed its
+# own copy after the two disagreed about modelPackage and about whether the
+# client lands in src/ or src/cloud/, which built an orphan second copy of all
+# 2143 files.
 #
 # Every row is one language projection of hanzo.yaml. `take` maps a path in the
 # generator's output onto a path in the SDK repo that the generator OWNS
 # ENTIRELY: generate.py replaces it wholesale and --check diffs it. Anything
 # outside a `take` path is the repo's own (build files, the legacy published
 # client) and is never touched.
+#
+# WHEN A LANGUAGE LEAVES THIS FILE — the boundary, so it is a rule and not a
+# mood: a row exists while the WHOLE invocation is expressible as data. A
+# language leaves when its invocation needs something that is not data, and both
+# departures are that, not neglect:
+#
+#   • go needs the client at the MODULE ROOT, beside go.mod and .git, which
+#     `take` cannot express — it rmtree's what it owns, so `{.: .}` deletes the
+#     repository.
+#   • rust needs a `reqwest/api.mustache` template override. A template is a
+#     FILE. It has to sit next to the generator call, and its flags have to sit
+#     next to it, or the pair drifts apart.
+#
+# A language that leaves owns its whole invocation in its own
+# scripts/generate.sh — same generator, same pin, same hanzo.yaml pulled from
+# here. That is the pull model, and it is the same one interface either way.
+# What is NOT allowed is a row here AND flags there: that is two declarations of
+# one contract, and both departures had already started drifting into it.
 
 generator: 7.14.0 # openapi-generator, pinned for every language
 spec: hanzo.yaml
@@ -188,25 +210,26 @@ sdks:
       library: faraday
       gemVersion: 8.0.0
 
-  rust:
-    repo: rust-sdk
-    # Canonical repo is hanzo-rs/sdk (hanzoai/rust-sdk is a rename redirect);
-    # the published crate is `hanzo-client`, not yet on crates.io.
-    # openapi-generator DOES emit Rust (reqwest); the client is a normal
-    # workspace member, so it needs its Cargo.toml and is the one language whose
-    # `take` root is the crate root.
-    # `hanzo-client`, not `hanzo-cloud`: hanzo-rs/sdk ships crates/hanzo-client
-    # ("Generated client for the Hanzo API — every service, one crate") and has
-    # no hanzo-cloud at all. Pointing this row at the old name would not update
-    # the client, it would add a SECOND one beside it — the same failure the
-    # deleted go row had, and it is worth checking any `take` against the
-    # canonical remote rather than a local checkout, which is how both got stale.
-    generator: rust
-    take: { .: crates/hanzo-client }
-    properties:
-      packageName: hanzo-client
-      packageVersion: 8.0.0
-      library: reqwest
-      supportAsync: "true"
-      useSingleRequestParameter: "true"
-      preferUnsignedInt: "true"
+  # rust is DELIBERATELY ABSENT, for the reason above and not for lack of a
+  # generator: openapi-generator emits Rust (reqwest) and hanzo-rs/sdk ships it
+  # as crates/hanzo-client. What this file cannot hold is the TEMPLATE.
+  #
+  # Two things are required before the Rust output compiles at all, and only one
+  # of them is data:
+  #
+  #   • `--type-mappings=file=Vec<u8>`. Without it a binary body is a PathBuf,
+  #     and reqwest::Body has no From<PathBuf>. Expressible — three lines.
+  #   • a `reqwest/api.mustache` override for 14 operations whose binary body is
+  #     OPTIONAL, where the parameter arrives as Option<Vec<u8>>. No type mapping
+  #     reaches that one, because the problem is the Option and not the type.
+  #
+  # A template is a file that must sit beside the invocation. Keeping the
+  # mapping here and the template there splits one contract across two repos and
+  # guarantees the halves drift; a config that cannot build is worse than none.
+  # So the whole invocation lives in hanzo-rs/sdk's own scripts/generate.sh.
+  #
+  # The row that used to be here would not have compiled: no type mapping, no
+  # template, `useSingleRequestParameter: true` (which changes every call
+  # signature), `packageVersion: 8.0.0` (the SPEC's version — the crate shipped
+  # 0.1.0 as a first publish), and it pointed at `crates/hanzo-cloud`, which
+  # hanzo-rs/sdk does not have.

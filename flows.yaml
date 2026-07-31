@@ -69,10 +69,18 @@ flows:
     operations: [cloud_get_v1_billing_balance, cloud_get_v1_billing_usage]
     notes: >-
       Neither takes an org: both derive the tenant server-side from the JWT
-      `owner` claim, so a key can only read its own money. The usage ledger is
-      unbounded by default — an example asks for a window. Both ids are cloud's
-      now: /v1/billing is among the routes where the binary's own woven document
+      `owner` claim, so a key can only read its own money. Both ids are cloud's
+      now — /v1/billing is among the routes where the binary's own woven document
       replaced a hand-written spec, so the prose is the handler's.
+
+
+      An example CANNOT ask for a window, and this note used to say it should.
+      The authored spec gave /v1/billing/usage `start` and `end`; the binary
+      declares no inputs there, so the merged document declares none and the
+      generated method takes nothing. Print the whole window the server returns
+      rather than hand-rolling a query string beside a generated call. It
+      becomes a parameter here the day it becomes a typed input in
+      hanzoai/cloud — see LLM.md, "53 authored parameters".
 
   store:
     summary: KV round-trip — create a store, read it back, delete it.

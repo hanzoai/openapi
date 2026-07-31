@@ -214,6 +214,30 @@ def namespace_ops(item, svc, path):
     return item
 
 
+def inputs(item, comps):
+    """Every parameter a path item's operations accept, as (method, name).
+
+    Resolved through the spec's OWN components, because a `$ref` tail is not a
+    parameter name and comparing the two counts a rename as a loss.
+
+    Only counted, never merged. When TRUTH takes a route it brings the inputs
+    the BINARY declares, and an untyped route declares none, so the authored
+    spec's query parameters go with it. That is worth a number on every build
+    (`dropped`), and it is not worth re-authoring: a parameter this repo puts
+    back is a claim about a handler that accepts nothing — the same invention
+    the `default` response exists to refuse."""
+    out = set()
+    for m, op in (item or {}).items():
+        if m not in HTTP_METHODS or not isinstance(op, dict):
+            continue
+        for p in ((item.get("parameters") or []) + (op.get("parameters") or [])):
+            if isinstance(p, dict) and "$ref" in p:
+                p = (comps.get("parameters") or {}).get(str(p["$ref"]).split("/")[-1], {})
+            if isinstance(p, dict) and p.get("name"):
+                out.add((m, p["name"]))
+    return out
+
+
 def key(tag):
     """A tag's identity, ignoring case, space and punctuation. `AI` and `ai`,
     `API Keys` and `api-keys` name one concept and become one module in every
@@ -231,23 +255,24 @@ def build_unified(present, categories, internal):
 
     paths, schemas, responses, params, reqbodies, secschemes = {}, {}, {}, {}, {}, {}
     claim, owner, described, titles = {}, {}, {}, {}
-    overrides = 0
+    overrides = dropped = 0
     for svc in included:
         spec = yaml.safe_load(open(os.path.join(ROOT, svc, "openapi.yaml")))
         comps = spec.get("components", {}) or {}
         titles[key(svc)] = (spec.get("info") or {}).get("title") or svc
-        for p, item in (spec.get("paths", {}) or {}).items():
+        for p, raw in (spec.get("paths", {}) or {}).items():
+            item, accepts = namespace_ops(prefix(raw, svc), svc, p), inputs(raw, comps)
             if p in claim:
                 # Two hand-written specs claiming one route is ambiguity with no
                 # right answer — the resolution used to be alphabetical. Only
                 # TRUTH may take a route from someone, because only TRUTH is
                 # evidence of what is served.
                 if svc != TRUTH:
-                    sys.exit(f"merge: {claim[p]}/openapi.yaml and {svc}/openapi.yaml "
+                    sys.exit(f"merge: {claim[p][0]}/openapi.yaml and {svc}/openapi.yaml "
                              f"both claim {p} — one route has one owner")
                 overrides += 1
-            claim[p] = svc
-            item = namespace_ops(prefix(item, svc), svc, p)
+                dropped += len(claim[p][1] - accepts)
+            claim[p] = (svc, accepts)
             paths[p] = item
             for op in (item or {}).values():
                 for t in (op.get("tags") or []) if isinstance(op, dict) else []:
@@ -398,6 +423,7 @@ def build_unified(present, categories, internal):
         "ops": len(ops),
         "described_ops": sum(1 for op in ops if (op.get("description") or "").strip()),
         "overrides": overrides,
+        "dropped": dropped,
         "renamed": renamed,
     }
 
@@ -509,6 +535,8 @@ def main():
           f"{n['tags']} tags, {n['described_tags']} described; "
           f"{n['overrides']} paths taken by {TRUTH} (source-true), "
           f"{n['renamed']} operationIds suffixed to stay distinct in codegen")
+    print(f"{n['dropped']} authored parameters dropped where {TRUTH} took the route "
+          f"— they belong in the binary's typed input, not back here")
     print(f"generated CAPABILITIES.md ({n['groups']} categories) from capabilities.yaml")
     return 0
 
