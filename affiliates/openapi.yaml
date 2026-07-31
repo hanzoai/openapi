@@ -354,7 +354,11 @@ components:
       properties:
         isAffiliate:
           type: boolean
-          const: false
+          # Always false — this is the not-enrolled shape. Stated in prose
+          # rather than as `const: false` because openapi-generator projects a
+          # boolean const as a single-member enum whose member is a String
+          # assigned to a Boolean field, which is not valid Java (or Kotlin).
+          description: Always false — this is the not-enrolled shape.
         defaultRateBps:
           type: integer
           format: int64
@@ -366,7 +370,9 @@ components:
       properties:
         isAffiliate:
           type: boolean
-          const: true
+          # Always true here — see the note on NotEnrolled.isAffiliate for why
+          # this is prose and not `const: true`.
+          description: Always true — this org is an affiliate.
         id:
           type: string
         status:

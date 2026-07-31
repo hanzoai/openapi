@@ -107,8 +107,28 @@ sdks:
     repo: java-sdk
     generator: java
     take: { src/main/java/ai/hanzo/cloud: hanzo-java-cloud/src/main/java/ai/hanzo/cloud }
+    # edge_deployFunction offers both application/octet-stream and
+    # multipart/form-data. The generator skips a multipart form model by default
+    # yet still imports it from the API class that used it, so FunctionsApi
+    # imports a class nobody emitted. Emitting it is the fix; it is set here and
+    # not in generate.py because it would churn every other client's output.
+    global:
+      skipFormModel: "false"
     properties:
-      library: native # java.net.http — no third-party HTTP dependency
+      # `native` (java.net.http, no third-party HTTP dependency) is the library
+      # this row wants and cannot have: its oneof_model.mustache iterates the
+      # raw `oneOf` type-name set and emits `{{{.}}}.class`, which is illegal
+      # Java the moment a variant is an array — `List<CloudEvent>.class`. Three
+      # schemas in hanzo.yaml have an inline array in a oneOf
+      # (cloud_post_v1_event's body, gateway_createCompletion's `prompt`,
+      # search_deleteDocumentsByFilter's `filter`), so `native` produces 532
+      # javac errors. Every other Java library iterates `composedSchemas.oneOf`
+      # and guards on `isArray`, so okhttp-gson, jersey3 and apache-httpclient
+      # all compile; the bug is still present in 7.24.0, so this is not waiting
+      # on a version bump. okhttp-gson is the generator's default and puts the
+      # two JVM rows on ONE HTTP+JSON stack — the kotlin row below is already
+      # okhttp4 + gson.
+      library: okhttp-gson
       groupId: ai.hanzo
       artifactId: hanzo-java-cloud
       invokerPackage: ai.hanzo.cloud

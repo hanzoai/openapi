@@ -105,8 +105,12 @@ components:
       description: A point identifier — an integer or a UUID string.
       oneOf:
       - type: integer
+      # `format: uuid` is deliberately absent: inside a oneOf, openapi-generator
+      # maps it to java.util.UUID and then emits UUID.validateJsonElement(),
+      # a method only its own generated models have. The format is an
+      # annotation, not a constraint — the wire value is unchanged and the
+      # description above still says what it is.
       - type: string
-        format: uuid
     DenseVector:
       description: One unnamed vector.
       type: array

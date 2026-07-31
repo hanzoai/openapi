@@ -88,13 +88,19 @@ def prune(stage, drops):
 def emit(name, cfg, spec, version, out):
     """Run the generator for one language into a staging dir."""
     props = ",".join(f"{k}={v}" for k, v in cfg.get("properties", {}).items())
+    # Docs and stub tests are ~4000 files of nothing at this spec size. A row
+    # may add its own global properties; they are per-language for the same
+    # reason `properties` is — changing one here would churn every other
+    # client's committed output.
+    glob = ["apis", "models", "supportingFiles",
+            "apiDocs=false", "modelDocs=false", "apiTests=false", "modelTests=false"]
+    glob += [f"{k}={v}" for k, v in cfg.get("global", {}).items()]
     cmd = [
         "java", "-Xmx2g", "-jar", jar(version), "generate",
         "-g", cfg["generator"],
         "-i", spec,
         "-o", out,
-        # Docs and stub tests are ~4000 files of nothing at this spec size.
-        "--global-property", "apis,models,supportingFiles,apiDocs=false,modelDocs=false,apiTests=false,modelTests=false",
+        "--global-property", ",".join(glob),
     ]
     if props:
         cmd += ["--additional-properties", props]
