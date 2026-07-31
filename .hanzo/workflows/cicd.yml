@@ -1,0 +1,46 @@
+name: CI/CD
+
+# The ~7-line canonical caller: triggers plus the import. All real config lives
+# in the repo-root hanzo.yml, which platform.hanzo.ai reads too.
+# Builds + pushes the agent-skills artifact; auto-mirrors to registry.hanzo.ai.
+#
+# Both the directory AND the `uses:` path moved, and the second is the one that
+# is easy to miss.
+#
+# Gitea collects workflows from the FIRST of WORKFLOW_DIRS that exists in the
+# pushed commit and ignores the rest (modules/actions/workflows.go,
+# listWorkflowsInDirs breaks on the first hit), so once that list narrows to
+# .hanzo/workflows alone, a pipeline left under .github/workflows is simply not
+# collected: no run, no queued job, no error.
+#
+# And a reusable is resolved through services/actions.ResolveUses, which
+# enforces the SAME directory allowlist on the referenced path:
+#   "uses:" path %q must be under a configured workflow directory
+# So `hanzoai/ci/.github/workflows/build.yml@v1` stops resolving at that point
+# too. Moving the caller without the callee path only trades a silent
+# no-collect for a silent no-resolve.
+#
+# hanzoai/ci publishes build.yml at BOTH paths from the same tag, byte-identical
+# apart from its header (GitHub resolves only .github/workflows, git.hanzo.ai
+# only .hanzo/workflows), so this is the same pipeline at the same @v1.
+#
+# The runner is unchanged because it was already right: hanzoai/ci defaults to
+# ["hanzo-build-linux-amd64"], which the git-runners actually advertise.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+
+# Not cancellable: hanzo.yml declares `images:`, so a superseded run may already
+# have pushed a layer under the tag it was given.
+concurrency:
+  group: cicd-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  cicd:
+    uses: hanzoai/ci/.hanzo/workflows/build.yml@v1
+    secrets: inherit
