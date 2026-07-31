@@ -2,6 +2,66 @@
 
 ## v1.0.0
 
+### Delete the 18 products authored here and served nowhere — 655 paths, 849 operations
+
+Every product below was probed on its OWN authored routes, at `api.hanzo.ai` and
+at the hostname this repo claimed for it, and every one answered a route-level
+404 — the router's own plaintext `404 page not found`, not an empty result from a
+live handler. `hanzoai/cloud`'s `openapi.yaml` does not own them either.
+
+Authoring a route nothing serves is not a harmless placeholder. `hanzoai/cli`'s
+`genspec` refutes an authored operation only where the live route table OWNS its
+product, so a product the router has never heard of is refuted by NOTHING: it
+survives every gate and ships as a `hanzo` command, an SDK method, and a
+`SKILL.md` under `/.well-known/agent-skills` instructing an agent to call a dead
+endpoint — `skills.py` has no liveness filter at all. Annotating the spec
+`UNSERVED` was the previous answer; no generator reads a comment.
+
+| product | paths | ops | source removed |
+|---|---|---|---|
+| chat | 171 | 206 | `chat/` |
+| nexus | 150 | 150 | `nexus/` |
+| flow | 87 | 120 | `flow/` |
+| auto | 50 | 69 | `auto/` |
+| console | 43 | 67 | `console/` |
+| paas | 28 | 42 | `paas/` |
+| mq | 28 | 41 | `mq/` |
+| engine | 22 | 35 | `engine/` |
+| db | 17 | 30 | `db/` |
+| pubsub | 19 | 29 | `pubsub/` |
+| registry | 13 | 22 | `registry/` |
+| did | 10 | 14 | `did/` |
+| stream | 8 | 13 | `stream/` |
+| guard | 5 | 7 | `guard/` |
+| chat-docs | 1 | 1 | path in `cloud/` |
+| index-docs | 1 | 1 | path in `cloud/` |
+| agent-bindings | 1 | 1 | path in `visor/` |
+| sdk | 1 | 1 | `/v1/sdk/secrets` in `kms/` |
+
+`paas` is also a standing ruling: paas and platform were two names for one deploy
+plane, and `/v1/platform` is the one that answers. It moves to `collapsed:` in
+`capabilities.yaml`, pointing at `platform`.
+
+`chat` was the one case needing a scalpel rather than a verdict, because the
+GATEWAY serves inference under `/v1/chat/`. All 157 `/v1/chat/*` paths in the
+master were probed individually (GET for reads, POST + `{}` for writes; 180 of
+181 requests returned the plaintext route-miss). Exactly one answered:
+`POST /v1/chat/completions`, with 401 and a JSON body. That operation is authored
+by `ai/`, not `chat/` — so it survives untouched and `chat/` goes whole. The 15
+bare `/oauth/{provider}` paths `chat/` also authored return 200 HTML from the
+marketing SPA's catch-all (`/__total_nonsense_xyz__` returns the same page), so
+they were never API routes, and they were never under `/v1/` either.
+
+Removing `/v1/sdk/secrets` orphaned `kms`'s entire `components.schemas`
+(`SdkEnvelope`, `SdkEnvelopeIdentity`, `Error` — reachable from no surviving
+path), so it goes with the operation rather than shipping as three dead models in
+every SDK. `kms` itself is untouched and live: `/v1/kms/secrets` answers 403.
+
+Unchanged and verified alive at the edge: `audio`, `completions`, `embeddings`,
+`images`, `messages`, `models`, `router`, `rerank`, and `/v1/chat/completions`.
+The master goes 1787 → 1132 paths; the removed set is exactly the products above.
+A product returns to this repo the day it is actually served.
+
 ### `plugin/` — author the `/v1/admin/plugins` operator surface cloud already serves
 
 `generated/hanzo.json` carried four operations the contract never named:

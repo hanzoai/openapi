@@ -16,9 +16,7 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 | `authz` | `/v1/authz` | ✓ |
 | `kms` | `/v1/kms` | ✓ |
 | `security` | `/v1/security` | ✓ |
-| `did` | `/v1/did` | ✓ |
 | `zt` | `/v1/zt` | ✓ |
-| `guard` | `/v1/guard` | ✓ |
 
 ## Intelligence
 
@@ -28,7 +26,6 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 |---|---|---|
 | `ai` | `/v1/ai` | ✓ |
 | `ml` | `/v1/ml` | ✓ |
-| `engine` | `/v1/engine` | ✓ |
 | `agents` | `/v1/agents` | ✓ |
 | `evals` | `/v1/evals` | ✓ |
 | `research` | `/v1/research` | ✓ |
@@ -46,7 +43,6 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 | `storage` | `/v1/storage` | pending |
 | `s3` | `/v1/s3` | ✓ |
 | `base` | `/v1/base` | ✓ |
-| `db` | `/v1/db` | ✓ |
 | `kv` | `/v1/kv` | ✓ |
 | `vector` | `/v1/vector` | ✓ |
 
@@ -56,14 +52,9 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 
 | Capability | Route | Spec |
 |---|---|---|
-| `pubsub` | `/v1/pubsub` | ✓ |
-| `mq` | `/v1/mq` | ✓ |
-| `stream` | `/v1/stream` | ✓ |
 | `tasks` | `/v1/tasks` | ✓ |
 | `notify` | `/v1/notify` | ✓ |
 | `automations` | `/v1/automations` | ✓ |
-| `flow` | `/v1/flow` | ✓ |
-| `auto` | `/v1/auto` | ✓ |
 
 ## Observability
 
@@ -99,14 +90,11 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 |---|---|---|
 | `cloud` | `/v1/cloud` | ✓ |
 | `platform` | `/v1/platform` | ✓ |
-| `paas` | `/v1/paas` | ✓ |
 | `provisioning` | `/v1/provisioning` | ✓ |
 | `gateway` | `/v1/gateway` | ✓ |
 | `visor` | `/v1/visor` | ✓ |
 | `edge` | `/v1/edge` | ✓ |
 | `dns` | `/v1/dns` | ✓ |
-| `registry` | `/v1/registry` | ✓ |
-| `nexus` | `/v1/nexus` | ✓ |
 | `do` | `/v1/do` | ✓ |
 
 ## Applications
@@ -115,14 +103,12 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 
 | Capability | Route | Spec |
 |---|---|---|
-| `console` | `/v1/console` | ✓ |
 | `projects` | `/v1/projects` | ✓ |
 | `app` | `/v1/app` | ✓ |
 | `git` | `/v1/git` | ✓ |
 | `templates` | `/v1/templates` | ✓ |
 | `integrations` | `/v1/integrations` | ✓ |
 | `bot` | `/v1/bot` | ✓ |
-| `chat` | `/v1/chat` | ✓ |
 | `kb` | `/v1/kb` | ✓ |
 | `search` | `/v1/search` | ✓ |
 | `websearch` | `/v1/websearch` | ✓ |
@@ -155,6 +141,7 @@ Resolved duplicates / consolidations — removed, no spec dir. The capability no
 | `cron` | tasks |
 | `connectorruntime` | automations |
 | `gojabase` | goja |
+| `paas` | platform |
 
 ## Pending
 
@@ -169,8 +156,7 @@ Braids to verify before folding — grouped today (a spec dir exists), consolida
 - **app_vs_projects** — app (hanzo.app builds/deploys, grouped→applications) vs projects (buildable/deployable sites) — likely ONE concern; fold app→projects?
 - **do_is_a_provider** — do (DigitalOcean VPCs/LBs, grouped→platform) is a PROVIDER, not a capability — fold into provisioning/platform?
 - **s3_vs_storage** — s3 (/v1/s3/*, grouped→data) is the present object store; storage is the canonical rename target (no dir yet) — fold s3→storage once the dir is renamed?
-- **observe_vs_o11y** — observe (/v1/o11y/{logs,metrics,status} + /v1/settings, grouped→observability) is an o11y read-plane facet + a console settings facet — fold observe→o11y (+ console) once the routes migrate?
-- **workflow_cluster** — auto (Hanzo Auto engine) · automations (connector pieces) · flow — three workflow surfaces; decomplect to one?
+- **observe_vs_o11y** — observe (/v1/o11y/{logs,metrics,status} + /v1/settings, grouped→observability) is an o11y read-plane facet + a settings facet — fold observe→o11y once the routes migrate?
 - **retrieval_cluster** — search vs kb (semantic) vs vector (store) — overlapping retrieval; is search distinct from kb?
 
 ## Internal — NOT public capabilities

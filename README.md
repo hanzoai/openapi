@@ -41,37 +41,23 @@ OIDC discovery:
 | ai | [ai/openapi.yaml](ai/openapi.yaml) | `api.hanzo.ai` | `/v1/{chat,completions,embeddings,models,rerank,messages}` (top-level — OpenAI/Claude-compatible) |
 | analytics | [analytics/openapi.yaml](analytics/openapi.yaml) | `analytics.hanzo.ai` | `/v1/analytics` |
 | app | [app/openapi.yaml](app/openapi.yaml) | `api.hanzo.ai` | `/v1/projects` (top-level — hanzo.app projects & deploy) |
-| auto | [auto/openapi.yaml](auto/openapi.yaml) | `auto.hanzo.ai` | `/v1/auto` | **UNSERVED** |
 | base | [base/openapi.yaml](base/openapi.yaml) | `base.hanzo.ai` | `/v1/collections` (top-level — Base records store) |
 | bot | [bot/openapi.yaml](bot/openapi.yaml) | `app.hanzo.bot` | `/v1/bot` |
-| chat | [chat/openapi.yaml](chat/openapi.yaml) | `hanzo.chat` | `/v1/chat` |
 | cloud | [cloud/openapi.yaml](cloud/openapi.yaml) | `api.hanzo.ai` | `/v1/cloud` |
 | commerce | [commerce/openapi.yaml](commerce/openapi.yaml) | `commerce.hanzo.ai` | `/v1/commerce` |
-| console | [console/openapi.yaml](console/openapi.yaml) | `console.hanzo.ai` | `/v1/console` | **UNSERVED** |
-| db | [db/openapi.yaml](db/openapi.yaml) | `db.hanzo.ai` | `/v1/db` | **UNSERVED** |
-| did | [did/openapi.yaml](did/openapi.yaml) | `did.hanzo.ai` | `/v1/did` |
 | dns | [dns/openapi.yaml](dns/openapi.yaml) | `dns.hanzo.ai` | `/v1/dns` |
 | edge | [edge/openapi.yaml](edge/openapi.yaml) | `edge.hanzo.ai` | `/v1/edge` |
-| engine | [engine/openapi.yaml](engine/openapi.yaml) | `engine.hanzo.ai` | `/v1/engine` | **UNSERVED** |
-| flow | [flow/openapi.yaml](flow/openapi.yaml) | `flow.hanzo.ai` | `/v1/flow` | **UNSERVED** |
 | gateway | [gateway/openapi.yaml](gateway/openapi.yaml) | `api.hanzo.ai` | `/v1/gateway` |
-| guard | [guard/openapi.yaml](guard/openapi.yaml) | `guard.hanzo.ai` | `/v1/guard` |
 | iam | [iam/openapi.yaml](iam/openapi.yaml) | `hanzo.id` | `/v1/iam` + `/oauth/*` + `/.well-known/*` |
 | kms | [kms/openapi.yaml](kms/openapi.yaml) | `kms.hanzo.ai` | `/v1/kms` |
 | kv | [kv/openapi.yaml](kv/openapi.yaml) | `kv.hanzo.ai` | `/v1/kv` |
 | ml | [ml/openapi.yaml](ml/openapi.yaml) | `ml.hanzo.ai` | `/v1/ml` |
-| mq | [mq/openapi.yaml](mq/openapi.yaml) | `mq.hanzo.ai` | `/v1/mq` | **UNSERVED** |
-| nexus | [nexus/openapi.yaml](nexus/openapi.yaml) | `nexus.hanzo.ai` | `/v1/nexus` | **UNSERVED** |
 | o11y | [o11y/openapi.yaml](o11y/openapi.yaml) | `o11y.hanzo.ai` | `/v1/o11y` |
 | operative | [operative/openapi.yaml](operative/openapi.yaml) | `operative.hanzo.ai` | `/v1/operative` |
-| paas | [paas/openapi.yaml](paas/openapi.yaml) | `paas.hanzo.ai` | `/v1/paas` | **UNSERVED** — superseded by `/v1/platform` |
 | platform | [platform/openapi.yaml](platform/openapi.yaml) | `platform.hanzo.ai` | `/v1/platform` | **DRIFTED** — 33 served routes authored nowhere |
 | pricing | [pricing/openapi.yaml](pricing/openapi.yaml) | `pricing.hanzo.ai` | `/v1/pricing` |
-| pubsub | [pubsub/openapi.yaml](pubsub/openapi.yaml) | `pubsub.hanzo.ai` | `/v1/pubsub` |
-| registry | [registry/openapi.yaml](registry/openapi.yaml) | `registry.hanzo.ai` | `/v1/registry` | **UNSERVED** |
 | s3 | [s3/openapi.yaml](s3/openapi.yaml) | `s3.hanzo.ai` | `/v1/s3` |
 | search | [search/openapi.yaml](search/openapi.yaml) | `search.hanzo.ai` | `/v1/search` |
-| stream | [stream/openapi.yaml](stream/openapi.yaml) | `stream.hanzo.ai` | `/v1/stream` |
 | vector | [vector/openapi.yaml](vector/openapi.yaml) | `vector.hanzo.ai` | `/v1/vector` |
 | visor | [visor/openapi.yaml](visor/openapi.yaml) | `vm.hanzo.ai` | `/v1/visor` |
 | zt | [zt/openapi.yaml](zt/openapi.yaml) | `zt.hanzo.ai` | `/v1/zt` |
@@ -80,15 +66,16 @@ Discovery: [hanzo.yaml](hanzo.yaml) is the canonical list of services with their
 spec URLs. It is a file in this repo, not a served endpoint — `/v1/discovery` was
 PROBED on 2026-07-28 and returns 404, and no handler for it exists in cloud.
 
-**Status** is blank when the service answers at the hostname above. `UNSERVED`
-means it was PROBED on 2026-07-28 and nothing answered — not at `api.hanzo.ai`
-and not at its own host; each such spec carries the probe result as a comment at
-the top of its `openapi.yaml`. They are kept, not deleted: `hanzoai/cli`'s
-`genspec` refutes an authored operation only where the live route table OWNS its
-product, and the router is silent about these, so silence is not evidence of
-absence — and deleting on a deployment lag is the one irreversible move. A
-hostname in this table is where a service is SUPPOSED to answer, which is not
-the same claim as that it does.
+**Status** is blank when the service answers at the hostname above. A product
+whose own authored routes answer 404 — probed at `api.hanzo.ai` AND at its own
+host — is DELETED from this repo, not annotated. Annotation was tried and it
+does not hold: `hanzoai/cli`'s `genspec` refutes an authored operation only
+where the live route table OWNS its product, so a product the router has never
+heard of is refuted by nothing and reaches the CLI, the SDKs and the skills
+plane ungated. A hostname in this table is where a service is SUPPOSED to
+answer, which is not the same claim as that it does — and the spec IS the
+claim, so the spec is what gets removed. A product returns to this table the
+day it is actually served.
 
 This matters most for `skills.py`, which has NO liveness filter: it reads
 `<svc>/openapi.yaml` directly and publishes a `SKILL.md` per authored operation,

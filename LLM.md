@@ -116,12 +116,17 @@ skills plane is protected by nothing but this file being true. Authoring a route
 that does not exist is therefore not a harmless placeholder — it is a live
 instruction to call a dead endpoint.
 
-The 9 services annotated UNSERVED at the top of their `openapi.yaml`
-(nexus, flow, auto, console, mq, engine, db, registry, paas) are kept
-deliberately: `genspec` refutes only where the router OWNS the product, and it
-is silent about all nine, so silence is not evidence of absence and deleting on
-a deployment lag is the one irreversible move. The comment is what stops the
-silence from being read as health.
+Annotating an unserved product was the previous answer, and it does not hold.
+`genspec` refutes an authored operation only where the live router OWNS its
+product, so a product the router has never heard of is refuted by NOTHING — it
+survives every gate — and a comment at the top of a spec is read by no generator
+at all. So the 18 products that were authored here and served nowhere are now
+DELETED, not annotated: each was probed on its OWN authored routes, at
+`api.hanzo.ai` and at its own host, and every one answered a route-level 404
+(the router's own `404 page not found`, not an empty result from a live
+handler). Deleting the source is the only move every consumer in the table above
+obeys — including the skills plane, which obeys nothing else. A product returns
+to this repo the day it is actually served.
 
 ## SDK generation — the ONE way (Stainless RETIRED, 2026-07)
 
