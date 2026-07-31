@@ -11,6 +11,14 @@
 # merged spec, so deleting or renaming a route upstream breaks THIS gate — one
 # place — instead of breaking six SDKs quietly and separately.
 #
+# Existing in the spec is necessary and not sufficient: an id can resolve and
+# still 404 on the wire. Every flow below was PROBED at api.hanzo.ai, and where
+# the obvious route did not answer, `notes` says what answered instead and how
+# the dead one failed. A served route replies 401/403 to an unauthenticated
+# call — it routed, then refused. A route the binary does not have replies 404
+# to GET and 405 to every other method, because the only thing matching it is a
+# GET-only wildcard.
+#
 # Nothing here is executable and no SDK repo duplicates it. What each example
 # prints is the language's business; WHICH routes it calls is not.
 #
@@ -33,7 +41,7 @@ flows:
       Every /v1/ai/* route answers with an envelope where `status` is the
       OUTCOME, not the HTTP code: a handled failure is HTTP 200 with
       status=error. This flow is where an SDK teaches that, because it is the
-      first call anyone makes.
+      first call anyone makes. Print data.owner and data.name.
 
   chat:
     summary: One completion.
@@ -42,41 +50,52 @@ flows:
       OpenAI-compatible request and response. Non-streaming on purpose —
       streaming is a different transport (SSE) that the generated clients return
       as an opaque body, so demonstrating it here would teach the wrong shape.
+      Print choices[0].message.content.
 
   money:
     summary: Balance, then the usage that moved it.
-    operations: [billing_billingBalance, billing_billingUsage]
+    operations: [cloud_get_v1_billing_balance, cloud_get_v1_billing_usage]
     notes: >-
       Neither takes an org: both derive the tenant server-side from the JWT
       `owner` claim, so a key can only read its own money. The usage ledger is
-      unbounded by default — an example asks for a window.
+      unbounded by default — an example asks for a window. Both ids are cloud's
+      now: /v1/billing is among the routes where the binary's own woven document
+      replaced a hand-written spec, so the prose is the handler's.
 
   store:
-    summary: KV round-trip — set, read back, delete.
-    operations: [kv_setKey, kv_getKey, kv_deleteKey]
+    summary: KV round-trip — create a store, read it back, delete it.
+    operations: [cloud_post_v1_kv, cloud_get_v1_kv_name, cloud_delete_v1_kv_name]
     notes: >-
       The delete belongs in the language's finally/defer, so a failed read still
-      cleans up instead of leaving the key for the next run to collide with.
-      This is the data plane (/v1/kv/keys/*), not the provisioning plane
-      (/v1/kv, which creates stores).
+      cleans up instead of leaving the store for the next run to collide with.
+      This is the provisioning plane, and it is here because it is the one that
+      answers: the value plane (/v1/kv/keys/{key} — kv_setKey, kv_getKey,
+      kv_deleteKey) is authored in kv/openapi.yaml but replies 404 to GET and
+      405 to PUT and DELETE at api.hanzo.ai, while /v1/kv and /v1/kv/namespaces
+      reply 403. An example may only call what routes.
 
   agent:
-    summary: Create an agent, run it, read it back.
+    summary: Create an agent, run it, read the run back.
     operations:
-      - cloud_AgentsController.Create
-      - cloud_AgentsController.Run
-      - cloud_AgentsController.Get
+      - cloud_post_v1_agents
+      - cloud_post_v1_agents_by_ref_run
+      - cloud_get_v1_agents_ref_runs
     notes: >-
       `ref` accepts the public id (agent_...) OR the org-unique name, which is
       why run and read can both use the name just created without waiting for an
-      id. Names are org-unique, so an example must not hardcode one.
+      id. Names are org-unique, so an example must not hardcode one. The last
+      step is the RUN list, not the agent read: a run is asynchronous, so the
+      example polls it until the run it started is terminal.
 
   tools:
     summary: List the MCP tools this key can reach.
-    operations: [automations_mcp]
+    operations: [cloud_get_v1_tools]
     notes: >-
-      JSON-RPC 2.0; send method=tools/list. Chosen over the other MCP door
-      (tasks_tasksMcp) because this one has typed request/response schemas, so
-      `method` is a checked enum in every generated client rather than a free
-      string. JSON-RPC reports failure INSIDE a 200 as error={code,message}, so
-      an example checks `error` before reading `result`.
+      Assert the count is greater than zero and print three names. This is the
+      served tool list — every tool the caller's org can call, which is what
+      tools/list answers. There is no JSON-RPC door to send that method to:
+      /v1/mcp is not routed (404 page not found) and the document holds only
+      /v1/mcp/servers, the registry of external MCP servers, while the
+      automations door (/v1/automations/mcp — automations_mcp) replies 404 to
+      GET and 405 to POST. To CALL a tool, the next route is
+      cloud_post_v1_tools_call.

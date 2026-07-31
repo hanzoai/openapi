@@ -21,6 +21,8 @@ Build invariant (fail loud — orthogonality is enforced, not hoped):
   • every present `<svc>/openapi.yaml` dir maps to EXACTLY ONE entry across
     `domains ∪ core` (orphan / unlisted / double-listed → sys.exit);
   • a `collapsed` name MUST have NO spec dir (a reappeared dir → sys.exit);
+  • no two AUTHORED specs may claim one route — only TRUTH may take a route
+    from someone (see TRUTH), and it does so explicitly;
   • `internal` services are EXCLUDED from the unified + x-tagGroups (their dirs,
     if any, are skipped);
   • `pending` / `review` / domain names WITHOUT a dir are fine (not-yet-authored
@@ -32,6 +34,19 @@ import yaml
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 CAPABILITIES = os.path.join(ROOT, "capabilities.yaml")
+
+# The one spec here that is NOT authored here: `cloud/openapi.yaml` is
+# hanzoai/cloud's own woven document, copied verbatim by `sync.py` from that
+# repo's origin/main. A binary's document cannot describe a route the binary
+# does not serve — cloud's is regenerated from its router and drift-gated there
+# — so where it and a hand-written spec both claim a path, IT WINS. It is
+# merged LAST to make that happen, explicitly, instead of by where its name
+# falls in the alphabet, which is how the same paths used to resolve.
+TRUTH = "cloud"
+
+# What a route with no declared response shape says for itself.
+UNTYPED = ("The route answers; its response shape is not declared at the source "
+           "(not a typed op).")
 
 
 def load_registry():
@@ -152,6 +167,16 @@ def namespace_ops(item, svc, path):
     primary by OpenAPI convention — it is what Redoc groups under — so keeping it
     changes no rendering, and the secondary tag was never reachable as a group
     anyway once x-tagGroups is emitted from capabilities.yaml.
+
+    responses get a `default` when the source declares none. An operation with no
+    responses is legal OpenAPI 3.1 and useless to every generator: 7.14.0 counts
+    each one an ERROR and, told to generate anyway, emits a method whose return
+    type is the raw HTTP response. The woven document says so for every route
+    that is not a typed op — it publishes the address and invents nothing, which
+    is the honest reading — so the fix is not to invent a schema here either. A
+    `default` response with no content says exactly what is known: the route
+    answers, and its shape is not declared at the source. The document validates,
+    the generator stops erroring, and the client is no less typed than the route.
     """
     if not isinstance(item, dict):
         return item
@@ -164,23 +189,63 @@ def namespace_ops(item, svc, path):
                 c if c.isalnum() else " " for c in path).split())
             base = f"{method}_{slug}"
         op["operationId"] = f"{svc}_{base}"
-        if len(op.get("tags") or []) > 1:
+        # An untagged operation is not ungrouped, it is grouped somewhere nobody
+        # named: every generator files it under `DefaultApi` and every doc site
+        # leaves it out of the movements. The service that serves it is the one
+        # true answer, so it is the tag. (68 of these, all the non-/v1 routes the
+        # cloud weave tags for no product: `/`, `/.well-known/*`, the git wire.)
+        if not op.get("tags"):
+            op["tags"] = [svc]
+        elif len(op["tags"]) > 1:
             op["tags"] = op["tags"][:1]
+        if not op.get("responses"):
+            op["responses"] = {"default": {"description": UNTYPED}}
     return item
+
+
+def key(tag):
+    """A tag's identity, ignoring case, space and punctuation. `AI` and `ai`,
+    `API Keys` and `api-keys` name one concept and become one module in every
+    client, so they are one key here too."""
+    return "".join(c for c in tag.lower() if c.isalnum())
 
 
 def build_unified(present, categories, internal):
     """Aggregate every present per-service spec into the unified hanzo.yaml dict.
 
-    Internal services are excluded (their dirs, if any, are skipped)."""
+    Internal services are excluded (their dirs, if any, are skipped); TRUTH is
+    merged LAST so its routes win over any hand-written spec that claims them."""
     included = [s for s in present if s not in internal]
+    included = [s for s in included if s != TRUTH] + [s for s in included if s == TRUTH]
 
-    paths, schemas, responses, params, reqbodies, secschemes, tags = {}, {}, {}, {}, {}, {}, []
+    paths, schemas, responses, params, reqbodies, secschemes = {}, {}, {}, {}, {}, {}
+    claim, owner, described, titles = {}, {}, {}, {}
+    overrides = 0
     for svc in included:
         spec = yaml.safe_load(open(os.path.join(ROOT, svc, "openapi.yaml")))
         comps = spec.get("components", {}) or {}
+        titles[key(svc)] = (spec.get("info") or {}).get("title") or svc
         for p, item in (spec.get("paths", {}) or {}).items():
-            paths[p] = namespace_ops(prefix(item, svc), svc, p)
+            if p in claim:
+                # Two hand-written specs claiming one route is ambiguity with no
+                # right answer — the resolution used to be alphabetical. Only
+                # TRUTH may take a route from someone, because only TRUTH is
+                # evidence of what is served.
+                if svc != TRUTH:
+                    sys.exit(f"merge: {claim[p]}/openapi.yaml and {svc}/openapi.yaml "
+                             f"both claim {p} — one route has one owner")
+                overrides += 1
+            claim[p] = svc
+            item = namespace_ops(prefix(item, svc), svc, p)
+            paths[p] = item
+            for op in (item or {}).values():
+                for t in (op.get("tags") or []) if isinstance(op, dict) else []:
+                    owner.setdefault(key(t), svc)
+        # A tag's prose belongs to whoever declared it. TRUTH is merged last, so
+        # for a tag it also declares, the owning Go package's synopsis wins.
+        for t in spec.get("tags") or []:
+            if isinstance(t, dict) and t.get("name") and (t.get("description") or "").strip():
+                described[key(t["name"])] = t["description"].strip()
         for n, x in (comps.get("schemas", {}) or {}).items():
             schemas[f"{svc}_{n}"] = schema(x, svc)
         for n, x in (comps.get("responses", {}) or {}).items():
@@ -191,7 +256,6 @@ def build_unified(present, categories, internal):
             reqbodies[f"{svc}_{n}"] = prefix(x, svc)
         for n, x in (comps.get("securitySchemes", {}) or {}).items():
             secschemes.setdefault(n, x)
-        tags.append({"name": svc, "description": spec.get("info", {}).get("title", svc)})
 
     # Case-canonicalize operation tags — the LAST codegen-identity normalization,
     # and the one this file claimed but never did. openapi-generator emits one
@@ -208,36 +272,61 @@ def build_unified(present, categories, internal):
     for item in paths.values():
         for op in (item or {}).values():
             for t in (op.get("tags") or []) if isinstance(op, dict) else []:
-                key = "".join(c for c in t.lower() if c.isalnum())
-                best = canon.get(key)
+                best = canon.get(key(t))
                 rank = (sum(c.isupper() for c in t), tuple(-ord(c) for c in t))
                 if best is None or rank > best[1]:
-                    canon[key] = (t, rank)
+                    canon[key(t)] = (t, rank)
+    used = []
     for item in paths.values():
         for op in (item or {}).values():
             if isinstance(op, dict) and op.get("tags"):
-                op["tags"] = [canon["".join(c for c in t.lower() if c.isalnum())][0]
-                              for t in op["tags"]]
-    # The permanent gate: after canonicalization no two distinct tag strings may
-    # share a key. If this fires, a tag differs from another by something other
-    # than case/space/punctuation and the picker needs to see it — fail the build
-    # rather than ship a client missing operations, the exact failure this closes.
-    seen = {}
-    for item in paths.values():
-        for op in (item or {}).values():
-            for t in (op.get("tags") or []) if isinstance(op, dict) else []:
-                key = "".join(c for c in t.lower() if c.isalnum())
-                if seen.setdefault(key, t) != t:
-                    sys.exit(f"merge: tag collision survives canonicalization: "
-                             f"{seen[key]!r} vs {t!r} both key {key!r}")
+                op["tags"] = [canon[key(t)][0] for t in op["tags"]]
+                for t in op["tags"]:
+                    if t not in used:
+                        used.append(t)
 
-    # x-tagGroups: one group per capabilities.yaml category, present tags only,
-    # in registry order.
+    # operationId uniqueness under the identity a GENERATOR uses, not the one the
+    # spec states. OpenAPI requires operationIds to be unique as STRINGS, and
+    # they are: `cloud_get_v1_pricing-policy` (GET /v1/pricing-policy) and
+    # `cloud_get_v1_pricing_policy` (GET /v1/pricing/policy) differ by one
+    # character. Every generator then strips the punctuation and camel-cases what
+    # is left, so both arrive as CloudGetV1PricingPolicy: the Go client declares
+    # `ApiCloudGetV1PricingPolicyRequest` twice and does not compile — the same
+    # class of failure as the tag casing above, one level down. Both routes are
+    # real, so neither may be dropped; the later one by path order takes a
+    # suffix, which is what the generator does for the duplicates it can see.
+    taken, renamed = set(), 0
+    for p in sorted(paths):
+        for m in HTTP_METHODS:
+            op = (paths[p] or {}).get(m)
+            if not isinstance(op, dict):
+                continue
+            oid, n = op["operationId"], 2
+            while key(oid) in taken:
+                oid, n = f"{op['operationId']}_{n}", n + 1
+            renamed += oid != op["operationId"]
+            taken.add(key(oid))
+            op["operationId"] = oid
+
+    # x-tagGroups and `tags` describe the tags OPERATIONS CARRY. Both used to
+    # describe the spec DIRECTORIES instead — 55 names, 4 of which any operation
+    # carried — so a doc site grouped 4 of 239 tags, left the other 235
+    # ungrouped, and every description it did have belonged to a heading nothing
+    # was filed under. A tag's group is the domain of the service that
+    # introduced it, so the registry still decides the movements; a tag's prose
+    # is whatever the declaring spec said about it.
+    svc_group = {s: g for g, members in categories for s in members}
     tag_groups = []
-    for name, members in categories:
-        member_tags = [s for s in members if s in included]
+    for name, _ in categories:
+        member_tags = [t for t in used if svc_group.get(owner[key(t)]) == name]
         if member_tags:
             tag_groups.append({"name": name, "tags": member_tags})
+    tags = []
+    for t in (t for g in tag_groups for t in g["tags"]):
+        # The declaring spec's words if it wrote any; otherwise the title of the
+        # service that serves the tag — which is all a service-name tag means.
+        prose = described.get(key(t)) or titles.get(key(t))
+        tags.append({"name": t, "description": prose} if prose else {"name": t})
 
     components = {
         "securitySchemes": secschemes or {"bearerAuth": {"type": "http", "scheme": "bearer"}},
@@ -258,7 +347,10 @@ def build_unified(present, categories, internal):
                 "The single unified OpenAPI surface for ALL Hanzo services, "
                 "aggregated from the per-service specs. Every route is "
                 "https://api.hanzo.ai/v1/<service>/*. Grouped by the canonical "
-                "domains in capabilities.yaml (the ONE registry). Regenerated by "
+                "domains in capabilities.yaml (the ONE registry). "
+                "cloud/openapi.yaml is hanzoai/cloud's own woven document, "
+                "copied verbatim by sync.py, and it wins wherever it and a "
+                "hand-written spec describe the same route. Regenerated by "
                 "merge.py — edit the per-service <svc>/openapi.yaml + "
                 "capabilities.yaml, not this file."
             ),
@@ -273,7 +365,22 @@ def build_unified(present, categories, internal):
         "paths": dict(sorted(paths.items())),
         "components": components,
     }
-    return unified, len(included), len(paths), len(schemas), len(responses), len(params), len(tag_groups)
+    ops = [op for item in paths.values() for m, op in (item or {}).items()
+           if m in HTTP_METHODS and isinstance(op, dict)]
+    return unified, {
+        "services": len(included),
+        "paths": len(paths),
+        "schemas": len(schemas),
+        "responses": len(responses),
+        "params": len(params),
+        "groups": len(tag_groups),
+        "tags": len(tags),
+        "described_tags": sum(1 for t in tags if t.get("description")),
+        "ops": len(ops),
+        "described_ops": sum(1 for op in ops if (op.get("description") or "").strip()),
+        "overrides": overrides,
+        "renamed": renamed,
+    }
 
 
 def render_capabilities_md(present, categories, cap):
@@ -370,17 +477,20 @@ def main():
     present = spec_dirs()
     check_invariant(present, categories, internal, collapsed)
 
-    unified, n_svc, n_paths, n_schemas, n_resp, n_params, n_groups = build_unified(
-        present, categories, internal)
+    unified, n = build_unified(present, categories, internal)
     yaml.dump(unified, open(os.path.join(ROOT, "hanzo.yaml"), "w"),
               default_flow_style=False, sort_keys=False, width=120)
 
     md = render_capabilities_md(present, categories, cap)
     open(os.path.join(ROOT, "CAPABILITIES.md"), "w").write(md)
 
-    print(f"merged {n_svc} services → {n_paths} paths, {n_schemas} schemas, "
-          f"{n_resp} responses, {n_params} params, {n_groups} categories")
-    print(f"generated CAPABILITIES.md ({n_groups} categories) from capabilities.yaml")
+    print(f"merged {n['services']} services → {n['paths']} paths, {n['schemas']} schemas, "
+          f"{n['responses']} responses, {n['params']} params, {n['groups']} categories")
+    print(f"{n['ops']} operations, {n['described_ops']} described; "
+          f"{n['tags']} tags, {n['described_tags']} described; "
+          f"{n['overrides']} paths taken by {TRUTH} (source-true), "
+          f"{n['renamed']} operationIds suffixed to stay distinct in codegen")
+    print(f"generated CAPABILITIES.md ({n['groups']} categories) from capabilities.yaml")
     return 0
 
 

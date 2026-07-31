@@ -63,7 +63,6 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 | Capability | Route | Spec |
 |---|---|---|
 | `o11y` | `/v1/o11y` | ✓ |
-| `observe` | `/v1/observe` | ✓ |
 | `analytics` | `/v1/analytics` | ✓ |
 
 ## Commerce
@@ -76,7 +75,6 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 | `billing` | `/v1/billing` | ✓ |
 | `pricing` | `/v1/pricing` | ✓ |
 | `plan` | `/v1/plan` | ✓ |
-| `product` | `/v1/product` | ✓ |
 | `crm` | `/v1/crm` | ✓ |
 | `referrals` | `/v1/referrals` | ✓ |
 | `affiliates` | `/v1/affiliates` | ✓ |
@@ -104,7 +102,6 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 | Capability | Route | Spec |
 |---|---|---|
 | `projects` | `/v1/projects` | ✓ |
-| `app` | `/v1/app` | ✓ |
 | `git` | `/v1/git` | ✓ |
 | `templates` | `/v1/templates` | ✓ |
 | `integrations` | `/v1/integrations` | ✓ |
@@ -142,21 +139,22 @@ Resolved duplicates / consolidations — removed, no spec dir. The capability no
 | `connectorruntime` | automations |
 | `gojabase` | goja |
 | `paas` | platform |
+| `observe` | o11y |
+| `app` | projects |
+| `product` | vector + search-docs |
 
 ## Pending
 
 Live surfaces missing a spec — author these to complete the set.
 
-`team`, `wallets`, `treasury`, `usage`, `fleet`
+`treasury`
 
 ## Under review
 
 Braids to verify before folding — grouped today (a spec dir exists), consolidation is a separate verified decision.
 
-- **app_vs_projects** — app (hanzo.app builds/deploys, grouped→applications) vs projects (buildable/deployable sites) — likely ONE concern; fold app→projects?
 - **do_is_a_provider** — do (DigitalOcean VPCs/LBs, grouped→platform) is a PROVIDER, not a capability — fold into provisioning/platform?
 - **s3_vs_storage** — s3 (/v1/s3/*, grouped→data) is the present object store; storage is the canonical rename target (no dir yet) — fold s3→storage once the dir is renamed?
-- **observe_vs_o11y** — observe (/v1/o11y/{logs,metrics,status} + /v1/settings, grouped→observability) is an o11y read-plane facet + a settings facet — fold observe→o11y once the routes migrate?
 - **retrieval_cluster** — search vs kb (semantic) vs vector (store) — overlapping retrieval; is search distinct from kb?
 
 ## Internal — NOT public capabilities

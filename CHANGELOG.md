@@ -2,6 +2,60 @@
 
 ## v1.0.0
 
+### `hanzo.yaml` is THE published document — cloud's woven spec merged, and it wins
+
+`cloud/openapi.yaml` stopped being a hand-written contract and became a verbatim
+copy of hanzoai/cloud's own woven document, pulled by the new `sync.py` from that
+repo's `origin/main`. Cloud regenerates that document from its router and fails
+its own build on any diff, so it cannot describe a route the binary does not
+serve — the property no spec here has. `merge.py` therefore merges it LAST and
+lets it WIN every route an authored spec also claims (298), explicitly instead of
+by where `cloud` falls in the alphabet.
+
+1132 → **1720 paths**, 1519 → **2457 operations**, and the prose came with it:
+699 → **1196 operations carry a description**, lifted from the handlers' Go doc
+comments. Tags too — `tags`/`x-tagGroups` now describe the tags OPERATIONS carry
+(260, of which 210 described, cloud's being the owning package's synopsis)
+instead of the 55 spec directories, 4 of which any operation carried. A tag's
+group is still the domain of the service that introduced it, so `capabilities.yaml`
+remains the only taxonomy.
+
+Three defects that reached generators are fixed at the one place that owns
+codegen identity: an operation with no `responses` (668, cloud's untyped routes)
+gets a `default` that says exactly that rather than an invented schema; an
+operation with no tag takes its service's name rather than `DefaultApi`; and
+`cloud_get_v1_pricing-policy` vs `cloud_get_v1_pricing_policy` — two real routes,
+distinct strings, one Go type — are separated. Without the first, cloud's
+document alone would be 668 generator errors. openapi-generator 7.14.0 reports
+**0 errors, 0 warnings** on the result (346 recommendations, all unused models),
+go and typescript-axios both generate, and the generated Go client compiles.
+
+Six collisions surfaced when the merge stopped resolving them by alphabet, and
+all six were duplicate authoring: `/health` declared by nine specs (and answering
+with the SPA at `api.hanzo.ai`, while `/healthz` answers JSON) is now `gateway`'s
+alone; `observe`, `app` and `product` declared only other services' routes and
+are collapsed into `o11y`, `projects` and `vector` + `search-docs`. Every route
+they held is in the document, from cloud.
+
+`generated/hanzo.json` is deleted: measuring `hanzo.yaml` against a document it
+now contains is tautology, and a second, older copy of one emission is the drift
+this change exists to end.
+
+### `flows.yaml` — repointed at what the wire actually answers
+
+The six journeys landed naming ids the merge then moved or that were never
+served, so every one was re-resolved against the merged document AND probed.
+`money` and `agent` move to cloud's ids (`billing_*` and
+`cloud_AgentsController.*` no longer exist — the binary's document owns those
+routes now). `store` moves from the KV value plane to the store itself, and
+`tools` from the automations MCP door to `/v1/tools`: both of the originals
+reply 404 to GET and 405 to PUT/POST/DELETE, which is what a GET-only wildcard
+answers when nothing is routed there. `hello` and `chat` were already right —
+`ai_getAccount` returns 200 with the owner and name to print.
+
+The method spread is the lesson: a bare 404 is ambiguous because a live handler
+says "not found" too, so one GET is not a liveness probe.
+
 ### Delete the 18 products authored here and served nowhere — 655 paths, 849 operations
 
 Every product below was probed on its OWN authored routes, at `api.hanzo.ai` and

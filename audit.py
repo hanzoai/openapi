@@ -31,8 +31,14 @@ Inputs, by convention rather than configuration:
                                 to measure against.
   generated/<name>.json|.yaml   what the service emits from its own routes —
                                 zip's App.OpenAPISpec() folded over the live
-                                router. hanzo.json is written by `make openapi
-                                OPENAPI_DIR=<this repo>` in hanzoai/cloud.
+                                router.
+
+There is no `generated/hanzo.json` any more, and its absence is the point.
+hanzoai/cloud's emission is no longer something this repo measures the master
+against — `sync.py` copies it in as `cloud/openapi.yaml` and `merge.py` merges it,
+winning every route it and a hand-written spec both claim. What the audit used to
+report for the whole binary is now true by construction: the master cannot
+declare a cloud route the binary does not serve, and cannot miss one it does.
 
 A service with no file under generated/ is not audited: it has not joined the
 pipeline yet, and saying so once is more useful than failing.

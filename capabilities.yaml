@@ -49,12 +49,12 @@ domains:
   - id: observability
     title: "Observability"
     role: "see everything — telemetry · analytics · usage"
-    services: [o11y, observe, analytics]
+    services: [o11y, analytics]
 
   - id: commerce
     title: "Commerce"
     role: "the economy — meter · price · bill · reward"
-    services: [commerce, billing, pricing, plan, product, crm, referrals, affiliates, licensing]
+    services: [commerce, billing, pricing, plan, crm, referrals, affiliates, licensing]
 
   - id: platform
     title: "Platform"
@@ -64,7 +64,7 @@ domains:
   - id: applications
     title: "Applications"
     role: "the user-facing surfaces built on all of the above"
-    services: [projects, app, git, templates, integrations, bot, kb, search, websearch, world, authors, sites, tracker, framework]
+    services: [projects, git, templates, integrations, bot, kb, search, websearch, world, authors, sites, tracker, framework]
 
 # Core — governance that owns no single domain.
 core: [admin, plugin]
@@ -93,17 +93,21 @@ collapsed:
   connectorruntime: automations        # connector runtime = the automations engine
   gojabase:  goja                      # internal goja JS-runtime lib, not a public service
   paas:      platform                  # one deploy plane — /v1/platform is the served one
+  observe:   o11y                      # declared o11y's own /v1/o11y reads — cloud serves all four
+  app:       projects                  # declared only /v1/projects/* — a strict subset of projects
+  product:   vector + search-docs       # declared only /v1/vector/* + /v1/search-docs/*, never /v1/product
 
 # Not-yet-scored — LIVE surfaces missing a spec. Author these to complete the set.
-pending: [team, wallets, treasury, usage, fleet]
+# team / wallets / usage / fleet left this list when cloud/openapi.yaml became
+# hanzoai/cloud's own woven document: the binary describes them, so they are in
+# hanzo.yaml. treasury is served by nothing and stays.
+pending: [treasury]
 
 # Braids under review — same concern, different names? A spec dir still exists
 # (so it is GROUPED into a domain above and counts for the invariant); folding it
 # away is a separate, verified decision — do NOT silently consolidate here (would
 # lose capability). merge.py groups them; it does not fold them.
 review:
-  app_vs_projects: "app (hanzo.app builds/deploys, grouped→applications) vs projects (buildable/deployable sites) — likely ONE concern; fold app→projects?"
   do_is_a_provider: "do (DigitalOcean VPCs/LBs, grouped→platform) is a PROVIDER, not a capability — fold into provisioning/platform?"
   s3_vs_storage: "s3 (/v1/s3/*, grouped→data) is the present object store; storage is the canonical rename target (no dir yet) — fold s3→storage once the dir is renamed?"
-  observe_vs_o11y: "observe (/v1/o11y/{logs,metrics,status} + /v1/settings, grouped→observability) is an o11y read-plane facet + a settings facet — fold observe→o11y once the routes migrate?"
   retrieval_cluster: "search vs kb (semantic) vs vector (store) — overlapping retrieval; is search distinct from kb?"
