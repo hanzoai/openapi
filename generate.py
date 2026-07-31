@@ -16,6 +16,7 @@ convention.
 import argparse
 import concurrent.futures as futures
 import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -50,6 +51,33 @@ def jar(version):
 # make --check report 2142 phantom deletions, and a check that cries wolf is one
 # nobody runs. Every one of these is already gitignored in its repo.
 ARTIFACTS = ("__pycache__", ".mypy_cache", ".pytest_cache", ".ruff_cache", "node_modules")
+
+
+def as_json(path):
+    """The document as JSON, because YAML has a ceiling and JSON does not.
+
+    swagger-parser hands a YAML document to snakeyaml, which refuses anything
+    over 3 * 1024 * 1024 = 3145728 code points. hanzo.yaml passed that mark at
+    1bac13f (3,654,449) and the failure does not say so: the parser logs
+    SnakeException, silently falls through to the SWAGGER 2.0 compat reader, and
+    dies with "Issues with the OpenAPI input", which reads like a malformed
+    spec. It is not — the document validates at 0 errors.
+
+    `-DmaxYamlCodePoints` lifts the cap, and it is NOT the fix: the property is
+    honoured by the swagger-parser in generator 7.24.0 and IGNORED by the one in
+    7.14.0, which is the version this file pins. Feeding JSON instead avoids
+    snakeyaml altogether — measured, not assumed: a JSON 539 KB OVER the ceiling
+    validates clean on 7.14.0. The generator reads either format from -i, so
+    this costs one temp file and removes a ceiling the document will keep
+    growing into.
+
+    Deliberately not written back to disk as a second committed artifact. There
+    is one document, and it is hanzo.yaml.
+    """
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
+                                     dir=os.environ.get("TMPDIR")) as f:
+        json.dump(yaml.safe_load(open(path)), f)
+        return f.name
 
 
 def digest(path):
@@ -96,16 +124,7 @@ def emit(name, cfg, spec, version, out):
             "apiDocs=false", "modelDocs=false", "apiTests=false", "modelTests=false"]
     glob += [f"{k}={v}" for k, v in cfg.get("global", {}).items()]
     cmd = [
-        # -DmaxYamlCodePoints: swagger-parser hands the document to snakeyaml,
-        # which refuses anything over 3 * 1024 * 1024 = 3145728 code points.
-        # hanzo.yaml passed that mark at 1bac13f (3,654,449) and the parser does
-        # not say so plainly — it logs SnakeException, silently falls through to
-        # the Swagger 2.0 compat reader, and dies with "Issues with the OpenAPI
-        # input", which reads like a malformed spec. It is not: the document
-        # validates at 0 errors and 0 warnings. A parser default, nothing else,
-        # and it stops EVERY language at once — so it is set here, once, rather
-        # than discovered separately in seven repos.
-        "java", "-Xmx2g", "-DmaxYamlCodePoints=99999999", "-jar", jar(version), "generate",
+        "java", "-Xmx2g", "-jar", jar(version), "generate",
         "-g", cfg["generator"],
         "-i", spec,
         "-o", out,
@@ -171,7 +190,7 @@ def main():
     langs = sorted(conf["sdks"]) if (a.all or not a.langs) else a.langs
     if a.repo and len(langs) != 1:
         ap.error("--repo takes exactly one language")
-    spec = os.path.join(ROOT, conf["spec"])
+    spec = as_json(os.path.join(ROOT, conf["spec"]))
     version = str(conf["generator"])
 
     def one(name):
