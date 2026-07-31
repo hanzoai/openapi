@@ -33,6 +33,7 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 | `functions` | `/v1/functions` | ✓ |
 | `exec` | `/v1/exec` | ✓ |
 | `graph` | `/v1/graph` | ✓ |
+| `mcp` | `/v1/mcp` | ✓ |
 
 ## Data
 

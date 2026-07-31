@@ -268,6 +268,14 @@ def build_unified(present, categories, internal):
     # lexicographically smallest (the human-readable `Object Store` over
     # `ObjectStore`). Applied to the merged surface so no per-service spec's
     # casing can ever reach a generator uncanonicalized.
+    # A service NAMED for a concept owns that concept's tag, whoever used it
+    # first. `MCP` is tagged by four specs and the earliest alphabetically was
+    # automations, which put the fleet's one MCP door under Streams; `mcp` is a
+    # service, in Intelligence, and is not a matter of iteration order.
+    for svc in included:
+        if key(svc) in owner:
+            owner[key(svc)] = svc
+
     canon = {}
     for item in paths.values():
         for op in (item or {}).values():

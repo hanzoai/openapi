@@ -18,6 +18,8 @@ servers:
 - url: https://api.hanzo.ai
   description: Hanzo Gateway
 tags:
+- name: authz
+  description: Hanzo Authz API
 - name: Policies
   description: Bucket access policies
 - name: Health
@@ -37,10 +39,17 @@ tags:
 - name: Webhooks
   description: 'Package webhooks is how your app hears about events: register an endpoint, pick the events, get each one delivered
     and signed.'
+- name: kms
+  description: 'Package kms is secret custody: your org''s secrets sealed at rest, plus threshold signing.'
+- name: security
+  description: 'Package security is secret scanning for your code: submit sources, get findings, masked never raw.'
 - name: networks
   description: The org's ZT overlay network(s)
 - name: mesh
   description: ZT edge services (service mesh)
+- name: iam
+  description: 'Package iam is Hanzo''s identity provider: users, organizations, applications, and the OIDC/OAuth2 endpoints
+    every Hanzo service authenticates against.'
 - name: agents
   description: 'Package agents is autonomous agents for your org: define them, run them, keep every run.'
 - name: OpenAI Compatible
@@ -89,10 +98,6 @@ tags:
 - name: Stores
 - name: System
   description: Liveness, settings and cluster probes
-- name: Tasks
-  description: 'Package tasks is Hanzo Tasks: durable workflows that survive a crash, with every run visible and replayable.'
-- name: Templates
-  description: Package templates is a gallery of starter kits you can deploy as they come.
 - name: Training Contribution
 - name: Tree Files
 - name: Usages
@@ -104,6 +109,12 @@ tags:
 - name: Videos
 - name: Workflows
 - name: Data
+- name: MCP
+  description: "The one JSON-RPC door \u2014 every tool this credential can reach, and the call that runs one."
+- name: Functions
+  description: 'Package functions is your serverless code: publish it, call it over HTTP, watch every run and what it cost.'
+- name: evals
+  description: Package eval is scoring a model on your own data, with a judge you choose.
 - name: Exec
   description: 'Package exec is the code interpreter: run a snippet in a sandbox and move files in and out.'
 - name: indexers
@@ -114,12 +125,17 @@ tags:
   description: Training pipeline management
 - name: Experiments
   description: 'Package experiments is A/B testing anything: a flag, an ad, a subject line, a model.'
+- name: ml
+  description: 'Package ml is model serving and training: deploy a model behind an endpoint, run a training job, tune it with
+    experiments.'
 - name: Deployments
   description: Deploy a project to the S3 origin, purge its edge cache, and inspect its versioned deployment history.
 - name: prompts
   description: Package prompts is your prompt library, versioned, so nothing changes silently.
 - name: research
   description: Package research is every experiment you have ever run, kept and comparable.
+- name: AI
+  description: "AI summaries (per-user IAM \u2192 org/project/billing)"
 - name: catalog
   description: Package catalog is one place to browse every project, app and site built here.
 - name: Clusters
@@ -136,6 +152,12 @@ tags:
     package runs.'
 - name: Streams
   description: Append-only log streams
+- name: vector
+  description: Managed vector (Qdrant) collection resources.
+- name: kv
+  description: Managed key-value (Redis) resources.
+- name: s3
+  description: Managed object storage (S3/MinIO) bucket resources.
 - name: Buckets
   description: Bucket management
 - name: Objects
@@ -152,10 +174,17 @@ tags:
   description: Vector point operations
 - name: Service
   description: Service operations
-- name: MCP
-  description: JSON-RPC tool surface over connector actions
+- name: base
+  description: "Package base is managed Hanzo Base: a hosted backend for your app \u2014 collections, records, access rules\
+    \ and sign-in."
+- name: Tasks
+  description: 'Package tasks is Hanzo Tasks: durable workflows that survive a crash, with every run visible and replayable.'
+- name: automations
+  description: Package automations is workflows that run themselves, on a schedule or a webhook.
 - name: Runs
   description: Evaluation runs (model-under-test + LLM-as-a-Judge)
+- name: notify
+  description: Package notify is transactional email and SMS, sent through your org's own provider credential.
 - name: Auth
   description: Machine-identity login
 - name: Collect
@@ -179,10 +208,12 @@ tags:
 - name: Share
   description: "Package share fronts the zrok controller so a Hanzo org can publish a local service to a public https://<token>.share.hanzo.ai\
     \ URL \u2014 \"ngrok on our own stack\" \u2014 folded into the ONE cloud binary."
+- name: Analytics
+  description: "Package analytics is the product-event plane: it owns the ingest door every Hanzo client posts to, lands each\
+    \ event in the `hanzo` warehouse, and serves the per-org read lenses \u2014 KPIs, time series, rankings, captured errors\
+    \ \u2014 over what it wrote."
 - name: O11y
   description: 'Package o11y is your logs, metrics and traces: ship them in, query them, chart them.'
-- name: Admin
-  description: 'Package admin is the operator''s view of the fleet: orgs, users, roles, spend and system health.'
 - name: Affiliates
   description: Package affiliates is a partner program that pays commission on what your referrals spend.
 - name: billing
@@ -209,32 +240,25 @@ tags:
   description: 'Package marketing is lifecycle email: drip sequences that reach the right people.'
 - name: Metrics
   description: Invocation histograms and status breakdown
-- name: plans
-  description: Plan catalog + entitlement resolution
-- name: referrals
-  description: Package referrals is credit for both sides when someone you refer actually spends.
-- name: Cloud
-  description: Cloud VM plans, regions, and storage
-- name: authz
-  description: Hanzo Authz API
-- name: automations
-  description: Package automations is workflows that run themselves, on a schedule or a webhook.
 - name: crm
   description: 'Package crm is your sales pipeline: the companies, the people, the deals in play.'
+- name: plans
+  description: Plan catalog + entitlement resolution
+- name: pricing
+  description: 'Package pricing is the price list: what every model, provider, GPU tier, tool and hosting plan costs.'
+- name: referrals
+  description: Package referrals is credit for both sides when someone you refer actually spends.
+- name: commerce
+  description: 'Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront
+    catalog.'
 - name: Zones
   description: DNS zone management
 - name: DNSSEC
   description: DNSSEC signing and key management
-- name: Analytics
-  description: "Package analytics is the product-event plane: it owns the ingest door every Hanzo client posts to, lands each\
-    \ event in the `hanzo` warehouse, and serves the per-org read lenses \u2014 KPIs, time series, rankings, captured errors\
-    \ \u2014 over what it wrote."
 - name: vpcs
   description: Virtual Private Cloud networks
 - name: load-balancers
   description: Regional/global load balancers
-- name: Functions
-  description: 'Package functions is your serverless code: publish it, call it over HTTP, watch every run and what it cost.'
 - name: Versions
   description: Function version history
 - name: Logs
@@ -243,11 +267,6 @@ tags:
   description: Org-scoped secret storage
 - name: Domains
   description: Custom domain management
-- name: evals
-  description: Package eval is scoring a model on your own data, with a judge you choose.
-- name: framework
-  description: 'Package framework is document types you define: describe a record once, then create, list, submit and cancel
-    documents against it.'
 - name: Chat
   description: Chat completions (OpenAI-compatible)
 - name: Completions
@@ -264,38 +283,15 @@ tags:
   description: CDN caching, purge, and analytics
 - name: DNS
   description: 'Package dns is your DNS records: the zones and records behind every name you point at Hanzo.'
-- name: git
-  description: 'Package git is Git hosting for your org: create repos, clone, push, and see what they cost.'
-- name: kb
-  description: Hanzo KB API
-- name: kms
-  description: 'Package kms is secret custody: your org''s secrets sealed at rest, plus threshold signing.'
-- name: ml
-  description: 'Package ml is model serving and training: deploy a model behind an endpoint, run a training job, tune it with
-    experiments.'
-- name: notify
-  description: Package notify is transactional email and SMS, sent through your org's own provider credential.
 - name: platform
   description: "Package platform is Hanzo PaaS: deploy containers to your own tenant namespace \u2014 builds, releases, environments,\
     \ logs, custom domains."
-- name: pricing
-  description: 'Package pricing is the price list: what every model, provider, GPU tier, tool and hosting plan costs.'
 - name: sql
   description: Managed SQL (Postgres) database resources.
-- name: vector
-  description: Managed vector (Qdrant) collection resources.
 - name: datastore
   description: "Managed analytics datastore (Hanzo Datastore, ClickHouse-compatible wire) \u2014 dedicated per-org instance."
-- name: kv
-  description: Managed key-value (Redis) resources.
-- name: s3
-  description: Managed object storage (S3/MinIO) bucket resources.
 - name: docdb
   description: "Managed document database (FerretDB / MongoDB wire) \u2014 dedicated per-org instance."
-- name: security
-  description: 'Package security is secret scanning for your code: submit sources, get findings, masked never raw.'
-- name: tracker
-  description: 'Package tracker is your org''s issue tracker: projects, issues, and the filters to find them.'
 - name: machines
   description: Per-org cloud machine lifecycle
 - name: Bindings
@@ -305,10 +301,8 @@ tags:
 - name: compute
 - name: Bots
   description: Package bots is a bot doing your work on a real desktop, live, while you watch.
-- name: websearch
-  description: Package websearch is a web search and a page fetch your agents can call.
-- name: world
-  description: Package world is a live news feed filtered to what your project cares about.
+- name: Cloud
+  description: Cloud VM plans, regions, and storage
 - name: ads
   description: Package ads is your paid ad campaigns, launched and paused from one place.
 - name: agent
@@ -318,9 +312,6 @@ tags:
 - name: auto
   description: "Package auto is Hanzo Auto: durable workflow automation \u2014 flows built from trigger/action pieces, executed\
     \ as durable runs on the hanzo tasks plane."
-- name: base
-  description: "Package base is managed Hanzo Base: a hosted backend for your app \u2014 collections, records, access rules\
-    \ and sign-in."
 - name: benchmark
   description: Package benchmark is one honest score for any model, on the tests everyone quotes.
 - name: blueprint
@@ -328,8 +319,6 @@ tags:
 - name: books
   description: 'Package books is double-entry accounting: chart of accounts, ledger, bank reconciliation, and the reports
     that prove the books balance.'
-- name: bot
-  description: Package bot is your own machines, connected and ready to take a command.
 - name: builds
 - name: campaign
   description: Package campaign is one go-to-market push across paid, organic and email at once.
@@ -342,9 +331,6 @@ tags:
     KV and D1.'
 - name: code
   description: Package code is search and symbols across your repos, for you and your agents.
-- name: commerce
-  description: 'Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront
-    catalog.'
 - name: company
   description: 'Package company is incorporation end to end: pick a structure, add founders, pay, file, and e-sign.'
 - name: compliance
@@ -391,9 +377,6 @@ tags:
   description: Package guide is a step-by-step checklist that gets your business running on AI.
 - name: help
   description: 'Package help is a support desk: customers file tickets, your team answers them.'
-- name: iam
-  description: 'Package iam is Hanzo''s identity provider: users, organizations, applications, and the OIDC/OAuth2 endpoints
-    every Hanzo service authenticates against.'
 - name: index
   description: Package index is fast full-text search over your own data, typos forgiven.
 - name: ingress
@@ -450,6 +433,8 @@ tags:
   description: 'Package wallets is blockchain key custody: create wallets, rotate their keys, and sign with them.'
 - name: x402
   description: 'Package x402 is pay-per-request over HTTP 402: quote a price, take the payment, serve the resource.'
+- name: Templates
+  description: Package templates is a gallery of starter kits you can deploy as they come.
 - name: authors
   description: 'Package authors is a royalty for open-source work: your repo runs, you get paid.'
 - name: skills
@@ -464,6 +449,13 @@ tags:
   description: Token CRUD, OAuth token management
 - name: upload
   description: Presigned upload URL generation
+- name: framework
+  description: 'Package framework is document types you define: describe a record once, then create, list, submit and cancel
+    documents against it.'
+- name: git
+  description: 'Package git is Git hosting for your org: create repos, clone, push, and see what they cost.'
+- name: kb
+  description: Hanzo KB API
 - name: projects
   description: 'Package projects is where your sites live: create one, deploy a build, roll back to any release.'
 - name: sites
@@ -496,6 +488,10 @@ tags:
   description: Network and federation configuration
 - name: Export
   description: Export index data
+- name: tracker
+  description: 'Package tracker is your org''s issue tracker: projects, issues, and the filters to find them.'
+- name: websearch
+  description: Package websearch is a web search and a page fetch your agents can call.
 - name: Scrape
   description: Firecrawl-shaped URL scrape over Hanzo Crawl
 - name: News
@@ -508,16 +504,20 @@ tags:
   description: Conflict + humanitarian data
 - name: Intel
   description: Computed intelligence signals
-- name: AI
-  description: "AI summaries (per-user IAM \u2192 org/project/billing)"
 - name: Video
   description: Live news video resolution + player
+- name: world
+  description: Package world is a live news feed filtered to what your project cares about.
 - name: Meta
   description: Health + version
+- name: bot
+  description: Package bot is your own machines, connected and ready to take a command.
 - name: connectors
   description: Per-org app connectors (OAuth ingestion)
 - name: usage
   description: Package usage is what your org ran and what it cost, broken down per account.
+- name: Admin
+  description: 'Package admin is the operator''s view of the fleet: orgs, users, roles, spend and system health.'
 - name: Promotions
   description: Admin-set, limited-time plan discount windows
 - name: plugins
@@ -529,6 +529,7 @@ tags:
 x-tagGroups:
 - name: Identity & Trust
   tags:
+  - authz
   - Policies
   - Health
   - Authentication
@@ -538,8 +539,11 @@ x-tagGroups:
   - MFA
   - Resources
   - Webhooks
+  - kms
+  - security
   - networks
   - mesh
+  - iam
 - name: Intelligence
   tags:
   - agents
@@ -575,8 +579,6 @@ x-tagGroups:
   - Signout
   - Stores
   - System
-  - Tasks
-  - Templates
   - Training Contribution
   - Tree Files
   - Usages
@@ -586,14 +588,19 @@ x-tagGroups:
   - Videos
   - Workflows
   - Data
+  - MCP
+  - Functions
+  - evals
   - Exec
   - indexers
   - oracles
   - Pipelines
   - Experiments
+  - ml
   - Deployments
   - prompts
   - research
+  - AI
   - catalog
 - name: Data
   tags:
@@ -603,6 +610,9 @@ x-tagGroups:
   - List
   - Pub/Sub
   - Streams
+  - vector
+  - kv
+  - s3
   - Buckets
   - Objects
   - Versioning
@@ -611,10 +621,13 @@ x-tagGroups:
   - Collections
   - Points
   - Service
+  - base
 - name: Streams
   tags:
-  - MCP
+  - Tasks
+  - automations
   - Runs
+  - notify
 - name: Observability
   tags:
   - Auth
@@ -628,10 +641,10 @@ x-tagGroups:
   - Teams
   - Realtime
   - Share
+  - Analytics
   - O11y
 - name: Commerce
   tags:
-  - Admin
   - Affiliates
   - billing
   - Access Tokens
@@ -645,26 +658,21 @@ x-tagGroups:
   - Counters
   - Marketing
   - Metrics
+  - crm
   - plans
+  - pricing
   - referrals
-  - Cloud
+  - commerce
 - name: Platform
   tags:
-  - authz
-  - automations
-  - crm
   - Zones
   - DNSSEC
-  - Analytics
   - vpcs
   - load-balancers
-  - Functions
   - Versions
   - Logs
   - Secrets
   - Domains
-  - evals
-  - framework
   - Chat
   - Completions
   - Embeddings
@@ -673,44 +681,29 @@ x-tagGroups:
   - Edge
   - CDN
   - DNS
-  - git
-  - kb
-  - kms
-  - ml
-  - notify
   - platform
-  - pricing
   - sql
-  - vector
   - datastore
-  - kv
-  - s3
   - docdb
-  - security
-  - tracker
   - machines
   - Bindings
   - gpus
   - compute
   - Bots
-  - websearch
-  - world
+  - Cloud
   - ads
   - agent
   - ask
   - auto
-  - base
   - benchmark
   - blueprint
   - books
-  - bot
   - builds
   - campaign
   - captable
   - channels
   - cloudflare
   - code
-  - commerce
   - company
   - compliance
   - connector
@@ -737,7 +730,6 @@ x-tagGroups:
   - gateway
   - guide
   - help
-  - iam
   - index
   - ingress
   - insights
@@ -770,6 +762,7 @@ x-tagGroups:
   - x402
 - name: Applications
   tags:
+  - Templates
   - authors
   - skills
   - personas
@@ -777,6 +770,9 @@ x-tagGroups:
   - Search
   - Tokens
   - upload
+  - framework
+  - git
+  - kb
   - projects
   - sites
   - Indexes
@@ -792,19 +788,23 @@ x-tagGroups:
   - Experimental
   - Network
   - Export
+  - tracker
+  - websearch
   - Scrape
   - News
   - Markets
   - Geo
   - Conflict
   - Intel
-  - AI
   - Video
+  - world
   - Meta
+  - bot
   - connectors
   - usage
 - name: Core
   tags:
+  - Admin
   - Promotions
   - plugins
   - audit
@@ -43469,6 +43469,35 @@ paths:
       summary: Uninstall deactivates one tool for the caller's own org and project, so it stops being dispatchable there.
       tags:
       - marketplace
+  /v1/mcp:
+    post:
+      tags:
+      - MCP
+      summary: JSON-RPC call
+      operationId: mcp_rpc
+      description: 'One request, one response, three methods. `initialize` reports the
+
+        protocol version and server capabilities; `tools/list` returns every
+
+        tool this credential can reach; `tools/call` runs one by name.
+
+
+        Read `error` before `result`, and `result.isError` before
+
+        `result.content`: both failure channels live inside a 200.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mcp_Request'
+      responses:
+        '200':
+          description: "The JSON-RPC response \u2014 `result` on success, `error` on failure, never both."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mcp_Response'
   /v1/mcp/servers:
     get:
       description: 'ListServers lists the external MCP servers the caller''s org has registered.
@@ -86536,6 +86565,139 @@ components:
           type: object
           additionalProperties:
             type: string
+    mcp_Catalog:
+      type: object
+      description: The `tools/list` result.
+      properties:
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/mcp_Tool'
+    mcp_Content:
+      type: object
+      properties:
+        type:
+          type: string
+          description: '`text` today.'
+        text:
+          type: string
+    mcp_Failure:
+      type: object
+      description: A JSON-RPC error object. Transport-level failure, not a tool that ran and failed.
+      required:
+      - code
+      - message
+      properties:
+        code:
+          type: integer
+          description: '`-32601` for an unknown method.'
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+    mcp_Outcome:
+      type: object
+      description: The `tools/call` result. A refused or failed call is `isError`, still inside a 200.
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/mcp_Content'
+        isError:
+          type: boolean
+    mcp_Params:
+      type: object
+      description: Empty for `initialize` and `tools/list`; the tool and its arguments for `tools/call`.
+      properties:
+        name:
+          type: string
+          description: "The tool to run \u2014 `tools/call` only."
+        arguments:
+          type: object
+          additionalProperties: true
+          description: The tool's own input, shaped by its `inputSchema`.
+    mcp_Request:
+      type: object
+      required:
+      - jsonrpc
+      - method
+      properties:
+        jsonrpc:
+          type: string
+          const: '2.0'
+          description: Always `2.0`.
+        id:
+          description: Echoed back on the response. A request without one is a notification.
+          oneOf:
+          - type: integer
+          - type: string
+        method:
+          type: string
+          enum:
+          - initialize
+          - tools/list
+          - tools/call
+          description: Anything else answers `-32601 method not found`.
+        params:
+          $ref: '#/components/schemas/mcp_Params'
+    mcp_Response:
+      type: object
+      required:
+      - jsonrpc
+      properties:
+        jsonrpc:
+          type: string
+          const: '2.0'
+        id:
+          oneOf:
+          - type: integer
+          - type: string
+        result:
+          description: Present on success. Which shape depends on the method called.
+          oneOf:
+          - $ref: '#/components/schemas/mcp_Server'
+          - $ref: '#/components/schemas/mcp_Catalog'
+          - $ref: '#/components/schemas/mcp_Outcome'
+        error:
+          $ref: '#/components/schemas/mcp_Failure'
+    mcp_Server:
+      type: object
+      description: The `initialize` result.
+      properties:
+        protocolVersion:
+          type: string
+          description: The MCP protocol date this door implements, e.g. `2025-06-18`.
+        serverInfo:
+          type: object
+          properties:
+            name:
+              type: string
+            version:
+              type: string
+        capabilities:
+          type: object
+          properties:
+            tools:
+              type: object
+              properties:
+                listChanged:
+                  type: boolean
+    mcp_Tool:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          description: The operationId minus its leading `<service>_` segment.
+        description:
+          type: string
+          description: "The owning handler's doc comment \u2014 the same prose this document carries."
+        inputSchema:
+          type: object
+          additionalProperties: true
+          description: JSON Schema for `params.arguments`.
     ml_Deployment:
       type: object
       properties:

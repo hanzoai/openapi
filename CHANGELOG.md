@@ -2,6 +2,37 @@
 
 ## v1.0.0
 
+### Declare the MCP door — `POST /v1/mcp`, the one address an MCP client speaks
+
+The fleet's JSON-RPC door has been answering all along and was in no spec:
+`POST /v1/mcp` returns 200 with 796 tools, unauthenticated. It read as missing
+because the probe was a GET — the route is POST-only, so GET is 404 — and
+because the document held only `/v1/mcp/servers`, the registry of external
+servers, which made the 404 look confirmed. `mcp/openapi.yaml` now declares one
+operation (`mcp_rpc`) with the JSON-RPC 2.0 request and response typed:
+`initialize`, `tools/list`, `tools/call`, a `Tool` with its `inputSchema`, and
+both failure channels that live INSIDE a 200 — `error` (`-32601` for an unknown
+method) and `result.isError` (a tool that ran and refused). Verified against the
+live door, not guessed: `serverInfo`, `protocolVersion: 2025-06-18`, and the
+`content[]` shape are all copied from its own answers.
+
+The `tools` flow moves onto it, and the probe rule that hid it is corrected
+everywhere it was written: **probe the method the document declares, not GET.**
+A POST-only route and an absent route are indistinguishable from a GET.
+
+What the door exposes is recorded because it cannot be derived: 796 tools
+against 2479 operations, so about two thirds of the surface is not a tool, and
+the split is the binary's decision. The naming rule is mechanical — a tool name
+is its operationId minus the leading `<service>_` — holding for 795 of 796. The
+one exception is this document's own doing: `cloud_get_v1_pricing_policy_2`
+carries a `_2` because `/v1/pricing-policy` and `/v1/pricing/policy` collapse to
+one identifier in every generator, while its tool is still `get_v1_pricing_policy`.
+
+A tag whose key is a service NAME now belongs to that service's domain rather
+than to whichever spec used it first: `MCP` was tagged by four specs, the
+earliest alphabetically was `automations`, and the fleet's MCP door was being
+filed under Streams.
+
 ### `hanzo.yaml` is THE published document — cloud's woven spec merged, and it wins
 
 `cloud/openapi.yaml` stopped being a hand-written contract and became a verbatim

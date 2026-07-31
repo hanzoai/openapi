@@ -253,6 +253,28 @@ the day it started carrying prose of its own.
 The SDK-generation surface is the FUSED `api.hanzo.ai/v1` binary. `merge.py`
 unions the per-service specs into it, cloud's document last.
 
+### The next quality lever — 749 of 2479 operations model no response body
+
+30%, and **growing**: it was 696 of 2425 one merge ago. Nothing regressed to
+cause that. 668 of the 749 are the `default` this repo synthesizes for a route
+the cloud weave publishes with an address and nothing else, so the number rises
+with every untyped route cloud adds, and the ratio is a measure of cloud's typed
+coverage rather than of anything editable here. The other 81 declare a status
+and no content — those are authored, mostly `s3` (9), `commerce` (7), `kms` (4).
+
+All 25 `/v1/billing` operations are in the set, which is the sharpest way to
+say why it matters: a typed response is what makes a generated method worth
+calling, and `balance` returning an untyped body means every SDK hands back
+bytes for the one number the user asked for.
+
+**The lever is in hanzoai/cloud, not here.** A route becomes typed when its
+handler becomes a `zip.Get[In, Out]`; the weave then carries the schema, and
+`sync.py` picks it up with no change in this repo. Anything done here instead
+would be inventing shapes — which is the one thing the `default` exists to
+refuse. Two generator-blocking defects the SDK lane fixed at the source ARE
+holding: `/v1/platform` is 41 operations with 0 missing `responses`, and
+`ai_ChatCompletionResponse.choices` items now `$ref` `ai_ChatChoice`.
+
 ### What is still authored and not served — and how to tell
 
 Two authored surfaces `flows.yaml` had to route around, both measured at
@@ -265,5 +287,13 @@ ambiguous — a live handler says "not found" too. A route the binary HAS replie
 401 or 403 unauthenticated: it routed, then refused (`/v1/kv`, `/v1/kv/namespaces`,
 `/v1/tools`, `/v1/billing/balance`). A route it does NOT have replies 404 to GET
 and **405 method not allowed** to PUT, POST and DELETE, because the only thing
-matching the path is a GET-only wildcard. Probe more than one method before
-trusting or deleting an authored route.
+matching the path is a GET-only wildcard.
+
+**Probe the method the route declares, not GET** — and this is the correction,
+not a nuance. A POST-only route ALSO answers 404 to GET, so a GET probe cannot
+tell "absent" from "wrong verb". `POST /v1/mcp` answers 200 with 796 tools,
+unauthenticated, while `GET /v1/mcp` is 404; reading that 404 as absence is how
+the fleet's one MCP door went undeclared, and how this file previously said it
+did not exist. The two surfaces above survive the corrected test — every method
+their specs declare was probed, and none of them routed — but one verb is never
+a liveness probe, and a single GET has now been wrong once in this repo.
