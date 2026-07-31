@@ -310,35 +310,65 @@ means UNKNOWN. `fuse()` now overlays field by field: TRUTH still wins existence,
 operationId, tags and prose unconditionally, and wins any field it POPULATES —
 it just no longer deletes by being silent.
 
-**`requestBody` and `responses` are kept; `parameters` are not**, and the
-asymmetry is the whole rule. Each is judged by what it costs a client:
+`requestBody` and `responses` are kept by `KEEP`; `parameters` by `union()`,
+because their emptiness is ambiguous in one extra way. TRUTH omitting the field
+means unknown. But TRUTH declaring ONLY the path parameters means the same
+thing — the weave derives those from the route template, so `[{id}]` is what an
+untyped route emits whether or not it accepts twenty query parameters. Reading
+that as a complete list is the identical silence-for-emptiness mistake one level
+down, and it cost `GET /v1/integrations/{provider}/callback` its `code` and
+`state` — the whole OAuth handshake — while a sibling route with no path
+template kept everything. Same evidence, opposite outcome, decided by whether
+the URL happened to contain a brace. So parameters union by name, TRUTH's
+definition winning any name it defines.
 
-| field | if the authored one is dropped | if it is kept but stale |
-|---|---|---|
-| `requestBody` | the call is impossible — a method that posts nothing | wrong field names, visible immediately |
-| `responses` | nothing to decode into | a decode error; a request cannot be corrupted |
-| query `parameters` | a filter is unavailable | **a filter that silently does nothing** |
+**An earlier version of this section claimed query parameters were deliberately
+dropped. The code never did that**, and the claim was wrong on the merits too. A
+rule written here that the code does not implement is worse than no rule; the
+check that caught it was reading the published document back and noticing
+`GET /v1/kms/secrets` still had `path` and `env`.
 
-A body IS the operation: silence there does not prevent a lie, it prevents the
-CALL. A response describes what comes back and cannot corrupt a request. A query
-parameter is the one a client SENDS to a handler that may ignore it — restoring
-that asserts a filter which may quietly do nothing, which is a wrong answer
-rather than a missing method. So the 53 query parameters below stay dropped and
-counted.
+Verified against `d86248f` (the pre-resync document): **0 parameters and 0
+request bodies that existed then are missing now**, and 0 duplicate parameters.
 
-Both halves are printed on every build (`kept` and `dropped`) — not gates,
-because neither fix belongs here. Both end the same way: a typed
-`zip.Get[In, Out]` in hanzoai/cloud, which `sync.py` picks up with no change to
-this repo. **All 47 body losses were routes cloud serves UNTYPED. Zero were
-typed-with-no-body**, so there is no cloud-side emission bug to chase — only
-untyped routes to type.
+That last number needed its own check, and the reason is worth keeping.
+Uniqueness is per OPERATION and spans both levels — a path item's `parameters`
+apply to every operation under it — and the two sides habitually disagree about
+where the path parameter goes: authored specs hoist `{id}` to the item, the
+weave emits it per operation. Unioning without accounting for that left 115
+operations declaring `{id}` twice. **openapi-generator's validator does not
+resolve `$ref` parameters, so it reported zero errors on a document that was
+invalid** — green and wrong at the same time. Anything the gate cannot see has
+to be measured here instead.
 
-The 53 query parameters, 28 routes, and every one of them a QUERY parameter —
-**zero path parameters were lost**, which is the mechanism showing through: a
-path parameter is structural and readable off the route template, a query
-parameter is only knowable from a typed `In`. 27 of the 28 routes are untyped.
-The 28th is a real cloud bug worth its own line: `GET /v1/ml/models` IS typed
-and its `In` struct is simply missing `stage` and `search`.
+The counter on every build is `kept` — 242 authored shapes that are load-bearing
+because cloud took a route without declaring one. It is not a gate. It is the
+number that **falls to zero as the typing lane converts those routes**: a typed
+`zip.Get[In, Out]` carries body, parameters and response from the code itself,
+`sync.py` picks it up, and the authored shape stops being needed. All 47 body
+losses were routes cloud serves UNTYPED and **zero were typed-with-no-body**, so
+there is no emission bug to chase — only routes to type.
+
+**Bucket (a) — 47 routes whose only body description lives here.** Highest SDK
+value, because no body means no call: `POST /v1/authz/check`,
+`POST /v1/agents/{ref}/run`, the five agent-session controls (`events`,
+`message`, `pause`, `resume`, `stop`), `POST /v1/kms/secrets`, `POST /v1/exec`,
+`POST /v1/upload`, `POST /v1/functions` + `/v1/functions/{name}/invoke`,
+`POST /v1/projects` + `fork` + `{slug}/deploy`, `POST /v1/sites` + `sites/deploy`,
+the four `evals` creates, `POST /v1/notify/send{,/email,/sms}`,
+`POST /v1/o11y/query{,_range}`, `POST /v1/billing/gpu-charge`,
+`POST /v1/billing/spend-alerts` + `PATCH .../{id}`, `POST /v1/affiliates/apply`
++ `attribute`, `POST /v1/admin/affiliates/{id}/{approve,payout}`,
+`POST /v1/automations/flows/{id}/operations` + `runs/{id}/resume`,
+`POST /v1/machines`, `POST /v1/ml/models`, `POST /v1/security/scans`,
+`POST /v1/tracker/projects` + `{key}/issues`, `POST /v1/framework/{doctype}` +
+`PUT .../{name}`, `POST /v1/integrations/slack/{commands,events}`,
+`POST /v1/kms/auth/login`, `POST /v1/projects/{slug}/deployments/{id}/complete`,
+`PATCH /v1/projects/{slug}`.
+
+28 routes rest on authored query parameters; `GET /v1/ml/models` is the one that
+is a real cloud bug rather than an untyped route — it IS typed, and its `In`
+struct is simply missing `stage` and `search`.
 
 | route | parameters the binary does not declare |
 |---|---|

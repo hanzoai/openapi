@@ -39,27 +39,44 @@ been suspicious.
 
 All 47 body losses were routes cloud serves UNTYPED; **zero** were typed-with-
 no-body, so there is no emission bug to chase — only untyped routes to type.
-`merge.py` prints both halves every build: kept, and the 53 query parameters
-still dropped.
+LLM.md carries the 47 as a handover list, prioritised by what they cost: no body
+means no call.
 
-### 53 parameters the handover dropped, and the rule for them
+`merge.py` prints one number every build — 242 authored shapes still
+load-bearing — designed to fall to zero as the typing lane converts those
+routes, since a typed `zip.Get[In, Out]` carries body, parameters and response
+from the code itself.
 
-`/v1/billing/usage` lost `start` and `end` when cloud's document took the route,
-which is why `flows.yaml` could tell an SDK to "ask for a window" that no
-generated method can express. Measured across all 375 handover routes: **28
-routes lost 53 parameters**, and every one is a QUERY parameter — zero path
-parameters were lost. That is the mechanism showing through, since a path
-parameter is structural and readable off the route template while a query
-parameter is only knowable from a typed `In` struct. 27 of the 28 are untyped
-routes; the 28th, `GET /v1/ml/models`, is typed with an incomplete `In`.
+### A rule stated in a comment that the code did not implement
 
-They are NOT re-authored here. A parameter this repo puts back is a claim that a
-handler accepting nothing will honour it, and a generated method that takes
-`start` and `end` and silently drops them is a lie a caller cannot see. The full
-list is in LLM.md as a handover to hanzoai/cloud — three OAuth callbacks lost
-`code` and `state`, and `GET /v1/o11y/vm/query` lost `query`. `merge.py` now
-prints the count on every build so it cannot drift back unseen, and `flows.yaml`
-says what the document can actually express.
+The first version of this fix kept `requestBody` and `responses` and declared
+that query `parameters` were deliberately dropped. Reading the published
+document back showed `GET /v1/kms/secrets` still carrying `path` and `env`: the
+code had never dropped them, because the overlay starts from the authored
+operation and replaces only what cloud populates.
+
+The claim was wrong on the merits too. Cloud declaring ONLY the path parameters
+is not a typed struct saying "no query parameters exist" — the weave derives
+those from the route template, so `[{id}]` is what an untyped route emits either
+way. Treating that as complete was the same silence-for-emptiness error one
+level down, and it cost `GET /v1/integrations/{provider}/callback` its `code`
+and `state` — the whole OAuth handshake — while a sibling route with no path
+template kept everything. Same evidence, opposite outcome, decided by whether
+the URL contained a brace.
+
+`union()` merges parameters by name now, cloud's definition winning any name it
+defines, and the comment says what the code does. Verified against `d86248f`:
+**0 parameters and 0 request bodies that existed pre-resync are missing.**
+
+The union needed two corrections the gate could not supply. A `$ref` parameter
+has no `name`, so comparing on the key that was not there made eight
+`/v1/admin/**` routes declare `{id}` twice — that one openapi-generator caught.
+Then uniqueness turned out to span both levels: a path item's `parameters` apply
+to every operation under it, the two sides disagree about where the path
+parameter belongs (authored specs hoist it, the weave emits it per operation),
+and 115 operations ended up declaring `{id}` twice. **The validator does not
+resolve `$ref` parameters, so it reported zero errors on an invalid document.**
+Green and wrong at the same time; both are measured here now.
 
 ### The SDK matrix pointed at two clients that do not exist
 

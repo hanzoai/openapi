@@ -54,19 +54,18 @@ UNTYPED = ("The route answers; its response shape is not declared at the source 
 # being silent, because its silence about an untyped route means UNKNOWN and not
 # EMPTY — and this file spent one whole revision reading the first as the second.
 #
-# `parameters` is deliberately NOT here, and the asymmetry is the point. Every
-# one of these is about what a client can express:
-#   • a requestBody IS the operation. Without it `POST /v1/agents/{ref}/run`
-#     generates a method that takes nothing and posts nothing, so no client can
-#     start an agent run at all, and the CLI degrades a typed command to
-#     `--data '{...}'` — the raw escape hatch this pipeline exists to remove.
-#     Silence does not prevent a lie here, it prevents the CALL.
-#   • `responses` describe what comes BACK. A stale one costs a decode; it
-#     cannot corrupt a request, and it is the only description that exists.
-#   • a query PARAMETER is different in kind: the client sends it and an untyped
-#     handler may ignore it, so restoring one asserts a filter that silently
-#     does nothing — a wrong answer rather than a missing method. Those stay
-#     dropped, counted, and handed to the typing lane (see LLM.md).
+# What each is worth is the same argument twice: a requestBody IS the operation,
+# so losing it does not risk a lie, it prevents the CALL — `POST /v1/agents/
+# {ref}/run` became a method that posts nothing, and the CLI degraded a typed
+# command to `--data '{...}'`, the raw escape hatch this pipeline exists to
+# remove. `responses` describe what comes BACK, so a stale one costs a decode and
+# cannot corrupt a request.
+#
+# `parameters` are kept too, by `union()` rather than by this tuple, because
+# their emptiness is ambiguous in one extra way — see there. An earlier revision
+# of this comment claimed they were deliberately dropped; the code never did
+# that, and the claim was wrong on the merits as well. A rule stated here that
+# the code does not implement is worse than no rule.
 KEEP = ("requestBody", "responses")
 
 
@@ -235,31 +234,8 @@ def namespace_ops(item, svc, path):
     return item
 
 
-def inputs(item, comps):
-    """Every parameter a path item's operations accept, as (method, name).
 
-    Resolved through the spec's OWN components, because a `$ref` tail is not a
-    parameter name and comparing the two counts a rename as a loss.
-
-    Only counted, never merged. When TRUTH takes a route it brings the inputs
-    the BINARY declares, and an untyped route declares none, so the authored
-    spec's query parameters go with it. That is worth a number on every build
-    (`dropped`), and it is not worth re-authoring: a parameter this repo puts
-    back is a claim about a handler that accepts nothing — the same invention
-    the `default` response exists to refuse."""
-    out = set()
-    for m, op in (item or {}).items():
-        if m not in HTTP_METHODS or not isinstance(op, dict):
-            continue
-        for p in ((item.get("parameters") or []) + (op.get("parameters") or [])):
-            if isinstance(p, dict) and "$ref" in p:
-                p = (comps.get("parameters") or {}).get(str(p["$ref"]).split("/")[-1], {})
-            if isinstance(p, dict) and p.get("name"):
-                out.add((m, p["name"]))
-    return out
-
-
-def fuse(old, new):
+def fuse(old, new, registry):
     """Overlay the source-true path item onto the authored one, FIELD BY FIELD.
 
     Taking the whole operation object was the defect: it replaced a described
@@ -290,8 +266,69 @@ def fuse(old, new):
             if not node.get(f) and prev.get(f):
                 op[f] = prev[f]
                 kept += 1
+        merged, gained = union(prev.get("parameters"), node.get("parameters"), registry)
+        if merged:
+            op["parameters"] = merged
+            kept += gained
         out[name] = op
+
+    # Uniqueness is per OPERATION and spans both levels: a path item's
+    # `parameters` apply to every operation under it, so the same name declared
+    # in both places is declared twice. The two sides habitually put the path
+    # parameter in different levels — authored specs hoist `{id}` to the item,
+    # the weave emits it per operation — and unioning without this left 115
+    # operations declaring `{id}` twice. openapi-generator's validator does not
+    # resolve `$ref` parameters, so it reported none of them: the document was
+    # invalid and green at the same time, which is the only reason to check it
+    # here rather than trust the gate.
+    shared = {pname(p, registry) for p in (out.get("parameters") or [])}
+    if shared:
+        for name, op in out.items():
+            if name in HTTP_METHODS and isinstance(op, dict) and op.get("parameters"):
+                op["parameters"] = [p for p in op["parameters"]
+                                    if pname(p, registry) not in shared]
     return out, kept
+
+
+def pname(p, registry):
+    """A parameter's name, resolving one `$ref` into the merged registry.
+
+    A `$ref` parameter has no `name` of its own, and comparing on the key that
+    is not there makes every one of them look distinct: eight `/v1/admin/**`
+    routes ended up declaring `{id}` twice, which is the one thing OpenAPI says
+    about parameter lists — unique by name and location."""
+    if not isinstance(p, dict):
+        return None
+    if "$ref" in p:
+        p = registry.get(str(p["$ref"]).split("/")[-1]) or {}
+    return p.get("name")
+
+
+def union(old, new, registry):
+    """Parameters from both sides, TRUTH's definition winning on a shared name.
+
+    Not a special case of KEEP, because a parameter list is the one field whose
+    EMPTINESS is ambiguous twice over. TRUTH omitting the field entirely means
+    unknown, and is handled like a body. But TRUTH declaring ONLY the path
+    parameters means the same thing: the weave derives those from the route
+    template, so `[{id}]` is what an untyped route produces whether or not it
+    accepts twenty query parameters. Treating that as a complete list is the
+    identical silence-for-emptiness mistake one level down, and it cost
+    `/v1/integrations/{provider}/callback` its `code` and `state` — the whole
+    OAuth handshake — while a sibling route with no path template kept
+    everything. Same evidence, opposite outcome, decided by whether the URL
+    happened to have a brace in it.
+
+    So: union by name. A parameter TRUTH defines is TRUTH's; one only the
+    authored spec knows about survives. It may name something an untyped handler
+    ignores, which is the honest risk and the smaller one — the typing lane
+    settles it by making the route's `In` struct the answer."""
+    old, new = old or [], new or []
+    if not old:
+        return list(new), 0
+    named = {pname(p, registry) for p in new}
+    extra = [p for p in old if pname(p, registry) not in named]
+    return list(new) + extra, len(extra)
 
 
 def key(tag):
@@ -311,26 +348,25 @@ def build_unified(present, categories, internal):
 
     paths, schemas, responses, params, reqbodies, secschemes = {}, {}, {}, {}, {}, {}
     claim, owner, described, titles = {}, {}, {}, {}
-    overrides = dropped = kept = 0
+    overrides = kept = 0
     for svc in included:
         spec = yaml.safe_load(open(os.path.join(ROOT, svc, "openapi.yaml")))
         comps = spec.get("components", {}) or {}
         titles[key(svc)] = (spec.get("info") or {}).get("title") or svc
         for p, raw in (spec.get("paths", {}) or {}).items():
-            item, accepts = prefix(raw, svc), inputs(raw, comps)
+            item = prefix(raw, svc)
             if p in claim:
                 # Two hand-written specs claiming one route is ambiguity with no
                 # right answer — the resolution used to be alphabetical. Only
                 # TRUTH may take a route from someone, because only TRUTH is
                 # evidence of what is served.
                 if svc != TRUTH:
-                    sys.exit(f"merge: {claim[p][0]}/openapi.yaml and {svc}/openapi.yaml "
+                    sys.exit(f"merge: {claim[p]}/openapi.yaml and {svc}/openapi.yaml "
                              f"both claim {p} — one route has one owner")
                 overrides += 1
-                dropped += len(claim[p][1] - accepts)
-                item, survived = fuse(paths[p], item)
+                item, survived = fuse(paths[p], item, params)
                 kept += survived
-            claim[p] = (svc, accepts)
+            claim[p] = svc
             # namespace_ops LAST, so the `default` it synthesizes for an
             # undescribed operation can only fire once the authored side has had
             # its chance to describe it.
@@ -484,7 +520,6 @@ def build_unified(present, categories, internal):
         "ops": len(ops),
         "described_ops": sum(1 for op in ops if (op.get("description") or "").strip()),
         "overrides": overrides,
-        "dropped": dropped,
         "kept": kept,
         "renamed": renamed,
     }
@@ -597,9 +632,9 @@ def main():
           f"{n['tags']} tags, {n['described_tags']} described; "
           f"{n['overrides']} paths taken by {TRUTH} (source-true), "
           f"{n['renamed']} operationIds suffixed to stay distinct in codegen")
-    print(f"{n['kept']} authored bodies/responses kept where {TRUTH} took the route "
-          f"untyped; {n['dropped']} query parameters dropped the same way — "
-          f"both belong in the binary's typed op")
+    print(f"{n['kept']} authored shapes still load-bearing — bodies, responses and "
+          f"parameters {TRUTH} took a route without declaring. This falls to 0 as "
+          f"those routes become typed ops.")
     print(f"generated CAPABILITIES.md ({n['groups']} categories) from capabilities.yaml")
     return 0
 
