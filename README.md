@@ -5,9 +5,15 @@
 **`hanzo.yaml` is THE published document.** One OpenAPI 3.1 surface for every
 Hanzo service — the one every SDK, every doc site and every tool generates from.
 
+```bash
+curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://raw.githubusercontent.com/hanzoai/openapi/main/hanzo.yaml
 ```
-https://raw.githubusercontent.com/hanzoai/openapi/main/hanzo.yaml
-```
+
+**This repo is private, so that URL needs a token** — unauthenticated it is a
+404, not a 403, which reads like a missing file rather than a missing header.
+Any fetch of it without an `Authorization` header is broken; `curl -f` under
+`set -e` turns that into a build failure with nothing that names the cause.
 
 Nothing generates from anything else, and nothing is pushed to an SDK. The SDK
 repos PULL this file and regenerate themselves; a client is never hand-written

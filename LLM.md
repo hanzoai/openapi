@@ -19,6 +19,12 @@ prefixes, no cross-brand references.
   `https://raw.githubusercontent.com/hanzoai/openapi/main/hanzo.yaml`. Consumers
   PULL it; nothing here pushes to them. Aggregated by `merge.py` and grouped
   (`x-tagGroups`) from `capabilities.yaml`.
+  **The repo is private: that URL is a 404 without `Authorization: Bearer
+  $GITHUB_TOKEN`, and 200 with it.** A 404 for a private file reads as "the file
+  moved", so a fetcher missing the header goes looking for the wrong bug —
+  `hanzoai/js-sdk`'s `scripts/generate.sh:22` fetches it unauthenticated today
+  and dies on `curl -f`. The in-repo path (`generate.py`, which reads the local
+  file) needs no network at all and is the one to prefer.
 - `<service>/openapi.yaml` — one self-contained spec per service.
 - `cloud/openapi.yaml` — the ONE spec NOT authored here: hanzoai/cloud's own
   woven document, copied verbatim by `sync.py`. Source-true, and it wins (below).
