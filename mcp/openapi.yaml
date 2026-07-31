@@ -58,6 +58,11 @@ paths:
 
         Read `error` before `result`, and `result.isError` before
         `result.content`: both failure channels live inside a 200.
+
+        `id` is declared a string. The wire accepts a number too — JSON-RPC 2.0
+        allows either and this door echoes back the type it was given — but a
+        scalar `oneOf` generates an empty carrier class in every typed language,
+        so the document declares the one form all of them can send.
       requestBody:
         required: true
         content:
@@ -89,10 +94,17 @@ components:
           const: '2.0'
           description: Always `2.0`.
         id:
-          description: Echoed back on the response. A request without one is a notification.
-          oneOf:
-          - type: integer
-          - type: string
+          type: string
+          description: |-
+            Echoed back on the response; a request without one is a notification.
+
+            JSON-RPC 2.0 allows a string OR a number here, and this door accepts
+            either — verified on the wire, including `"abc-123"` and `1` — and
+            echoes back the type it was given. It is declared as a STRING because
+            a scalar `oneOf` does not survive code generation: openapi-generator
+            emits an empty carrier class for it (Kotlin `class McpRequestId()`
+            with no members), which serializes to `{}` and is not a legal id in
+            any of them. One declaration, the one every language can send.
         method:
           type: string
           enum:
@@ -122,9 +134,12 @@ components:
           type: string
           const: '2.0'
         id:
-          oneOf:
-          - type: integer
-          - type: string
+          type: string
+          description: |-
+            The request's own id, echoed. The door returns whatever TYPE it was
+            sent, so a client generated from this document — which sends a
+            string — always reads a string back. A request that omitted the id
+            gets `null` here, which is why this field is not required.
         result:
           description: Present on success. Which shape depends on the method called.
           oneOf:

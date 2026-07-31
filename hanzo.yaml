@@ -44397,16 +44397,12 @@ paths:
       - MCP
       summary: JSON-RPC call
       operationId: mcp_rpc
-      description: 'One request, one response, three methods. `initialize` reports the
-
-        protocol version and server capabilities; `tools/list` returns every
-
-        tool this credential can reach; `tools/call` runs one by name.
-
-
-        Read `error` before `result`, and `result.isError` before
-
-        `result.content`: both failure channels live inside a 200.'
+      description: "One request, one response, three methods. `initialize` reports the\nprotocol version and server capabilities;\
+        \ `tools/list` returns every\ntool this credential can reach; `tools/call` runs one by name.\n\nRead `error` before\
+        \ `result`, and `result.isError` before\n`result.content`: both failure channels live inside a 200.\n\n`id` is declared\
+        \ a string. The wire accepts a number too \u2014 JSON-RPC 2.0\nallows either and this door echoes back the type it\
+        \ was given \u2014 but a\nscalar `oneOf` generates an empty carrier class in every typed language,\nso the document\
+        \ declares the one form all of them can send."
       requestBody:
         required: true
         content:
@@ -88159,10 +88155,13 @@ components:
           const: '2.0'
           description: Always `2.0`.
         id:
-          description: Echoed back on the response. A request without one is a notification.
-          oneOf:
-          - type: integer
-          - type: string
+          type: string
+          description: "Echoed back on the response; a request without one is a notification.\n\nJSON-RPC 2.0 allows a string\
+            \ OR a number here, and this door accepts\neither \u2014 verified on the wire, including `\"abc-123\"` and `1`\
+            \ \u2014 and\nechoes back the type it was given. It is declared as a STRING because\na scalar `oneOf` does not\
+            \ survive code generation: openapi-generator\nemits an empty carrier class for it (Kotlin `class McpRequestId()`\n\
+            with no members), which serializes to `{}` and is not a legal id in\nany of them. One declaration, the one every\
+            \ language can send."
         method:
           type: string
           enum:
@@ -88181,9 +88180,10 @@ components:
           type: string
           const: '2.0'
         id:
-          oneOf:
-          - type: integer
-          - type: string
+          type: string
+          description: "The request's own id, echoed. The door returns whatever TYPE it was\nsent, so a client generated from\
+            \ this document \u2014 which sends a\nstring \u2014 always reads a string back. A request that omitted the id\n\
+            gets `null` here, which is why this field is not required."
         result:
           description: Present on success. Which shape depends on the method called.
           oneOf:

@@ -123,6 +123,26 @@ spec that no longer describes the route and vanishes when that spec is deleted �
 the same break again, later, silently. It is also the name the MCP door already
 uses. The break is once, now, and cannot recur for these operations.
 
+### `mcp_Request.id` is a string — a scalar `oneOf` does not survive codegen
+
+`id` was declared `oneOf: [integer, string]`, which is what JSON-RPC 2.0 permits
+and what no typed generator can project: openapi-generator emits an empty
+carrier class for a scalar `oneOf` (Kotlin `class McpRequestId()` with no
+members) that serializes to `{}` — not a legal id anywhere. Java and C++ produce
+the same shape, so it blocked three languages on one declaration.
+
+Verified on the live door before changing it, because the fix is only safe if
+the wire agrees: `id: "1"`, `id: 1` and `id: "abc-123"` are all accepted and all
+echoed back with the TYPE they were sent; omitting `id` returns `null`. A string
+is therefore always legal, and a client generated from this document always
+reads back the string it sent.
+
+Declared `type: string` on both `Request` and `Response`, with the polymorphism
+recorded in the prose rather than in a shape — no second door, no alias, one
+declaration. The generated field is now `kotlin.String?`, `private String id`,
+`Id *string`; the `McpRequestId`/`McpResponseId` carriers are gone from every
+client.
+
 ### Declare the MCP door — `POST /v1/mcp`, the one address an MCP client speaks
 
 The fleet's JSON-RPC door has been answering all along and was in no spec:
