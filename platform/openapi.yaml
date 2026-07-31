@@ -11,6 +11,16 @@
 # openapi.yaml, a golden projection of the live fiber table (byte-identical to it
 # under TestFleetIsTheWeaveOfItsApps), so regenerating from cloud is how this
 # stays true rather than drifting again.
+#
+# `responses` is REQUIRED on an operation by OAS 3.x, and 35 of these 41 had none
+# — openapi-generator aborts the whole document on that, so hanzo.yaml generated
+# no SDK in any language, not just the platform tag. They now carry a 2XX with no
+# `content`, which is the honest shape: cloud's projection does not model these
+# bodies (its schema set is the 7 below — there is no siteView or deploymentView
+# to point at), and inventing one would put a contract in the SDK that the server
+# never promised. When cloud annotates the response types, regenerating from it
+# fills these in; until then the routes are callable and typed as returning no
+# modelled body.
 openapi: 3.1.0
 info:
   title: Hanzo Platform API
@@ -44,6 +54,9 @@ paths:
   /v1/platform/fleet:
     get:
       operationId: get_v1_platform_fleet
+      responses:
+        '2XX':
+          description: Success
       tags:
       - platform
       parameters:
@@ -68,6 +81,9 @@ paths:
   /v1/platform/fleet/{app}:
     get:
       operationId: get_v1_platform_fleet_by_app
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: app
@@ -79,6 +95,9 @@ paths:
   /v1/platform/fleet/{app}/deploy:
     post:
       operationId: post_v1_platform_fleet_by_app_deploy
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: app
@@ -96,6 +115,9 @@ paths:
   /v1/platform/health:
     get:
       operationId: get_v1_platform_health
+      responses:
+        '2XX':
+          description: Success
       tags:
       - platform
   /v1/platform/projects:
@@ -175,6 +197,9 @@ paths:
   /v1/platform/projects/{project}/apps/{app}:
     delete:
       operationId: delete_v1_platform_projects_by_project_apps_by_app
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: project
@@ -213,6 +238,9 @@ paths:
   /v1/platform/projects/{project}/apps/{app}/deploy:
     post:
       operationId: post_v1_platform_projects_by_project_apps_by_app_deploy
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: project
@@ -229,6 +257,9 @@ paths:
   /v1/platform/projects/{project}/apps/{app}/deployments:
     get:
       operationId: get_v1_platform_projects_by_project_apps_by_app_deployments
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: project
@@ -245,6 +276,9 @@ paths:
   /v1/platform/projects/{project}/apps/{app}/deployments/{id}:
     get:
       operationId: get_v1_platform_projects_by_project_apps_by_app_deployments_by_id
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: project
@@ -266,6 +300,9 @@ paths:
   /v1/platform/projects/{project}/apps/{app}/deployments/{id}/logs:
     get:
       operationId: get_v1_platform_projects_by_project_apps_by_app_deployments_by_id_logs
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: project
@@ -287,6 +324,9 @@ paths:
   /v1/platform/projects/{project}/apps/{app}/domains:
     get:
       operationId: get_v1_platform_projects_by_project_apps_by_app_domains
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: project
@@ -302,6 +342,9 @@ paths:
       - platform
     post:
       operationId: post_v1_platform_projects_by_project_apps_by_app_domains
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: project
@@ -318,6 +361,9 @@ paths:
   /v1/platform/projects/{project}/apps/{app}/domains/{host}:
     delete:
       operationId: delete_v1_platform_projects_by_project_apps_by_app_domains_by_host
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: project
@@ -339,6 +385,9 @@ paths:
   /v1/platform/projects/{project}/apps/{app}/domains/{host}/verify:
     post:
       operationId: post_v1_platform_projects_by_project_apps_by_app_domains_by_host_verify
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: project
@@ -388,6 +437,9 @@ paths:
   /v1/platform/projects/{project}/apps/{app}/preview:
     post:
       operationId: post_v1_platform_projects_by_project_apps_by_app_preview
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: project
@@ -404,6 +456,9 @@ paths:
   /v1/platform/projects/{project}/apps/{app}/promote:
     post:
       operationId: post_v1_platform_projects_by_project_apps_by_app_promote
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: project
@@ -420,6 +475,9 @@ paths:
   /v1/platform/projects/{project}/apps/{app}/rollback:
     post:
       operationId: post_v1_platform_projects_by_project_apps_by_app_rollback
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: project
@@ -436,6 +494,9 @@ paths:
   /v1/platform/projects/{project}/apps/{app}/start:
     post:
       operationId: post_v1_platform_projects_by_project_apps_by_app_start
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: project
@@ -452,6 +513,9 @@ paths:
   /v1/platform/projects/{project}/apps/{app}/stop:
     post:
       operationId: post_v1_platform_projects_by_project_apps_by_app_stop
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: project
@@ -468,15 +532,24 @@ paths:
   /v1/platform/sites:
     get:
       operationId: get_v1_platform_sites
+      responses:
+        '2XX':
+          description: Success
       tags:
       - platform
     post:
       operationId: post_v1_platform_sites
+      responses:
+        '2XX':
+          description: Success
       tags:
       - platform
   /v1/platform/sites/{slug}:
     delete:
       operationId: delete_v1_platform_sites_by_slug
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
@@ -487,6 +560,9 @@ paths:
       - platform
     get:
       operationId: get_v1_platform_sites_by_slug
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
@@ -497,6 +573,9 @@ paths:
       - platform
     patch:
       operationId: patch_v1_platform_sites_by_slug
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
@@ -508,6 +587,9 @@ paths:
   /v1/platform/sites/{slug}/deploy:
     post:
       operationId: post_v1_platform_sites_by_slug_deploy
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
@@ -519,6 +601,9 @@ paths:
   /v1/platform/sites/{slug}/deployments:
     get:
       operationId: get_v1_platform_sites_by_slug_deployments
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
@@ -530,6 +615,9 @@ paths:
   /v1/platform/sites/{slug}/deployments/{id}:
     get:
       operationId: get_v1_platform_sites_by_slug_deployments_by_id
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
@@ -546,6 +634,9 @@ paths:
   /v1/platform/sites/{slug}/domains:
     get:
       operationId: get_v1_platform_sites_by_slug_domains
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
@@ -556,6 +647,9 @@ paths:
       - platform
     post:
       operationId: post_v1_platform_sites_by_slug_domains
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
@@ -567,6 +661,9 @@ paths:
   /v1/platform/sites/{slug}/domains/{host}:
     delete:
       operationId: delete_v1_platform_sites_by_slug_domains_by_host
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
@@ -583,6 +680,9 @@ paths:
   /v1/platform/sites/{slug}/domains/{host}/verify:
     post:
       operationId: post_v1_platform_sites_by_slug_domains_by_host_verify
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
@@ -599,6 +699,9 @@ paths:
   /v1/platform/sites/{slug}/publish:
     post:
       operationId: post_v1_platform_sites_by_slug_publish
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
@@ -610,6 +713,9 @@ paths:
   /v1/platform/sites/{slug}/purge:
     post:
       operationId: post_v1_platform_sites_by_slug_purge
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
@@ -621,6 +727,9 @@ paths:
   /v1/platform/sites/{slug}/releases:
     get:
       operationId: get_v1_platform_sites_by_slug_releases
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
@@ -631,6 +740,9 @@ paths:
       - platform
     post:
       operationId: post_v1_platform_sites_by_slug_releases
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
@@ -642,6 +754,9 @@ paths:
   /v1/platform/sites/{slug}/releases/{release}/activate:
     post:
       operationId: post_v1_platform_sites_by_slug_releases_by_release_activate
+      responses:
+        '2XX':
+          description: Success
       parameters:
       - in: path
         name: slug
