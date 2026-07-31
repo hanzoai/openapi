@@ -11,3 +11,31 @@ images:
     context: .
     dockerfile: Dockerfile.skills
     repo: ghcr.io/hanzoai/agent-skills
+
+test:
+  - name: spec
+    # This repo had 25 tests and no `test:` block, so none of them had ever
+    # gated a commit. They matter more here than in most repos: hanzo.yaml is
+    # the single input to SEVEN language SDKs, so a defect merged here is a
+    # defect merged into all seven at once, discovered seven separate times.
+    #
+    # It is not hypothetical. hanzo.yaml spent this whole period unable to
+    # generate ANY client in ANY language — 35 /v1/platform operations carried
+    # no `responses`, which OAS 3.x requires and openapi-generator refuses the
+    # entire document over. Nothing in this repo noticed, because nothing in
+    # this repo ever tried.
+    #
+    # test_flows.py is the new one: it asserts every operationId named in
+    # flows.yaml still exists in hanzo.yaml, so deleting a route breaks one gate
+    # here instead of six SDKs' examples quietly and separately.
+    #
+    # uv rather than a bare python3 — the arc runner image promises no
+    # interpreter, let alone one with PyYAML.
+    run: |
+      set -e
+      if command -v uv >/dev/null 2>&1; then UV=uv; else
+        curl -fsSL https://astral.sh/uv/install.sh | sh
+        UV="$HOME/.local/bin/uv"
+      fi
+      "$UV" run --no-project --python 3.12 --with pyyaml --with pytest \
+        python -m pytest test_audit.py test_skills.py test_flows.py -q

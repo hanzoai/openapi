@@ -1,0 +1,82 @@
+# The canonical example flows — data only, like sdks.yaml beside it.
+#
+# Every Hanzo SDK ships the SAME six examples under `examples/<flow>/`, in this
+# order, under these names. A reader who knows one language's set can then find
+# their way around another's without re-learning what the repo chose to
+# demonstrate. This file is what makes "the same six" a fact rather than six
+# repos independently remembering to agree.
+#
+# `operations` are operationIds in hanzo.yaml, in call order. That is the part a
+# language cannot fudge: test_flows.py asserts every id here exists in the
+# merged spec, so deleting or renaming a route upstream breaks THIS gate — one
+# place — instead of breaking six SDKs quietly and separately.
+#
+# Nothing here is executable and no SDK repo duplicates it. What each example
+# prints is the language's business; WHICH routes it calls is not.
+#
+# Rules an example must hold to, in every language:
+#   • read the key from HANZO_API_KEY;
+#   • default to https://api.hanzo.ai, overridable by HANZO_BASE_URL;
+#   • resolve both in ONE shared place per repo, not once per flow;
+#   • be compiled or imported by that repo's CI gate, so it cannot rot.
+
+flows:
+  hello:
+    summary: Identity — prove the key works and print who it belongs to.
+    # The AI plane's account read. Deliberately not /v1/bot/auth/me (bot-service
+    # scoped) and not the IAM OIDC userinfo endpoint, which lives on a DIFFERENT
+    # origin — that would force every example set to know two base URLs, and IAM
+    # answers 200 text/html for an unregistered path, so a typo there is silent
+    # breakage rather than a 404.
+    operations: [ai_getAccount]
+    notes: >-
+      Every /v1/ai/* route answers with an envelope where `status` is the
+      OUTCOME, not the HTTP code: a handled failure is HTTP 200 with
+      status=error. This flow is where an SDK teaches that, because it is the
+      first call anyone makes.
+
+  chat:
+    summary: One completion.
+    operations: [ai_createChatCompletion]
+    notes: >-
+      OpenAI-compatible request and response. Non-streaming on purpose —
+      streaming is a different transport (SSE) that the generated clients return
+      as an opaque body, so demonstrating it here would teach the wrong shape.
+
+  money:
+    summary: Balance, then the usage that moved it.
+    operations: [billing_billingBalance, billing_billingUsage]
+    notes: >-
+      Neither takes an org: both derive the tenant server-side from the JWT
+      `owner` claim, so a key can only read its own money. The usage ledger is
+      unbounded by default — an example asks for a window.
+
+  store:
+    summary: KV round-trip — set, read back, delete.
+    operations: [kv_setKey, kv_getKey, kv_deleteKey]
+    notes: >-
+      The delete belongs in the language's finally/defer, so a failed read still
+      cleans up instead of leaving the key for the next run to collide with.
+      This is the data plane (/v1/kv/keys/*), not the provisioning plane
+      (/v1/kv, which creates stores).
+
+  agent:
+    summary: Create an agent, run it, read it back.
+    operations:
+      - cloud_AgentsController.Create
+      - cloud_AgentsController.Run
+      - cloud_AgentsController.Get
+    notes: >-
+      `ref` accepts the public id (agent_...) OR the org-unique name, which is
+      why run and read can both use the name just created without waiting for an
+      id. Names are org-unique, so an example must not hardcode one.
+
+  tools:
+    summary: List the MCP tools this key can reach.
+    operations: [automations_mcp]
+    notes: >-
+      JSON-RPC 2.0; send method=tools/list. Chosen over the other MCP door
+      (tasks_tasksMcp) because this one has typed request/response schemas, so
+      `method` is a checked enum in every generated client rather than a free
+      string. JSON-RPC reports failure INSIDE a 200 as error={code,message}, so
+      an example checks `error` before reading `result`.
