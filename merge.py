@@ -180,6 +180,17 @@ def namespace_ops(item, svc, path):
     """
     if not isinstance(item, dict):
         return item
+    # TRACE is not client surface. All 26 of them here are cloud's wildcard
+    # passthrough routes projecting every method their router happens to match —
+    # a fact about the router, not about a service — and no SDK should hand a
+    # caller a method every edge disables (Cross-Site Tracing). It is also the
+    # one method openapi-generator cannot emit for the JVM: it writes
+    # `RequestMethod.TRACE` while the `RequestMethod` enum it writes beside it
+    # stops at PUT, so the client references a constant the generator did not
+    # generate and no Kotlin or Java client compiles. Dropping it here is the
+    # same kind of call as suffixing a duplicate operationId below: the document
+    # is shaped so it can be generated from.
+    item.pop("trace", None)
     for method, op in item.items():
         if method not in HTTP_METHODS or not isinstance(op, dict):
             continue

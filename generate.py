@@ -104,6 +104,12 @@ def emit(name, cfg, spec, version, out):
     ]
     if props:
         cmd += ["--additional-properties", props]
+    # An escape hatch for where the generator itself is wrong: generator CLI
+    # options that have no --additional-properties form, as data in sdks.yaml.
+    # They do not describe the API — they say how one language's generator has
+    # to be corrected to emit code that compiles.
+    for flag, value in cfg.get("flags", {}).items():
+        cmd += [f"--{flag}", str(value)]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode:
         sys.stderr.write(f"[{name}] generator failed\n{r.stdout[-4000:]}{r.stderr[-4000:]}\n")

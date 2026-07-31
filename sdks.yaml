@@ -146,6 +146,10 @@ sdks:
     repo: kotlin-sdk
     generator: kotlin
     take: { src/main/kotlin/ai/hanzo/cloud: hanzo-kotlin-cloud/src/main/kotlin/ai/hanzo/cloud }
+    # Same defect the java row hits: the generator skips a multipart form model
+    # yet still imports it, so FunctionsApi references a class nobody emitted.
+    global:
+      skipFormModel: "false"
     properties:
       library: jvm-okhttp4
       groupId: ai.hanzo
@@ -155,6 +159,20 @@ sdks:
       modelPackage: ai.hanzo.cloud.model
       serializationLibrary: gson
       hideGenerationTimestamp: "true"
+    # The Kotlin generator emits code that does not compile at this surface's
+    # size, in ways no `properties` knob reaches. These two are the whole of the
+    # correction.
+    flags:
+      # `sort=name` is an ordinary query value, but the generator names the enum
+      # entry after it, and `name` is already a property of every Kotlin enum:
+      # "Conflicting declarations: enum entry name, public final val name".
+      enum-name-mappings: name=NAME
+      # POST /v1/event takes a oneOf, and the generator flattens every branch
+      # into one class. Two branches spell the same field differently —
+      # cloud_Event.distinctId and cloud_insightsBody.distinct_id — and both
+      # camel-case to `distinctId`. The rename is Kotlin-side only; the wire
+      # name is still carried by @SerializedName.
+      name-mappings: distinct_id=distinctIdLegacy
 
   ruby:
     repo: ruby-sdk
