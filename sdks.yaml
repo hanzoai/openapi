@@ -78,19 +78,27 @@ sdks:
     generator: typescript-axios
     # `src`, not `src/cloud`: js-sdk IS the client. Python and Go vendor it as a
     # subpackage beside a hand-written SDK that predates it, so there the client
-    # needs its own room; @hanzo/sdk has nothing else to be, and its src/index.ts
-    # is generator output down to the header. Pointing at src/cloud built a
-    # second, unexported copy of the same 2143 files next to the real one.
+    # needs its own room; js-sdk has nothing else to be, and its src/index.ts is
+    # generator output down to the header. Pointing at src/cloud built a second,
+    # unexported copy of the same 2143 files next to the real one.
     take: { .: src }
     properties:
-      npmName: "@hanzo/sdk"
+      # `hanzoai`, the unscoped name, which is what js-sdk publishes and what
+      # npm hands us: `npm owner ls hanzoai` is zeekay and the registry's
+      # repository.url on it already points at hanzoai/js-sdk. This row said
+      # @hanzo/sdk, from a since-reverted belief that `hanzoai` was squatted —
+      # and @hanzo/sdk is a DIFFERENT package, owned by hanzo-js/sdk (v2.0.0,
+      # the unified per-service SDK), so that name would publish over someone
+      # else's line. Inert today only because package.json is on `drop` and the
+      # generated one never reaches the repo; a landmine the day it isn't.
+      npmName: hanzoai
       withSeparateModelsAndApi: "true"
       apiPackage: api
-      # `models`, plural, because that is what @hanzo/sdk 2.0.1 published. The
-      # singular here would rename 1784 files under src/ and break anyone who
-      # deep-imports a model path — not something a patch release may do. The
-      # java/kotlin rows say `model` for the same reason in reverse: it is what
-      # those artifacts already ship.
+      # `models`, plural, because that is what the published artifact ships. The
+      # singular here would rename every file under src/models and break anyone
+      # who deep-imports a model path — not something a patch release may do.
+      # The java/kotlin rows say `model` for the same reason in reverse: it is
+      # what those artifacts already ship.
       modelPackage: models
       supportsES6: "true"
       useSingleRequestParameter: "true"
