@@ -43764,9 +43764,9 @@ paths:
 
         WHAT THE CALLER PRESENTS DECIDES WHAT IT MAY WRITE, and the door itself grants nothing. A validated bearer or an org API key writes the full event at full fidelity. A PUBLISHABLE key (pk-, on Authorization: Bearer, x-hanzo-ingest-key, or ?ingest_key= for navigator.sendBeacon, which cannot set headers) does the same, and is the credential a browser bundle ships: it is deliberately NOT a secret, it resolves WHICH tenant a beacon belongs to and nothing more. A pk- never authenticates and can READ NOTHING — not this org's errors, not a lens, not any other route on this API — so a leaked one lets a stranger write into your stream, and never lets one read out of it. Reading these rows back always takes a real bearer. A Hanzo Team workspace token resolves its org at REDUCED capability: the signed account names the person, so a `distinctId` in the body cannot pin events on a colleague.
 
-        NO CREDENTIAL IS ALSO ADMITTED, and that is the point — a logged-out visitor has none. Such a write is PROJECTED: filed under the reserved `$public` tenant, narrowed to what the SERVER can name — pageviews and errors, whose names the route supplies, plus the closed autocapture vocabulary ($click, $input, $change, $submit, $view) resolved through a server-owned table — and stripped to the fields the projection names, so revenue, personId, groupId, an arbitrary event name and every property but the element annotation cannot reach a row. Everything refused is counted in `dropped`. On a published-site host the same projection applies with that site's org as the tenant. But a credential that IS presented and does NOT resolve is 403, never quietly downgraded: filing a misconfigured key's events under $public would hide them in a partition their owner cannot read.
+        NO CREDENTIAL IS ALSO ADMITTED, and that is the point — a logged-out visitor has none. Such a write is PROJECTED: filed under the reserved `$public` tenant, narrowed to what the SERVER can name — pageviews and errors, plus the closed autocapture vocabulary ($click, $input, $change, $submit, $view) — where EVERY one of those names is resolved through a server-owned table and stored as that table's value, so the name on the wire is never the name in the row. Stripped, too, to the fields the projection names, so revenue, personId, groupId and every property but the element annotation cannot reach a row — and an exception is carried only on an error, never on an interaction, so a click cannot ship a stack trace into a row's attributes. ITS IDENTITY IS NAMESPACED for the same reason the name is: nobody signed for it, so a `distinctId` off the wire is stored under a reserved `$anon:` prefix that no identified subject carries — an anonymous visitor still counts as one visitor, and still cannot be joined to a person the org knows. Everything refused is counted in `dropped`. On a published-site host the same projection applies with that site's org as the tenant. But a credential that IS presented and does NOT resolve is 403, never quietly downgraded: filing a misconfigured key's events under $public would hide them in a partition their owner cannot read.
 
-        The anonymous lane alone is bounded: 413 over 64 KiB, 400 over 50 events, 429 on the per-client-IP and per-peer caps, and a DNT:1 or Sec-GPC:1 request stores nothing and says so in the receipt. Where a deployment switches anonymous capture off, a credential-less write is 403 instead. Authenticated bodies are offered to the observability plane first, which claims LLM-observability ingestion batches and declines everything else.
+        The anonymous lane alone is bounded: 413 over 64 KiB, 400 over 50 events, 429 on the per-client-IP and per-peer caps, and a DNT:1 or Sec-GPC:1 request stores nothing and says so in the receipt. Two stored values carry their own bounds on top, because a request cap does not bound one value: an element annotation over 2 KiB (or a trail over 32 steps) and an exception class over 256 bytes are dropped from the row, which still lands. Where a deployment switches anonymous capture off, a credential-less write is 403 instead. Authenticated bodies are offered to the observability plane first, which claims LLM-observability ingestion batches and declines everything else.
       operationId: post_v1_event
       requestBody:
         content:
@@ -52972,7 +52972,7 @@ paths:
   /v1/insights/events:
     get:
       description: |-
-        InsightsEvents returns the caller org's most recent product events, newest first.
+        Returns the caller org's most recent product events, newest first.
         The console's raw-event view over event.event — the same table the capture doors
         fill — one row per stored event, with the row's attributes returned as the
         properties object.
@@ -52998,15 +52998,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/eventList'
           description: ok
-      summary: InsightsEvents returns the caller org's most recent product events,
-        newest first.
+      summary: Returns the caller org's most recent product events, newest first.
       tags:
       - insights
       x-app: analytics
   /v1/insights/health:
     get:
       description: |-
-        InsightsHealth reports that the unified insights surface is serving. It reads no
+        Reports that the unified insights surface is serving. It reads no
         tenant data and consults no dependency, so it answers 200 unconditionally and needs
         no principal — liveness must be probe-able. The warehouse-connectivity probe is a
         different question and lives at GET /v1/analytics/health.
@@ -53018,7 +53017,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/insightsStatus'
           description: ok
-      summary: InsightsHealth reports that the unified insights surface is serving.
+      summary: Reports that the unified insights surface is serving.
       tags:
       - insights
       x-app: analytics
