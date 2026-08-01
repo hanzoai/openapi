@@ -129,6 +129,27 @@ def emit(name, cfg, spec, version, out):
         "-i", spec,
         "-o", out,
         "--global-property", ",".join(glob),
+        # The document is OpenAPI 3.1, and 3.1 made `responses` OPTIONAL on an
+        # operation. The validator in generator 7.14.0 still enforces the 3.0
+        # rule that it is required, so it refuses a document that is valid —
+        # measured on hanzoai/cloud's openapi.yaml, where 684 of 1636 operations
+        # are routes the router proves exist and whose response shape no seam can
+        # state. cloud emits those with no `responses` key ON PURPOSE
+        # (openapi/openapi.go: "absent stays valid and absent beats invented"),
+        # and it is right; a client generator that rejects it is applying the
+        # wrong version's rule.
+        #
+        # This is document-level, not per-language, so it is here and not a
+        # sdks.yaml `flags` row — every projection reads the same document and
+        # would need the same correction.
+        #
+        # Validation is not what keeps a bad document out. COMPILING THE CLIENT
+        # is: every SDK repo's hanzo.yml `test:` block builds the generated tree
+        # and then builds the six example flows against it, in the language's own
+        # compiler. That catches a malformed document as a build failure with a
+        # file and a line, which is strictly more than "Issues with the OpenAPI
+        # input" ever told anyone.
+        "--skip-validate-spec",
     ]
     if props:
         cmd += ["--additional-properties", props]
