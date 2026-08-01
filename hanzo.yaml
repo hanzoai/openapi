@@ -120,6 +120,8 @@ tags:
   description: 'Package functions is your serverless code: publish it, call it over HTTP, watch every run and what it cost.'
 - name: evals
   description: Package eval is scoring a model on your own data, with a judge you choose.
+- name: Datasets
+  description: Evaluation datasets and items (CSV/JSONL, optional ground truth)
 - name: Exec
   description: 'Package exec is the code interpreter: run a snippet in a sandbox and move files in and out.'
 - name: indexers
@@ -222,6 +224,8 @@ tags:
   description: Package affiliates is a partner program that pays commission on what your referrals spend.
 - name: billing
   description: Package billing is your org's balance, what it has spent, and the cards it pays with.
+- name: Spend Caps
+  description: Per-scope spend alerts, hard caps, rate limits, and the per-request cap verdict
 - name: Access Tokens
   description: API access token management
 - name: Orders
@@ -263,11 +267,10 @@ tags:
 - name: DNSSEC
   description: DNSSEC signing and key management
 - name: vpcs
-  description: "Package do is the org-scoped private-network surface \u2014 /v1/vpcs and /v1/load-balancers \u2014 carved\
-    \ out of Hanzo's OWN house DigitalOcean account."
-- name: load-balancers
-  description: "Package do is the org-scoped private-network surface \u2014 /v1/vpcs and /v1/load-balancers \u2014 carved\
-    \ out of Hanzo's OWN house DigitalOcean account."
+  description: "Package do is the org-scoped private-network surface \u2014 /v1/vpcs and /v1/balancers \u2014 carved out of\
+    \ Hanzo's OWN house DigitalOcean account."
+- name: Load Balancers
+  description: Regional/global load balancers
 - name: Versions
   description: Function version history
 - name: Logs
@@ -330,6 +333,9 @@ tags:
   description: Package ask is a plain-language question about your business, answered with real numbers.
 - name: auto
   description: 'Package auto is Hanzo Auto: build a flow from triggers and actions, publish it, and watch every run.'
+- name: balancers
+  description: "Package do is the org-scoped private-network surface \u2014 /v1/vpcs and /v1/balancers \u2014 carved out of\
+    \ Hanzo's OWN house DigitalOcean account."
 - name: benchmark
   description: Package benchmark is one honest score for any model, on the tests everyone quotes.
 - name: blueprint
@@ -373,7 +379,7 @@ tags:
   description: 'Package domain is Hanzo Domains: search a name, see the price, buy it from your prepaid wallet.'
 - name: download
   description: 'Package exec is the code interpreter: run a snippet in a sandbox and move files in and out.'
-- name: embed-status
+- name: embed
   description: 'Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up.'
 - name: enablement
   description: 'Package pricing is the price list: what every model, provider, GPU tier, tool and hosting plan costs.'
@@ -437,8 +443,6 @@ tags:
 - name: prefs
   description: "Package prefs is your own settings \u2014 theme, density, pinned nav \u2014 following you across every Hanzo\
     \ app."
-- name: pricing-policy
-  description: 'Package pricing is the price list: what every model, provider, GPU tier, tool and hosting plan costs.'
 - name: registry
   description: 'Package registry is your container and package registry: push images, pull them back, see what you store.'
 - name: releases
@@ -452,9 +456,6 @@ tags:
     \ logs, custom domains."
 - name: sbom
   description: 'Package sbom is what is inside a container image: every component, resolvable by digest or image ref.'
-- name: search-docs
-  description: 'Package product is the read-only inventory of the search and vector backends: /v1/search-docs/{indexes,stats}
-    read from Meilisearch and /v1/vector/{collections,stats} from Qdrant, reshaped into the rows the console renders.'
 - name: sentry
   description: 'Package o11y is your logs, metrics and traces: ship them in, query them, chart them.'
 - name: social
@@ -491,8 +492,7 @@ tags:
 - name: integrations
   description: Package integrations is how your org connects third-party accounts like Slack, and revokes them.
 - name: Search
-  description: 'Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store,
-    wired straight into your app.'
+  description: SearXNG-shaped metasearch
 - name: Tokens
   description: Token CRUD, OAuth token management
 - name: upload
@@ -637,6 +637,7 @@ x-tagGroups:
   - MCP
   - Functions
   - evals
+  - Datasets
   - Exec
   - indexers
   - oracles
@@ -693,6 +694,7 @@ x-tagGroups:
   tags:
   - Affiliates
   - billing
+  - Spend Caps
   - Access Tokens
   - Orders
   - Cart
@@ -715,7 +717,7 @@ x-tagGroups:
   - Zones
   - DNSSEC
   - vpcs
-  - load-balancers
+  - Load Balancers
   - Versions
   - Logs
   - Secrets
@@ -742,6 +744,7 @@ x-tagGroups:
   - agent
   - ask
   - auto
+  - balancers
   - benchmark
   - blueprint
   - books
@@ -762,7 +765,7 @@ x-tagGroups:
   - destinations
   - domain
   - download
-  - embed-status
+  - embed
   - enablement
   - engine
   - entitlements
@@ -789,13 +792,11 @@ x-tagGroups:
   - mq
   - orgs
   - prefs
-  - pricing-policy
   - registry
   - releases
   - run
   - runner
   - sbom
-  - search-docs
   - sentry
   - social
   - sync
@@ -2850,50 +2851,154 @@ paths:
         \ only their own subtree's."
       tags:
       - Admin
-  /v1/admin/block-storage:
+  /v1/admin/caps:
     get:
-      description: "Is the realtime block-storage board: the DigitalOcean volume fleet\n(count, capacity, monthly list cost,\
-        \ per-volume region and attachment) plus the\nanalytics datastore's OWN fill, read from its system.disks.\n\nA volume's\
-        \ usedGiB and pct are null, always: DO exposes capacity and attachment but no\nfill, so the console renders \"\u2014\
-        \" rather than a number nobody measured. The datastore\ncard is the one real fill here, and it is the number to scale\
-        \ on.\n\nThe two sources degrade independently \u2014 a DO outage still returns the datastore fill,\nand a disconnected\
-        \ datastore still returns the DO fleet."
-      operationId: cloud_adminBlockStorage
+      description: "Reads one org's usage caps: its spend alerts plus the derived period\nspend, over/warn state and reset\
+        \ time.\n\nThese are the SAME rows the customer edits in their own console \u2014 a platform override\nand a customer\
+        \ budget are one model, not two."
+      operationId: cloud_adminCaps
+      parameters:
+      - description: "Org is the tenant to act on. Required for a SuperAdmin \u2014 they must name their\ntarget; ignored\
+          \ for a white-label admin, who always acts on their own org."
+        example: acme
+        in: query
+        name: org
+        required: false
+        schema:
+          type: string
+      - description: ID is the cap to edit or remove, from the path. Unused by the list and create ops.
+        in: query
+        name: id
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           content:
             application/json:
               example:
                 data:
-                  alerts: []
-                  datastore:
-                    mount: /var/lib/datastore
-                    name: default
-                    pct: 40.7
-                    sizeGiB: 200
-                    usedGiB: 81.4
-                  fleet:
-                    count: 2
-                    monthlyUsd: 30
-                    pct: null
-                    totalGiB: 300
-                    usedGiB: null
-                  volumes:
-                  - attached: true
-                    id: v1
-                    name: datastore-data
-                    pct: null
-                    region: nyc3
-                    service: ''
-                    sizeGiB: 200
-                    usedGiB: null
+                - enforce: true
+                  id: cap_1
+                  limitCents: 100000
+                  over: false
+                  periodSpendCents: 42000
+                  resetsAt: '2026-08-01T00:00:00Z'
+                  warn: false
+                msg: ''
+                status: ok
+                total: 0
+              schema:
+                $ref: '#/components/schemas/cloud_rawOut'
+          description: ok
+      summary: 'Reads one org''s usage caps: its spend alerts plus the derived period spend, over/warn state and reset time.'
+      tags:
+      - Admin
+    post:
+      description: "Sets a usage cap on one org \u2014 a platform override of a customer budget,\nwritten to the customer's\
+        \ own spend-alert rows. The body is commerce's spend-alert\ncontract, forwarded byte-for-byte."
+      operationId: cloud_adminCreateCap
+      requestBody:
+        content:
+          application/json:
+            example:
+              enforce: true
+              limitCents: 100000
+              org: acme
+            schema:
+              $ref: '#/components/schemas/cloud_capIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                data:
+                  enforce: true
+                  id: cap_1
+                  limitCents: 100000
+                msg: ''
+                status: ok
+                total: 0
+              schema:
+                $ref: '#/components/schemas/cloud_rawOut'
+          description: ok
+      summary: "Sets a usage cap on one org \u2014 a platform override of a customer budget, written to the customer's own\
+        \ spend-alert rows."
+      tags:
+      - Admin
+  /v1/admin/caps/{id}:
+    delete:
+      description: Removes one cap by id, lifting the ceiling entirely.
+      operationId: cloud_adminDeleteCap
+      parameters:
+      - description: ID is the cap to edit or remove, from the path. Unused by the list and create ops.
+        example: cap_1
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - description: "Org is the tenant to act on. Required for a SuperAdmin \u2014 they must name their\ntarget; ignored\
+          \ for a white-label admin, who always acts on their own org."
+        example: acme
+        in: query
+        name: org
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                data:
+                  ok: true
                 msg: ''
                 status: ok
               schema:
-                $ref: '#/components/schemas/cloud_blockStorageOut'
+                $ref: '#/components/schemas/cloud_rawOut'
           description: ok
-      summary: 'Is the realtime block-storage board: the DigitalOcean volume fleet (count, capacity, monthly list cost, per-volume
-        region and attachment) plus the analytics datastore''s OWN fill, read from its system.disks.'
+      summary: Removes one cap by id, lifting the ceiling entirely.
+      tags:
+      - Admin
+    patch:
+      description: "Edits one cap by id \u2014 raise or lower the ceiling, flip enforcement. The\nbody is commerce's spend-alert\
+        \ patch contract, forwarded byte-for-byte."
+      operationId: cloud_adminUpdateCap
+      parameters:
+      - description: ID is the cap to edit or remove, from the path. Unused by the list and create ops.
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            example:
+              enforce: false
+              limitCents: 250000
+              org: acme
+            schema:
+              $ref: '#/components/schemas/cloud_capIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                data:
+                  enforce: false
+                  id: cap_1
+                  limitCents: 250000
+                msg: ''
+                status: ok
+                total: 0
+              schema:
+                $ref: '#/components/schemas/cloud_rawOut'
+          description: ok
+      summary: "Edits one cap by id \u2014 raise or lower the ceiling, flip enforcement."
       tags:
       - Admin
   /v1/admin/catalog:
@@ -3044,18 +3149,17 @@ paths:
         \ \u2014 the same\nfold the console applies, done in the warehouse so the count is over every machine and\nnot just\
         \ the page.\n\nHonest-empty when the warehouse is not connected or hanzo.compute_usage is not\nprovisioned yet: an\
         \ empty list, never a fabricated fleet."
-  /v1/admin/credit-grants:
+  /v1/admin/credits:
     post:
       description: "Mints credit for one org. It is the ONE admin mint surface, and it\ndoes NOT mint in-process: it forwards\
-        \ the request to commerce's already-mint-gated\nPOST /v1/billing/credit-grants, authenticated by the service token\
-        \ and scoped to the\ntarget org, then writes one tamper-evident compliance record. Commerce stays the sole\ncredit\
-        \ ledger; this is a thin, audited relay so there is exactly one place credit is\ncreated.\n\nThe body is commerce's\
-        \ OWN CreateCreditGrant contract, forwarded whole \u2014 every field\nit carries reaches commerce. The only two this\
-        \ layer reads are the target org (`org`,\nor `user` as the org-pool alias), which selects the namespace commerce's\
-        \ EdgeAuth\ntrusts, and `idempotencyKey`, which makes a double-clicked grant credit once.\n\nA FAILED grant is audited\
-        \ too, with the request body attached: an attempted mint is\nexactly as interesting to a compliance auditor as a successful\
-        \ one."
-      operationId: cloud_adminCreateCreditGrant
+        \ the request to commerce's already-mint-gated\nPOST /v1/billing/credits, authenticated by the service token and scoped\
+        \ to the\ntarget org, then writes one tamper-evident compliance record. Commerce stays the sole\ncredit ledger; this\
+        \ is a thin, audited relay so there is exactly one place credit is\ncreated.\n\nThe body is commerce's OWN CreateCreditGrant\
+        \ contract, forwarded whole \u2014 every field\nit carries reaches commerce. The only two this layer reads are the\
+        \ target org (`org`,\nor `user` as the org-pool alias), which selects the namespace commerce's EdgeAuth\ntrusts, and\
+        \ `idempotencyKey`, which makes a double-clicked grant credit once.\n\nA FAILED grant is audited too, with the request\
+        \ body attached: an attempted mint is\nexactly as interesting to a compliance auditor as a successful one."
+      operationId: cloud_adminCreateCredit
       requestBody:
         content:
           application/json:
@@ -4900,156 +5004,6 @@ paths:
       summary: "Flips ONE service's waitlist switch \u2014 the launch lever."
       tags:
       - Admin
-  /v1/admin/spend-caps:
-    get:
-      description: "Reads one org's usage caps: its spend alerts plus the derived period\nspend, over/warn state and reset\
-        \ time.\n\nThese are the SAME rows the customer edits in their own console \u2014 a platform override\nand a customer\
-        \ budget are one model, not two."
-      operationId: cloud_adminSpendCaps
-      parameters:
-      - description: "Org is the tenant to act on. Required for a SuperAdmin \u2014 they must name their\ntarget; ignored\
-          \ for a white-label admin, who always acts on their own org."
-        example: acme
-        in: query
-        name: org
-        required: false
-        schema:
-          type: string
-      - description: ID is the cap to edit or remove, from the path. Unused by the list and create ops.
-        in: query
-        name: id
-        required: false
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              example:
-                data:
-                - enforce: true
-                  id: cap_1
-                  limitCents: 100000
-                  over: false
-                  periodSpendCents: 42000
-                  resetsAt: '2026-08-01T00:00:00Z'
-                  warn: false
-                msg: ''
-                status: ok
-                total: 0
-              schema:
-                $ref: '#/components/schemas/cloud_rawOut'
-          description: ok
-      summary: 'Reads one org''s usage caps: its spend alerts plus the derived period spend, over/warn state and reset time.'
-      tags:
-      - Admin
-    post:
-      description: "Sets a usage cap on one org \u2014 a platform override of a customer budget,\nwritten to the customer's\
-        \ own spend-alert rows. The body is commerce's spend-alert\ncontract, forwarded byte-for-byte."
-      operationId: cloud_adminCreateSpendCap
-      requestBody:
-        content:
-          application/json:
-            example:
-              enforce: true
-              limitCents: 100000
-              org: acme
-            schema:
-              $ref: '#/components/schemas/cloud_capIn'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              example:
-                data:
-                  enforce: true
-                  id: cap_1
-                  limitCents: 100000
-                msg: ''
-                status: ok
-                total: 0
-              schema:
-                $ref: '#/components/schemas/cloud_rawOut'
-          description: ok
-      summary: "Sets a usage cap on one org \u2014 a platform override of a customer budget, written to the customer's own\
-        \ spend-alert rows."
-      tags:
-      - Admin
-  /v1/admin/spend-caps/{id}:
-    delete:
-      description: Removes one cap by id, lifting the ceiling entirely.
-      operationId: cloud_adminDeleteSpendCap
-      parameters:
-      - description: ID is the cap to edit or remove, from the path. Unused by the list and create ops.
-        example: cap_1
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      - description: "Org is the tenant to act on. Required for a SuperAdmin \u2014 they must name their\ntarget; ignored\
-          \ for a white-label admin, who always acts on their own org."
-        example: acme
-        in: query
-        name: org
-        required: false
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              example:
-                data:
-                  ok: true
-                msg: ''
-                status: ok
-              schema:
-                $ref: '#/components/schemas/cloud_rawOut'
-          description: ok
-      summary: Removes one cap by id, lifting the ceiling entirely.
-      tags:
-      - Admin
-    patch:
-      description: "Edits one cap by id \u2014 raise or lower the ceiling, flip enforcement. The\nbody is commerce's spend-alert\
-        \ patch contract, forwarded byte-for-byte."
-      operationId: cloud_adminUpdateSpendCap
-      parameters:
-      - description: ID is the cap to edit or remove, from the path. Unused by the list and create ops.
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            example:
-              enforce: false
-              limitCents: 250000
-              org: acme
-            schema:
-              $ref: '#/components/schemas/cloud_capIn'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              example:
-                data:
-                  enforce: false
-                  id: cap_1
-                  limitCents: 250000
-                msg: ''
-                status: ok
-                total: 0
-              schema:
-                $ref: '#/components/schemas/cloud_rawOut'
-          description: ok
-      summary: "Edits one cap by id \u2014 raise or lower the ceiling, flip enforcement."
-      tags:
-      - Admin
   /v1/admin/subscriptions:
     get:
       description: "Answers GET /v1/admin/subscriptions.\n\n\tGET /v1/admin/subscriptions?org=&status=&limit="
@@ -5176,29 +5130,23 @@ paths:
         the anchoring status.
       tags:
       - Admin
-  /v1/admin/treasury/bind-anchor:
-    post:
-      description: 'BindTreasuryAnchorSigner makes the reserve''s threshold MPC wallet the signer
-
-        for on-chain anchors, and returns its EVM address so an operator can fund it
-
-        for gas. It provisions-or-resolves the caller org''s treasury wallet on the
-
-        deployed MPC ring and installs it, so every later anchor commits the ledger
-
-        root SIGNED BY THE QUORUM WALLET instead of a lone KMS key. Idempotent: a
-
-        repeat resolves the same wallet. SuperAdmin only.'
-      operationId: cloud_post_v1_admin_treasury_bind-anchor
+  /v1/admin/treasury/anchor/signer:
+    put:
+      description: "Installs the reserve's threshold MPC wallet as the signer\nfor on-chain anchors, and returns its EVM address\
+        \ so an operator can fund it\nfor gas. It provisions-or-resolves the caller org's treasury wallet on the\ndeployed\
+        \ MPC ring and installs it, so every later anchor commits the ledger\nroot SIGNED BY THE QUORUM WALLET instead of\
+        \ a lone KMS key. Idempotent \u2014 a\nrepeat resolves the same wallet, which is why the address is a PUT. SuperAdmin\n\
+        only."
+      operationId: cloud_put_v1_admin_treasury_anchor_signer
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/cloud_bindOut'
+                $ref: '#/components/schemas/cloud_signerOut'
           description: ok
-      summary: BindTreasuryAnchorSigner makes the reserve's threshold MPC wallet the signer for on-chain anchors, and returns
-        its EVM address so an operator can fund it for gas.
+      summary: Installs the reserve's threshold MPC wallet as the signer for on-chain anchors, and returns its EVM address
+        so an operator can fund it for gas.
       tags:
       - Admin
   /v1/admin/treasury/policy:
@@ -5432,6 +5380,52 @@ paths:
         \ so the console can page through it.\n\nA SuperAdmin may aim the read at one tenant with org; a white-label admin\
         \ cannot \u2014 for\nthem the owner is hard-pinned to their own org and org is ignored, which is what keeps\nthe directory\
         \ from becoming a cross-tenant read."
+  /v1/admin/volumes:
+    get:
+      description: "Returns the realtime block-storage board: the DigitalOcean volume fleet\n(count, capacity, monthly list\
+        \ cost, per-volume region and attachment) plus the\nanalytics datastore's OWN fill, read from its system.disks.\n\n\
+        A volume's usedGiB and pct are null, always: DO exposes capacity and attachment but no\nfill, so the console renders\
+        \ \"\u2014\" rather than a number nobody measured. The datastore\ncard is the one real fill here, and it is the number\
+        \ to scale on.\n\nThe two sources degrade independently \u2014 a DO outage still returns the datastore fill,\nand\
+        \ a disconnected datastore still returns the DO fleet."
+      operationId: cloud_adminVolumes
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                data:
+                  alerts: []
+                  datastore:
+                    mount: /var/lib/datastore
+                    name: default
+                    pct: 40.7
+                    sizeGiB: 200
+                    usedGiB: 81.4
+                  fleet:
+                    count: 2
+                    monthlyUsd: 30
+                    pct: null
+                    totalGiB: 300
+                    usedGiB: null
+                  volumes:
+                  - attached: true
+                    id: v1
+                    name: datastore-data
+                    pct: null
+                    region: nyc3
+                    service: ''
+                    sizeGiB: 200
+                    usedGiB: null
+                msg: ''
+                status: ok
+              schema:
+                $ref: '#/components/schemas/cloud_volumesOut'
+          description: ok
+      summary: 'Returns the realtime block-storage board: the DigitalOcean volume fleet (count, capacity, monthly list cost,
+        per-volume region and attachment) plus the analytics datastore''s OWN fill, read from its system.disks.'
+      tags:
+      - Admin
   /v1/admin/waitlist:
     get:
       description: "Reads one waitlist's leaderboard from the Hanzo waitlist engine \u2014 position,\npoints and referral\
@@ -6811,13 +6805,13 @@ paths:
         to THIS machine.'
       tags:
       - agents
-  /v1/agents/targets/{id}/claim-key:
+  /v1/agents/targets/{id}/key:
     post:
       description: "MintTargetClaimKey mints (or rotates) the claim key a `hanzo code --serve`\ndaemon presents to claim work\
         \ for this machine, and returns it ONCE: only its\nSHA-256 hash is stored. Rotating supersedes any prior daemon, so\
         \ only the\nmachine's owner \u2014 or an org admin \u2014 may call it; every other caller gets the\nsame not-found\
         \ an unknown id gets, and learns nothing about what exists."
-      operationId: cloud_post_v1_agents_targets_id_claim-key
+      operationId: cloud_post_v1_agents_targets_id_key
       parameters:
       - description: ID is the target to act on, from the path.
         example: tgt_1
@@ -12762,18 +12756,24 @@ paths:
                           type: object
   /v1/analytics/health:
     get:
-      description: "Reports the analytics subsystem's own liveness: whether the shared warehouse connection is up, and \u2014\
-        \ when it is \u2014 whether each read lens's table has been provisioned yet (the LLM usage ledger and the product-event\
-        \ table, each named in the report).\n\nIT DOES NOT PROBE THE WAREHOUSE TO EARN ITS 200. `datastore` here is the state\
-        \ of the process's own shared client \u2014 established, and not since closed \u2014 not the result of a query, so\
-        \ a warehouse that is accepting connections and failing reads still reports healthy. Degraded means only that the\
-        \ client never came up: 503, CARRYING the report (status, datastore:false, reason) as its body rather than an error\
-        \ envelope, so a readiness gate can read the cause off the same object it got at 200.\n\nA MISSING LENS TABLE IS NOT\
-        \ A FAILURE and never moves the status. The per-lens probe runs only once connected, and a lens reported available:false\
-        \ answers honest-empty rather than erroring \u2014 a fresh deployment whose collector has not emitted yet is legitimately\
-        \ 200 with the product-event lens unavailable. The lens block is absent entirely from a degraded report, which has\
+      description: "Reports the analytics subsystem's own liveness in BOTH directions: `plane` is the event plane it WRITES\
+        \ (the bus and the JetStream stream every accepted event is published to, both named in the report), and `datastore`\
+        \ is the warehouse it READS, with each read lens's table reported as it is provisioned (the LLM usage ledger and the\
+        \ product-event table).\n\nEITHER ONE DOWN IS A 503, and the report says WHICH \u2014 they are probed independently\
+        \ and never collapse into a single bit. This endpoint used to report the read half only, and answered 200/ok while\
+        \ every POST /v1/event failed on a stream that could not bind: a total ingest outage behind a green probe. A readiness\
+        \ gate wired here now gates on the write path too.\n\n`plane.ready` IS A REAL PROBE and walks the ingest path itself\
+        \ \u2014 the same connection and the same stream a publish uses \u2014 so it cannot answer ready while a publish would\
+        \ 503. `plane.reason` carries the plane's own error text when it is false.\n\n`datastore` IS NOT PROBED WITH A QUERY.\
+        \ It is the state of the process's own shared client \u2014 established, and not since closed \u2014 so a warehouse\
+        \ accepting connections and failing reads still reports true. Degraded CARRIES the report (status, the failing half,\
+        \ reason) as its body rather than an error envelope, so a gate reads the cause off the same object it got at 200.\n\
+        \nA MISSING LENS TABLE IS NOT A FAILURE and never moves the status: a lens reported available:false answers honest-empty\
+        \ rather than erroring, so a fresh deployment whose collector has not emitted yet is legitimately 200 with the product-event\
+        \ lens unavailable. The lens block is reported whenever the warehouse is REACHABLE \u2014 including on a report degraded\
+        \ by the plane, where the tables genuinely were probed \u2014 and is absent only when the warehouse is not, having\
         \ nothing to say about tables it could not reach.\n\nUnauthenticated on purpose \u2014 liveness has to be probe-able\
-        \ \u2014 and it reads NO tenant data: table existence only, never a row."
+        \ \u2014 and it reads NO tenant data: table existence and stream presence only, never a row and never an event."
       operationId: cloud_get_v1_analytics_health
       responses:
         2XX:
@@ -12782,7 +12782,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/cloud_healthReport'
           description: Success
-      summary: Whether the analytics warehouse is reachable, and which lens tables exist
+      summary: Whether the event plane can take a write and the warehouse can answer a read
       tags:
       - Analytics
   /v1/analytics/heartbeat:
@@ -16350,6 +16350,108 @@ paths:
         '503':
           description: Automation engine not ready
       parameters: []
+  /v1/balancers:
+    get:
+      description: 'ListLoadBalancers returns every load balancer the caller''s org owns, under the
+
+        friendly names the org created them with. Same account-wide filter as the VPC
+
+        listing: a load balancer outside the caller''s "o"<orgHash>- namespace is never
+
+        in the answer.'
+      operationId: cloud_get_v1_balancers
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                loadBalancers:
+                - id: lb-1
+                  ip: 10.0.0.1
+                  name: edge
+                  status: active
+                  targets: 3
+                  type: REGIONAL
+              schema:
+                $ref: '#/components/schemas/cloud_lbList'
+          description: ok
+      summary: ListLoadBalancers returns every load balancer the caller's org owns, under the friendly names the org created
+        them with.
+      tags:
+      - balancers
+    post:
+      description: "CreateLoadBalancer creates a load balancer in the caller's org namespace and\nanswers 201 with it. The\
+        \ physical DigitalOcean name is derived server-side from\nthe validated org; a name that already exists there is a\
+        \ 409. Omitting\nforwarding rules yields a usable HTTP 80\u219280 load balancer rather than a 422."
+      operationId: cloud_post_v1_balancers
+      requestBody:
+        content:
+          application/json:
+            example:
+              forwarding_rules:
+              - entry_port: 443
+                entry_protocol: https
+                target_port: 8080
+                target_protocol: http
+              name: edge
+              region: nyc3
+            schema:
+              $ref: '#/components/schemas/cloud_createLBReq'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cloud_lbView'
+          description: created
+      summary: CreateLoadBalancer creates a load balancer in the caller's org namespace and answers 201 with it.
+      tags:
+      - balancers
+  /v1/balancers/{id}:
+    delete:
+      description: 'DeleteLoadBalancer removes one of the caller org''s load balancers and answers
+
+        204. Ownership is confirmed by re-fetching the resource before anything is
+
+        deleted, so a cross-tenant id is a 404 rather than a delete of another org''s
+
+        load balancer.'
+      operationId: cloud_delete_v1_balancers_id
+      parameters:
+      - description: ID is the DigitalOcean resource id (a UUID), from the path.
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: no content
+      summary: DeleteLoadBalancer removes one of the caller org's load balancers and answers 204.
+      tags:
+      - balancers
+    get:
+      description: "GetLoadBalancer returns one of the caller org's load balancers by id. One that\nexists in another org's\
+        \ namespace is reported 404, never 403 \u2014 the same\nexistence-oracle guard the VPC read applies."
+      operationId: cloud_get_v1_balancers_id
+      parameters:
+      - description: ID is the DigitalOcean resource id (a UUID), from the path.
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cloud_lbView'
+          description: ok
+      summary: GetLoadBalancer returns one of the caller org's load balancers by id.
+      tags:
+      - balancers
   /v1/base/health:
     get:
       description: 'BaseHealth reports that the base subsystem is serving.
@@ -16467,6 +16569,90 @@ paths:
       summary: Queue a benchmark run against a catalog model or your own endpoint
       tags:
       - benchmark
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/billing/alerts:
+    get:
+      description: "Returns the caps and alerts keyed to the caller's own billing subject, each with its threshold, enforcement\
+        \ flag, soft-warning percentage and current period spend. Any authenticated member of the org may read them \u2014\
+        \ only the writes require an admin. The rows are keyed on the org subject the enforcement gate itself reads, which\
+        \ is why a cap created here is the one that actually binds. A caller with no resolvable org or subject gets an empty\
+        \ list, never another tenant's caps."
+      operationId: cloud_get_v1_billing_alerts
+      summary: List your org's spend caps and rate limits
+      tags:
+      - billing
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+    post:
+      description: "Creates a cap for the caller's own org and answers the stored row with its current period spend. A spend\
+        \ cap is a FINANCIAL SAFETY control, so writing one requires an ORG ADMIN, a platform admin, or the internal service\
+        \ token \u2014 a plain authenticated member is refused 403, because a member who could delete the cap could uncap\
+        \ the org's spend and a member who could set a one-cent enforcing cap could deny the whole org. The cap is always\
+        \ keyed to the caller's own billing subject: a userId in the body is overwritten, never honored, so a cap cannot be\
+        \ planted on another subject. At least one of a positive threshold or a positive rateLimitRpm is required, softPct\
+        \ must be within 0 to 100, and an org that has reached its row limit is refused 400."
+      operationId: cloud_post_v1_billing_alerts
+      summary: Set a spend cap or rate limit on your org
+      tags:
+      - billing
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/billing/alerts/authorize:
+    get:
+      description: "Answers allow, reason, capCents, spentCents and warnPct for a proposed amount against a (project, service)\
+        \ scope \u2014 the verdict the request-edge metering gate reads before admitting a call. It evaluates EVERY covering\
+        \ cap and the most restrictive enforcing one wins; soft caps and an enforcing project cap whose project axis is not\
+        \ validated never block, they only raise the warning utilization. It is a service-to-service read authenticated by\
+        \ the internal service token with the org pinned by the gateway, not a browser call. Two rules matter: the spend it\
+        \ scores comes from the finance ledger's current-month total, and it FAILS OPEN on unknown spend \u2014 a transient\
+        \ read failure allows rather than denies, so a backend blip never bills-blocks an under-cap customer, while a known\
+        \ overage still denies."
+      operationId: cloud_get_v1_billing_alerts_authorize
+      summary: The per-request spend-cap verdict the metering gate consumes
+      tags:
+      - billing
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/billing/alerts/{id}:
+    delete:
+      description: "Deletes the addressed cap and answers 204. Requires an ORG ADMIN, a platform admin, or the internal service\
+        \ token \u2014 deleting a cap uncaps the org's spend, so a plain member is refused 403. Ownership is checked per row\
+        \ and a cap the caller does not own is refused as 404 rather than 403, so the response cannot confirm that another\
+        \ org's id exists."
+      operationId: cloud_delete_v1_billing_alerts_by_id
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      summary: Remove one of your org's spend caps
+      tags:
+      - billing
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+    patch:
+      description: "Applies only the fields the body actually carries \u2014 title, threshold, project, service, enforce,\
+        \ softPct, rateLimitRpm \u2014 and leaves the rest as stored, answering the merged row with its current period spend.\
+        \ Requires an ORG ADMIN, a platform admin, or the internal service token, for the same reason creation does: a member\
+        \ who could edit the cap could raise it to nothing or drop it to a punitive floor. Ownership is checked per row and\
+        \ a cap the caller does not own is refused as 404, never 403, so the id space cannot be probed."
+      operationId: cloud_patch_v1_billing_alerts_by_id
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      summary: Change one of your org's spend caps
+      tags:
+      - billing
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -16730,14 +16916,11 @@ paths:
   /v1/billing/spend-alerts:
     get:
       tags:
-      - billing
-      summary: List your org's spend caps and rate limits
-      operationId: cloud_get_v1_billing_spend-alerts
-      description: "Returns the caps and alerts keyed to the caller's own billing subject, each with its threshold, enforcement\
-        \ flag, soft-warning percentage and current period spend. Any authenticated member of the org may read them \u2014\
-        \ only the writes require an admin. The rows are keyed on the org subject the enforcement gate itself reads, which\
-        \ is why a cap created here is the one that actually binds. A caller with no resolvable org or subject gets an empty\
-        \ list, never another tenant's caps."
+      - Spend Caps
+      summary: List spend alerts / caps
+      operationId: billing_billingListSpendAlerts
+      description: "The caller org's spend-alert rows (soft budgets, hard caps, rate limits) with DERIVED period spend and\
+        \ over/warn flags for the current UTC month. Org-scoped from the validated token \u2014 never another tenant's rows."
       responses:
         '200':
           description: Spend-alert rows
@@ -16751,16 +16934,16 @@ paths:
           $ref: '#/components/responses/billing_Unauthorized'
     post:
       tags:
-      - billing
-      summary: Set a spend cap or rate limit on your org
-      operationId: cloud_post_v1_billing_spend-alerts
-      description: "Creates a cap for the caller's own org and answers the stored row with its current period spend. A spend\
-        \ cap is a FINANCIAL SAFETY control, so writing one requires an ORG ADMIN, a platform admin, or the internal service\
-        \ token \u2014 a plain authenticated member is refused 403, because a member who could delete the cap could uncap\
-        \ the org's spend and a member who could set a one-cent enforcing cap could deny the whole org. The cap is always\
-        \ keyed to the caller's own billing subject: a userId in the body is overwritten, never honored, so a cap cannot be\
-        \ planted on another subject. At least one of a positive threshold or a positive rateLimitRpm is required, softPct\
-        \ must be within 0 to 100, and an org that has reached its row limit is refused 400."
+      - Spend Caps
+      summary: Create a spend alert / cap
+      operationId: billing_billingCreateSpendAlert
+      description: 'Create a soft alert or, with `enforce: true`, a HARD per-scope spend cap. The
+
+        owning org is pinned server-side from the validated token (never a body/query
+
+        field). At least one of `threshold` (> 0) or `rateLimitRpm` (> 0) is required.
+
+        '
       requestBody:
         required: true
         content:
@@ -16791,17 +16974,14 @@ paths:
   /v1/billing/spend-alerts/authorize:
     get:
       tags:
-      - billing
-      summary: The per-request spend-cap verdict the metering gate consumes
-      operationId: cloud_get_v1_billing_spend-alerts_authorize
-      description: "Answers allow, reason, capCents, spentCents and warnPct for a proposed amount against a (project, service)\
-        \ scope \u2014 the verdict the request-edge metering gate reads before admitting a call. It evaluates EVERY covering\
-        \ cap and the most restrictive enforcing one wins; soft caps and an enforcing project cap whose project axis is not\
-        \ validated never block, they only raise the warning utilization. It is a service-to-service read authenticated by\
-        \ the internal service token with the org pinned by the gateway, not a browser call. Two rules matter: the spend it\
-        \ scores comes from the finance ledger's current-month total, and it FAILS OPEN on unknown spend \u2014 a transient\
-        \ read failure allows rather than denies, so a backend blip never bills-blocks an under-cap customer, while a known\
-        \ overage still denies."
+      - Spend Caps
+      summary: Per-request spend-cap verdict
+      operationId: billing_billingAuthorizeSpendCap
+      description: "The per-request cap verdict the cloud metering gate consumes (service-to-service).\nEvaluates EVERY covering\
+        \ spend-alert row for the (project, service) scope over the\ncurrent UTC month (most-restrictive-wins) and denies\
+        \ with reason `spend_cap` when a\nhard-enforced cap would be exceeded; fails CLOSED if a hard row's spend is unknown.\n\
+        Balance is NOT checked here \u2014 the DISTINCT `insufficient_balance` reason is layered\nby the cloud money-path\
+        \ composite, not this endpoint.\n"
       parameters:
       - name: user
         in: query
@@ -16850,17 +17030,14 @@ paths:
   /v1/billing/spend-alerts/{id}:
     patch:
       tags:
-      - billing
-      summary: Change one of your org's spend caps
-      operationId: cloud_patch_v1_billing_spend-alerts_by_id
-      description: "Applies only the fields the body actually carries \u2014 title, threshold, project, service, enforce,\
-        \ softPct, rateLimitRpm \u2014 and leaves the rest as stored, answering the merged row with its current period spend.\
-        \ Requires an ORG ADMIN, a platform admin, or the internal service token, for the same reason creation does: a member\
-        \ who could edit the cap could raise it to nothing or drop it to a punitive floor. Ownership is checked per row and\
-        \ a cap the caller does not own is refused as 404, never 403, so the id space cannot be probed."
+      - Spend Caps
+      summary: Update a spend alert / cap
+      operationId: billing_billingUpdateSpendAlert
+      description: "Partial update of a spend-alert row the caller's org owns \u2014 only fields present in the body change;\
+        \ the rest are preserved. A foreign id 404s (tenant-isolated)."
       parameters:
-      - in: path
-        name: id
+      - name: id
+        in: path
         required: true
         schema:
           type: string
@@ -16885,16 +17062,13 @@ paths:
           description: Spend alert not found
     delete:
       tags:
-      - billing
-      summary: Remove one of your org's spend caps
-      operationId: cloud_delete_v1_billing_spend-alerts_by_id
-      description: "Deletes the addressed cap and answers 204. Requires an ORG ADMIN, a platform admin, or the internal service\
-        \ token \u2014 deleting a cap uncaps the org's spend, so a plain member is refused 403. Ownership is checked per row\
-        \ and a cap the caller does not own is refused as 404 rather than 403, so the response cannot confirm that another\
-        \ org's id exists."
+      - Spend Caps
+      summary: Delete a spend alert / cap
+      operationId: billing_billingDeleteSpendAlert
+      description: Delete a spend-alert row the caller's org owns. A foreign id 404s.
       parameters:
-      - in: path
-        name: id
+      - name: id
+        in: path
         required: true
         schema:
           type: string
@@ -17192,37 +17366,6 @@ paths:
         \ long is my runway?\" \u2014 with figures taken from their ledger, never a guessed number."
       tags:
       - books
-  /v1/books/balance-sheet:
-    get:
-      description: 'BalanceSheet returns the org''s Balance Sheet as of `to` (empty = all time), with the
-
-        Assets == Liabilities + Equity equation proof.'
-      operationId: cloud_get_v1_books_balance-sheet
-      parameters:
-      - description: Sandbox reads the org's SANDBOX ledger when it is exactly "true".
-        in: query
-        name: sandbox
-        required: false
-        schema:
-          type: string
-      - description: To is the RFC3339 instant the statement is struck as of. Empty means all time.
-        example: '2026-03-31T23:59:59Z'
-        in: query
-        name: to
-        required: false
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_BalanceSheet'
-          description: ok
-      summary: BalanceSheet returns the org's Balance Sheet as of `to` (empty = all time), with the Assets == Liabilities
-        + Equity equation proof.
-      tags:
-      - books
   /v1/books/bank/exchange:
     post:
       description: "ANSWERS 501 UNCONDITIONALLY. It is the intended second hop of the bank-linking handshake \u2014 trade\
@@ -17270,22 +17413,6 @@ paths:
       summary: Import a bank statement file into your books
       tags:
       - books
-  /v1/books/bank/link-token:
-    post:
-      description: "ANSWERS 501 UNCONDITIONALLY. It is the intended first hop of the bank-linking handshake \u2014 mint the\
-        \ short-lived session token a browser hands to the provider's link widget \u2014 and nothing on the HTTP path reaches\
-        \ an implementation today.\n\nThe connectors behind it are written and tested; only the wiring is missing, so an org\
-        \ cannot connect a bank through the API at all. Until that lands, bank data reaches the books by statement import.\n\
-        \nIt is documented as refusing rather than declared with a success body precisely because it has never sent one. A\
-        \ response schema here would be invention: every generated SDK would carry a return type for a call that has only\
-        \ ever failed. A caller with no principal gets 401 before the 501."
-      operationId: cloud_post_v1_books_bank_link-token
-      summary: Begin connecting a bank account (not yet available)
-      tags:
-      - books
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/books/bank/sync:
     post:
       description: "SyncBank pulls every connected bank (Plaid/Teller) for the caller's org, maps each\nfetched transaction\
@@ -17306,6 +17433,22 @@ paths:
         posting and books it idempotently, then advances that connector's cursor so the next sync resumes where this one stopped.
       tags:
       - books
+  /v1/books/bank/token:
+    post:
+      description: "ANSWERS 501 UNCONDITIONALLY. It is the intended first hop of the bank-linking handshake \u2014 mint the\
+        \ short-lived session token a browser hands to the provider's link widget \u2014 and nothing on the HTTP path reaches\
+        \ an implementation today.\n\nThe connectors behind it are written and tested; only the wiring is missing, so an org\
+        \ cannot connect a bank through the API at all. Until that lands, bank data reaches the books by statement import.\n\
+        \nIt is documented as refusing rather than declared with a success body precisely because it has never sent one. A\
+        \ response schema here would be invention: every generated SDK would carry a return type for a call that has only\
+        \ ever failed. A caller with no principal gets 401 before the 501."
+      operationId: cloud_post_v1_books_bank_token
+      summary: Begin connecting a bank account (not yet available)
+      tags:
+      - books
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/books/bank/transactions:
     get:
       description: "ListBankTransactions returns the org's normalized bank transactions, newest first \u2014\nevery row the\
@@ -17585,6 +17728,37 @@ paths:
         posting times: recognized revenue, matched cost, and the net.'
       tags:
       - books
+  /v1/books/position:
+    get:
+      description: 'BalanceSheet returns the org''s Balance Sheet as of `to` (empty = all time), with the
+
+        Assets == Liabilities + Equity equation proof.'
+      operationId: cloud_get_v1_books_position
+      parameters:
+      - description: Sandbox reads the org's SANDBOX ledger when it is exactly "true".
+        in: query
+        name: sandbox
+        required: false
+        schema:
+          type: string
+      - description: To is the RFC3339 instant the statement is struck as of. Empty means all time.
+        example: '2026-03-31T23:59:59Z'
+        in: query
+        name: to
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cloud_BalanceSheet'
+          description: ok
+      summary: BalanceSheet returns the org's Balance Sheet as of `to` (empty = all time), with the Assets == Liabilities
+        + Equity equation proof.
+      tags:
+      - books
   /v1/books/questions:
     get:
       description: "ListQuestions returns the clarifying questions the caller's own recent GL raises \u2014 the\nunusual postings\
@@ -17810,14 +17984,14 @@ paths:
         with its date, description, vendor, category, source and amount in exact cents.'
       tags:
       - books
-  /v1/books/trial-balance:
+  /v1/books/trial:
     get:
       description: 'TrialBalance returns the org''s trial balance over an optional [from, to] window of
 
         RFC3339 posting times, including the opening/closing columns and the
 
         TotalDebit == TotalCredit proof that the books balance.'
-      operationId: cloud_get_v1_books_trial-balance
+      operationId: cloud_get_v1_books_trial
       parameters:
       - description: Sandbox reads the org's SANDBOX ledger when it is exactly "true".
         in: query
@@ -19709,6 +19883,69 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/captable/classes:
+    get:
+      description: 'ListShareClasses returns the caller org''s share classes, in creation order. A
+
+        share class is what a certificate is issued in, and every class the company
+
+        has authorized appears. The response is a bare JSON array, not an envelope.'
+      operationId: cloud_get_v1_captable_classes
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/cloud_captableShareClass'
+                type: array
+          description: ok
+      summary: ListShareClasses returns the caller org's share classes, in creation order.
+      tags:
+      - captable
+    post:
+      description: "Creates a class of stock \u2014 its authorized share count, votes per share, par and issue price, seniority,\
+        \ conversion rights and liquidation/participation multiples \u2014 which is what shares, priced rounds and equity\
+        \ plans are then issued against.\n\nTwo fields are the company's to assign, not the caller's: the class index auto-increments\
+        \ per company, and the certificate prefix is DERIVED from the class type (CS for COMMON, PS for anything else), so\
+        \ a prefix in the body is ignored.\n\nWrites the caller's OWN cap table: the org resolved from the validated principal\
+        \ selects the tenant's store and scopes every row, so there is no field by which a caller can write into another company's\
+        \ table; a request with no validated org is refused. The whole write runs in one transaction, so a refusal leaves\
+        \ nothing behind. Validation is the cap-table bundle's and so is its refusal: a bad body comes back as {success:false,\
+        \ message, errors:[\u2026]} with the failing fields listed, and numeric fields accept a number OR a numeric string.\
+        \ Bodies are capped at 1 MiB."
+      operationId: cloud_post_v1_captable_classes
+      summary: Define a share class
+      tags:
+      - captable
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/captable/classes/{id}:
+    patch:
+      description: "Rewrites one share class \u2014 the amendment path for a class whose authorized count, price, seniority\
+        \ or preference terms have changed.\n\nIt REPLACES the class rather than merging into it: every field is taken from\
+        \ this body, so an omitted field resets to the create-time default instead of keeping its current value. Send the\
+        \ full class. The index and the derived prefix are unchanged by an amendment. An id that is not this company's is\
+        \ not found.\n\nWrites the caller's OWN cap table: the org resolved from the validated principal selects the tenant's\
+        \ store and scopes every row, so there is no field by which a caller can write into another company's table; a request\
+        \ with no validated org is refused. The whole write runs in one transaction, so a refusal leaves nothing behind. Validation\
+        \ is the cap-table bundle's and so is its refusal: a bad body comes back as {success:false, message, errors:[\u2026\
+        ]} with the failing fields listed, and numeric fields accept a number OR a numeric string. Bodies are capped at 1\
+        \ MiB."
+      operationId: cloud_patch_v1_captable_classes_by_id
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      summary: Amend a share class
+      tags:
+      - captable
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/captable/company:
     get:
       description: 'GetCompany returns the caller org''s cap-table company record. The row is
@@ -19815,41 +20052,6 @@ paths:
         unconverted-instrument totals.
       tags:
       - captable
-  /v1/captable/equity-plans:
-    get:
-      description: 'ListEquityPlans returns the caller org''s equity plans, newest first. An equity
-
-        plan is an option pool: a reserve of shares, drawn from one share class, that
-
-        option grants are written against.'
-      operationId: cloud_get_v1_captable_equity-plans
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_captableEquityPlans'
-          description: ok
-      summary: ListEquityPlans returns the caller org's equity plans, newest first.
-      tags:
-      - captable
-    post:
-      description: "Reserves a pool of shares out of a share class for option grants, with the board approval and effective\
-        \ dates and what happens to cancelled options.\n\nThe share class must already exist in this company \u2014 a plan\
-        \ cannot reserve out of nothing. Note the field name the bundle reads for the cancellation behaviour is `defaultCancellatonBehavior`;\
-        \ that spelling is the wire, and a correctly spelled key is simply not seen.\n\nWrites the caller's OWN cap table:\
-        \ the org resolved from the validated principal selects the tenant's store and scopes every row, so there is no field\
-        \ by which a caller can write into another company's table; a request with no validated org is refused. The whole\
-        \ write runs in one transaction, so a refusal leaves nothing behind. Validation is the cap-table bundle's and so is\
-        \ its refusal: a bad body comes back as {success:false, message, errors:[\u2026]} with the failing fields listed,\
-        \ and numeric fields accept a number OR a numeric string. Bodies are capped at 1 MiB."
-      operationId: cloud_post_v1_captable_equity-plans
-      summary: Open an equity incentive plan
-      tags:
-      - captable
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/captable/investments:
     get:
       description: 'ListInvestments returns the caller org''s investments, newest first. It spans
@@ -19930,6 +20132,41 @@ paths:
         and fully-diluted counts.
       tags:
       - captable
+  /v1/captable/plans:
+    get:
+      description: 'ListEquityPlans returns the caller org''s equity plans, newest first. An equity
+
+        plan is an option pool: a reserve of shares, drawn from one share class, that
+
+        option grants are written against.'
+      operationId: cloud_get_v1_captable_plans
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cloud_captableEquityPlans'
+          description: ok
+      summary: ListEquityPlans returns the caller org's equity plans, newest first.
+      tags:
+      - captable
+    post:
+      description: "Reserves a pool of shares out of a share class for option grants, with the board approval and effective\
+        \ dates and what happens to cancelled options.\n\nThe share class must already exist in this company \u2014 a plan\
+        \ cannot reserve out of nothing. Note the field name the bundle reads for the cancellation behaviour is `defaultCancellatonBehavior`;\
+        \ that spelling is the wire, and a correctly spelled key is simply not seen.\n\nWrites the caller's OWN cap table:\
+        \ the org resolved from the validated principal selects the tenant's store and scopes every row, so there is no field\
+        \ by which a caller can write into another company's table; a request with no validated org is refused. The whole\
+        \ write runs in one transaction, so a refusal leaves nothing behind. Validation is the cap-table bundle's and so is\
+        \ its refusal: a bad body comes back as {success:false, message, errors:[\u2026]} with the failing fields listed,\
+        \ and numeric fields accept a number OR a numeric string. Bodies are capped at 1 MiB."
+      operationId: cloud_post_v1_captable_plans
+      summary: Open an equity incentive plan
+      tags:
+      - captable
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/captable/rounds:
     get:
       description: 'ListRounds returns the caller org''s fundraising rounds, newest first. A round
@@ -20116,69 +20353,6 @@ paths:
         totals.
       tags:
       - captable
-  /v1/captable/share-classes:
-    get:
-      description: 'ListShareClasses returns the caller org''s share classes, in creation order. A
-
-        share class is what a certificate is issued in, and every class the company
-
-        has authorized appears. The response is a bare JSON array, not an envelope.'
-      operationId: cloud_get_v1_captable_share-classes
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                items:
-                  $ref: '#/components/schemas/cloud_captableShareClass'
-                type: array
-          description: ok
-      summary: ListShareClasses returns the caller org's share classes, in creation order.
-      tags:
-      - captable
-    post:
-      description: "Creates a class of stock \u2014 its authorized share count, votes per share, par and issue price, seniority,\
-        \ conversion rights and liquidation/participation multiples \u2014 which is what shares, priced rounds and equity\
-        \ plans are then issued against.\n\nTwo fields are the company's to assign, not the caller's: the class index auto-increments\
-        \ per company, and the certificate prefix is DERIVED from the class type (CS for COMMON, PS for anything else), so\
-        \ a prefix in the body is ignored.\n\nWrites the caller's OWN cap table: the org resolved from the validated principal\
-        \ selects the tenant's store and scopes every row, so there is no field by which a caller can write into another company's\
-        \ table; a request with no validated org is refused. The whole write runs in one transaction, so a refusal leaves\
-        \ nothing behind. Validation is the cap-table bundle's and so is its refusal: a bad body comes back as {success:false,\
-        \ message, errors:[\u2026]} with the failing fields listed, and numeric fields accept a number OR a numeric string.\
-        \ Bodies are capped at 1 MiB."
-      operationId: cloud_post_v1_captable_share-classes
-      summary: Define a share class
-      tags:
-      - captable
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/captable/share-classes/{id}:
-    patch:
-      description: "Rewrites one share class \u2014 the amendment path for a class whose authorized count, price, seniority\
-        \ or preference terms have changed.\n\nIt REPLACES the class rather than merging into it: every field is taken from\
-        \ this body, so an omitted field resets to the create-time default instead of keeping its current value. Send the\
-        \ full class. The index and the derived prefix are unchanged by an amendment. An id that is not this company's is\
-        \ not found.\n\nWrites the caller's OWN cap table: the org resolved from the validated principal selects the tenant's\
-        \ store and scopes every row, so there is no field by which a caller can write into another company's table; a request\
-        \ with no validated org is refused. The whole write runs in one transaction, so a refusal leaves nothing behind. Validation\
-        \ is the cap-table bundle's and so is its refusal: a bad body comes back as {success:false, message, errors:[\u2026\
-        ]} with the failing fields listed, and numeric fields accept a number OR a numeric string. Bodies are capped at 1\
-        \ MiB."
-      operationId: cloud_patch_v1_captable_share-classes_by_id
-      parameters:
-      - in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      summary: Amend a share class
-      tags:
-      - captable
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/captable/shares:
     get:
       description: 'ListShares returns the caller org''s share certificates, newest first. Each row
@@ -30420,7 +30594,7 @@ paths:
                 type: object
         '404':
           $ref: '#/components/responses/edge_NotFound'
-  /v1/embed-status:
+  /v1/embed:
     get:
       description: "EmbedStatus reports whether one of this brand's shared embedded apps (cms, erp,\nhelp) may be framed by\
         \ the caller and is actually running, so a console module\ncan choose between the embed and the provision panel.\n\
@@ -30429,7 +30603,7 @@ paths:
         \ the embed URL; every\nother caller gets phase \"not-entitled\" and no URL. REACHABILITY is a probe of\nthat origin,\
         \ which a cross-origin page cannot read for itself.\n\nThe probed host is always <app>.<this deployment's own brand\
         \ domain>: no part of\nit comes from the request, so this can never be steered into probing an\narbitrary origin."
-      operationId: cloud_get_v1_embed-status
+      operationId: cloud_get_v1_embed
       parameters:
       - description: 'App is the embedded app to report on: cms (Content Studio), erp or help.'
         example: cms
@@ -30448,7 +30622,7 @@ paths:
       summary: EmbedStatus reports whether one of this brand's shared embedded apps (cms, erp, help) may be framed by the
         caller and is actually running, so a console module can choose between the embed and the provision panel.
       tags:
-      - embed-status
+      - embed
   /v1/embeddings:
     post:
       tags:
@@ -30658,10 +30832,11 @@ paths:
   /v1/errors:
     get:
       description: "Errors returns the caller org's most recently captured errors, newest first. The\nerror-tracking read\
-        \ view over the same table the capture doors write: only rows\nstored as type 'error', each with its captured exception\
-        \ lifted out of the property\nbag as a first-class field.\n\nThe org is the validated principal's \u2014 never a parameter\
-        \ \u2014 and this read requires a\nreal bearer, NEVER the write-only publishable key: pk- can attribute a write and\
-        \ can\nread nothing. 403 without a validated bearer, 503 when the warehouse is unreachable."
+        \ view over event.error \u2014 the plane table the write core's error\nfacts land in (errors are DELIBERATELY not\
+        \ on event.event) \u2014 each with its captured\nexception surfaced from the attributes map as a first-class field.\n\
+        \nThe org is the validated principal's \u2014 never a parameter \u2014 and this read requires a\nreal bearer, NEVER\
+        \ the write-only publishable key: pk- can attribute a write and can\nread nothing. 403 without a validated bearer,\
+        \ 503 when the warehouse is unreachable."
       operationId: cloud_get_v1_errors
       parameters:
       - description: 'Limit is how many rows to return, newest first. Default 50, maximum 200; a
@@ -30965,8 +31140,8 @@ paths:
   /v1/evals/dataset-items:
     post:
       tags:
-      - evals
-      summary: Add a graded example to one of your datasets
+      - Datasets
+      summary: Add an item (input + optional expected output) to a dataset
       requestBody:
         required: true
         content:
@@ -30982,28 +31157,7 @@ paths:
                 $ref: '#/components/schemas/evals_DatasetItem'
         '401':
           $ref: '#/components/responses/evals_Unauthorized'
-      operationId: cloud_post_v1_evals_dataset-items
-      description: "Writes one example \u2014 its `input`, its `expectedOutput`, free-form metadata and a status \u2014 into\
-        \ a dataset the caller's org owns, and answers 201 with it. `datasetName` is required and the dataset MUST already\
-        \ exist for this org: an unknown one is 404, never a silent create, so an example can never be attached to a set the\
-        \ caller does not own.\n\nSupply `id` to make the write idempotent \u2014 re-posting the same id replaces that example\
-        \ in place \u2014 or omit it and one is generated. An id that already exists in a DIFFERENT dataset is 409 rather\
-        \ than a move. `status` is `ACTIVE` (the default) or `ARCHIVED`; only ACTIVE examples are fed to a run, which is how\
-        \ an example is retired without deleting it. `input` and `expectedOutput` are stored as raw JSON exactly as sent.\
-        \ Requires a validated principal; 403 without one."
-    get:
-      description: "Lists the examples of ONE dataset as `{data:[\u2026]}` \u2014 `datasetName` is a required query parameter,\
-        \ and its absence is 400, because this collection is only meaningful per set. Archived examples are included, so the\
-        \ caller sees the whole set rather than only what a run would use. `limit` defaults to 100 and is capped at 500.\n\
-        \nRequires a validated principal; 403 without one, and the read is filtered on the validated org, so naming another\
-        \ tenant's dataset returns nothing rather than its contents."
-      operationId: cloud_get_v1_evals_dataset-items
-      summary: The examples in one of your datasets
-      tags:
-      - evals
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
+      operationId: evals_post_v1_evals_dataset_items
   /v1/evals/datasets:
     post:
       tags:
@@ -31083,6 +31237,48 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/evals/datasets/{name}/items:
+    get:
+      description: "Lists the examples of ONE dataset as `{data:[\u2026]}` \u2014 the set is named in the path, because this\
+        \ collection only exists inside one. Archived examples are included, so the caller sees the whole set rather than\
+        \ only what a run would use. `limit` defaults to 100 and is capped at 500.\n\nRequires a validated principal; 403\
+        \ without one, and the read is filtered on the validated org, so naming another tenant's dataset returns nothing rather\
+        \ than its contents."
+      operationId: cloud_get_v1_evals_datasets_by_name_items
+      parameters:
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      summary: The examples in one of your datasets
+      tags:
+      - evals
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+    post:
+      description: "Writes one example \u2014 its `input`, its `expectedOutput`, free-form metadata and a status \u2014 into\
+        \ the dataset named in the path, and answers 201 with it. That dataset MUST already exist for this org: an unknown\
+        \ one is 404, never a silent create, so an example can never be attached to a set the caller does not own.\n\nSupply\
+        \ `id` to make the write idempotent \u2014 re-posting the same id replaces that example in place \u2014 or omit it\
+        \ and one is generated. An id that already exists in a DIFFERENT dataset is 409 rather than a move. `status` is `ACTIVE`\
+        \ (the default) or `ARCHIVED`; only ACTIVE examples are fed to a run, which is how an example is retired without deleting\
+        \ it. `input` and `expectedOutput` are stored as raw JSON exactly as sent. Requires a validated principal; 403 without\
+        \ one."
+      operationId: cloud_post_v1_evals_datasets_by_name_items
+      parameters:
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      summary: Add a graded example to one of your datasets
+      tags:
+      - evals
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/evals/evaluators:
     post:
       tags:
@@ -31156,6 +31352,33 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/evals/rubrics:
+    get:
+      description: "Lists the caller org's rubrics as `{data:[\u2026]}` \u2014 each name's data type, its numeric bounds and\
+        \ its allowed categories. `limit` defaults to 100 and is capped at 500. Requires a validated principal; 403 without\
+        \ one, and the listing is filtered on the validated org."
+      operationId: cloud_get_v1_evals_rubrics
+      summary: The score shapes your org has declared
+      tags:
+      - evals
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+    post:
+      description: "Defines the shape of one score name for the caller's org \u2014 `NUMERIC` (the default, optionally bounded\
+        \ by `minValue`/`maxValue`), `CATEGORICAL` (a closed set of `categories`) or `BOOLEAN` \u2014 and answers 201 with\
+        \ it. The NAME is the key, so re-posting a name replaces its rules.\n\nThis is the integrity contract, not documentation:\
+        \ once a config exists for a name, every score recorded under that name is checked against it and the config's data\
+        \ type is AUTHORITATIVE \u2014 a caller cannot claim a different one. Out-of-range values, unlisted labels and non-finite\
+        \ numbers are refused at write time.\n\nA `CATEGORICAL` config with no categories is 400, as is a non-finite bound\
+        \ or a `minValue` above `maxValue`. Requires a validated principal; 403 without one."
+      operationId: cloud_post_v1_evals_rubrics
+      summary: Declare what a score named X is allowed to be
+      tags:
+      - evals
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/evals/runs:
     post:
       tags:
@@ -31202,33 +31425,6 @@ paths:
         \ not."
       operationId: cloud_get_v1_evals_runs
       summary: Past runs and how they scored
-      tags:
-      - evals
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/evals/score-configs:
-    get:
-      description: "Lists the caller org's score configs as `{data:[\u2026]}` \u2014 each name's data type, its numeric bounds\
-        \ and its allowed categories. `limit` defaults to 100 and is capped at 500. Requires a validated principal; 403 without\
-        \ one, and the listing is filtered on the validated org."
-      operationId: cloud_get_v1_evals_score-configs
-      summary: The score shapes your org has declared
-      tags:
-      - evals
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
-    post:
-      description: "Defines the shape of one score name for the caller's org \u2014 `NUMERIC` (the default, optionally bounded\
-        \ by `minValue`/`maxValue`), `CATEGORICAL` (a closed set of `categories`) or `BOOLEAN` \u2014 and answers 201 with\
-        \ it. The NAME is the key, so re-posting a name replaces its rules.\n\nThis is the integrity contract, not documentation:\
-        \ once a config exists for a name, every score recorded under that name is checked against it and the config's data\
-        \ type is AUTHORITATIVE \u2014 a caller cannot claim a different one. Out-of-range values, unlisted labels and non-finite\
-        \ numbers are refused at write time.\n\nA `CATEGORICAL` config with no categories is 400, as is a non-finite bound\
-        \ or a `minValue` above `maxValue`. Requires a validated principal; 403 without one."
-      operationId: cloud_post_v1_evals_score-configs
-      summary: Declare what a score named X is allowed to be
       tags:
       - evals
       responses:
@@ -42018,7 +42214,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/iam_object.Webhook'
       security:
-      - test_apiKey: []
+      - BearerAuth: []
       summary: Api Controller Get Webhooks
   /v1/iam/webhooks/{id}:
     delete:
@@ -43237,9 +43433,10 @@ paths:
   /v1/insights/events:
     get:
       description: "InsightsEvents returns the caller org's most recent product events, newest first.\nThe console's raw-event\
-        \ view over the same table the capture doors write: one row\nper stored event, with the caller's own property bag\
-        \ returned verbatim.\n\nThe org is the validated principal's \u2014 never a parameter \u2014 and a read requires a\n\
-        real bearer, never the write-only publishable key. 403 without a validated bearer,\n503 when the warehouse is unreachable."
+        \ view over event.event \u2014 the same table the capture doors\nfill \u2014 one row per stored event, with the row's\
+        \ attributes returned as the\nproperties object.\n\nThe org is the validated principal's \u2014 never a parameter\
+        \ \u2014 and a read requires a\nreal bearer, never the write-only publishable key. 403 without a validated bearer,\n\
+        503 when the warehouse is unreachable."
       operationId: cloud_get_v1_insights_events
       parameters:
       - description: 'Limit is how many rows to return, newest first. Default 50, maximum 200; a
@@ -46937,61 +47134,55 @@ paths:
   /v1/load-balancers:
     get:
       tags:
-      - load-balancers
-      summary: ListLoadBalancers returns every load balancer the caller's org owns, under the friendly names the org created
-        them with.
-      operationId: cloud_get_v1_load-balancers
+      - Load Balancers
+      summary: List the caller's load balancers
+      operationId: do_listLoadBalancers
       responses:
         '200':
+          description: Load balancers
           content:
             application/json:
-              example:
-                loadBalancers:
-                - id: lb-1
-                  ip: 10.0.0.1
-                  name: edge
-                  status: active
-                  targets: 3
-                  type: REGIONAL
               schema:
-                $ref: '#/components/schemas/cloud_lbList'
-          description: ok
-      description: 'ListLoadBalancers returns every load balancer the caller''s org owns, under the
-
-        friendly names the org created them with. Same account-wide filter as the VPC
-
-        listing: a load balancer outside the caller''s "o"<orgHash>- namespace is never
-
-        in the answer.'
+                type: object
+                properties:
+                  loadBalancers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/do_LoadBalancer'
+        '401':
+          $ref: '#/components/responses/do_Unauthorized'
+        '502':
+          description: DigitalOcean upstream error
+        '503':
+          description: DigitalOcean not configured
     post:
       tags:
-      - load-balancers
-      summary: CreateLoadBalancer creates a load balancer in the caller's org namespace and answers 201 with it.
-      operationId: cloud_post_v1_load-balancers
+      - Load Balancers
+      summary: Create a load balancer
+      operationId: do_createLoadBalancer
       requestBody:
+        required: true
         content:
           application/json:
-            example:
-              forwarding_rules:
-              - entry_port: 443
-                entry_protocol: https
-                target_port: 8080
-                target_protocol: http
-              name: edge
-              region: nyc3
             schema:
-              $ref: '#/components/schemas/cloud_createLBReq'
-        required: true
+              $ref: '#/components/schemas/do_LoadBalancerCreate'
       responses:
         '201':
+          description: Load balancer created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/cloud_lbView'
-          description: created
-      description: "CreateLoadBalancer creates a load balancer in the caller's org namespace and\nanswers 201 with it. The\
-        \ physical DigitalOcean name is derived server-side from\nthe validated org; a name that already exists there is a\
-        \ 409. Omitting\nforwarding rules yields a usable HTTP 80\u219280 load balancer rather than a 422."
+                $ref: '#/components/schemas/do_LoadBalancer'
+        '400':
+          description: Invalid name or missing region
+        '401':
+          $ref: '#/components/responses/do_Unauthorized'
+        '409':
+          description: A load balancer with that name already exists
+        '502':
+          description: DigitalOcean upstream error
+        '503':
+          description: DigitalOcean not configured
   /v1/load-balancers/{id}:
     parameters:
     - name: id
@@ -47002,35 +47193,36 @@ paths:
       description: DO load balancer id
     get:
       tags:
-      - load-balancers
-      summary: GetLoadBalancer returns one of the caller org's load balancers by id.
-      operationId: cloud_get_v1_load-balancers_id
+      - Load Balancers
+      summary: Get one load balancer (owned)
+      operationId: do_getLoadBalancer
       responses:
         '200':
+          description: Load balancer
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/cloud_lbView'
-          description: ok
-      description: "GetLoadBalancer returns one of the caller org's load balancers by id. One that\nexists in another org's\
-        \ namespace is reported 404, never 403 \u2014 the same\nexistence-oracle guard the VPC read applies."
-      parameters: []
+                $ref: '#/components/schemas/do_LoadBalancer'
+        '401':
+          $ref: '#/components/responses/do_Unauthorized'
+        '404':
+          description: Load balancer not found
+        '503':
+          description: DigitalOcean not configured
     delete:
       tags:
-      - load-balancers
-      summary: DeleteLoadBalancer removes one of the caller org's load balancers and answers 204.
-      operationId: cloud_delete_v1_load-balancers_id
+      - Load Balancers
+      summary: Delete one load balancer (owned)
+      operationId: do_deleteLoadBalancer
       responses:
         '204':
-          description: no content
-      description: 'DeleteLoadBalancer removes one of the caller org''s load balancers and answers
-
-        204. Ownership is confirmed by re-fetching the resource before anything is
-
-        deleted, so a cross-tenant id is a 404 rather than a delete of another org''s
-
-        load balancer.'
-      parameters: []
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/do_Unauthorized'
+        '404':
+          description: Load balancer not found
+        '503':
+          description: DigitalOcean not configured
   /v1/logs/health:
     get:
       description: "Reports the native log store's live state for the calling tenant: the subsystem version and `records`,\
@@ -47488,7 +47680,7 @@ paths:
                 sample:
                 - u_1
                 - u_2
-                source: hanzo.events
+                source: event.event
                 unmatched: 497
               schema:
                 $ref: '#/components/schemas/cloud_AudiencePreview'
@@ -50287,280 +50479,6 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/o11y/annotation-queues:
-    get:
-      description: 'ListAnnotationQueues returns a page of the caller org''s human-review queues,
-
-        newest first, narrowed to the caller''s project. Another org''s queues are never
-
-        visible.'
-      operationId: cloud_get_v1_o11y_annotation-queues
-      parameters:
-      - description: Page is the 1-based page to read. Default 1.
-        example: 1
-        in: query
-        name: page
-        required: false
-        schema:
-          type: integer
-      - description: Limit is how many rows to return. Default 20, capped at 100.
-        example: 20
-        in: query
-        name: limit
-        required: false
-        schema:
-          type: integer
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_annQueueList'
-          description: ok
-      summary: ListAnnotationQueues returns a page of the caller org's human-review queues, newest first, narrowed to the
-        caller's project.
-      tags:
-      - O11y
-    post:
-      description: 'CreateAnnotationQueue creates a human-review queue in the caller''s org and
-
-        project. A name already used by another queue in the same project is a 409.'
-      operationId: cloud_post_v1_o11y_annotation-queues
-      requestBody:
-        content:
-          application/json:
-            example:
-              name: hallucination review
-              scoreConfigIds:
-              - quality
-            schema:
-              $ref: '#/components/schemas/cloud_createQueueReq'
-        required: true
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_annQueueView'
-          description: created
-      summary: CreateAnnotationQueue creates a human-review queue in the caller's org and project.
-      tags:
-      - O11y
-  /v1/o11y/annotation-queues/{id}:
-    delete:
-      description: 'DeleteAnnotationQueue removes one review queue and every item in it. A queue
-
-        id belonging to another org answers the same 404 an unknown id does, so a
-
-        probe learns nothing about what exists.'
-      operationId: cloud_delete_v1_o11y_annotation-queues_id
-      parameters:
-      - description: ID is the annotation queue to act on, from the path.
-        example: annq_1
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_annQueueDeleted'
-          description: ok
-      summary: DeleteAnnotationQueue removes one review queue and every item in it.
-      tags:
-      - O11y
-    get:
-      description: 'GetAnnotationQueue returns one review queue with its pending and completed
-
-        counts and its first page of items. A queue id belonging to another org is a
-
-        404, never a cross-tenant read.'
-      operationId: cloud_get_v1_o11y_annotation-queues_id
-      parameters:
-      - description: ID is the annotation queue to act on, from the path.
-        example: annq_1
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_annQueueDetailView'
-          description: ok
-      summary: GetAnnotationQueue returns one review queue with its pending and completed counts and its first page of items.
-      tags:
-      - O11y
-    patch:
-      description: 'UpdateAnnotationQueue changes a review queue''s name, description or
-
-        score-config set. A field the request omits is left alone. A name another
-
-        queue in the same project already uses is a 409; a queue id belonging to
-
-        another org is a 404.'
-      operationId: cloud_patch_v1_o11y_annotation-queues_id
-      parameters:
-      - description: ID is the annotation queue to update, from the path.
-        example: annq_1
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            example:
-              id: annq_1
-              name: hallucination review v2
-            schema:
-              $ref: '#/components/schemas/cloud_updateQueueIn'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_annQueueView'
-          description: ok
-      summary: UpdateAnnotationQueue changes a review queue's name, description or score-config set.
-      tags:
-      - O11y
-  /v1/o11y/annotation-queues/{id}/items:
-    get:
-      description: 'ListAnnotationQueueItems returns a page of one review queue''s items, newest
-
-        first, optionally filtered to PENDING or COMPLETED. A queue id belonging to
-
-        another org is a 404, never a cross-tenant list.'
-      operationId: cloud_get_v1_o11y_annotation-queues_id_items
-      parameters:
-      - description: ID is the annotation queue whose items to list, from the path.
-        example: annq_1
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      - description: Status filters to PENDING or COMPLETED items. Absent returns both.
-        example: PENDING
-        in: query
-        name: status
-        required: false
-        schema:
-          type: string
-      - description: Page is the 1-based page to read. Default 1.
-        in: query
-        name: page
-        required: false
-        schema:
-          type: integer
-      - description: Limit is how many rows to return. Default 20, capped at 100.
-        in: query
-        name: limit
-        required: false
-        schema:
-          type: integer
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_annItemList'
-          description: ok
-      summary: ListAnnotationQueueItems returns a page of one review queue's items, newest first, optionally filtered to PENDING
-        or COMPLETED.
-      tags:
-      - O11y
-    post:
-      description: 'AddAnnotationQueueItems enqueues traces, observations or sessions on a review
-
-        queue. Each item names exactly one object, either by traceId / observationId /
-
-        sessionId or by objectType plus objectId; every item enters PENDING. A queue
-
-        id belonging to another org is a 404.'
-      operationId: cloud_post_v1_o11y_annotation-queues_id_items
-      parameters:
-      - description: ID is the annotation queue to add to, from the path.
-        example: annq_1
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            example:
-              id: annq_1
-              items:
-              - traceId: tr_1
-            schema:
-              $ref: '#/components/schemas/cloud_addItemsIn'
-        required: true
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_annItemsCreated'
-          description: created
-      summary: AddAnnotationQueueItems enqueues traces, observations or sessions on a review queue.
-      tags:
-      - O11y
-  /v1/o11y/annotation-queues/{id}/items/{itemId}:
-    patch:
-      description: 'UpdateAnnotationQueueItem moves one queue item between PENDING and COMPLETED
-
-        and sets its assignee. Completing an item stamps its completedAt. An item that
-
-        exists under a different queue answers the same 404 an unknown item does, and
-
-        so does a queue belonging to another org.'
-      operationId: cloud_patch_v1_o11y_annotation-queues_id_items_itemId
-      parameters:
-      - description: ID is the annotation queue the item belongs to, from the path.
-        example: annq_1
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      - description: ItemID is the item to update, from the path.
-        example: annqi_1
-        in: path
-        name: itemId
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            example:
-              id: annq_1
-              itemId: annqi_1
-              status: COMPLETED
-            schema:
-              $ref: '#/components/schemas/cloud_updateItemIn'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_annItemView'
-          description: ok
-      summary: UpdateAnnotationQueueItem moves one queue item between PENDING and COMPLETED and sets its assignee.
-      tags:
-      - O11y
   /v1/o11y/api/v2/healthz:
     get:
       description: "Reports whether every service in the runtime's registry is healthy, and names them grouped by state \u2014\
@@ -50823,6 +50741,280 @@ paths:
           $ref: '#/components/responses/o11y_BadRequest'
         '403':
           $ref: '#/components/responses/o11y_Forbidden'
+  /v1/o11y/reviews:
+    get:
+      description: 'ListAnnotationQueues returns a page of the caller org''s human-review queues,
+
+        newest first, narrowed to the caller''s project. Another org''s queues are never
+
+        visible.'
+      operationId: cloud_get_v1_o11y_reviews
+      parameters:
+      - description: Page is the 1-based page to read. Default 1.
+        example: 1
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+      - description: Limit is how many rows to return. Default 20, capped at 100.
+        example: 20
+        in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cloud_annQueueList'
+          description: ok
+      summary: ListAnnotationQueues returns a page of the caller org's human-review queues, newest first, narrowed to the
+        caller's project.
+      tags:
+      - O11y
+    post:
+      description: 'CreateAnnotationQueue creates a human-review queue in the caller''s org and
+
+        project. A name already used by another queue in the same project is a 409.'
+      operationId: cloud_post_v1_o11y_reviews
+      requestBody:
+        content:
+          application/json:
+            example:
+              name: hallucination review
+              scoreConfigIds:
+              - quality
+            schema:
+              $ref: '#/components/schemas/cloud_createQueueReq'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cloud_annQueueView'
+          description: created
+      summary: CreateAnnotationQueue creates a human-review queue in the caller's org and project.
+      tags:
+      - O11y
+  /v1/o11y/reviews/{id}:
+    delete:
+      description: 'DeleteAnnotationQueue removes one review queue and every item in it. A queue
+
+        id belonging to another org answers the same 404 an unknown id does, so a
+
+        probe learns nothing about what exists.'
+      operationId: cloud_delete_v1_o11y_reviews_id
+      parameters:
+      - description: ID is the annotation queue to act on, from the path.
+        example: annq_1
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cloud_annQueueDeleted'
+          description: ok
+      summary: DeleteAnnotationQueue removes one review queue and every item in it.
+      tags:
+      - O11y
+    get:
+      description: 'GetAnnotationQueue returns one review queue with its pending and completed
+
+        counts and its first page of items. A queue id belonging to another org is a
+
+        404, never a cross-tenant read.'
+      operationId: cloud_get_v1_o11y_reviews_id
+      parameters:
+      - description: ID is the annotation queue to act on, from the path.
+        example: annq_1
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cloud_annQueueDetailView'
+          description: ok
+      summary: GetAnnotationQueue returns one review queue with its pending and completed counts and its first page of items.
+      tags:
+      - O11y
+    patch:
+      description: 'UpdateAnnotationQueue changes a review queue''s name, description or
+
+        score-config set. A field the request omits is left alone. A name another
+
+        queue in the same project already uses is a 409; a queue id belonging to
+
+        another org is a 404.'
+      operationId: cloud_patch_v1_o11y_reviews_id
+      parameters:
+      - description: ID is the annotation queue to update, from the path.
+        example: annq_1
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            example:
+              id: annq_1
+              name: hallucination review v2
+            schema:
+              $ref: '#/components/schemas/cloud_updateQueueIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cloud_annQueueView'
+          description: ok
+      summary: UpdateAnnotationQueue changes a review queue's name, description or score-config set.
+      tags:
+      - O11y
+  /v1/o11y/reviews/{id}/items:
+    get:
+      description: 'ListAnnotationQueueItems returns a page of one review queue''s items, newest
+
+        first, optionally filtered to PENDING or COMPLETED. A queue id belonging to
+
+        another org is a 404, never a cross-tenant list.'
+      operationId: cloud_get_v1_o11y_reviews_id_items
+      parameters:
+      - description: ID is the annotation queue whose items to list, from the path.
+        example: annq_1
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - description: Status filters to PENDING or COMPLETED items. Absent returns both.
+        example: PENDING
+        in: query
+        name: status
+        required: false
+        schema:
+          type: string
+      - description: Page is the 1-based page to read. Default 1.
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+      - description: Limit is how many rows to return. Default 20, capped at 100.
+        in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cloud_annItemList'
+          description: ok
+      summary: ListAnnotationQueueItems returns a page of one review queue's items, newest first, optionally filtered to PENDING
+        or COMPLETED.
+      tags:
+      - O11y
+    post:
+      description: 'AddAnnotationQueueItems enqueues traces, observations or sessions on a review
+
+        queue. Each item names exactly one object, either by traceId / observationId /
+
+        sessionId or by objectType plus objectId; every item enters PENDING. A queue
+
+        id belonging to another org is a 404.'
+      operationId: cloud_post_v1_o11y_reviews_id_items
+      parameters:
+      - description: ID is the annotation queue to add to, from the path.
+        example: annq_1
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            example:
+              id: annq_1
+              items:
+              - traceId: tr_1
+            schema:
+              $ref: '#/components/schemas/cloud_addItemsIn'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cloud_annItemsCreated'
+          description: created
+      summary: AddAnnotationQueueItems enqueues traces, observations or sessions on a review queue.
+      tags:
+      - O11y
+  /v1/o11y/reviews/{id}/items/{itemId}:
+    patch:
+      description: 'UpdateAnnotationQueueItem moves one queue item between PENDING and COMPLETED
+
+        and sets its assignee. Completing an item stamps its completedAt. An item that
+
+        exists under a different queue answers the same 404 an unknown item does, and
+
+        so does a queue belonging to another org.'
+      operationId: cloud_patch_v1_o11y_reviews_id_items_itemId
+      parameters:
+      - description: ID is the annotation queue the item belongs to, from the path.
+        example: annq_1
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - description: ItemID is the item to update, from the path.
+        example: annqi_1
+        in: path
+        name: itemId
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            example:
+              id: annq_1
+              itemId: annqi_1
+              status: COMPLETED
+            schema:
+              $ref: '#/components/schemas/cloud_updateItemIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cloud_annItemView'
+          description: ok
+      summary: UpdateAnnotationQueueItem moves one queue item between PENDING and COMPLETED and sets its assignee.
+      tags:
+      - O11y
   /v1/o11y/rules:
     get:
       tags:
@@ -52948,26 +53140,6 @@ paths:
                   type: object
                 type: object
           description: ok
-  /v1/pricing-policy:
-    get:
-      description: 'GetPricingPolicyAlias returns the pricing policy document at its top-level
-
-        address. It is the same document GET /v1/pricing/policy returns, byte for
-
-        byte, at the shorter address the marketing surface links to.'
-      operationId: cloud_get_v1_pricing-policy
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                additionalProperties:
-                  type: object
-                type: object
-          description: ok
-      summary: GetPricingPolicyAlias returns the pricing policy document at its top-level address.
-      tags:
-      - pricing-policy
   /v1/pricing/base:
     get:
       description: "ListBasePlans returns the Hanzo Base plans \u2014 the managed-instance tiers,\neach with its monthly and\
@@ -53288,7 +53460,7 @@ paths:
                 $ref: '#/components/schemas/pricing_SubscriptionPlansResponse'
   /v1/pricing/policy:
     get:
-      operationId: cloud_get_v1_pricing_policy_2
+      operationId: cloud_get_v1_pricing_policy
       summary: "GetPricingPolicy returns the pricing policy document: the revenue-sharing terms (the idle-resale share and\
         \ the open-source share, each with its percentage and who is eligible) and the commitments Hanzo makes about how it\
         \ bills \u2014 no hidden fees, no egress charges, no surprise bills."
@@ -56102,58 +56274,6 @@ paths:
         resource inside an already-live shared backend, so every one of them is
 
         reached through the public gateway rather than at an instance of its own.'
-  /v1/search-docs/indexes:
-    get:
-      description: 'Lists the search indexes with their document counts and timestamps.
-
-
-        It reads the in-cluster Meilisearch service and reshapes its /stats and
-
-        /indexes replies into the rows the console''s Search panel renders. The read is
-
-        degrade-friendly by design: an unreachable Meilisearch answers 200 with an
-
-        EMPTY list, so the panel shows an honest empty state instead of an error.
-
-        createdAt falls back to now and lastIndexedAt to null when the index list is
-
-        unavailable.'
-      operationId: cloud_get_v1_search-docs_indexes
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_searchIndexList'
-          description: ok
-      summary: Lists the search indexes with their document counts and timestamps.
-      tags:
-      - search-docs
-  /v1/search-docs/stats:
-    get:
-      description: 'Totals the documents across every search index.
-
-
-        totalDocuments is summed from Meilisearch''s own per-index counts. The other
-
-        three fields are structurally zero rather than estimated: Meilisearch keeps no
-
-        query-history counters, so searches, sessions and the per-day series are not
-
-        derivable from the index and this surface reports the honest zero instead of a
-
-        fabricated number. An unreachable Meilisearch answers 200 with all zeros.'
-      operationId: cloud_get_v1_search-docs_stats
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_searchStats'
-          description: ok
-      summary: Totals the documents across every search index.
-      tags:
-      - search-docs
   /v1/search/batches:
     get:
       operationId: search_listBatches
@@ -56294,10 +56414,10 @@ paths:
                 type: string
   /v1/search/indexes:
     get:
-      operationId: search_listIndexes
-      summary: List all indexes
+      operationId: cloud_get_v1_search_indexes
+      summary: Lists the search indexes with their document counts and timestamps.
       tags:
-      - Indexes
+      - Search
       parameters:
       - name: offset
         in: query
@@ -56311,15 +56431,27 @@ paths:
           default: 20
       responses:
         '200':
-          description: Paginated list of indexes
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/search_PaginatedIndexes'
-        '401':
-          $ref: '#/components/responses/search_Unauthorized'
+                $ref: '#/components/schemas/cloud_searchIndexList'
+          description: ok
+      description: 'Lists the search indexes with their document counts and timestamps.
+
+
+        It reads the in-cluster Meilisearch service and reshapes its /stats and
+
+        /indexes replies into the rows the console''s Search panel renders. The read is
+
+        degrade-friendly by design: an unreachable Meilisearch answers 200 with an
+
+        EMPTY list, so the panel shows an honest empty state instead of an error.
+
+        createdAt falls back to now and lastIndexedAt to null when the index list is
+
+        unavailable.'
     post:
-      operationId: search_createIndex
+      operationId: cloud_search_createIndex
       summary: Create a new index
       tags:
       - Indexes
@@ -57102,19 +57234,29 @@ paths:
                 $ref: '#/components/schemas/search_SummarizedTaskView'
   /v1/search/stats:
     get:
-      operationId: search_getStats
-      summary: Get global statistics
+      operationId: cloud_get_v1_search_stats
+      summary: Totals the documents across every search index.
       tags:
-      - Stats
+      - Search
       responses:
         '200':
-          description: Global stats
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/search_Stats'
-        '401':
-          $ref: '#/components/responses/search_Unauthorized'
+                $ref: '#/components/schemas/cloud_searchStats'
+          description: ok
+      description: 'Totals the documents across every search index.
+
+
+        totalDocuments is summed from Meilisearch''s own per-index counts. The other
+
+        three fields are structurally zero rather than estimated: Meilisearch keeps no
+
+        query-history counters, so searches, sessions and the per-day series are not
+
+        derivable from the index and this surface reports the honest zero instead of a
+
+        fabricated number. An unreachable Meilisearch answers 200 with all zeros.'
   /v1/search/swap-indexes:
     post:
       operationId: search_swapIndexes
@@ -58540,7 +58682,7 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/store/storefront-token:
+  /v1/store/token:
     post:
       description: "Answers a freshly minted token carrying ONLY the published-read permission \u2014 enough for a logged-out\
         \ shopper's storefront to read your published catalog and nothing more, with no write and no admin scope. It is org-bound,\
@@ -58548,7 +58690,7 @@ paths:
         \ another tenant. Minting ROTATES rather than accumulates: the previous storefront token is dropped first and is invalid\
         \ immediately, so re-minting is how you revoke. Admin is enforced by the handler as well as the route, because the\
         \ route's token gate does not apply on the identity path and a plain member must not be able to mint their org's key."
-      operationId: cloud_post_v1_store_storefront-token
+      operationId: cloud_post_v1_store_token
       summary: Mint your org's least-privilege storefront read key
       tags:
       - Store
@@ -62882,45 +63024,6 @@ paths:
         that produced.
       tags:
       - wallets
-  /v1/wallets/{id}/safe-tx:
-    post:
-      description: "Composes a Safe transaction on the MPC ring and answers its\nEIP-712 hash together with the owner approval\
-        \ the ring's threshold signature\nproduced. Only a wallet whose custody is \"safe\" can do this \u2014 any other custody\n\
-        is a 400, because the backend itself is asked whether it can propose rather\nthan the kind being switched on. The\
-        \ ring computes the Safe-tx hash bound to\nthe Safe contract and the chain id, so the hash a caller gets back is the\
-        \ one\nthe Safe will verify. This PROPOSES: it does not execute the transaction."
-      operationId: cloud_post_v1_wallets_id_safe-tx
-      parameters:
-      - example: wal_4b1e77
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            example:
-              chainId: 36963
-              data: 0x
-              id: wal_4b1e77
-              nonce: 7
-              to: 180374059643543449999388718682590567161426737540
-              value: '0'
-            schema:
-              $ref: '#/components/schemas/cloud_safeTxIn'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_safeProposal'
-          description: ok
-      summary: Composes a Safe transaction on the MPC ring and answers its EIP-712 hash together with the owner approval the
-        ring's threshold signature produced.
-      tags:
-      - wallets
   /v1/wallets/{id}/sign:
     post:
       description: "Produces a secp256k1 signature from one of the caller org's wallets over\na 32-byte digest, through whichever\
@@ -62954,6 +63057,45 @@ paths:
           description: ok
       summary: Produces a secp256k1 signature from one of the caller org's wallets over a 32-byte digest, through whichever
         custody backend that wallet uses.
+      tags:
+      - wallets
+  /v1/wallets/{id}/transactions:
+    post:
+      description: "Composes a Safe transaction on the MPC ring and answers its\nEIP-712 hash together with the owner approval\
+        \ the ring's threshold signature\nproduced. Only a wallet whose custody is \"safe\" can do this \u2014 any other custody\n\
+        is a 400, because the backend itself is asked whether it can propose rather\nthan the kind being switched on. The\
+        \ ring computes the Safe-tx hash bound to\nthe Safe contract and the chain id, so the hash a caller gets back is the\
+        \ one\nthe Safe will verify. This PROPOSES: it does not execute the transaction."
+      operationId: cloud_post_v1_wallets_id_transactions
+      parameters:
+      - example: wal_4b1e77
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            example:
+              chainId: 36963
+              data: 0x
+              id: wal_4b1e77
+              nonce: 7
+              to: 180374059643543449999388718682590567161426737540
+              value: '0'
+            schema:
+              $ref: '#/components/schemas/cloud_safeTxIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cloud_safeProposal'
+          description: ok
+      summary: Composes a Safe transaction on the MPC ring and answers its EIP-712 hash together with the owner approval the
+        ring's threshold signature produced.
       tags:
       - wallets
   /v1/webhooks:
@@ -63128,13 +63270,13 @@ paths:
         \ subscriber answered, and how long it took."
       tags:
       - Webhooks
-  /v1/webhooks/{id}/rotate-secret:
+  /v1/webhooks/{id}/secret:
     post:
       description: "Mints a NEW HMAC signing secret for the endpoint and answers the\nendpoint WITH it \u2014 the only other\
         \ response besides create that ever carries a\nsecret. The old secret stops working the instant this returns: every\
         \ subsequent\ndelivery signs with the new one, with no overlap window. Call it when the\nsubscriber is ready to swap\
         \ the value on its side, not before."
-      operationId: cloud_post_v1_webhooks_id_rotate-secret
+      operationId: cloud_post_v1_webhooks_id_secret
       parameters:
       - example: wh_9f8c1d2e
         in: path
@@ -77528,30 +77670,6 @@ components:
           description: ID is the machine to bind, from the URL path.
           type: string
       type: object
-    cloud_bindData:
-      properties:
-        boundAnchorSigner:
-          description: BoundAnchorSigner is the EVM address now signing anchors. Fund it for gas.
-          type: string
-        chainId:
-          description: ChainID is the EVM chain the signer is bound for.
-          type: integer
-        org:
-          description: Org is the org whose treasury wallet was resolved.
-          type: string
-      type: object
-    cloud_bindOut:
-      properties:
-        data:
-          $ref: '#/components/schemas/cloud_bindData'
-          description: Data is the bound signer.
-        msg:
-          description: Msg carries an operator-facing note; empty on success.
-          type: string
-        status:
-          description: Status is "ok" on success.
-          type: string
-      type: object
     cloud_bindingList:
       properties:
         agentBindings:
@@ -77582,15 +77700,6 @@ components:
         truncated:
           description: "Truncated marks a file past the 1 MiB view cap. No content is sent \u2014\nclone the repo for it."
           type: boolean
-      type: object
-    cloud_blockStorageOut:
-      properties:
-        data:
-          $ref: '#/components/schemas/cloud_storageSnapshot'
-        msg:
-          type: string
-        status:
-          type: string
       type: object
     cloud_blueprintCounts:
       properties:
@@ -81825,6 +81934,17 @@ components:
           description: OK is true whenever the flag engine is serving.
           type: boolean
       type: object
+    cloud_healthPlane:
+      properties:
+        bus:
+          type: string
+        ready:
+          type: boolean
+        reason:
+          type: string
+        stream:
+          type: string
+      type: object
     cloud_healthReport:
       properties:
         datastore:
@@ -81833,6 +81953,8 @@ components:
           $ref: '#/components/schemas/cloud_healthLenses'
         lost:
           $ref: '#/components/schemas/cloud_loss'
+        plane:
+          $ref: '#/components/schemas/cloud_healthPlane'
         reason:
           type: string
         service:
@@ -84662,7 +84784,7 @@ components:
           description: DistinctID is the person/visitor the event is attributed to.
           type: string
         event:
-          description: Event is the event name, e.g. $pageview.
+          description: Event is the event name, e.g. page_viewed or signup_completed.
           type: string
         id:
           description: "ID is the row's stable event id \u2014 the client's own idempotency id when it sent\none, else the\
@@ -84675,8 +84797,8 @@ components:
           description: Product is the surface that emitted the event. Omitted when absent.
           type: string
         properties:
-          description: "Properties is the caller's own property bag, returned verbatim as stored \u2014 any\nJSON object.\
-            \ Omitted when the row carries none or it did not parse."
+          description: "Properties is the row's attributes map as a JSON object (string values \u2014 the\nplane stores Map(String,String),\
+            \ so a nested value the caller sent is a\nJSON-encoded string). Omitted when the row carries none."
         sessionId:
           description: SessionID groups the events of one visit. Omitted when the client sent none.
           type: string
@@ -84684,7 +84806,8 @@ components:
           description: Timestamp is when the event happened, RFC3339 UTC.
           type: string
         type:
-          description: 'Type is the canonical kind: pageview, error, identify, group or event.'
+          description: "Type is the row's kind \u2014 the plane's discriminator: page, track, identify or\ngroup. (Errors\
+            \ are not here at all: they land on event.error and are read at\n/v1/errors.)"
           type: string
         url:
           description: URL is the full page address the event fired on. Omitted when absent.
@@ -87265,6 +87388,30 @@ components:
           description: WalletID is the wallet that signed.
           type: string
       type: object
+    cloud_signerData:
+      properties:
+        boundAnchorSigner:
+          description: BoundAnchorSigner is the EVM address now signing anchors. Fund it for gas.
+          type: string
+        chainId:
+          description: ChainID is the EVM chain the signer is bound for.
+          type: integer
+        org:
+          description: Org is the org whose treasury wallet was resolved.
+          type: string
+      type: object
+    cloud_signerOut:
+      properties:
+        data:
+          $ref: '#/components/schemas/cloud_signerData'
+          description: Data is the bound signer.
+        msg:
+          description: Msg carries an operator-facing note; empty on success.
+          type: string
+        status:
+          description: Status is "ok" on success.
+          type: string
+      type: object
     cloud_skillDeleted:
       properties:
         deleted:
@@ -89044,6 +89191,15 @@ components:
           type: string
         version:
           type: integer
+      type: object
+    cloud_volumesOut:
+      properties:
+        data:
+          $ref: '#/components/schemas/cloud_storageSnapshot'
+        msg:
+          type: string
+        status:
+          type: string
       type: object
     cloud_vpcList:
       properties:
