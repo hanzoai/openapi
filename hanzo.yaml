@@ -30361,30 +30361,7 @@ paths:
         \ reads to draw the account menu.\n\nPasswords, API secrets and MFA material are stripped. It answers for a session\n\
         cookie or a bearer token alike."
       x-app: iam
-  /v1/iam/add-application:
-    post:
-      description: "Registers an application in your organization \u2014 one product or site your\npeople sign in to, with\
-        \ its own client credentials, sign-in methods and\nallowed redirect URIs.\n\nThe older spelling of POST /v1/iam/application.\
-        \ A name already used in the\norganization is refused rather than overwritten."
-      operationId: cloud_post_v1_iam_add-application
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.Application'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: "Registers an application in your organization \u2014 one product or site your people sign in to, with its\
-        \ own client credentials, sign-in methods and allowed redirect URIs."
-      tags:
-      - iam
-      x-app: iam
+  /v1/iam/add-application: {}
   /v1/iam/add-membership:
     post:
       description: "Lets a person or an application act in an organization. It is the grant\nbehind \"add someone to the team\"\
@@ -30399,151 +30376,12 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/iam/add-organization:
-    post:
-      description: "Creates an organization \u2014 the account everything else in your directory\nhangs from. Users, applications,\
-        \ roles, projects and workspaces are all\nnamed inside one organization, so this is the first write in a new tenant.\n\
-        \nThe older spelling of POST /v1/iam/organizations. Both reach the same\ncreate, so a name already taken is refused\
-        \ here too."
-      operationId: cloud_post_v1_iam_add-organization
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.CreateOrganizationInput'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: "Creates an organization \u2014 the account everything else in your directory hangs from."
-      tags:
-      - iam
-      x-app: iam
-  /v1/iam/add-project:
-    post:
-      description: "Creates a project inside your organization \u2014 the scope people pick between\nwhen their work is separated\
-        \ by product or client rather than by team.\n\nThe older spelling of POST /v1/iam/projects. Creating one takes an\n\
-        administrator of the owning organization."
-      operationId: cloud_post_v1_iam_add-project
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.Input'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: "Creates a project inside your organization \u2014 the scope people pick between when their work is separated\
-        \ by product or client rather than by team."
-      tags:
-      - iam
-      x-app: iam
-  /v1/iam/add-provider:
-    post:
-      description: "Adds an identity provider your people can sign in with, or a service your\napplications send through \u2014\
-        \ a social or enterprise login, an email or SMS\nsender, a storage or payment connector.\n\nA provider is configured\
-        \ once here and then switched on per application, so\nseveral applications can share one set of credentials.\n\nThe\
-        \ older spelling of POST /v1/iam/providers."
-      operationId: cloud_post_v1_iam_add-provider
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.Provider'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: "Adds an identity provider your people can sign in with, or a service your applications send through \u2014\
-        \ a social or enterprise login, an email or SMS sender, a storage or payment connector."
-      tags:
-      - iam
-      x-app: iam
-  /v1/iam/add-role:
-    post:
-      description: "Creates a role \u2014 a named group of people that permissions are granted to.\nGranting to a role rather\
-        \ than to each person is what keeps access correct\nas your team changes: add someone to the role and they inherit\
-        \ everything\nit can do.\n\nThe older spelling of POST /v1/iam/roles."
-      operationId: cloud_post_v1_iam_add-role
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.roles.Input'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: "Creates a role \u2014 a named group of people that permissions are granted to."
-      tags:
-      - iam
-      x-app: iam
-  /v1/iam/add-user:
-    post:
-      description: "Adds a person to your organization and, if you send a password, sets the\none they will sign in with.\
-        \ The password is hashed before it is stored and\nis never returned to you or to anyone else.\n\nUsernames are checked\
-        \ against one rule wherever an account is created \u2014\nthis verb, password signup, a social sign-in, or SCIM \u2014\
-        \ so a name accepted\nhere is a name accepted everywhere.\n\nThe older spelling of POST /v1/iam/users, and it posts\
-        \ the user's fields at\nthe top level rather than wrapped in {user, password}."
-      operationId: cloud_post_v1_iam_add-user
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.userBody'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: Adds a person to your organization and, if you send a password, sets the one they will sign in with.
-      tags:
-      - iam
-      x-app: iam
-  /v1/iam/add-workspace:
-    post:
-      description: "Creates a workspace inside your organization \u2014 the scope a team works in,\nalongside projects rather\
-        \ than instead of them.\n\nThe older spelling of POST /v1/iam/workspaces. Creating one takes an\nadministrator of\
-        \ the owning organization."
-      operationId: cloud_post_v1_iam_add-workspace
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.workspaces.Input'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: "Creates a workspace inside your organization \u2014 the scope a team works in, alongside projects rather than\
-        \ instead of them."
-      tags:
-      - iam
-      x-app: iam
+  /v1/iam/add-organization: {}
+  /v1/iam/add-project: {}
+  /v1/iam/add-provider: {}
+  /v1/iam/add-role: {}
+  /v1/iam/add-user: {}
+  /v1/iam/add-workspace: {}
   /v1/iam/admin/applications/upsert:
     post:
       description: "Creates an application or updates it in place, so a\ndeployment can declare the applications it needs\
@@ -30593,112 +30431,7 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/iam/application:
-    delete:
-      description: 'Removes an application. Anyone mid-sign-in through it is
-
-        turned away and its client credentials stop working, so retire the integration
-
-        before deleting it.'
-      operationId: cloud_delete_v1_iam_application
-      parameters:
-      - in: query
-        name: owner
-        required: true
-        schema:
-          type: string
-      - in: query
-        name: name
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.DeleteResult'
-          description: ok
-      summary: Removes an application.
-      tags:
-      - iam
-      x-app: iam
-    get:
-      description: 'Returns one application: its sign-in methods, its allowed
-
-        redirect URIs and the client credentials your integration authenticates with.'
-      operationId: cloud_get_v1_iam_application
-      parameters:
-      - in: query
-        name: owner
-        required: true
-        schema:
-          type: string
-      - in: query
-        name: name
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Application'
-          description: ok
-      summary: 'Returns one application: its sign-in methods, its allowed redirect URIs and the client credentials your integration
-        authenticates with.'
-      tags:
-      - iam
-      x-app: iam
-    post:
-      description: "Registers an application in your organization \u2014 one product or site\nyour people sign in to, with\
-        \ its own client credentials, sign-in methods and\nallowed redirect URIs. A name already used in the organization\
-        \ is refused\nrather than overwritten.\n\nExported so the legacy add-application alias reuses this exact path \u2014\
-        \ one\ncreate, two spellings."
-      operationId: cloud_post_v1_iam_application
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.Application'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Application'
-          description: ok
-      summary: "Registers an application in your organization \u2014 one product or site your people sign in to, with its\
-        \ own client credentials, sign-in methods and allowed redirect URIs."
-      tags:
-      - iam
-      x-app: iam
-    put:
-      description: "Changes an application's display, its sign-in methods and the redirect\nURIs it may return to \u2014 the\
-        \ call that makes login work from a new host. Which\norganization it belongs to and what it is named are fixed when\
-        \ it is created\nand are not editable here.\n\nExported so the legacy update-application alias reuses this exact path\
-        \ \u2014 one\nupdate, two spellings."
-      operationId: cloud_put_v1_iam_application
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.Application'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Application'
-          description: ok
-      summary: "Changes an application's display, its sign-in methods and the redirect URIs it may return to \u2014 the call\
-        \ that makes login work from a new host."
-      tags:
-      - iam
-      x-app: iam
+  /v1/iam/application: {}
   /v1/iam/applications:
     get:
       description: "Returns the applications in one organization, newest first \u2014\neach product or site your people sign\
@@ -31145,32 +30878,7 @@ paths:
         \ to set consent for somebody else.\n\nIt merges rather than replaces, so saving a consent screen never discards a\n\
         preference some other screen set at the same moment."
       x-app: iam
-  /v1/iam/delete-application:
-    post:
-      description: 'Deletes an application. Anyone mid-sign-in through it is turned away and
-
-        its client credentials stop working, so retire the integration first.
-
-
-        The older spelling of DELETE /v1/iam/application.'
-      operationId: cloud_post_v1_iam_delete-application
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.Application'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: Deletes an application.
-      tags:
-      - iam
-      x-app: iam
+  /v1/iam/delete-application: {}
   /v1/iam/delete-membership:
     post:
       description: "Takes away a person's or an application's right to act in an\norganization. Their account survives; what\
@@ -31204,156 +30912,12 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/iam/delete-organization:
-    post:
-      description: "Deletes an organization and everything named inside it \u2014 its users,\napplications, roles, projects\
-        \ and workspaces. There is no undo, and every\nsession issued under it stops working.\n\nThe older spelling of POST\
-        \ /v1/iam/organizations/delete."
-      operationId: cloud_post_v1_iam_delete-organization
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.DeleteOrganizationInput'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: "Deletes an organization and everything named inside it \u2014 its users, applications, roles, projects and\
-        \ workspaces."
-      tags:
-      - iam
-      x-app: iam
-  /v1/iam/delete-project:
-    post:
-      description: 'Deletes a project. The people and roles in your organization are unchanged;
-
-        what goes is the scope itself, so anything addressed by it must move first.
-
-
-        The older spelling of POST /v1/iam/projects/delete.'
-      operationId: cloud_post_v1_iam_delete-project
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.projects.Ref'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: Deletes a project.
-      tags:
-      - iam
-      x-app: iam
-  /v1/iam/delete-provider:
-    post:
-      description: 'Removes a provider. Sign-in through it stops for every application that
-
-        used it, so detach those applications first if they have no other method.
-
-
-        The older spelling of POST /v1/iam/providers/delete.'
-      operationId: cloud_post_v1_iam_delete-provider
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.Provider'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: Removes a provider.
-      tags:
-      - iam
-      x-app: iam
-  /v1/iam/delete-role:
-    post:
-      description: 'Deletes a role. Everyone in it loses the access it carried; their accounts
-
-        and any other roles they hold are untouched.
-
-
-        The older spelling of POST /v1/iam/roles/delete.'
-      operationId: cloud_post_v1_iam_delete-role
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.roles.Ref'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: Deletes a role.
-      tags:
-      - iam
-      x-app: iam
-  /v1/iam/delete-user:
-    post:
-      description: "Removes a person from your organization. Their sessions stop working and\nthe account is gone, not suspended\
-        \ \u2014 to keep the record and only stop\nsign-in, update the user instead.\n\nThe older spelling of POST /v1/iam/users/delete."
-      operationId: cloud_post_v1_iam_delete-user
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.userBody'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: Removes a person from your organization.
-      tags:
-      - iam
-      x-app: iam
-  /v1/iam/delete-workspace:
-    post:
-      description: 'Deletes a workspace. The people and roles in your organization are
-
-        unchanged; what goes is the scope itself.
-
-
-        The older spelling of POST /v1/iam/workspaces/delete.'
-      operationId: cloud_post_v1_iam_delete-workspace
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.workspaces.Ref'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: Deletes a workspace.
-      tags:
-      - iam
-      x-app: iam
+  /v1/iam/delete-organization: {}
+  /v1/iam/delete-project: {}
+  /v1/iam/delete-provider: {}
+  /v1/iam/delete-role: {}
+  /v1/iam/delete-user: {}
+  /v1/iam/delete-workspace: {}
   /v1/iam/get-account:
     get:
       description: "Returns the signed-in person's own account and the organization\nthey belong to \u2014 what a console\
@@ -33962,53 +33526,8 @@ paths:
         sign-in cannot have its users strand themselves. A SuperAdmin is not bound by\nthat flag; it is the platform's own\
         \ recovery path. Fail-closed throughout."
       x-app: iam
-  /v1/iam/update-application:
-    post:
-      description: "Updates one of your applications \u2014 its display, its sign-in methods and the\nredirect URIs it is\
-        \ allowed to return to. Which organization and name the\napplication has are fixed when it is created and are not\
-        \ editable here.\n\nA redirect URI you add becomes an allowed sign-in origin, so this is the\ncall that makes login\
-        \ work from a new host.\n\nThe older spelling of PUT /v1/iam/application."
-      operationId: cloud_post_v1_iam_update-application
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.Application'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: "Updates one of your applications \u2014 its display, its sign-in methods and the redirect URIs it is allowed\
-        \ to return to."
-      tags:
-      - iam
-      x-app: iam
-  /v1/iam/update-organization:
-    post:
-      description: "Updates your organization \u2014 its display, its default settings and the\nsign-in rules everyone in\
-        \ it inherits.\n\nThe older spelling of POST /v1/iam/organizations/update."
-      operationId: cloud_post_v1_iam_update-organization
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.UpdateOrganizationInput'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: "Updates your organization \u2014 its display, its default settings and the sign-in rules everyone in it inherits."
-      tags:
-      - iam
-      x-app: iam
+  /v1/iam/update-application: {}
+  /v1/iam/update-organization: {}
   /v1/iam/update-preferences:
     post:
       description: "Saves the calling person's own settings and returns\nthe full set afterwards. Send only the settings you\
@@ -34021,82 +33540,9 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/iam/update-provider:
-    post:
-      description: "Updates a provider's settings or rotates the credentials it holds. The\nchange takes effect on the next\
-        \ sign-in through it \u2014 sessions already\nissued are unaffected.\n\nThe older spelling of POST /v1/iam/providers/update."
-      operationId: cloud_post_v1_iam_update-provider
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.Provider'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: Updates a provider's settings or rotates the credentials it holds.
-      tags:
-      - iam
-      x-app: iam
-  /v1/iam/update-role:
-    post:
-      description: 'Updates a role''s members or the roles it includes. Access changes for
-
-        everyone in it as soon as the write lands.
-
-
-        The older spelling of POST /v1/iam/roles/update.'
-      operationId: cloud_post_v1_iam_update-role
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.roles.Input'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: Updates a role's members or the roles it includes.
-      tags:
-      - iam
-      x-app: iam
-  /v1/iam/update-user:
-    post:
-      description: 'Updates one of your users'' profile, roles or credentials. Send a password
-
-        to reset it; leave it out and the current one stands.
-
-
-        The older spelling of POST /v1/iam/users/update, with the user''s fields at
-
-        the top level rather than wrapped in {user, password}.'
-      operationId: cloud_post_v1_iam_update-user
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/cloud_iam.userBody'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/cloud_iam.Response'
-          description: ok
-      summary: Updates one of your users' profile, roles or credentials.
-      tags:
-      - iam
-      x-app: iam
+  /v1/iam/update-provider: {}
+  /v1/iam/update-role: {}
+  /v1/iam/update-user: {}
   /v1/iam/users:
     get:
       description: 'Returns a page of the people in your organization, with the total so you
