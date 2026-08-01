@@ -183,6 +183,12 @@ def main():
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--check", action="store_true", help="diff only; non-zero if a client drifted")
     ap.add_argument("--repo", help="SDK repo path (single language only)")
+    # THE DOCUMENT IS AN ARGUMENT, not a fact about this checkout. hanzoai/cloud's
+    # release hands each client repo openapi.yaml AT THE SHA IT DEPLOYED, and a
+    # projection generated from anything else describes a release nobody shipped.
+    # Defaulting to the checkout's own hanzo.yaml keeps every existing call site
+    # working unchanged, and is what a maintainer regenerating by hand still gets.
+    ap.add_argument("--spec", help="the API document to project; default this checkout's own (sdks.yaml `spec:`)")
     # java -Xmx2g per worker, and this box has been OOMed by less.
     ap.add_argument("-j", type=int, default=2, help="parallel generators")
     a = ap.parse_args()
@@ -190,7 +196,7 @@ def main():
     langs = sorted(conf["sdks"]) if (a.all or not a.langs) else a.langs
     if a.repo and len(langs) != 1:
         ap.error("--repo takes exactly one language")
-    spec = as_json(os.path.join(ROOT, conf["spec"]))
+    spec = as_json(a.spec or os.path.join(ROOT, conf["spec"]))
     version = str(conf["generator"])
 
     def one(name):
