@@ -815,57 +815,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SummarizedTaskView'
-  /v1/search/tasks/{taskUid}:
-    parameters:
-    - name: taskUid
-      in: path
-      required: true
-      schema:
-        type: integer
-    get:
-      operationId: getTask
-      summary: Get task details
-      tags:
-      - Tasks
-      responses:
-        '200':
-          description: Task details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskView'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /v1/search/tasks/cancel:
-    post:
-      operationId: cancelTasks
-      summary: Cancel enqueued or processing tasks
-      tags:
-      - Tasks
-      parameters:
-      - name: uids
-        in: query
-        schema:
-          type: string
-      - name: statuses
-        in: query
-        schema:
-          type: string
-      - name: types
-        in: query
-        schema:
-          type: string
-      - name: indexUids
-        in: query
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Cancel task enqueued
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SummarizedTaskView'
   /v1/search/batches:
     get:
       operationId: listBatches
@@ -902,25 +851,6 @@ paths:
                     type: integer
                   total:
                     type: integer
-  /v1/search/batches/{batchUid}:
-    parameters:
-    - name: batchUid
-      in: path
-      required: true
-      schema:
-        type: integer
-    get:
-      operationId: getBatch
-      summary: Get batch details
-      tags:
-      - Batches
-      responses:
-        '200':
-          description: Batch details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BatchView'
   /v1/search/keys:
     get:
       operationId: listKeys
@@ -963,56 +893,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/KeyView'
-  /v1/search/keys/{keyOrUid}:
-    parameters:
-    - name: keyOrUid
-      in: path
-      required: true
-      schema:
-        type: string
-    get:
-      operationId: getKey
-      summary: Get an API key
-      tags:
-      - Keys
-      responses:
-        '200':
-          description: Key details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/KeyView'
-    patch:
-      operationId: updateKey
-      summary: Update an API key
-      tags:
-      - Keys
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                description:
-                  type: string
-      responses:
-        '200':
-          description: Key updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/KeyView'
-    delete:
-      operationId: deleteKey
-      summary: Delete an API key
-      tags:
-      - Keys
-      responses:
-        '204':
-          description: Key deleted
   /v1/search/dumps:
     post:
       operationId: createDump
@@ -1100,94 +980,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RuntimeTogglableFeatures'
-  /v1/search/logs/stream:
-    post:
-      operationId: streamLogs
-      summary: Stream logs
-      tags:
-      - Logs
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - target
-              - mode
-              properties:
-                target:
-                  type: string
-                mode:
-                  type: string
-                  enum:
-                  - human
-                  - json
-                  - profile
-      responses:
-        '200':
-          description: Log stream
-          content:
-            text/plain:
-              schema:
-                type: string
-  /v1/search/logs/stderr:
-    get:
-      operationId: getStderrLogs
-      summary: Get stderr log configuration
-      tags:
-      - Logs
-      responses:
-        '200':
-          description: Current stderr log configuration
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  target:
-                    type: string
-    put:
-      operationId: updateStderrLogs
-      summary: Update stderr log level
-      tags:
-      - Logs
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - target
-              properties:
-                target:
-                  type: string
-      responses:
-        '200':
-          description: Updated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  target:
-                    type: string
-    delete:
-      operationId: resetStderrLogs
-      summary: Reset stderr log level to default
-      tags:
-      - Logs
-      responses:
-        '200':
-          description: Reset to default
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  target:
-                    type: string
   /metrics:
     get:
       operationId: getMetrics

@@ -284,7 +284,7 @@ paths:
           description: Deleted
         '401': *id001
         '404': *id003
-  /v1/kms/healthz: &id004
+  /v1/kms/health:
     get:
       tags:
       - Health
@@ -304,94 +304,3 @@ paths:
                     type: string
                   status:
                     type: string
-  /v1/kms/health: *id004
-  /v1/kms/keys/generate:
-    post:
-      tags:
-      - Keys
-      summary: Generate a validator key set via MPC DKG
-      description: Registered ONLY when the deployment is configured with MPC. On a secrets-only KMS these
-        return 404; when MPC is configured but unreachable they return 503 {"error":"mpc unreachable","mode":"secrets-only"}.
-        KMS never holds private key material -- signing is t-of-n in the MPC cluster.
-      responses:
-        '200':
-          description: Key set
-        '503':
-          description: MPC unreachable
-  /v1/kms/keys:
-    get:
-      tags:
-      - Keys
-      summary: List key sets
-      description: Registered ONLY when the deployment is configured with MPC. On a secrets-only KMS these
-        return 404; when MPC is configured but unreachable they return 503 {"error":"mpc unreachable","mode":"secrets-only"}.
-        KMS never holds private key material -- signing is t-of-n in the MPC cluster.
-      responses:
-        '200':
-          description: Key sets
-        '503':
-          description: MPC unreachable
-  /v1/kms/keys/{id}:
-    get:
-      tags:
-      - Keys
-      summary: Get a key set
-      description: Registered ONLY when the deployment is configured with MPC. On a secrets-only KMS these
-        return 404; when MPC is configured but unreachable they return 503 {"error":"mpc unreachable","mode":"secrets-only"}.
-        KMS never holds private key material -- signing is t-of-n in the MPC cluster.
-      parameters:
-      - &id005
-        name: id
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Key set id
-      responses:
-        '200':
-          description: Key set
-        '404': *id003
-        '503':
-          description: MPC unreachable
-  /v1/kms/keys/{id}/sign:
-    post:
-      tags:
-      - Keys
-      summary: Threshold sign
-      description: Registered ONLY when the deployment is configured with MPC. On a secrets-only KMS these
-        return 404; when MPC is configured but unreachable they return 503 {"error":"mpc unreachable","mode":"secrets-only"}.
-        KMS never holds private key material -- signing is t-of-n in the MPC cluster.
-      parameters:
-      - *id005
-      responses:
-        '200':
-          description: Signature
-        '503':
-          description: MPC unreachable
-  /v1/kms/keys/{id}/rotate:
-    post:
-      tags:
-      - Keys
-      summary: Reshare a key set
-      description: Registered ONLY when the deployment is configured with MPC. On a secrets-only KMS these
-        return 404; when MPC is configured but unreachable they return 503 {"error":"mpc unreachable","mode":"secrets-only"}.
-        KMS never holds private key material -- signing is t-of-n in the MPC cluster.
-      parameters:
-      - *id005
-      responses:
-        '200':
-          description: Reshared
-        '503':
-          description: MPC unreachable
-  /v1/kms/status:
-    get:
-      tags:
-      - Keys
-      summary: KMS + MPC cluster status
-      description: Registered ONLY when the deployment is configured with MPC. On a secrets-only KMS these
-        return 404; when MPC is configured but unreachable they return 503 {"error":"mpc unreachable","mode":"secrets-only"}.
-        KMS never holds private key material -- signing is t-of-n in the MPC cluster.
-      responses:
-        '200':
-          description: Status
-        '404': *id003

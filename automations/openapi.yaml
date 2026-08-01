@@ -227,24 +227,6 @@ paths:
         '413': { description: Resume payload exceeds the 64 KiB limit }
         '503': { description: Automation engine not ready }
 
-  /v1/automations/mcp:
-    post:
-      tags: [MCP]
-      summary: JSON-RPC 2.0 tool surface over connector actions
-      operationId: mcp
-      description: |
-        HIP-0300 JSON-RPC 2.0. Methods: `initialize`, `ping`, `tools/list`,
-        `tools/call`. Every connector action is a tool named `<connector>_<action>`.
-        JSON-RPC errors are returned with HTTP 200 and an `error` member.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/McpRequest' }
-      responses:
-        '200': { description: JSON-RPC response, content: { application/json: { schema: { $ref: '#/components/schemas/McpResponse' } } } }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-
 components:
   securitySchemes:
     bearerAuth:

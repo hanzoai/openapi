@@ -760,45 +760,6 @@ paths:
         '400': { description: 'Invalid request — percentOff out of [0,100] or end <= start', content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string } } } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /v1/admin/promos/{id}:
-    get:
-      tags: [Promotions]
-      summary: Get one discount promo
-      operationId: adminGetPromo
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string } }
-      responses:
-        '200': { description: Promo, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/Promo' } } } } } }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { description: Promo not found }
-    patch:
-      tags: [Promotions]
-      summary: Update a discount promo
-      operationId: adminUpdatePromo
-      description: Partial update — only fields present in the body change.
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string } }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/PromoUpdate' }
-      responses:
-        '200': { description: Updated, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string }, data: { $ref: '#/components/schemas/Promo' } } } } } }
-        '400': { description: Invalid request }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { description: Promo not found }
-    delete:
-      tags: [Promotions]
-      summary: Delete a discount promo
-      operationId: adminDeletePromo
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string } }
-      responses:
-        '200': { description: Deleted, content: { application/json: { schema: { type: object, properties: { status: { type: string }, msg: { type: string } } } } } }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { description: Promo not found }
-
 components:
   parameters:
     AffiliateId:

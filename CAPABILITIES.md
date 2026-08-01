@@ -67,7 +67,7 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 | Capability | Route | Spec |
 |---|---|---|
 | `o11y` | `/v1/o11y` | ✓ |
-| `analytics` | `/v1/analytics` | ✓ |
+| `analytics` | `/v1/analytics` | pending |
 
 ## Commerce
 
