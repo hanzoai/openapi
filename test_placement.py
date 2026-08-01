@@ -47,14 +47,22 @@ TRUTH = "cloud"
 # The fix for each is a route move in the serving repo; until then this table is
 # the honest statement of where the surface actually lives.
 OFF_PREFIX = {
-    # IAM additionally exposes the OIDC discovery + OAuth endpoints, which the
-    # standards place at fixed unprefixed addresses. Documented in LLM.md.
+    # IAM additionally answers OIDC/OAuth DISCOVERY at the three unprefixed
+    # addresses the standards fix — a bare-origin client and the gateway's
+    # default look there and nowhere else (RFC 8414 §3, OIDC Discovery §4). Each
+    # is the same handler as its /v1/iam twin over the same keys: one document,
+    # two spellings of where to find it. Measured off the binary's route table.
+    # Documented in LLM.md.
+    #
+    # The eight OTHER unprefixed paths this list used to carry — /oauth/token,
+    # /oauth/userinfo, /oauth/introspect, /oauth/callback, /oauth/token/refresh,
+    # /.well-known/webfinger and the two /.well-known/{application}/… — were the
+    # dead entity store's addresses. iam serves the protocol endpoints under
+    # /v1/iam/oauth/ and its own discovery document says so. Probing the old ones
+    # on iam.hanzo.ai returns 200 text/html: the portal's catch-all, byte-identical
+    # to what a nonsense path returns. A 200 is not liveness.
     "iam": ["/.well-known/jwks", "/.well-known/openid-configuration",
-            "/.well-known/webfinger", "/.well-known/{application}/jwks",
-            "/.well-known/{application}/openid-configuration",
-            "/.well-known/{application}/webfinger", "/oauth/callback",
-            "/oauth/introspect", "/oauth/token", "/oauth/token/refresh",
-            "/oauth/userinfo"],
+            "/.well-known/oauth-authorization-server"],
     # The inference edge answers at the top of /v1 because a model call names a
     # model and nothing else — there is no product noun between the caller and
     # the model. The gateway is the binary that serves them.

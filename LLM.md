@@ -81,7 +81,17 @@ product registry can now come from `hanzo.yaml`'s own tags (below).
 ## Conventions
 
 - Routing: every route is `/v1/<service>/<resource>`.
-- IAM additionally exposes `/oauth/*` and `/.well-known/*`.
+- IAM additionally answers OIDC/OAuth DISCOVERY at the three unprefixed
+  addresses the standards fix — `/.well-known/openid-configuration`,
+  `/.well-known/jwks`, `/.well-known/oauth-authorization-server` — each the
+  same handler as its `/v1/iam/` twin. The protocol endpoints themselves are
+  under `/v1/iam/oauth/`, which is what iam's own discovery document says.
+- A path segment names a THING; the METHOD says the verb. No verb-noun
+  addresses. Where a service still answers at one it inherited, it tags that
+  operation `compat` and `merge.py` keeps it out of the master: served for
+  consumers pinned to it, taught nowhere. `compat` is not a name this repo
+  assigns — the serving repo declares it, and dropping it here is respecting
+  the declaration, not overruling the server.
 - Security: every operation uses `BearerAuth` (JWT from `https://hanzo.id`).
 - `info.version: 8.0.0` on every spec (the V8 generation; the `/v1` path is the
   immutable contract).
@@ -363,7 +373,16 @@ binary", and it replaces every anecdote that used to live here. It reads
 `<name>/openapi.yaml` against `generated/<name>.json`, so both numbers move on
 their own the moment either side changes. Cloud is no longer one of its rows:
 its emission is merged, so the drift it measured is gone rather than reported.
-`iam` remains, and it is the shape of the work left.
+`iam` is its one row, and the shape of the row changed. `iam/openapi.yaml` is
+now built from `App.OpenAPISpec()` plus the untyped OIDC/front-door/SCIM surface
+read off `app.Fiber().GetRoutes()`, so **`undeclared` and `prose lost` are both
+0**, down from 77 and 16: nothing served is unreachable from an SDK, and nothing
+loses its words. `missing` is 58 and is NOT a defect — read the audit's own
+header: it compares against the TYPED emission, and those 58 are the OIDC,
+front-door, SCIM and credential routes iam registers as raw handlers, which
+contribute zero typed ops. They are served; the emission cannot see them. That
+number falls as those routes become typed ops, and it is the honest measure of
+how much of iam is still untyped.
 
 Read the columns as three different bugs. `missing` = the contract declares
 operations nothing serves, so every SDK ships methods that 404. `undeclared` =

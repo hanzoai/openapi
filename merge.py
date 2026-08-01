@@ -211,6 +211,21 @@ def namespace_ops(item, svc, path):
     # same kind of call as suffixing a duplicate operationId below: the document
     # is shaped so it can be generated from.
     item.pop("trace", None)
+    # An operation the SERVING BINARY tags `compat` is a legacy address it keeps
+    # reachable for consumers pinned to it, not a thing the contract teaches.
+    # This repo is not taking a vote about what a server serves — the serving repo
+    # made the declaration and this respects it. hanzoai/iam's 51 are the entity
+    # verbs of the store it replaced (`get-users`, `add-application`,
+    # `set-preferred-mfa`) plus the one singular address left over from before
+    # applications was pluralized; every one has a canonical noun twin on the SAME
+    # handler, and publishing both puts two spellings of one operation in every
+    # SDK, on every docs page and in `hanzo iam --help`. Dropping them here is the
+    # same call as dropping TRACE above: the served surface is unchanged, and the
+    # published one says each thing once.
+    for method in [m for m, op in item.items()
+                   if m in HTTP_METHODS and isinstance(op, dict)
+                   and "compat" in (op.get("tags") or [])]:
+        item.pop(method)
     for method, op in item.items():
         if method not in HTTP_METHODS or not isinstance(op, dict):
             continue

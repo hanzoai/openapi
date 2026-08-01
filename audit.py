@@ -57,6 +57,10 @@ CAPABILITIES = os.path.join(ROOT, "capabilities.yaml")
 
 METHODS = ("get", "put", "post", "delete", "patch", "head", "options", "trace")
 
+# The tag a serving binary puts on an address it keeps reachable only for
+# consumers pinned to it. See operations() and merge.py.
+COMPAT = "compat"
+
 # A templated segment is a parameter, whatever it is spelled. /v1/iam/users/{id}
 # and /v1/iam/users/{name} are the same route, and a spec that renames a
 # parameter has not changed the surface — it has changed a label. Comparing on
@@ -78,10 +82,17 @@ def load_spec(path):
 
 
 def operations(spec, prefix=""):
-    """Every operation in spec, keyed by (route shape, METHOD).
+    """Every PUBLISHABLE operation in spec, keyed by (route shape, METHOD).
 
     prefix is prepended to each path, for an app whose routes are registered
     relative to a mount point rather than absolutely.
+
+    An operation the serving binary tags `compat` is skipped, on both sides of
+    the comparison, because it is a legacy ADDRESS kept reachable for consumers
+    pinned to it and not part of the contract — the same reading merge.py takes.
+    Counting them would make `undeclared` say "the routes serve 23 operations no
+    SDK can reach", which is the opposite of true: they are the old spellings of
+    23 operations every SDK already has, and declaring them is the defect.
     """
     ops = {}
     for path, item in (spec.get("paths") or {}).items():
@@ -90,6 +101,8 @@ def operations(spec, prefix=""):
         full = prefix + path
         for method, op in item.items():
             if method.lower() not in METHODS or not isinstance(op, dict):
+                continue
+            if COMPAT in (op.get("tags") or []):
                 continue
             ops[(shape(full), method.upper())] = {"path": full, "op": op}
     return ops

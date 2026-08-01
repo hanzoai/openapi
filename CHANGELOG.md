@@ -2,6 +2,52 @@
 
 ## v1.0.0
 
+### IAM: the dead store's document is gone, and a path names a thing
+
+`iam/openapi.yaml` was the entity store this fleet replaced, imported whole. It
+declared **234 operations**; hanzoai/iam serves **94**. `audit.py` had been
+reporting that gap the whole time — 217 declared-and-unserved, 77
+served-and-undeclared — and nothing acted on it.
+
+The **38 verb-noun addresses** in it were the loudest half: `run-casbin-command`,
+`all-actions`, `all-objects`, `all-roles`, `global-users`, `global-certs`,
+`sorted-users`, `ldap-users`, `filtered-policies`, `remove-policy`,
+`is-session-duplicated`, `impersonation-user`, `pay-order`, `place-order`,
+`invoice-payment`, `user-orders`, `user-payments`, `permissions-by-roles`,
+`records-filters`, `version-infos`, `table-infos` and the rest. None is served by
+any binary in the fleet. They reached a customer as `hanzo iam all-actions` and as
+a method in every generated SDK. **223 summaries** were a title-cased Go
+controller method — "Api Controller Get All Actions", "Api Controller Get
+Ldapser" — and one operation was named after an outside vendor's policy engine.
+
+The file is now built from what the binary serves: the 75 typed operations
+`App.OpenAPISpec()` emits, with the handlers' own doc comments as their prose,
+plus the OIDC/OAuth, front-door, SCIM 2.0 and credential surface authored at the
+addresses measured off `app.Fiber().GetRoutes()`. **112 paths, 133 operations, 0
+verb-noun segments, 0 undescribed, 0 controller names.** operationIds are one
+shape — `<kind>_<verb>` — where the emitter had left three (`get_v1_iam_users`,
+`listOrganizations`, `addProvider`); those are SDK method names, so the spelling
+is the customer's business.
+
+`test_placement.py`'s `OFF_PREFIX` for iam went from eleven unprefixed paths to
+three. `/oauth/token`, `/oauth/userinfo`, `/oauth/introspect`, `/oauth/callback`,
+`/oauth/token/refresh`, `/.well-known/webfinger` and the two
+`/.well-known/{application}/…` were the dead store's addresses; iam serves the
+protocol endpoints under `/v1/iam/oauth/` and its own discovery document says so.
+Probing the old ones returns 200 `text/html` — the portal's catch-all,
+byte-identical to what a nonsense path returns. A 200 is not liveness. What
+remains is discovery at the three addresses the standards fix.
+
+**`compat` leaves the published document.** An operation the SERVING binary tags
+`compat` is a legacy address it keeps reachable for consumers pinned to it, not
+something the contract teaches. hanzoai/iam declares 51 of them — the entity
+verbs (`get-users`, `add-application`, `set-preferred-mfa`) and the singular
+`application` address from before that kind was pluralized — each on the SAME
+handler as its canonical noun twin. `merge.py` drops them, the same call as
+dropping TRACE: the served surface is unchanged and the published one says each
+thing once. This repo is not taking a vote about what a server serves; the
+serving repo made the declaration and this respects it.
+
 ### One product, one owning spec — placement, and 31 dead paths deleted
 
 `capabilities.yaml` has always stated the law — "the route IS the identity: one
