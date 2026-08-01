@@ -49,7 +49,13 @@ jobs:
 
       - name: Is cloud/openapi.yaml current?
         run: |
-          python3 -m pip install --quiet pyyaml
+          # --break-system-packages: the runner image ships a PEP 668
+          # "externally managed" interpreter, so a bare pip install exits 1.
+          # Under `bash -e` that killed the step BEFORE the gate below ever
+          # ran, and the log still showed the gate's error text — so this read
+          # as "the spec is stale" when the check had not executed at all.
+          # Safe here: the container is discarded after the job.
+          python3 -m pip install --quiet --break-system-packages pyyaml
           # Fail loudly and say the ONE command that fixes it. A gate whose message
           # is "differs" and nothing else sends the reader looking for a diff tool.
           if ! python3 sync.py --check --cloud .cloud; then
