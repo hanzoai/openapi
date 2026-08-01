@@ -59,7 +59,6 @@ tags:
 - name: agents
   description: 'Package agents is autonomous agents for your org: define them, run them, keep every run.'
 - name: Account
-  description: User account operations (login, registration, profile)
 - name: Activities
 - name: Answer
 - name: Applications
@@ -73,7 +72,6 @@ tags:
 - name: Files
   description: 'Package exec is the code interpreter: run a snippet in a sandbox and move files in and out.'
 - name: Forms
-  description: Form submissions and mailing lists
 - name: Graphs
 - name: K8s Status
 - name: Messages
@@ -142,6 +140,8 @@ tags:
   description: "AI summaries (per-user IAM \u2192 org/project/billing)"
 - name: catalog
   description: Package catalog is one place to browse every project, app and site built here.
+- name: metrics
+  description: Invocation histograms and status breakdown
 - name: datastore
   description: 'Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store,
     wired straight into your app.'
@@ -225,46 +225,22 @@ tags:
   description: 'Package analytics is product analytics: send an event, read back who did what.'
 - name: O11y
   description: 'Package o11y is your logs, metrics and traces: ship them in, query them, chart them.'
-- name: Affiliates
+- name: affiliates
   description: Package affiliates is a partner program that pays commission on what your referrals spend.
 - name: billing
   description: Package billing is your org's balance, what it has spent, and the cards it pays with.
 - name: Spend Caps
   description: Per-scope spend alerts, hard caps, rate limits, and the per-request cap verdict
-- name: Access Tokens
-  description: API access token management
-- name: Orders
-  description: Order CRUD and management
-- name: Cart
-  description: Shopping cart operations
-- name: Checkout
-  description: Payment authorization, capture, and refunds
-- name: Products
-  description: Product catalog management
-- name: Transactions
-  description: Financial transactions and holds
-- name: Subscriptions
-  description: Platform subscription plans
-- name: Store
-  description: 'Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront
-    catalog.'
-- name: Counters
-  description: Analytics counters and metrics
-- name: Marketing
-  description: 'Package marketing is lifecycle email: drip sequences that reach the right people.'
-- name: Metrics
-  description: Invocation histograms and status breakdown
 - name: crm
   description: 'Package crm is your sales pipeline: the companies, the people, the deals in play.'
 - name: plans
   description: Plan catalog + entitlement resolution
 - name: pricing
   description: 'Package pricing is the price list: what every model, provider, GPU tier, tool and hosting plan costs.'
+- name: Subscriptions
+  description: Platform subscription plans
 - name: referrals
   description: Package referrals is credit for both sides when someone you refer actually spends.
-- name: commerce
-  description: 'Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront
-    catalog.'
 - name: summary
   description: 'Package o11y is your logs, metrics and traces: ship them in, query them, chart them.'
 - name: Zones
@@ -349,6 +325,9 @@ tags:
     KV and D1.'
 - name: code
   description: Package code is search and symbols across your repos, for you and your agents.
+- name: commerce
+  description: 'Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront
+    catalog.'
 - name: company
   description: 'Package company is incorporation end to end: pick a structure, add founders, pay, file, and e-sign.'
 - name: compliance
@@ -423,6 +402,8 @@ tags:
   description: 'Package link is the unified AI login manager''s registry: the org+user-scoped record of WHICH provider accounts
     (Claude Max, ChatGPT Plus, a Hanzo API key, a raw provider key) a developer has signed into, ON WHICH MACHINES, with each
     account''s latest usage snapshot.'
+- name: marketing
+  description: 'Package marketing is lifecycle email: drip sequences that reach the right people.'
 - name: marketplace
   description: 'Package marketplace is the shop for tools and agents: browse, install into your project, publish your own
     free or priced.'
@@ -454,6 +435,9 @@ tags:
   description: 'Package o11y is your logs, metrics and traces: ship them in, query them, chart them.'
 - name: social
   description: Package social is posting to every social account you own, now or on a schedule.
+- name: store
+  description: 'Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront
+    catalog.'
 - name: sync
   description: 'Package sync is data sync: link two endpoints and keep them in step, on a webhook, on a schedule, or on demand.'
 - name: team
@@ -641,6 +625,7 @@ x-tagGroups:
   - research
   - AI
   - catalog
+  - metrics
 - name: Data
   tags:
   - datastore
@@ -687,25 +672,14 @@ x-tagGroups:
   - O11y
 - name: Commerce
   tags:
-  - Affiliates
+  - affiliates
   - billing
   - Spend Caps
-  - Access Tokens
-  - Orders
-  - Cart
-  - Checkout
-  - Products
-  - Transactions
-  - Subscriptions
-  - Store
-  - Counters
-  - Marketing
-  - Metrics
   - crm
   - plans
   - pricing
+  - Subscriptions
   - referrals
-  - commerce
   - summary
 - name: Platform
   tags:
@@ -744,6 +718,7 @@ x-tagGroups:
   - channels
   - cloudflare
   - code
+  - commerce
   - company
   - compliance
   - connector
@@ -778,6 +753,7 @@ x-tagGroups:
   - legal
   - licensing
   - links
+  - marketing
   - marketplace
   - meet
   - mq
@@ -790,6 +766,7 @@ x-tagGroups:
   - sbom
   - sentry
   - social
+  - store
   - sync
   - team
   - tools
@@ -5699,7 +5676,7 @@ paths:
   /v1/affiliates:
     get:
       tags:
-      - Affiliates
+      - affiliates
       summary: Your org's affiliate standing and commission dashboard
       description: "Answers the caller org's OWN affiliate standing: status, referral code and share link, commission rate,\
         \ how many orgs it has referred, and its lifetime accrued, still-pending and already-paid commission in integer cents,\
@@ -5726,7 +5703,7 @@ paths:
   /v1/affiliates/apply:
     post:
       tags:
-      - Affiliates
+      - affiliates
       summary: Enroll your org in the partner program
       description: "Enrolls the caller's OWN org as an affiliate at status `applied`, optionally requesting a vanity code,\
         \ and answers the record \u2014 201 on the first apply, 200 with `created:false` afterwards.\n\nIDEMPOTENT, first\
@@ -5764,7 +5741,7 @@ paths:
   /v1/affiliates/attribute:
     post:
       tags:
-      - Affiliates
+      - affiliates
       summary: Record that your org arrived through an affiliate's code
       description: 'Records the first-touch edge every later commission is computed from: the caller''s org was referred by
         the affiliate that owns this code.
@@ -5822,7 +5799,7 @@ paths:
       operationId: cloud_post_v1_affiliates_click
       summary: Count a click on a share link
       tags:
-      - Affiliates
+      - affiliates
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -5838,7 +5815,7 @@ paths:
       operationId: cloud_get_v1_affiliates_leaderboard
       summary: The partner leaderboard, plus your own rank
       tags:
-      - Affiliates
+      - affiliates
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -5855,7 +5832,7 @@ paths:
       operationId: cloud_get_v1_affiliates_me
       summary: Your affiliate self-view, with the downline broken out by level
       tags:
-      - Affiliates
+      - affiliates
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -5871,7 +5848,7 @@ paths:
       operationId: cloud_get_v1_affiliates_me_earnings
       summary: Your commission ledger, by period and by referred org
       tags:
-      - Affiliates
+      - affiliates
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -5885,7 +5862,7 @@ paths:
       operationId: cloud_post_v1_affiliates_me_handle
       summary: Set or clear your public leaderboard name
       tags:
-      - Affiliates
+      - affiliates
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -5901,7 +5878,7 @@ paths:
       operationId: cloud_get_v1_affiliates_me_links
       summary: Your share links and their funnel
       tags:
-      - Affiliates
+      - affiliates
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -5915,7 +5892,7 @@ paths:
       operationId: cloud_post_v1_affiliates_me_links
       summary: Mint a new share link
       tags:
-      - Affiliates
+      - affiliates
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -22790,420 +22767,6 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/commerce/access/{mode}/{id}:
-    get:
-      tags:
-      - Access Tokens
-      summary: Get access token
-      operationId: commerce_getAccessToken
-      parameters:
-      - name: mode
-        in: path
-        required: true
-        schema:
-          type: string
-          enum:
-          - live
-          - test
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: email
-        in: query
-        schema:
-          type: string
-      - name: password
-        in: query
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Access token retrieved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_AccessToken'
-        '401':
-          $ref: '#/components/responses/commerce_Unauthorized'
-    post:
-      tags:
-      - Access Tokens
-      summary: Create or delete access token
-      operationId: commerce_createAccessToken
-      parameters:
-      - name: mode
-        in: path
-        required: true
-        schema:
-          type: string
-          enum:
-          - live
-          - test
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Token operation successful
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/commerce_Unauthorized'
-    delete:
-      tags:
-      - Access Tokens
-      summary: Delete access token
-      operationId: commerce_deleteAccessToken
-      parameters:
-      - name: mode
-        in: path
-        required: true
-        schema:
-          type: string
-          enum:
-          - live
-          - test
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: Token deleted
-        '401':
-          $ref: '#/components/responses/commerce_Unauthorized'
-  /v1/commerce/account:
-    get:
-      tags:
-      - Account
-      summary: Get current account
-      operationId: commerce_getAccount
-      responses:
-        '200':
-          description: Account details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_User'
-        '401':
-          $ref: '#/components/responses/commerce_Unauthorized'
-    put:
-      tags:
-      - Account
-      summary: Update account
-      operationId: commerce_updateAccount
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_User'
-      responses:
-        '200':
-          description: Account updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_User'
-        '401':
-          $ref: '#/components/responses/commerce_Unauthorized'
-    patch:
-      tags:
-      - Account
-      summary: Partially update account
-      operationId: commerce_patchAccount
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_User'
-      responses:
-        '200':
-          description: Account updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_User'
-        '401':
-          $ref: '#/components/responses/commerce_Unauthorized'
-  /v1/commerce/account/confirm/{tokenid}:
-    post:
-      tags:
-      - Account
-      summary: Confirm password reset
-      operationId: commerce_confirmPasswordReset
-      parameters:
-      - name: tokenid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - password
-              properties:
-                password:
-                  type: string
-                  format: password
-      responses:
-        '200':
-          description: Password reset confirmed
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/account/create:
-    post:
-      tags:
-      - Account
-      summary: Create new account
-      operationId: commerce_createAccount
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_CreateAccountRequest'
-      responses:
-        '201':
-          description: Account created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_User'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/account/enable/{tokenid}:
-    post:
-      tags:
-      - Account
-      summary: Enable account with token
-      operationId: commerce_enableAccount
-      parameters:
-      - name: tokenid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_CommerceEnableAccountRequest'
-        description: Optional. Read (json.DecodeBytes) only when the org has two-stage enablement (SignUpOptions.TwoStageEnabled);
-          otherwise ignored.
-      responses:
-        '200':
-          description: Account enabled
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/account/exists/{emailorusername}:
-    get:
-      tags:
-      - Account
-      summary: Check if account exists
-      operationId: commerce_accountExists
-      parameters:
-      - name: emailorusername
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Account existence check
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  exists:
-                    type: boolean
-  /v1/commerce/account/login:
-    post:
-      tags:
-      - Account
-      summary: Login to account
-      operationId: commerce_accountLogin
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - email
-              - password
-              properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-                  format: password
-      responses:
-        '200':
-          description: Login successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_User'
-        '401':
-          $ref: '#/components/responses/commerce_Unauthorized'
-  /v1/commerce/account/order/{orderid}:
-    get:
-      tags:
-      - Account
-      summary: Get account order
-      operationId: commerce_getAccountOrder
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Order details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    patch:
-      tags:
-      - Account
-      summary: Update account order
-      operationId: commerce_patchAccountOrder
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Order'
-      responses:
-        '200':
-          description: Order updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/account/paymentmethod/{paymentmethodtype}:
-    post:
-      tags:
-      - Account
-      summary: Create payment method
-      operationId: commerce_createPaymentMethod
-      parameters:
-      - name: paymentmethodtype
-        in: path
-        required: true
-        schema:
-          type: string
-          enum:
-          - card
-          - paypal
-          - bank
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_PaymentMethod'
-      responses:
-        '201':
-          description: Payment method created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_PaymentMethod'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/account/reset:
-    post:
-      tags:
-      - Account
-      summary: Request password reset
-      operationId: commerce_requestPasswordReset
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - email
-              properties:
-                email:
-                  type: string
-                  format: email
-      responses:
-        '200':
-          description: Reset email sent
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/account/withdraw:
-    post:
-      tags:
-      - Account
-      summary: Withdraw funds
-      operationId: commerce_accountWithdraw
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                amount:
-                  type: integer
-                  description: Amount in cents
-                currency:
-                  type: string
-      responses:
-        '200':
-          description: Withdrawal initiated
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
   /v1/commerce/admin/catalog:
     get:
       description: "Returns the brand-scoped catalog carrying the administrative economics the public projection withholds\
@@ -23217,298 +22780,6 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/commerce/affiliate:
-    get:
-      tags:
-      - Affiliates
-      summary: List affiliates
-      operationId: commerce_listAffiliates
-      parameters:
-      - $ref: '#/components/parameters/commerce_page'
-      - $ref: '#/components/parameters/commerce_display'
-      responses:
-        '200':
-          description: List of affiliates
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_PaginatedAffiliates'
-    post:
-      tags:
-      - Affiliates
-      summary: Create affiliate
-      operationId: commerce_createAffiliate
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Affiliate'
-      responses:
-        '201':
-          description: Affiliate created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Affiliate'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/affiliate/{affiliateid}:
-    get:
-      tags:
-      - Affiliates
-      summary: Get affiliate
-      operationId: commerce_getAffiliate
-      parameters:
-      - name: affiliateid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Affiliate details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Affiliate'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/affiliate/{affiliateid}/connect:
-    get:
-      tags:
-      - Affiliates
-      summary: Connect affiliate
-      operationId: commerce_connectAffiliate
-      parameters:
-      - name: affiliateid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Connection established
-          content:
-            application/json:
-              schema:
-                type: object
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/auth:
-    post:
-      tags:
-      - Auth
-      summary: Authenticate user (OAuth2)
-      description: 'OAuth2 token endpoint supporting password and refresh_token grant types.
-
-        '
-      operationId: commerce_authenticate
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_OAuthRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/commerce_OAuthRequest'
-      responses:
-        '200':
-          description: Successfully authenticated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_OAuthResponse'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-        '401':
-          $ref: '#/components/responses/commerce_Unauthorized'
-  /v1/commerce/cart:
-    get:
-      tags:
-      - Cart
-      summary: List carts
-      operationId: commerce_listCarts
-      parameters:
-      - $ref: '#/components/parameters/commerce_page'
-      - $ref: '#/components/parameters/commerce_display'
-      responses:
-        '200':
-          description: List of carts
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_PaginatedCarts'
-    post:
-      tags:
-      - Cart
-      summary: Create cart
-      operationId: commerce_createCart
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Cart'
-      responses:
-        '201':
-          description: Cart created
-          headers:
-            Location:
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Cart'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/cart/{cartid}:
-    get:
-      tags:
-      - Cart
-      summary: Get cart
-      operationId: commerce_getCart
-      parameters:
-      - name: cartid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Cart details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Cart'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    put:
-      tags:
-      - Cart
-      summary: Update cart
-      operationId: commerce_updateCart
-      parameters:
-      - name: cartid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Cart'
-      responses:
-        '200':
-          description: Cart updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Cart'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    patch:
-      tags:
-      - Cart
-      summary: Partially update cart
-      operationId: commerce_patchCart
-      parameters:
-      - name: cartid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Cart'
-      responses:
-        '200':
-          description: Cart updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Cart'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    delete:
-      tags:
-      - Cart
-      summary: Delete cart
-      operationId: commerce_deleteCart
-      parameters:
-      - name: cartid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: Cart deleted
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/cart/{cartid}/discard:
-    post:
-      tags:
-      - Cart
-      summary: Discard cart
-      operationId: commerce_discardCart
-      parameters:
-      - name: cartid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Cart discarded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Cart'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/cart/{cartid}/set:
-    post:
-      tags:
-      - Cart
-      summary: Set item in cart
-      operationId: commerce_setCartItem
-      parameters:
-      - name: cartid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                productId:
-                  type: string
-                variantId:
-                  type: string
-                quantity:
-                  type: integer
-      responses:
-        '200':
-          description: Item set in cart
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Cart'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
   /v1/commerce/catalog:
     get:
       description: "Returns the brand's published catalog \u2014 the shared source docs, the console sidebar and the pricing\
@@ -23521,246 +22792,6 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/commerce/checkout/authorize:
-    post:
-      tags:
-      - Checkout
-      summary: Authorize new payment
-      operationId: commerce_authorizePayment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_CheckoutRequest'
-      responses:
-        '200':
-          description: Payment authorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/checkout/authorize/{orderid}:
-    post:
-      tags:
-      - Checkout
-      summary: Authorize payment for existing order
-      operationId: commerce_authorizePaymentForOrder
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_PaymentRequest'
-      responses:
-        '200':
-          description: Payment authorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/checkout/cancel/{orderid}:
-    post:
-      tags:
-      - Checkout
-      summary: Cancel order
-      operationId: commerce_cancelOrder
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Order cancelled
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/checkout/capture/{orderid}:
-    post:
-      tags:
-      - Checkout
-      summary: Capture authorized payment
-      operationId: commerce_capturePayment
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Payment captured
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/checkout/charge:
-    post:
-      tags:
-      - Checkout
-      summary: Authorize and capture in one step
-      operationId: commerce_chargePayment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_CheckoutRequest'
-      responses:
-        '200':
-          description: Payment charged
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/checkout/confirm/{orderid}:
-    post:
-      tags:
-      - Checkout
-      summary: Confirm order
-      operationId: commerce_confirmOrder
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Order confirmed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/checkout/ethereum/lookup/{proxyaddress}:
-    get:
-      tags:
-      - Checkout
-      summary: Lookup Ethereum proxy address
-      operationId: commerce_lookupEthereumProxy
-      parameters:
-      - name: proxyaddress
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Ethereum address details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  address:
-                    type: string
-                  balance:
-                    type: string
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/counter:
-    post:
-      tags:
-      - Counters
-      summary: Search counters
-      operationId: commerce_searchCounters
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                query:
-                  type: string
-                filters:
-                  type: object
-      responses:
-        '200':
-          description: Counter data
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/commerce/counter/dashboard/daily:
-    post:
-      tags:
-      - Counters
-      summary: Get daily dashboard metrics
-      operationId: commerce_getDailyDashboard
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                startDate:
-                  type: string
-                  format: date
-                endDate:
-                  type: string
-                  format: date
-      responses:
-        '200':
-          description: Daily metrics
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/commerce/counter/product/{productid}:
-    get:
-      tags:
-      - Counters
-      summary: Get product counters
-      operationId: commerce_getProductCounters
-      parameters:
-      - name: productid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Product counter data
-          content:
-            application/json:
-              schema:
-                type: object
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/counter/topline:
-    get:
-      tags:
-      - Counters
-      summary: Get topline metrics
-      operationId: commerce_getToplineMetrics
-      responses:
-        '200':
-          description: Topline metrics
-          content:
-            application/json:
-              schema:
-                type: object
   /v1/commerce/currencies:
     get:
       description: Returns every reference currency as one global list, so a store settings form or a product price picker
@@ -23828,1171 +22859,6 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/commerce/form:
-    get:
-      tags:
-      - Forms
-      summary: List forms
-      operationId: commerce_listForms
-      responses:
-        '200':
-          description: List of forms
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_PaginatedForms'
-    post:
-      tags:
-      - Forms
-      summary: Create form
-      operationId: commerce_createForm
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Form'
-      responses:
-        '201':
-          description: Form created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Form'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/form/{formid}:
-    get:
-      tags:
-      - Forms
-      summary: Get form
-      operationId: commerce_getForm
-      parameters:
-      - name: formid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Form details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Form'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/form/{formid}/submit:
-    post:
-      tags:
-      - Forms
-      summary: Submit form
-      operationId: commerce_submitForm
-      security: []
-      parameters:
-      - name: formid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        '200':
-          description: Form submitted
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/form/{formid}/subscribe:
-    post:
-      tags:
-      - Forms
-      summary: Subscribe via form
-      operationId: commerce_subscribeForm
-      security: []
-      parameters:
-      - name: formid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                  format: email
-      responses:
-        '200':
-          description: Subscribed
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/marketing:
-    post:
-      tags:
-      - Marketing
-      summary: Create marketing campaign
-      operationId: commerce_createMarketingCampaign
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '201':
-          description: Campaign created
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/metrics/saas:
-    get:
-      tags:
-      - Metrics
-      summary: SaaS operations snapshot (platform god-view)
-      operationId: commerce_getSaaSMetrics
-      description: "The whole-business SaaS operations snapshot \u2014 recurring revenue (MRR/ARR,\nnew/churned MRR, MRR by\
-        \ plan category), subscription mix (per plan, trials,\nseats, a recent create/cancel events feed), metered pay-as-you-go\
-        \ revenue\ntotals, and the top customers by revenue \u2014 computed in commerce (the system\nof record for subscriptions\
-        \ + the usage ledger) from ONE cross-org walk.\nMoney is USD cents end to end.\n\nPLATFORM god-view: gated on a global\
-        \ admin OR the trusted internal service\ntoken (the console's global-admin-gated proxy forwards COMMERCE_SERVICE_TOKEN\n\
-        with no user identity). An org-level admin is refused (403) \u2014 this is\ncross-tenant data.\n\nPer-model LLM tokens/latency/error\
-        \ and the per-org AI-spend ranking are\ndeliberately NOT here: the canonical fleet LLM-observability aggregate is\n\
-        GET /v1/admin/o11y. The `gaps` array names what is not instrumented (e.g.\nplan-change upgrade/downgrade counts, per-model\
-        \ latency) rather than\nfabricating it.\n"
-      parameters:
-      - name: window
-        in: query
-        description: 'Usage + new/churn window: 7d | 30d | 90d | mtd | all (default 30d)'
-        schema:
-          type: string
-          enum:
-          - 7d
-          - 30d
-          - 90d
-          - mtd
-          - all
-          default: 30d
-      - name: limit
-        in: query
-        description: Cap for the customers list (1-200, default 20)
-        schema:
-          type: integer
-          minimum: 1
-          maximum: 200
-          default: 20
-      responses:
-        '200':
-          description: SaaS operations snapshot
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_SaaSMetrics'
-        '401':
-          $ref: '#/components/responses/commerce_Unauthorized'
-        '403':
-          description: Caller is not a platform administrator (cross-tenant data withheld)
-  /v1/commerce/order:
-    get:
-      tags:
-      - Orders
-      summary: List orders
-      operationId: commerce_listOrders
-      parameters:
-      - $ref: '#/components/parameters/commerce_page'
-      - $ref: '#/components/parameters/commerce_display'
-      - $ref: '#/components/parameters/commerce_sort'
-      - $ref: '#/components/parameters/commerce_q'
-      responses:
-        '200':
-          description: List of orders
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_PaginatedOrders'
-    post:
-      tags:
-      - Orders
-      summary: Create order
-      operationId: commerce_createOrder
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Order'
-      responses:
-        '201':
-          description: Order created
-          headers:
-            Location:
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/order/{orderid}:
-    get:
-      tags:
-      - Orders
-      summary: Get order
-      operationId: commerce_getOrder
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Order details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    put:
-      tags:
-      - Orders
-      summary: Update order
-      operationId: commerce_updateOrder
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Order'
-      responses:
-        '200':
-          description: Order updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    patch:
-      tags:
-      - Orders
-      summary: Partially update order
-      operationId: commerce_patchOrder
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Order'
-      responses:
-        '200':
-          description: Order updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    delete:
-      tags:
-      - Orders
-      summary: Delete order
-      operationId: commerce_deleteOrder
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: Order deleted
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/order/{orderid}/authorize:
-    post:
-      tags:
-      - Orders
-      summary: Authorize payment for order
-      operationId: commerce_authorizeOrder
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_PaymentRequest'
-      responses:
-        '200':
-          description: Payment authorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/order/{orderid}/capture:
-    post:
-      tags:
-      - Orders
-      summary: Capture authorized payment
-      operationId: commerce_captureOrder
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Payment captured
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/order/{orderid}/charge:
-    post:
-      tags:
-      - Orders
-      summary: Authorize and capture payment (single step)
-      operationId: commerce_chargeOrder
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_PaymentRequest'
-      responses:
-        '200':
-          description: Payment charged
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/order/{orderid}/payments:
-    get:
-      tags:
-      - Orders
-      summary: Get order payments
-      operationId: commerce_getOrderPayments
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: List of payments
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/commerce_Payment'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/order/{orderid}/refund:
-    post:
-      tags:
-      - Orders
-      summary: Refund order
-      operationId: commerce_refundOrder
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                amount:
-                  type: integer
-                  description: Amount to refund in cents (optional, full refund if omitted)
-                reason:
-                  type: string
-      responses:
-        '200':
-          description: Refund processed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/order/{orderid}/returns:
-    get:
-      tags:
-      - Orders
-      summary: Get order returns
-      operationId: commerce_getOrderReturns
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: List of returns
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/commerce_Return'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/order/{orderid}/sendfulfillmentconfirmation:
-    get:
-      tags:
-      - Orders
-      summary: Send fulfillment confirmation email
-      operationId: commerce_sendFulfillmentConfirmation
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Confirmation sent
-          content:
-            application/json:
-              schema:
-                type: object
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/order/{orderid}/sendorderconfirmation:
-    get:
-      tags:
-      - Orders
-      summary: Send order confirmation email
-      operationId: commerce_sendOrderConfirmation
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Confirmation sent
-          content:
-            application/json:
-              schema:
-                type: object
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/order/{orderid}/sendrefundconfirmation:
-    get:
-      tags:
-      - Orders
-      summary: Send refund confirmation email
-      operationId: commerce_sendRefundConfirmation
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Confirmation sent
-          content:
-            application/json:
-              schema:
-                type: object
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/order/{orderid}/status:
-    get:
-      tags:
-      - Orders
-      summary: Get order status
-      operationId: commerce_getOrderStatus
-      parameters:
-      - name: orderid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Order status
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/commerce_OrderStatus'
-                  paymentStatus:
-                    $ref: '#/components/schemas/commerce_PaymentStatus'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/product:
-    get:
-      tags:
-      - Products
-      summary: List products
-      operationId: commerce_listProducts
-      parameters:
-      - $ref: '#/components/parameters/commerce_page'
-      - $ref: '#/components/parameters/commerce_display'
-      - $ref: '#/components/parameters/commerce_sort'
-      - $ref: '#/components/parameters/commerce_q'
-      responses:
-        '200':
-          description: List of products
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_PaginatedProducts'
-    post:
-      tags:
-      - Products
-      summary: Create product
-      operationId: commerce_createProduct
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Product'
-      responses:
-        '201':
-          description: Product created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Product'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/product/{productid}:
-    get:
-      tags:
-      - Products
-      summary: Get product
-      operationId: commerce_getProduct
-      parameters:
-      - name: productid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Product details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Product'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    put:
-      tags:
-      - Products
-      summary: Update product
-      operationId: commerce_updateProduct
-      parameters:
-      - name: productid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Product'
-      responses:
-        '200':
-          description: Product updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Product'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    patch:
-      tags:
-      - Products
-      summary: Partially update product
-      operationId: commerce_patchProduct
-      parameters:
-      - name: productid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Product'
-      responses:
-        '200':
-          description: Product updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Product'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    delete:
-      tags:
-      - Products
-      summary: Delete product
-      operationId: commerce_deleteProduct
-      parameters:
-      - name: productid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: Product deleted
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/search/note:
-    post:
-      tags:
-      - Search
-      summary: Search notes
-      operationId: commerce_searchNotes
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                query:
-                  type: string
-      responses:
-        '200':
-          description: Search results
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/commerce_Note'
-  /v1/commerce/search/order:
-    get:
-      tags:
-      - Search
-      summary: Search orders
-      operationId: commerce_searchOrders
-      parameters:
-      - name: q
-        in: query
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Search results
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/commerce_Order'
-  /v1/commerce/search/user:
-    get:
-      tags:
-      - Search
-      summary: Search users
-      operationId: commerce_searchUsers
-      parameters:
-      - name: q
-        in: query
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Search results
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/commerce_User'
-  /v1/commerce/store:
-    get:
-      tags:
-      - Store
-      summary: List stores
-      operationId: commerce_listStores
-      parameters:
-      - $ref: '#/components/parameters/commerce_page'
-      - $ref: '#/components/parameters/commerce_display'
-      responses:
-        '200':
-          description: List of stores
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_PaginatedStores'
-    post:
-      tags:
-      - Store
-      summary: Create store
-      operationId: commerce_createStore
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Store'
-      responses:
-        '201':
-          description: Store created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Store'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/store/{storeid}:
-    get:
-      tags:
-      - Store
-      summary: Get store
-      operationId: commerce_getStore
-      parameters:
-      - name: storeid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Store details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Store'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/store/{storeid}/checkout/authorize:
-    post:
-      tags:
-      - Store
-      summary: Authorize payment via store
-      operationId: commerce_storeAuthorize
-      parameters:
-      - name: storeid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_CheckoutRequest'
-      responses:
-        '200':
-          description: Payment authorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/store/{storeid}/checkout/charge:
-    post:
-      tags:
-      - Store
-      summary: Charge payment via store
-      operationId: commerce_storeCharge
-      parameters:
-      - name: storeid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_CheckoutRequest'
-      responses:
-        '200':
-          description: Payment charged
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Order'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/store/{storeid}/listing:
-    get:
-      tags:
-      - Store
-      summary: List store listings
-      operationId: commerce_listStoreListings
-      parameters:
-      - name: storeid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: List of listings
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/commerce_Listing'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/store/{storeid}/listing/{key}:
-    get:
-      tags:
-      - Store
-      summary: Get store listing
-      operationId: commerce_getStoreListing
-      parameters:
-      - name: storeid
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: key
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Listing details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Listing'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    post:
-      tags:
-      - Store
-      summary: Create store listing
-      operationId: commerce_createStoreListing
-      parameters:
-      - name: storeid
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: key
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Listing'
-      responses:
-        '201':
-          description: Listing created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Listing'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-    put:
-      tags:
-      - Store
-      summary: Update store listing
-      operationId: commerce_updateStoreListing
-      parameters:
-      - name: storeid
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: key
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Listing'
-      responses:
-        '200':
-          description: Listing updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Listing'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    patch:
-      tags:
-      - Store
-      summary: Partially update store listing
-      operationId: commerce_patchStoreListing
-      parameters:
-      - name: storeid
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: key
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Listing'
-      responses:
-        '200':
-          description: Listing updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Listing'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    delete:
-      tags:
-      - Store
-      summary: Delete store listing
-      operationId: commerce_deleteStoreListing
-      parameters:
-      - name: storeid
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: key
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: Listing deleted
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/store/{storeid}/product/{key}:
-    get:
-      tags:
-      - Store
-      summary: Get store product
-      operationId: commerce_getStoreProduct
-      parameters:
-      - name: storeid
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: key
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Product details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Product'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/store/{storeid}/variant/{key}:
-    get:
-      tags:
-      - Store
-      summary: Get store variant
-      operationId: commerce_getStoreVariant
-      parameters:
-      - name: storeid
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: key
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Variant details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Variant'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/subscribe:
-    post:
-      tags:
-      - Subscriptions
-      summary: Create subscription
-      operationId: commerce_createSubscription
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_SubscriptionRequest'
-      responses:
-        '200':
-          description: Subscription created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Subscription'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/subscribe/{subscriptionid}:
-    get:
-      tags:
-      - Subscriptions
-      summary: Get subscription
-      operationId: commerce_getSubscription
-      parameters:
-      - name: subscriptionid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Subscription details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Subscription'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    patch:
-      tags:
-      - Subscriptions
-      summary: Update subscription
-      operationId: commerce_updateSubscription
-      parameters:
-      - name: subscriptionid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Subscription'
-      responses:
-        '200':
-          description: Subscription updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Subscription'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    delete:
-      tags:
-      - Subscriptions
-      summary: Cancel subscription
-      operationId: commerce_cancelSubscription
-      parameters:
-      - name: subscriptionid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Subscription cancelled
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Subscription'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
   /v1/commerce/tenant:
     get:
       description: "Answers the branding, identity issuer and client id, identity-verification config, enabled payment providers,\
@@ -25059,473 +22925,6 @@ paths:
       summary: WalletTopup credits the caller's org for a stablecoin transfer they already sent to the treasury.
       tags:
       - commerce
-  /v1/commerce/transaction:
-    post:
-      tags:
-      - Transactions
-      summary: Create transaction
-      operationId: commerce_createTransaction
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Transaction'
-      responses:
-        '201':
-          description: Transaction created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Transaction'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/transaction/hold:
-    post:
-      tags:
-      - Transactions
-      summary: Create hold
-      operationId: commerce_createHold
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_Transaction'
-      responses:
-        '201':
-          description: Hold created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Transaction'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/transaction/hold/{id}:
-    delete:
-      tags:
-      - Transactions
-      summary: Remove hold
-      operationId: commerce_removeHold
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: Hold removed
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/transaction/{kind}/{id}:
-    get:
-      tags:
-      - Transactions
-      summary: List transactions for entity
-      operationId: commerce_listTransactions
-      parameters:
-      - name: kind
-        in: path
-        required: true
-        schema:
-          type: string
-          enum:
-          - user
-          - order
-          - wallet
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: List of transactions
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/commerce_Transaction'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/user:
-    get:
-      tags:
-      - Users
-      summary: List users
-      operationId: commerce_listUsers
-      parameters:
-      - $ref: '#/components/parameters/commerce_page'
-      - $ref: '#/components/parameters/commerce_display'
-      - $ref: '#/components/parameters/commerce_sort'
-      - $ref: '#/components/parameters/commerce_q'
-      responses:
-        '200':
-          description: List of users
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_PaginatedUsers'
-    post:
-      tags:
-      - Users
-      summary: Create user
-      operationId: commerce_createUser
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_User'
-      responses:
-        '201':
-          description: User created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_User'
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/user/{userid}:
-    get:
-      tags:
-      - Users
-      summary: Get user
-      operationId: commerce_getUser
-      parameters:
-      - name: userid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: User details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_User'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    put:
-      tags:
-      - Users
-      summary: Update user
-      operationId: commerce_updateUser
-      parameters:
-      - name: userid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_User'
-      responses:
-        '200':
-          description: User updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_User'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    patch:
-      tags:
-      - Users
-      summary: Partially update user
-      operationId: commerce_patchUser
-      parameters:
-      - name: userid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/commerce_User'
-      responses:
-        '200':
-          description: User updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_User'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-    delete:
-      tags:
-      - Users
-      summary: Delete user
-      operationId: commerce_deleteUser
-      parameters:
-      - name: userid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: User deleted
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/user/{userid}/orders:
-    get:
-      tags:
-      - Users
-      summary: Get user orders
-      operationId: commerce_getUserOrders
-      parameters:
-      - name: userid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: List of orders
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/commerce_Order'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/user/{userid}/password/reset:
-    get:
-      tags:
-      - Users
-      summary: Reset user password (admin)
-      operationId: commerce_resetUserPassword
-      parameters:
-      - name: userid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Password reset initiated
-          content:
-            application/json:
-              schema:
-                type: object
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/user/{userid}/paymentmethods:
-    get:
-      tags:
-      - Users
-      summary: Get user payment methods
-      operationId: commerce_getUserPaymentMethods
-      parameters:
-      - name: userid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: List of payment methods
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/commerce_PaymentMethod'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/user/{userid}/referrals:
-    get:
-      tags:
-      - Users
-      summary: Get user referrals
-      operationId: commerce_getUserReferrals
-      parameters:
-      - name: userid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: List of referrals
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/commerce_Referral'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/user/{userid}/referrers:
-    get:
-      tags:
-      - Users
-      summary: Get user referrers
-      operationId: commerce_getUserReferrers
-      parameters:
-      - name: userid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: List of referrers
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/commerce_Referrer'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/user/{userid}/transactions:
-    get:
-      tags:
-      - Users
-      summary: Get user transactions
-      operationId: commerce_getUserTransactions
-      parameters:
-      - name: userid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Transaction data
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties:
-                  $ref: '#/components/schemas/commerce_TransactionData'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/user/{userid}/wallet:
-    get:
-      tags:
-      - Users
-      summary: Get user wallet
-      operationId: commerce_getUserWallet
-      parameters:
-      - name: userid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Wallet details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_Wallet'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/user/{userid}/wallet/account:
-    post:
-      tags:
-      - Users
-      summary: Create wallet account
-      operationId: commerce_createWalletAccount
-      parameters:
-      - name: userid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                currency:
-                  type: string
-      responses:
-        '201':
-          description: Account created
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
-  /v1/commerce/user/{userid}/wallet/account/{name}:
-    get:
-      tags:
-      - Users
-      summary: Get wallet account
-      operationId: commerce_getWalletAccount
-      parameters:
-      - name: userid
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: name
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Account details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/commerce_WalletAccount'
-        '404':
-          $ref: '#/components/responses/commerce_NotFound'
-  /v1/commerce/user/{userid}/wallet/pay:
-    post:
-      tags:
-      - Users
-      summary: Send payment from wallet
-      operationId: commerce_walletPay
-      parameters:
-      - name: userid
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                to:
-                  type: string
-                amount:
-                  type: integer
-                currency:
-                  type: string
-      responses:
-        '200':
-          description: Payment sent
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/commerce_BadRequest'
   /v1/commerce/webhooks/{provider}:
     post:
       description: "Forwards the provider's event \u2014 body and original signature headers intact \u2014 to the backend\
@@ -46593,7 +43992,7 @@ paths:
           description: ok
       summary: Returns the org's saved audiences, most recently updated first.
       tags:
-      - Marketing
+      - marketing
     post:
       description: "Saves a cohort filter for the caller's org. Name is required.\nOmitting event saves the WHOLE-ORG audience\
         \ \u2014 every mailable customer \u2014 which\nneeds no analytics warehouse; naming one narrows that roster to the\
@@ -46618,7 +44017,7 @@ paths:
           description: ok
       summary: Saves a cohort filter for the caller's org.
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/audiences/{id}:
     delete:
       description: "Removes one of the caller org's audiences and answers 204. It\ndeletes the saved filter only \u2014 no\
@@ -46637,7 +44036,7 @@ paths:
           description: no content
       summary: Removes one of the caller org's audiences and answers 204.
       tags:
-      - Marketing
+      - marketing
     get:
       description: 'Returns one of the caller org''s saved audiences. An audience
 
@@ -46660,7 +44059,7 @@ paths:
           description: ok
       summary: Returns one of the caller org's saved audiences.
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/audiences/{id}/preview:
     get:
       description: "Evaluates the cohort LIVE \u2014 the same resolution an enrollment\nwould run \u2014 and reports how big\
@@ -46694,7 +44093,7 @@ paths:
       summary: "Evaluates the cohort LIVE \u2014 the same resolution an enrollment would run \u2014 and reports how big it\
         \ is and how many real mailboxes it reaches."
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/calendar:
     get:
       description: 'Returns the org''s calendar, soonest scheduled first,
@@ -46727,7 +44126,7 @@ paths:
           description: ok
       summary: Returns the org's calendar, soonest scheduled first, optionally narrowed to one status.
       tags:
-      - Marketing
+      - marketing
     post:
       description: "Adds a post to the content calendar. Channel and body are\nrequired. A scheduledAt in the future makes\
         \ the post \"scheduled\" and the\ndurable sweep publishes it when it comes due \u2014 claimed once, so a post\npublishes\
@@ -46753,7 +44152,7 @@ paths:
           description: ok
       summary: Adds a post to the content calendar.
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/calendar/{id}:
     delete:
       description: "Removes one of the caller org's posts and answers 204. A\npost already published is deleted from the calendar\
@@ -46772,7 +44171,7 @@ paths:
           description: no content
       summary: Removes one of the caller org's posts and answers 204.
       tags:
-      - Marketing
+      - marketing
     get:
       description: 'Returns one of the caller org''s posts, including the exact
 
@@ -46797,7 +44196,7 @@ paths:
           description: ok
       summary: Returns one of the caller org's posts, including the exact error behind a failed publish.
       tags:
-      - Marketing
+      - marketing
     put:
       description: "Replaces a post's editable fields. It is a full write, not\na patch, and it RESETS the lifecycle from\
         \ the schedule: a scheduledAt makes\nthe post \"scheduled\" again and none makes it a draft \u2014 so editing a failed\n\
@@ -46830,7 +44229,7 @@ paths:
           description: ok
       summary: Replaces a post's editable fields.
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/calendar/{id}/publish:
     post:
       description: "Publishes a post NOW, synchronously, whatever its\nschedule. No social connector is wired today, so every\
@@ -46854,7 +44253,7 @@ paths:
           description: ok
       summary: Publishes a post NOW, synchronously, whatever its schedule.
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/campaigns:
     get:
       description: 'Returns the org''s campaigns, most recently updated first,
@@ -46887,7 +44286,7 @@ paths:
           description: ok
       summary: Returns the org's campaigns, most recently updated first, optionally narrowed to one lifecycle status.
       tags:
-      - Marketing
+      - marketing
     post:
       description: "Registers a campaign in the caller's org. Name is required;\nchannel defaults to email and status to draft,\
         \ and a future scheduledAt with\nno explicit status makes the campaign \"scheduled\". Budget and spend are cents\n\
@@ -46914,7 +44313,7 @@ paths:
           description: ok
       summary: Registers a campaign in the caller's org.
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/campaigns/{id}:
     delete:
       description: 'Removes one of the caller org''s campaigns and answers 204. A
@@ -46934,7 +44333,7 @@ paths:
           description: no content
       summary: Removes one of the caller org's campaigns and answers 204.
       tags:
-      - Marketing
+      - marketing
     get:
       description: 'Returns one of the caller org''s campaigns. A campaign belonging to
 
@@ -46957,7 +44356,7 @@ paths:
           description: ok
       summary: Returns one of the caller org's campaigns.
       tags:
-      - Marketing
+      - marketing
     put:
       description: "Replaces a campaign's editable fields. It is a full write, not\na patch: every field takes the value in\
         \ the body, and an omitted one is\ncleared. The id comes from the path \u2014 the body cannot retarget another\ncampaign\
@@ -46992,7 +44391,7 @@ paths:
           description: ok
       summary: Replaces a campaign's editable fields.
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/campaigns/{id}/schedule:
     post:
       description: 'Sets a campaign''s send time and moves it to "scheduled". A
@@ -47025,7 +44424,7 @@ paths:
           description: ok
       summary: Sets a campaign's send time and moves it to "scheduled".
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/promos:
     get:
       description: "Returns every promo the deployment offers with its live counters:\nhow many orgs have redeemed it and\
@@ -47050,7 +44449,7 @@ paths:
       summary: 'Returns every promo the deployment offers with its live counters: how many orgs have redeemed it and how many
         redemptions remain under the cap.'
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/promos/{code}/eligibility:
     get:
       description: 'Prices a promo against a plan and seat count. It is PURE: nothing
@@ -47105,7 +44504,7 @@ paths:
           description: ok
       summary: Prices a promo against a plan and seat count.
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/promos/{code}/redeem:
     post:
       description: 'Redeems the promo for the caller''s org, crediting the discount
@@ -47149,7 +44548,7 @@ paths:
           description: ok
       summary: Redeems the promo for the caller's org, crediting the discount value to its wallet through the finance ledger.
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/promos/{code}/redemption:
     get:
       description: "Returns the caller org's OWN redemption of a promo \u2014 an\norg-scoped read, so it can never surface\
@@ -47173,7 +44572,7 @@ paths:
       summary: "Returns the caller org's OWN redemption of a promo \u2014 an org-scoped read, so it can never surface another\
         \ tenant's."
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/sequences:
     get:
       description: Returns the org's drip sequences, most recently updated first.
@@ -47195,7 +44594,7 @@ paths:
           description: ok
       summary: Returns the org's drip sequences, most recently updated first.
       tags:
-      - Marketing
+      - marketing
     post:
       description: "Registers a drip sequence in the caller's org. Name is\nrequired; status defaults to draft, and a sequence\
         \ must be ACTIVE before it\nwill accept enrollments. The id, createdAt and updatedAt of the input are\nignored \u2014\
@@ -47219,7 +44618,7 @@ paths:
           description: ok
       summary: Registers a drip sequence in the caller's org.
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/sequences/{id}:
     get:
       description: 'Returns one of the caller org''s sequences together with its steps
@@ -47243,7 +44642,7 @@ paths:
           description: ok
       summary: Returns one of the caller org's sequences together with its steps in send order.
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/sequences/{id}/enroll:
     post:
       description: "Adds one contact or a whole audience to a sequence and schedules the\nfirst step for each. The sequence\
@@ -47282,7 +44681,7 @@ paths:
           description: ok
       summary: Adds one contact or a whole audience to a sequence and schedules the first step for each.
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/sequences/{id}/enrollments:
     get:
       description: 'Returns who is walking one sequence, most recently enrolled
@@ -47314,7 +44713,7 @@ paths:
       summary: Returns who is walking one sequence, most recently enrolled first, with each walk's current step and next due
         time.
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/sequences/{id}/enrollments/{eid}/cancel:
     post:
       description: "Stops one walk mid-sequence and answers 204: no further step\nis sent, and steps already delivered are\
@@ -47344,7 +44743,7 @@ paths:
       summary: 'Stops one walk mid-sequence and answers 204: no further step is sent, and steps already delivered are not
         recalled.'
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/sequences/{id}/status:
     post:
       description: "Flips draft/active/archived \u2014 the activation gate for\nsending, since only an active sequence accepts\
@@ -47377,7 +44776,7 @@ paths:
       summary: "Flips draft/active/archived \u2014 the activation gate for sending, since only an active sequence accepts\
         \ enrollments."
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/sequences/{id}/steps:
     get:
       description: Returns one sequence's steps in send order.
@@ -47399,7 +44798,7 @@ paths:
           description: ok
       summary: Returns one sequence's steps in send order.
       tags:
-      - Marketing
+      - marketing
     post:
       description: "Appends a message to the END of a sequence: the new step's idx is one\npast the last, so steps arrive\
         \ in the order they are added. Body is required\nand delaySeconds must be >= 0. Adding a step does not disturb enrollments\n\
@@ -47432,7 +44831,7 @@ paths:
       summary: 'Appends a message to the END of a sequence: the new step''s idx is one past the last, so steps arrive in the
         order they are added.'
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/summary:
     get:
       description: 'Rolls up the caller org''s campaigns: how many there are, how many are
@@ -47454,7 +44853,7 @@ paths:
       summary: 'Rolls up the caller org''s campaigns: how many there are, how many are active, and the summed budget and spend
         in cents.'
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/suppressions:
     delete:
       description: 'Re-subscribes an address on one channel and answers 204. An
@@ -47499,7 +44898,7 @@ paths:
           description: no content
       summary: Re-subscribes an address on one channel and answers 204.
       tags:
-      - Marketing
+      - marketing
     get:
       description: "Returns the org's opt-out list, newest first \u2014 everyone the\nsend gate will refuse to deliver to."
       operationId: cloud_get_v1_marketing_suppressions
@@ -47520,7 +44919,7 @@ paths:
           description: ok
       summary: "Returns the org's opt-out list, newest first \u2014 everyone the send gate will refuse to deliver to."
       tags:
-      - Marketing
+      - marketing
     post:
       description: 'Records an opt-out for the org (admin / self-service
 
@@ -47549,7 +44948,7 @@ paths:
           description: ok
       summary: Records an opt-out for the org (admin / self-service management).
       tags:
-      - Marketing
+      - marketing
   /v1/marketing/unsubscribe:
     get:
       description: "Is the PUBLIC one-click endpoint (no principal): a recipient\nclicks the signed link in an email footer.\
@@ -47600,7 +44999,7 @@ paths:
           description: ok
       summary: 'Is the PUBLIC one-click endpoint (no principal): a recipient clicks the signed link in an email footer.'
       tags:
-      - Marketing
+      - marketing
   /v1/marketplace:
     get:
       description: 'Discover lists every tool and agent the caller can reach in their own org and
@@ -47970,7 +45369,7 @@ paths:
       operationId: cloud_post_v1_metrics_batch
       summary: "Ingest a MetricBatch \u2014 the same payload the ZAP transport carries"
       tags:
-      - Metrics
+      - metrics
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -47985,7 +45384,7 @@ paths:
       operationId: cloud_get_v1_metrics_health
       summary: How many metric series this deployment holds for your org
       tags:
-      - Metrics
+      - metrics
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -48003,7 +45402,7 @@ paths:
       operationId: cloud_get_v1_metrics_query
       summary: Read your org's series back over a time range
       tags:
-      - Metrics
+      - metrics
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -48020,7 +45419,7 @@ paths:
       operationId: cloud_post_v1_metrics_write
       summary: Append samples to your org's named, labelled series
       tags:
-      - Metrics
+      - metrics
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57642,7 +55041,7 @@ paths:
       operationId: cloud_get_v1_store
       summary: List your org's storefronts as a page
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57654,7 +55053,7 @@ paths:
       operationId: cloud_post_v1_store
       summary: Create a storefront
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57670,7 +55069,7 @@ paths:
       operationId: cloud_get_v1_store_access
       summary: Whether a store is entitled to trade, and why
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57686,7 +55085,7 @@ paths:
       operationId: cloud_get_v1_store_current
       summary: Resolve your org's active storefront without naming an id
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57701,7 +55100,7 @@ paths:
       operationId: cloud_post_v1_store_token
       summary: Mint your org's least-privilege storefront read key
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57720,7 +55119,7 @@ paths:
           type: string
       summary: Delete a storefront, keeping a recoverable copy
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57738,7 +55137,7 @@ paths:
           type: string
       summary: Fetch one storefront
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57756,7 +55155,7 @@ paths:
           type: string
       summary: Change part of a storefront
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57775,7 +55174,7 @@ paths:
           type: string
       summary: Method-override tunnel for clients that cannot send PUT, PATCH or DELETE
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57793,7 +55192,7 @@ paths:
           type: string
       summary: Replace a storefront outright
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57815,7 +55214,7 @@ paths:
           type: string
       summary: Authorize a new order against a storefront, holding the funds without settling them
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57840,7 +55239,7 @@ paths:
           type: string
       summary: Authorize an order that already exists, holding the funds without settling them
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57865,7 +55264,7 @@ paths:
           type: string
       summary: Fetch a bundle as this storefront sells it
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57891,7 +55290,7 @@ paths:
           type: string
       summary: Capture a previously authorized order and settle the payment
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57912,7 +55311,7 @@ paths:
           type: string
       summary: Authorize and capture a new order in one call
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57932,7 +55331,7 @@ paths:
           type: string
       summary: "Authorize a new order against a storefront, holding the funds \u2014 the checkout spelling"
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57957,7 +55356,7 @@ paths:
           type: string
       summary: "Authorize an existing order, holding the funds \u2014 the checkout spelling"
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57982,7 +55381,7 @@ paths:
           type: string
       summary: "Capture a previously authorized order and settle it \u2014 the checkout spelling"
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58002,7 +55401,7 @@ paths:
           type: string
       summary: "Authorize and capture a new order in one call \u2014 the checkout spelling"
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58027,7 +55426,7 @@ paths:
           type: string
       summary: "PayPal cancel by pay key \u2014 refuses, exactly as the unprefixed address does"
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58053,7 +55452,7 @@ paths:
           type: string
       summary: "PayPal confirm by pay key \u2014 refuses, exactly as the unprefixed address does"
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58073,7 +55472,7 @@ paths:
           type: string
       summary: "Start a PayPal authorization for a new order \u2014 the checkout spelling"
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58093,7 +55492,7 @@ paths:
           type: string
       summary: The storefront's whole listing override map
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58116,7 +55515,7 @@ paths:
           type: string
       summary: Remove a listing override
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58140,7 +55539,7 @@ paths:
           type: string
       summary: Fetch one listing override, by item id or by its slug or SKU
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58164,7 +55563,7 @@ paths:
           type: string
       summary: Confirm a listing override exists and re-save the store
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58188,7 +55587,7 @@ paths:
           type: string
       summary: Add a listing override under a new key
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58212,7 +55611,7 @@ paths:
           type: string
       summary: Upsert a listing override
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58237,7 +55636,7 @@ paths:
           type: string
       summary: "PayPal cancel by pay key \u2014 refuses, because a pay key alone does not identify the order"
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58263,7 +55662,7 @@ paths:
           type: string
       summary: "PayPal confirm by pay key \u2014 refuses, because a pay key alone does not identify the order"
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58284,7 +55683,7 @@ paths:
           type: string
       summary: Start a PayPal authorization for a new order
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58309,7 +55708,7 @@ paths:
           type: string
       summary: Fetch a product as this storefront sells it
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58331,7 +55730,7 @@ paths:
           type: string
       summary: Start this store's no-card trial on the entry plan
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -58355,7 +55754,7 @@ paths:
           type: string
       summary: Fetch a variant as this storefront sells it
       tags:
-      - Store
+      - store
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -88350,1212 +85749,6 @@ components:
         project:
           type: string
       type: object
-    commerce_AccessToken:
-      type: object
-      properties:
-        token:
-          type: string
-        permissions:
-          type: array
-          items:
-            type: string
-    commerce_Address:
-      type: object
-      properties:
-        name:
-          type: string
-        line1:
-          type: string
-        line2:
-          type: string
-        city:
-          type: string
-        state:
-          type: string
-        postalCode:
-          type: string
-        country:
-          type: string
-    commerce_Affiliate:
-      type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-        userId:
-          type: string
-        name:
-          type: string
-        email:
-          type: string
-          format: email
-        commission:
-          type: object
-          properties:
-            percent:
-              type: number
-            flat:
-              type: integer
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-    commerce_Buyer:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-        userId:
-          type: string
-        firstName:
-          type: string
-        lastName:
-          type: string
-        company:
-          type: string
-        phone:
-          type: string
-        shippingAddress:
-          $ref: '#/components/schemas/commerce_Address'
-        billingAddress:
-          $ref: '#/components/schemas/commerce_Address'
-    commerce_Cart:
-      type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-        storeId:
-          type: string
-        campaignId:
-          type: string
-        userId:
-          type: string
-        email:
-          type: string
-          format: email
-        orderId:
-          type: string
-        status:
-          type: string
-          enum:
-          - active
-          - discarded
-          - ordered
-        currency:
-          type: string
-        lineTotal:
-          type: integer
-        discount:
-          type: integer
-        subtotal:
-          type: integer
-        shipping:
-          type: integer
-        tax:
-          type: integer
-        total:
-          type: integer
-        billingAddress:
-          $ref: '#/components/schemas/commerce_Address'
-        shippingAddress:
-          $ref: '#/components/schemas/commerce_Address'
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/commerce_LineItem'
-        coupons:
-          type: array
-          items:
-            $ref: '#/components/schemas/commerce_Coupon'
-        couponCodes:
-          type: array
-          items:
-            type: string
-        referrerId:
-          type: string
-        gift:
-          type: boolean
-        giftMessage:
-          type: string
-        giftEmail:
-          type: string
-        metadata:
-          type: object
-          additionalProperties: true
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-    commerce_CategoryMRR:
-      type: object
-      properties:
-        category:
-          type: string
-          example: world
-        mrrCents:
-          type: integer
-          format: int64
-        subscriptions:
-          type: integer
-    commerce_CheckoutRequest:
-      type: object
-      properties:
-        cartId:
-          type: string
-        buyer:
-          $ref: '#/components/schemas/commerce_Buyer'
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/commerce_LineItem'
-        currency:
-          type: string
-        shippingMethod:
-          type: string
-        couponCodes:
-          type: array
-          items:
-            type: string
-        payment:
-          $ref: '#/components/schemas/commerce_PaymentRequest'
-        metadata:
-          type: object
-          additionalProperties: true
-    commerce_CommerceEnableAccountRequest:
-      type: object
-      description: Two-stage account-enable payload (twoStageEnableReq). Read only when the org enables two-stage signup.
-        All fields optional (password applied only when non-empty). Embeds the user object, so additional user fields are
-        accepted.
-      properties:
-        password:
-          type: string
-          description: New account password; applied only when non-empty.
-        passwordConfirm:
-          type: string
-          description: Password confirmation.
-      additionalProperties: true
-    commerce_Coupon:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        type:
-          type: string
-          enum:
-          - flat
-          - percent
-          - free-shipping
-          - free-item
-        code:
-          type: string
-        enabled:
-          type: boolean
-        amount:
-          type: integer
-        startDate:
-          type: string
-          format: date-time
-        endDate:
-          type: string
-          format: date-time
-        limit:
-          type: integer
-        used:
-          type: integer
-    commerce_CreateAccountRequest:
-      type: object
-      required:
-      - email
-      - password
-      - firstName
-      - lastName
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-          format: password
-          minLength: 8
-        firstName:
-          type: string
-        lastName:
-          type: string
-        company:
-          type: string
-        phone:
-          type: string
-    commerce_CustomerRow:
-      type: object
-      properties:
-        org:
-          type: string
-        plan:
-          type: string
-          description: plan slug
-        category:
-          type: string
-        status:
-          type: string
-          example: active
-        mrrCents:
-          type: integer
-          format: int64
-        usageCents:
-          type: integer
-          format: int64
-        seats:
-          type: integer
-        since:
-          type: string
-          format: date-time
-    commerce_Error:
-      type: object
-      properties:
-        error:
-          type: string
-        message:
-          type: string
-        code:
-          type: integer
-    commerce_Form:
-      type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-        name:
-          type: string
-        enabled:
-          type: boolean
-        fields:
-          type: array
-          items:
-            type: object
-        redirectUrl:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-    commerce_Fulfillment:
-      type: object
-      properties:
-        status:
-          $ref: '#/components/schemas/commerce_FulfillmentStatus'
-        carrier:
-          type: string
-        trackingNumber:
-          type: string
-        shippedAt:
-          type: string
-          format: date-time
-        deliveredAt:
-          type: string
-          format: date-time
-    commerce_FulfillmentStatus:
-      type: string
-      enum:
-      - pending
-      - shipped
-      - delivered
-      - returned
-    commerce_LineItem:
-      type: object
-      properties:
-        productId:
-          type: string
-        productName:
-          type: string
-        productSlug:
-          type: string
-        productSKU:
-          type: string
-        variantId:
-          type: string
-        variantName:
-          type: string
-        variantSKU:
-          type: string
-        quantity:
-          type: integer
-          minimum: 1
-        price:
-          type: integer
-          description: Price in cents
-        taxable:
-          type: boolean
-        free:
-          type: boolean
-    commerce_Listing:
-      type: object
-      properties:
-        id:
-          type: string
-        productId:
-          type: string
-        variantId:
-          type: string
-        price:
-          type: integer
-        listPrice:
-          type: integer
-        available:
-          type: boolean
-        inventory:
-          type: integer
-    commerce_Media:
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-          - image
-          - video
-        url:
-          type: string
-          format: uri
-        alt:
-          type: string
-        width:
-          type: integer
-        height:
-          type: integer
-    commerce_Note:
-      type: object
-      properties:
-        id:
-          type: string
-        content:
-          type: string
-        entityId:
-          type: string
-        entityKind:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-    commerce_OAuthRequest:
-      type: object
-      properties:
-        grant_type:
-          type: string
-          enum:
-          - password
-          - refresh_token
-        username:
-          type: string
-        password:
-          type: string
-          format: password
-        client_id:
-          type: string
-        refresh_token:
-          type: string
-    commerce_OAuthResponse:
-      type: object
-      properties:
-        access_token:
-          type: string
-        token_type:
-          type: string
-          example: jwt
-        expires_in:
-          type: integer
-          description: Token expiration in seconds
-        refresh_token:
-          type: string
-    commerce_Order:
-      type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-        number:
-          type: integer
-          readOnly: true
-        storeId:
-          type: string
-        campaignId:
-          type: string
-        userId:
-          type: string
-        email:
-          type: string
-          format: email
-        cartId:
-          type: string
-        referrerId:
-          type: string
-        status:
-          $ref: '#/components/schemas/commerce_OrderStatus'
-        paymentStatus:
-          $ref: '#/components/schemas/commerce_PaymentStatus'
-        preorder:
-          type: boolean
-        currency:
-          type: string
-          description: 3-letter ISO currency code
-          example: usd
-        mode:
-          type: string
-          description: 'Order mode: `deposit`, `contribution`, or "" for an ordinary order.
-
-            '
-        shippingMethod:
-          type: string
-        lineTotal:
-          type: integer
-          description: Sum of line items in cents
-        discount:
-          type: integer
-          description: Discount in cents
-        subtotal:
-          type: integer
-          description: Subtotal in cents
-        shipping:
-          type: integer
-          description: Shipping cost in cents
-        tax:
-          type: integer
-          description: Tax in cents
-        total:
-          type: integer
-          description: Total in cents
-        balance:
-          type: integer
-          description: Balance owed in cents
-        paid:
-          type: integer
-          description: Amount paid in cents
-        refunded:
-          type: integer
-          description: Amount refunded in cents
-        billingAddress:
-          $ref: '#/components/schemas/commerce_Address'
-        shippingAddress:
-          $ref: '#/components/schemas/commerce_Address'
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/commerce_LineItem'
-        coupons:
-          type: array
-          items:
-            $ref: '#/components/schemas/commerce_Coupon'
-        couponCodes:
-          type: array
-          items:
-            type: string
-        fulfillment:
-          $ref: '#/components/schemas/commerce_Fulfillment'
-        gift:
-          type: boolean
-        giftMessage:
-          type: string
-        giftEmail:
-          type: string
-        metadata:
-          type: object
-          additionalProperties: true
-        test:
-          type: boolean
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-    commerce_OrderStatus:
-      type: string
-      enum:
-      - cancelled
-      - completed
-      - locked
-      - on-hold
-      - open
-    commerce_PaginatedAffiliates:
-      allOf:
-      - $ref: '#/components/schemas/commerce_Pagination'
-      - type: object
-        properties:
-          models:
-            type: array
-            items:
-              $ref: '#/components/schemas/commerce_Affiliate'
-    commerce_PaginatedCarts:
-      allOf:
-      - $ref: '#/components/schemas/commerce_Pagination'
-      - type: object
-        properties:
-          models:
-            type: array
-            items:
-              $ref: '#/components/schemas/commerce_Cart'
-    commerce_PaginatedForms:
-      allOf:
-      - $ref: '#/components/schemas/commerce_Pagination'
-      - type: object
-        properties:
-          models:
-            type: array
-            items:
-              $ref: '#/components/schemas/commerce_Form'
-    commerce_PaginatedOrders:
-      allOf:
-      - $ref: '#/components/schemas/commerce_Pagination'
-      - type: object
-        properties:
-          models:
-            type: array
-            items:
-              $ref: '#/components/schemas/commerce_Order'
-    commerce_PaginatedProducts:
-      allOf:
-      - $ref: '#/components/schemas/commerce_Pagination'
-      - type: object
-        properties:
-          models:
-            type: array
-            items:
-              $ref: '#/components/schemas/commerce_Product'
-    commerce_PaginatedStores:
-      allOf:
-      - $ref: '#/components/schemas/commerce_Pagination'
-      - type: object
-        properties:
-          models:
-            type: array
-            items:
-              $ref: '#/components/schemas/commerce_Store'
-    commerce_PaginatedUsers:
-      allOf:
-      - $ref: '#/components/schemas/commerce_Pagination'
-      - type: object
-        properties:
-          models:
-            type: array
-            items:
-              $ref: '#/components/schemas/commerce_User'
-    commerce_Pagination:
-      type: object
-      properties:
-        page:
-          type: string
-        display:
-          type: string
-        count:
-          type: integer
-    commerce_Payment:
-      type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-        orderId:
-          type: string
-        userId:
-          type: string
-        currency:
-          type: string
-        amount:
-          type: integer
-        amountRefunded:
-          type: integer
-        fee:
-          type: integer
-        status:
-          $ref: '#/components/schemas/commerce_PaymentStatus'
-        captured:
-          type: boolean
-        live:
-          type: boolean
-        buyer:
-          $ref: '#/components/schemas/commerce_Buyer'
-        metadata:
-          type: object
-          additionalProperties: true
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-    commerce_PaymentMethod:
-      type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-        type:
-          type: string
-          enum:
-          - card
-          - paypal
-          - bank
-        last4:
-          type: string
-        brand:
-          type: string
-        expMonth:
-          type: integer
-        expYear:
-          type: integer
-        default:
-          type: boolean
-    commerce_PaymentRequest:
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-          - card
-          - paypal
-          - stripe
-          - bitcoin
-          - ethereum
-          - balance
-        token:
-          type: string
-          description: Payment processor token (e.g., Stripe token)
-        paymentMethodId:
-          type: string
-        amount:
-          type: integer
-          description: Amount in cents (optional, defaults to order total)
-    commerce_PaymentStatus:
-      type: string
-      enum:
-      - cancelled
-      - credit
-      - disputed
-      - failed
-      - fraudulent
-      - paid
-      - refunded
-      - unpaid
-    commerce_Plan:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        amount:
-          type: integer
-        currency:
-          type: string
-        interval:
-          type: string
-          enum:
-          - month
-          - year
-        intervalCount:
-          type: integer
-        trialPeriodDays:
-          type: integer
-    commerce_PlanBreakdown:
-      type: object
-      properties:
-        plan:
-          type: string
-          description: plan slug
-        name:
-          type: string
-        category:
-          type: string
-        active:
-          type: integer
-        trialing:
-          type: integer
-        seats:
-          type: integer
-        mrrCents:
-          type: integer
-          format: int64
-    commerce_Product:
-      type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-        slug:
-          type: string
-        sku:
-          type: string
-        upc:
-          type: string
-        name:
-          type: string
-        headline:
-          type: string
-        excerpt:
-          type: string
-        description:
-          type: string
-        image:
-          $ref: '#/components/schemas/commerce_Media'
-        media:
-          type: array
-          items:
-            $ref: '#/components/schemas/commerce_Media'
-        available:
-          type: boolean
-        hidden:
-          type: boolean
-        preorder:
-          type: boolean
-        taxable:
-          type: boolean
-        variants:
-          type: array
-          items:
-            $ref: '#/components/schemas/commerce_Variant'
-        options:
-          type: array
-          items:
-            $ref: '#/components/schemas/commerce_ProductOption'
-        price:
-          type: integer
-        listPrice:
-          type: integer
-        currency:
-          type: string
-        metadata:
-          type: object
-          additionalProperties: true
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-    commerce_ProductOption:
-      type: object
-      properties:
-        name:
-          type: string
-        values:
-          type: array
-          items:
-            type: string
-    commerce_Referral:
-      type: object
-      properties:
-        id:
-          type: string
-        referrerId:
-          type: string
-        userId:
-          type: string
-        orderId:
-          type: string
-        amount:
-          type: integer
-        status:
-          type: string
-    commerce_Referrer:
-      type: object
-      properties:
-        id:
-          type: string
-        userId:
-          type: string
-        affiliateId:
-          type: string
-        code:
-          type: string
-        earnings:
-          type: integer
-    commerce_Return:
-      type: object
-      properties:
-        id:
-          type: string
-        orderId:
-          type: string
-        status:
-          type: string
-        reason:
-          type: string
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/commerce_LineItem'
-        refundAmount:
-          type: integer
-        createdAt:
-          type: string
-          format: date-time
-    commerce_RevenueMetrics:
-      type: object
-      properties:
-        mrrCents:
-          type: integer
-          format: int64
-        arrCents:
-          type: integer
-          format: int64
-        activeSubscriptions:
-          type: integer
-        payingCustomers:
-          type: integer
-        trials:
-          type: integer
-        newMrrCents:
-          type: integer
-          format: int64
-        churnedMrrCents:
-          type: integer
-          format: int64
-        netNewMrrCents:
-          type: integer
-          format: int64
-        byCategory:
-          type: array
-          items:
-            $ref: '#/components/schemas/commerce_CategoryMRR'
-    commerce_SaaSMetrics:
-      type: object
-      description: The whole-business SaaS operations snapshot returned by GET /v1/commerce/metrics/saas.
-      properties:
-        asOf:
-          type: string
-          format: date-time
-        currency:
-          type: string
-          example: usd
-        window:
-          type: string
-          example: 30d
-        revenue:
-          $ref: '#/components/schemas/commerce_RevenueMetrics'
-        subscriptions:
-          $ref: '#/components/schemas/commerce_SubscriptionMetrics'
-        usage:
-          $ref: '#/components/schemas/commerce_UsageMetrics'
-        customers:
-          type: array
-          items:
-            $ref: '#/components/schemas/commerce_CustomerRow'
-        orgs:
-          type: integer
-          description: Total tenant organizations walked
-        gaps:
-          type: array
-          items:
-            type: string
-          description: "Honest \"not instrumented yet\" notes \u2014 never fabricated figures"
-    commerce_Store:
-      type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-        name:
-          type: string
-        slug:
-          type: string
-        description:
-          type: string
-        currency:
-          type: string
-        metadata:
-          type: object
-          additionalProperties: true
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-    commerce_SubEvent:
-      type: object
-      properties:
-        at:
-          type: string
-          format: date-time
-        org:
-          type: string
-        type:
-          type: string
-          enum:
-          - created
-          - canceled
-        plan:
-          type: string
-        category:
-          type: string
-        mrrDeltaCents:
-          type: integer
-          format: int64
-    commerce_Subscription:
-      type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-        number:
-          type: integer
-          readOnly: true
-        planId:
-          type: string
-        userId:
-          type: string
-        status:
-          type: string
-          enum:
-          - trialing
-          - active
-          - past_due
-          - canceled
-          - unpaid
-        quantity:
-          type: integer
-        periodStart:
-          type: string
-          format: date-time
-        periodEnd:
-          type: string
-          format: date-time
-        trialStart:
-          type: string
-          format: date-time
-        trialEnd:
-          type: string
-          format: date-time
-        canceledAt:
-          type: string
-          format: date-time
-        buyer:
-          $ref: '#/components/schemas/commerce_Buyer'
-        plan:
-          $ref: '#/components/schemas/commerce_Plan'
-        metadata:
-          type: object
-          additionalProperties: true
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-    commerce_SubscriptionMetrics:
-      type: object
-      properties:
-        byPlan:
-          type: array
-          items:
-            $ref: '#/components/schemas/commerce_PlanBreakdown'
-        trialsActive:
-          type: integer
-        new:
-          type: integer
-        canceled:
-          type: integer
-        upgrades:
-          type: integer
-          nullable: true
-          description: "null \u2014 plan-change events are not instrumented"
-        downgrades:
-          type: integer
-          nullable: true
-          description: "null \u2014 plan-change events are not instrumented"
-        recent:
-          type: array
-          items:
-            $ref: '#/components/schemas/commerce_SubEvent'
-    commerce_SubscriptionRequest:
-      type: object
-      required:
-      - planId
-      properties:
-        planId:
-          type: string
-        quantity:
-          type: integer
-          default: 1
-        buyer:
-          $ref: '#/components/schemas/commerce_Buyer'
-        paymentMethod:
-          $ref: '#/components/schemas/commerce_PaymentRequest'
-    commerce_Transaction:
-      type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-        destinationId:
-          type: string
-        destinationKind:
-          type: string
-        currency:
-          type: string
-        amount:
-          type: integer
-        type:
-          type: string
-          enum:
-          - hold
-          - hold-removed
-          - transfer
-          - deposit
-          - withdraw
-        test:
-          type: boolean
-        notes:
-          type: string
-        sourceId:
-          type: string
-        sourceKind:
-          type: string
-        metadata:
-          type: object
-          additionalProperties: true
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-    commerce_TransactionData:
-      type: object
-      properties:
-        balance:
-          type: integer
-        held:
-          type: integer
-        available:
-          type: integer
-    commerce_UsageMetrics:
-      type: object
-      description: Metered pay-as-you-go REVENUE totals (billed wallet ledger). Per-model tokens / latency / error live in
-        the fleet god-view GET /v1/admin/o11y.
-      properties:
-        instrumented:
-          type: boolean
-        windowUsageCents:
-          type: integer
-          format: int64
-        requests:
-          type: integer
-          format: int64
-        untaggedRequests:
-          type: integer
-          format: int64
-    commerce_User:
-      type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-        username:
-          type: string
-        firstName:
-          type: string
-        lastName:
-          type: string
-        company:
-          type: string
-        phone:
-          type: string
-        email:
-          type: string
-          format: email
-        billingAddress:
-          $ref: '#/components/schemas/commerce_Address'
-        shippingAddress:
-          $ref: '#/components/schemas/commerce_Address'
-        enabled:
-          type: boolean
-        isAffiliate:
-          type: boolean
-        affiliateId:
-          type: string
-        metadata:
-          type: object
-          additionalProperties: true
-        test:
-          type: boolean
-        createdAt:
-          type: string
-          format: date-time
-          readOnly: true
-        updatedAt:
-          type: string
-          format: date-time
-          readOnly: true
-    commerce_Variant:
-      type: object
-      properties:
-        id:
-          type: string
-        sku:
-          type: string
-        name:
-          type: string
-        price:
-          type: integer
-        listPrice:
-          type: integer
-        available:
-          type: boolean
-        inventory:
-          type: integer
-        image:
-          $ref: '#/components/schemas/commerce_Media'
-    commerce_Wallet:
-      type: object
-      properties:
-        id:
-          type: string
-        accounts:
-          type: array
-          items:
-            $ref: '#/components/schemas/commerce_WalletAccount'
-    commerce_WalletAccount:
-      type: object
-      properties:
-        name:
-          type: string
-        currency:
-          type: string
-        balance:
-          type: integer
-        held:
-          type: integer
-        available:
-          type: integer
-        address:
-          type: string
     crm_Company:
       allOf:
       - $ref: '#/components/schemas/crm_CompanyInput'
@@ -99904,30 +96097,6 @@ components:
                 type: string
               msg:
                 type: string
-    commerce_BadRequest:
-      description: Bad request
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/commerce_Error'
-    commerce_Forbidden:
-      description: Forbidden
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/commerce_Error'
-    commerce_NotFound:
-      description: Not found
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/commerce_Error'
-    commerce_Unauthorized:
-      description: Unauthorized
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/commerce_Error'
     crm_Unauthorized:
       description: Missing or invalid credentials
       content:
@@ -101242,36 +97411,6 @@ components:
       schema:
         type: string
         format: uuid
-    commerce_display:
-      name: display
-      in: query
-      description: Number of items per page
-      schema:
-        type: integer
-        minimum: 1
-        maximum: 100
-        default: 20
-    commerce_page:
-      name: page
-      in: query
-      description: Page number (1-indexed)
-      schema:
-        type: integer
-        minimum: 1
-        default: 1
-    commerce_q:
-      name: q
-      in: query
-      description: Search query
-      schema:
-        type: string
-    commerce_sort:
-      name: sort
-      in: query
-      description: Sort field (prefix with - for descending)
-      schema:
-        type: string
-        default: -UpdatedAt
     datastore_Name:
       name: name
       in: path
