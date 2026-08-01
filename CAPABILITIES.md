@@ -46,6 +46,9 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 | `base` | `/v1/base` | ✓ |
 | `kv` | `/v1/kv` | ✓ |
 | `vector` | `/v1/vector` | ✓ |
+| `sql` | `/v1/sql` | ✓ |
+| `datastore` | `/v1/datastore` | ✓ |
+| `docdb` | `/v1/docdb` | ✓ |
 
 ## Streams
 
@@ -75,7 +78,7 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 | `commerce` | `/v1/commerce` | ✓ |
 | `billing` | `/v1/billing` | ✓ |
 | `pricing` | `/v1/pricing` | ✓ |
-| `plan` | `/v1/plan` | ✓ |
+| `plans` | `/v1/plans` | ✓ |
 | `crm` | `/v1/crm` | ✓ |
 | `referrals` | `/v1/referrals` | ✓ |
 | `affiliates` | `/v1/affiliates` | ✓ |
@@ -89,7 +92,6 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 |---|---|---|
 | `cloud` | `/v1/cloud` | ✓ |
 | `platform` | `/v1/platform` | ✓ |
-| `provisioning` | `/v1/provisioning` | ✓ |
 | `gateway` | `/v1/gateway` | ✓ |
 | `visor` | `/v1/visor` | ✓ |
 | `edge` | `/v1/edge` | ✓ |
@@ -121,7 +123,7 @@ One canonical name per capability = one `/v1/<name>` route = one `<name>/openapi
 | Capability | Route | Spec |
 |---|---|---|
 | `admin` | `/v1/admin` | ✓ |
-| `plugin` | `/v1/plugin` | ✓ |
+| `plugins` | `/v1/plugins` | ✓ |
 
 ## Collapsed
 
@@ -131,8 +133,9 @@ Resolved duplicates / consolidations — removed, no spec dir. The capability no
 |---|---|
 | `eval` | evals |
 | `operative` | bot + visor |
-| `plans` | plan |
-| `plugins` | plugin |
+| `plan` | plans |
+| `plugin` | plugins |
+| `provisioning` | sql + vector + datastore + kv + search + s3 + docdb |
 | `featuregate` | featureflags |
 | `ads` | marketing |
 | `cms` | content |

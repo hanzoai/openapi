@@ -54,9 +54,28 @@ tags:
   description: Managed KV cluster lifecycle
 - name: Health
   description: Service health
+- name: kv
 security:
 - BearerAuth: []
 components:
+  parameters:
+    Name:
+      name: name
+      in: path
+      required: true
+      description: |
+        The user-supplied resource name (slug). Lowercased and trimmed server-side;
+        must match `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`.
+      schema:
+        type: string
+        pattern: '^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$'
+  requestBodies:
+    CreateResource:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CreateRequest'
   securitySchemes:
     bearerAuth:
       type: http
@@ -70,6 +89,51 @@ components:
       description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
         Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
+    CreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          pattern: '^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$'
+          description: Resource name (lowercased/trimmed server-side).
+          example: analytics
+    CreateResponse:
+      type: object
+      description: |
+        Returned on 201. `password` and `username` are present only for secretful
+        kinds (sql, kv, and the dedicated datastore/docdb admin credential). The
+        password is returned ONCE and is never retrievable again.
+      required: [id, kind, name, status, host, port, database, connectionString]
+      properties:
+        id:
+          type: string
+          description: Server-generated resource id.
+        kind:
+          type: string
+          enum: [sql, vector, datastore, kv, search, s3, docdb]
+        name:
+          type: string
+        status:
+          type: string
+          description: Resource status (e.g. "ready", or "provisioning" for a dedicated instance still coming up).
+          example: ready
+        host:
+          type: string
+          description: Customer-facing host (public gateway host, or dedicated instance service).
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
+        connectionString:
+          type: string
+          description: Public, routable DSN (internal admin host is remapped out).
+        password:
+          type: string
+          description: Present only for secretful kinds; returned ONCE.
     Error:
       type: object
       properties:
@@ -77,6 +141,29 @@ components:
           type: string
         code:
           type: integer
+    GetResponse:
+      type: object
+      required: [id, name, kind, status, host, port, database]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [sql, vector, datastore, kv, search, s3, docdb]
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
     KeyValue:
       type: object
       properties:
@@ -99,6 +186,28 @@ components:
         size:
           type: integer
           description: Size in bytes
+    ListItem:
+      type: object
+      required: [id, name, kind, status, host, port, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [sql, vector, datastore, kv, search, s3, docdb]
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        createdAt:
+          type: integer
+          format: int64
+          description: Unix seconds.
     Namespace:
       type: object
       properties:
@@ -247,8 +356,63 @@ components:
           type: string
           format: date-time
   responses:
+    BadGateway:
+      description: The backend provisioner or dedicated-instance operation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
     BadRequest:
       description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: A resource with this name (or physical name) already exists.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Created:
+      description: Resource provisioned. Password (if any) is returned ONCE here.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CreateResponse'
+    Deleted:
+      description: Resource deprovisioned. No content.
+    Forbidden:
+      description: No validated principal, or empty org without admin claim.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    PaymentRequired:
+      description: Org balance gate failed (unfunded org).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Resource:
+      description: Resource metadata (never a password).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetResponse'
+    ResourceList:
+      description: The caller's org resources of this kind (never a password).
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/ListItem'
+    ServiceUnavailable:
+      description: |
+        Kind is honestly gated (cannot grant a per-tenant-safe credential), or the
+        cluster orchestrator is unavailable for a dedicated kind, or commerce is
+        unreachable in the fail-closed posture.
       content:
         application/json:
           schema:
@@ -272,6 +436,28 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
 paths:
+  /v1/kv:
+    post:
+      tags: [kv]
+      operationId: createKv
+      summary: Provision a key-value resource
+      requestBody:
+        $ref: '#/components/requestBodies/CreateResource'
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+    get:
+      tags: [kv]
+      operationId: listKv
+      summary: List key-value resources for the caller's org
+      responses:
+        '200': { $ref: '#/components/responses/ResourceList' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /v1/kv/clusters:
     get:
       tags:
@@ -1243,3 +1429,23 @@ paths:
                     $ref: '#/components/schemas/StreamEntry'
                   groups:
                     type: integer
+  /v1/kv/{name}:
+    parameters:
+    - $ref: '#/components/parameters/Name'
+    get:
+      tags: [kv]
+      operationId: getKv
+      summary: Get one key-value resource
+      responses:
+        '200': { $ref: '#/components/responses/Resource' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [kv]
+      operationId: deleteKv
+      summary: Deprovision a key-value resource
+      responses:
+        '204': { $ref: '#/components/responses/Deleted' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/BadGateway' }

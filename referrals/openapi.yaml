@@ -29,8 +29,6 @@ security:
 tags:
 - name: Referrals
   description: Customer-facing referral surface, scoped to the caller's org.
-- name: Admin
-  description: Global-admin referral directory and qualify sweep.
 - name: Health
   description: Liveness probe.
 paths:
@@ -106,68 +104,6 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-  /v1/admin/referrals:
-    get:
-      operationId: adminListReferrals
-      tags:
-      - Admin
-      summary: List every referral with a fleet summary (global-admin)
-      description: 'Returns every referral (both orgs exposed) plus a fleet summary. Global-admin
-
-        only. Wrapped in the `{ status, msg, data }` admin envelope.
-
-        '
-      security:
-      - bearerAuth: []
-      parameters:
-      - name: limit
-        in: query
-        required: false
-        description: 'Max rows to return. Defaults to 500 when absent/invalid/<=0; capped at 1000.
-
-          '
-        schema:
-          type: integer
-          minimum: 1
-          maximum: 1000
-          default: 500
-      responses:
-        '200':
-          description: The referral directory and summary, in the admin envelope.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AdminListEnvelope'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-  /v1/admin/referrals/sweep:
-    post:
-      operationId: adminSweepReferrals
-      tags:
-      - Admin
-      summary: Qualify-check every pending referral (global-admin)
-      description: 'The periodic qualify path (cron/operator on demand). Qualify-checks every
-
-        pending referral (bounded to 500 per sweep) and grants the ones that now
-
-        qualify. Global-admin only. Returns counts in the admin envelope.
-
-        '
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          description: Sweep result counts, in the admin envelope.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AdminSweepEnvelope'
-        '403':
-          $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /v1/referrals/health:
@@ -292,99 +228,6 @@ components:
           type: integer
           format: int64
           description: Unix timestamp.
-    AdminReferralView:
-      type: object
-      description: One row in the global-admin directory (both orgs exposed).
-      properties:
-        id:
-          type: string
-        referrerOrg:
-          type: string
-        refereeOrg:
-          type: string
-        code:
-          type: string
-        status:
-          $ref: '#/components/schemas/ReferralStatus'
-        referrerGrantCents:
-          type: integer
-          format: int64
-        refereeGrantCents:
-          type: integer
-          format: int64
-        referrerTxn:
-          type: string
-          description: Ledger transaction id for the referrer bonus (omitted if empty).
-        refereeTxn:
-          type: string
-          description: Ledger transaction id for the referee bonus (omitted if empty).
-        createdAt:
-          type: integer
-          format: int64
-        qualifiedAt:
-          type: integer
-          format: int64
-        creditedAt:
-          type: integer
-          format: int64
-    AdminSummary:
-      type: object
-      description: The fleet tally for the admin directory.
-      properties:
-        total:
-          type: integer
-        signedUp:
-          type: integer
-        qualified:
-          type: integer
-        credited:
-          type: integer
-        grantedCents:
-          type: integer
-          format: int64
-          description: Total promo credit granted across both sides of all referrals.
-    AdminListData:
-      type: object
-      properties:
-        referrals:
-          type: array
-          items:
-            $ref: '#/components/schemas/AdminReferralView'
-        summary:
-          $ref: '#/components/schemas/AdminSummary'
-    AdminListEnvelope:
-      type: object
-      description: The `{ status, msg, data }` admin envelope.
-      properties:
-        status:
-          type: string
-          enum:
-          - ok
-        msg:
-          type: string
-        data:
-          $ref: '#/components/schemas/AdminListData'
-    AdminSweepData:
-      type: object
-      properties:
-        swept:
-          type: integer
-          description: Number of pending referrals examined this sweep.
-        credited:
-          type: integer
-          description: Number newly advanced to credited this sweep.
-    AdminSweepEnvelope:
-      type: object
-      description: The `{ status, msg, data }` admin envelope.
-      properties:
-        status:
-          type: string
-          enum:
-          - ok
-        msg:
-          type: string
-        data:
-          $ref: '#/components/schemas/AdminSweepData'
     Error:
       type: object
       required:
@@ -424,23 +267,6 @@ components:
                 status: error
                 msg: 'Invalid parameter: email format is incorrect'
                 code: 400
-    Unauthorized:
-      description: Unauthorized - Authentication required
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          examples:
-            missingToken:
-              value:
-                status: error
-                msg: Authentication required
-                code: 401
-            invalidToken:
-              value:
-                status: error
-                msg: Invalid or expired token
-                code: 401
     Forbidden:
       description: Forbidden - Insufficient permissions
       content:

@@ -39,7 +39,7 @@ domains:
   - id: data
     title: "Data"
     role: "the stores every capability writes to and reads from"
-    services: [storage, s3, base, kv, vector]
+    services: [storage, s3, base, kv, vector, sql, datastore, docdb]
 
   - id: streams
     title: "Streams"
@@ -54,12 +54,12 @@ domains:
   - id: commerce
     title: "Commerce"
     role: "the economy — meter · price · bill · reward"
-    services: [commerce, billing, pricing, plan, crm, referrals, affiliates, licensing]
+    services: [commerce, billing, pricing, plans, crm, referrals, affiliates, licensing]
 
   - id: platform
     title: "Platform"
     role: "the cloud fabric — deploy · provision · route · host"
-    services: [cloud, platform, provisioning, gateway, visor, edge, dns, do]
+    services: [cloud, platform, gateway, visor, edge, dns, do]
 
   - id: applications
     title: "Applications"
@@ -67,7 +67,7 @@ domains:
     services: [projects, git, templates, integrations, bot, kb, search, websearch, world, authors, sites, tracker, framework]
 
 # Core — governance that owns no single domain.
-core: [admin, plugin]
+core: [admin, plugins]
 
 # Internal — power the music, are not instruments. Excluded from /v1, SDKs, docs.
 internal: [principal, goja, mpc, controlplane, metrics, audit]
@@ -84,8 +84,9 @@ derived: []
 collapsed:
   eval:      evals                     # pure dup — same /v1/evals
   operative: bot + visor              # computer-using-agent split: bot = the CUA (@hanzo/bot), visor = the VM it runs on
-  plans:     plan                      # singular canonical
-  plugins:   plugin
+  plan:      plans                     # the route is /v1/plans; the route IS the identity
+  plugin:    plugins                   # the route is /v1/plugins; the route IS the identity
+  provisioning: sql + vector + datastore + kv + search + s3 + docdb   # never had a /v1/provisioning route — it mounted one CRUD quartet per KIND, so each kind's spec now owns its own
   featuregate: featureflags            # policy toggles → one feature-flags surface (Policy)
   ads:       marketing                 # ad surfaces fold into marketing
   cms:       content                   # content management = content

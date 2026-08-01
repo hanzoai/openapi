@@ -24,8 +24,6 @@ tags:
     description: The org's ZT overlay network(s)
   - name: Mesh
     description: ZT edge services (service mesh)
-  - name: Edge
-    description: ZT edge-routers (edge nodes)
 security:
   - bearerAuth: []
 paths:
@@ -62,15 +60,6 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '503': { $ref: '#/components/responses/NotConfigured' }
 
-  /v1/edge/nodes:
-    get:
-      tags: [Edge]
-      summary: List the org's ZT edge-routers
-      operationId: listEdgeNodes
-      responses:
-        '200': { description: Edge nodes, content: { application/json: { schema: { type: object, properties: { nodes: { type: array, items: { $ref: '#/components/schemas/EdgeNodeView' } } } } } } }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '503': { $ref: '#/components/responses/NotConfigured' }
 
 components:
   securitySchemes:
@@ -106,11 +95,3 @@ components:
         service: { type: string }
         mtls: { type: string, enum: [enabled, required] }
         status: { type: string }
-    EdgeNodeView:
-      type: object
-      description: One row per ZT edge-router.
-      properties:
-        id: { type: string }
-        name: { type: string }
-        region: { type: string, description: From a "region-<slug>" role attribute; omitted when none }
-        status: { type: string, enum: [online, disabled, offline] }

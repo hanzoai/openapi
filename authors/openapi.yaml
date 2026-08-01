@@ -51,8 +51,6 @@ tags:
   description: Author enrollment, repo verification, and dashboard (org surface).
 - name: Deploys
   description: Deploy-attribution recording (deploying-org surface).
-- name: Admin
-  description: Author directory, accrual sweep, approval, suspension, and payout (global-admin only).
 paths:
   /v1/authors:
     get:
@@ -190,123 +188,6 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalServerError' }
-  /v1/admin/authors:
-    get:
-      tags:
-      - Admin
-      summary: List all authors
-      description: Every author (org exposed) plus a fleet summary. Global-admin only.
-      operationId: adminListAuthors
-      parameters:
-      - name: limit
-        in: query
-        description: Max rows (default 500, capped at 1000).
-        schema: { type: integer, minimum: 1, maximum: 1000, default: 500 }
-      responses:
-        '200':
-          description: Author directory and summary.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AdminListEnvelope'
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalServerError' }
-  /v1/admin/authors/sweep:
-    post:
-      tags:
-      - Admin
-      summary: Run accrual sweep
-      description: |
-        The periodic accrual path. Folds over every approved author's distinct
-        deploying orgs and accrues this period's royalty, at-most-once per period.
-        Global-admin only.
-      operationId: adminSweepAuthors
-      responses:
-        '200':
-          description: Sweep counts.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AdminSweepEnvelope'
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalServerError' }
-  /v1/admin/authors/{id}/approve:
-    post:
-      tags:
-      - Admin
-      summary: Approve an author
-      description: |
-        Admits an author to earning. An optional `{shareBps}` body overrides the
-        royalty share (0–10000 basis points). Global-admin only.
-      operationId: adminApproveAuthor
-      parameters:
-      - $ref: '#/components/parameters/AuthorId'
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ApproveRequest'
-      responses:
-        '200':
-          description: Approved author.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AdminAuthorEnvelope'
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalServerError' }
-  /v1/admin/authors/{id}/suspend:
-    post:
-      tags:
-      - Admin
-      summary: Suspend an author
-      description: Suspends an author. Global-admin only.
-      operationId: adminSuspendAuthor
-      parameters:
-      - $ref: '#/components/parameters/AuthorId'
-      responses:
-        '200':
-          description: Suspended author.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AdminAuthorEnvelope'
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalServerError' }
-  /v1/admin/authors/{id}/payout:
-    post:
-      tags:
-      - Admin
-      summary: Record a payout
-      description: |
-        Records a payout of accrued royalty. A `credits` method issues a commerce
-        grant into the author's wallet; a cash method (wire, paypal, check, …) is
-        record-only. The amount can never exceed pending (accrued − paid), reserved
-        atomically before any grant. Global-admin only.
-      operationId: adminPayoutAuthor
-      parameters:
-      - $ref: '#/components/parameters/AuthorId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PayoutRequest'
-      responses:
-        '200':
-          description: Recorded payout and updated author.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AdminPayoutEnvelope'
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalServerError' }
 components:
   securitySchemes:
     BearerAuth:
@@ -316,13 +197,6 @@ components:
       description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id) or an hk- API
         key. Discovery: https://hanzo.id/.well-known/openid-configuration. Admin
         routes require a global-admin identity.'
-  parameters:
-    AuthorId:
-      name: id
-      in: path
-      required: true
-      description: Author id (e.g. aut_...).
-      schema: { type: string }
   responses:
     BadRequest:
       description: Invalid input parameters.
@@ -331,11 +205,6 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     Forbidden:
       description: Insufficient permissions (sign in, or global-admin required).
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/Error' }
-    NotFound:
-      description: Author not found.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -383,33 +252,6 @@ components:
         project:
           type: string
           description: The published project id.
-    ApproveRequest:
-      title: ApproveRequest
-      type: object
-      description: Optional royalty-share override.
-      properties:
-        shareBps:
-          type: integer
-          minimum: 0
-          maximum: 10000
-          description: Royalty share in basis points (500 = 5%).
-    PayoutRequest:
-      title: PayoutRequest
-      type: object
-      required: [amountCents, method]
-      properties:
-        amountCents:
-          type: integer
-          format: int64
-          minimum: 1
-          description: Payout amount in USD minor units (cents). Must be positive and not exceed pending.
-        method:
-          type: string
-          description: Payout method. 'credits' issues a commerce grant; any other value (wire, paypal, check, …) is record-only.
-          examples: [credits]
-        reference:
-          type: string
-          description: Optional external reference for a cash disbursement.
     NotEnrolled:
       title: NotEnrolled
       type: object
@@ -523,93 +365,3 @@ components:
           type: string
           description: Commerce transaction id for a credits payout.
         createdAt: { type: integer, format: int64 }
-    AdminAuthorView:
-      title: AdminAuthorView
-      type: object
-      description: One row in the global-admin directory (org exposed).
-      properties:
-        id: { type: string }
-        org: { type: string }
-        githubLogin: { type: string }
-        status:
-          type: string
-          enum: [connected, approved, suspended]
-        verified: { type: boolean }
-        shareBps: { type: integer, format: int64 }
-        repoCount: { type: integer }
-        deployCount: { type: integer }
-        accruedCents: { type: integer, format: int64 }
-        pendingCents: { type: integer, format: int64 }
-        paidCents: { type: integer, format: int64 }
-        createdAt: { type: integer, format: int64 }
-        approvedAt: { type: integer, format: int64 }
-        suspendedAt: { type: integer, format: int64 }
-    AdminSummary:
-      title: AdminSummary
-      type: object
-      description: Fleet tally for the admin directory.
-      properties:
-        total: { type: integer }
-        connected: { type: integer }
-        approved: { type: integer }
-        suspended: { type: integer }
-        accruedCents: { type: integer, format: int64 }
-        pendingCents: { type: integer, format: int64 }
-        paidCents: { type: integer, format: int64 }
-    AdminEnvelope:
-      title: AdminEnvelope
-      type: object
-      description: The { status, msg, data } envelope wrapping every admin response.
-      properties:
-        status: { type: string, examples: [ok] }
-        msg: { type: string }
-        data: { type: object }
-    AdminListEnvelope:
-      title: AdminListEnvelope
-      allOf:
-      - $ref: '#/components/schemas/AdminEnvelope'
-      - type: object
-        properties:
-          data:
-            type: object
-            properties:
-              authors:
-                type: array
-                items: { $ref: '#/components/schemas/AdminAuthorView' }
-              summary: { $ref: '#/components/schemas/AdminSummary' }
-    AdminSweepEnvelope:
-      title: AdminSweepEnvelope
-      allOf:
-      - $ref: '#/components/schemas/AdminEnvelope'
-      - type: object
-        properties:
-          data:
-            type: object
-            properties:
-              swept:
-                type: integer
-                description: Deploying-org checks performed across all approved authors.
-              accrued:
-                type: integer
-                description: Accruals newly created.
-    AdminAuthorEnvelope:
-      title: AdminAuthorEnvelope
-      allOf:
-      - $ref: '#/components/schemas/AdminEnvelope'
-      - type: object
-        properties:
-          data:
-            type: object
-            properties:
-              author: { $ref: '#/components/schemas/AdminAuthorView' }
-    AdminPayoutEnvelope:
-      title: AdminPayoutEnvelope
-      allOf:
-      - $ref: '#/components/schemas/AdminEnvelope'
-      - type: object
-        properties:
-          data:
-            type: object
-            properties:
-              payout: { $ref: '#/components/schemas/PayoutView' }
-              author: { $ref: '#/components/schemas/AdminAuthorView' }

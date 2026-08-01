@@ -40,9 +40,268 @@ tags:
     description: Tamper-evident audit trail
   - name: Promotions
     description: Admin-set, limited-time plan discount windows
+  - name: Admin
 security:
   - bearerAuth: []
 paths:
+  /v1/admin/affiliates:
+    get:
+      tags:
+      - Admin
+      summary: List all affiliates
+      description: |
+        Returns every affiliate (org exposed) plus a fleet summary. Global-admin
+        only. Wrapped in the admin `{ status, msg, data }` envelope.
+      operationId: adminListAffiliates
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        description: Max rows to return (default 500, max 1000).
+        schema:
+          type: integer
+          default: 500
+          maximum: 1000
+      responses:
+        '200':
+          description: Affiliate directory and summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminListEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/admin/affiliates/sweep:
+    post:
+      tags:
+      - Admin
+      summary: Run the accrual sweep
+      description: |
+        The periodic accrual path (cron/o11y hits it, or an operator on demand). It
+        folds over every approved affiliate's referred orgs and accrues this period's
+        commission, at-most-once per period. Global-admin only.
+      operationId: adminSweepAffiliates
+      responses:
+        '200':
+          description: Sweep result (edges checked and accruals created).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSweepEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/admin/affiliates/{id}/approve:
+    post:
+      tags:
+      - Admin
+      summary: Approve an affiliate and mint its code
+      description: |
+        Approves the affiliate and mints its code. The body may carry an explicit
+        `code` override; else the requested vanity code; else a derived slug.
+        Global-admin only.
+      operationId: adminApproveAffiliate
+      parameters:
+      - $ref: '#/components/parameters/AffiliateId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveRequest'
+      responses:
+        '200':
+          description: The approved affiliate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAffiliateEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/admin/affiliates/{id}/payout:
+    post:
+      tags:
+      - Admin
+      summary: Record a payout
+      description: |
+        Records a payout of accrued commission. A `credits` method issues a commerce
+        grant into the affiliate's wallet; a cash method (wire/paypal/…) is
+        record-only. The amount can never exceed pending (accrued − paid), reserved
+        atomically before any grant. Global-admin only.
+      operationId: adminPayoutAffiliate
+      parameters:
+      - $ref: '#/components/parameters/AffiliateId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayoutRequest'
+      responses:
+        '200':
+          description: The recorded payout and the updated affiliate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPayoutEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/admin/affiliates/{id}/suspend:
+    post:
+      tags:
+      - Admin
+      summary: Suspend an affiliate
+      description: Suspends the affiliate. Global-admin only.
+      operationId: adminSuspendAffiliate
+      parameters:
+      - $ref: '#/components/parameters/AffiliateId'
+      responses:
+        '200':
+          description: The suspended affiliate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAffiliateEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/admin/authors:
+    get:
+      tags:
+      - Admin
+      summary: List all authors
+      description: Every author (org exposed) plus a fleet summary. Global-admin only.
+      operationId: adminListAuthors
+      parameters:
+      - name: limit
+        in: query
+        description: Max rows (default 500, capped at 1000).
+        schema: { type: integer, minimum: 1, maximum: 1000, default: 500 }
+      responses:
+        '200':
+          description: Author directory and summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminListEnvelope'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /v1/admin/authors/sweep:
+    post:
+      tags:
+      - Admin
+      summary: Run accrual sweep
+      description: |
+        The periodic accrual path. Folds over every approved author's distinct
+        deploying orgs and accrues this period's royalty, at-most-once per period.
+        Global-admin only.
+      operationId: adminSweepAuthors
+      responses:
+        '200':
+          description: Sweep counts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSweepEnvelope'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /v1/admin/authors/{id}/approve:
+    post:
+      tags:
+      - Admin
+      summary: Approve an author
+      description: |
+        Admits an author to earning. An optional `{shareBps}` body overrides the
+        royalty share (0–10000 basis points). Global-admin only.
+      operationId: adminApproveAuthor
+      parameters:
+      - $ref: '#/components/parameters/AuthorId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveRequest'
+      responses:
+        '200':
+          description: Approved author.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuthorEnvelope'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /v1/admin/authors/{id}/payout:
+    post:
+      tags:
+      - Admin
+      summary: Record a payout
+      description: |
+        Records a payout of accrued royalty. A `credits` method issues a commerce
+        grant into the author's wallet; a cash method (wire, paypal, check, …) is
+        record-only. The amount can never exceed pending (accrued − paid), reserved
+        atomically before any grant. Global-admin only.
+      operationId: adminPayoutAuthor
+      parameters:
+      - $ref: '#/components/parameters/AuthorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayoutRequest'
+      responses:
+        '200':
+          description: Recorded payout and updated author.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPayoutEnvelope'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /v1/admin/authors/{id}/suspend:
+    post:
+      tags:
+      - Admin
+      summary: Suspend an author
+      description: Suspends an author. Global-admin only.
+      operationId: adminSuspendAuthor
+      parameters:
+      - $ref: '#/components/parameters/AuthorId'
+      responses:
+        '200':
+          description: Suspended author.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuthorEnvelope'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
   /v1/admin/me:
     get:
       tags: [Identity]
@@ -70,6 +329,202 @@ paths:
         '200': { description: Org rows, content: { application/json: { schema: { $ref: '#/components/schemas/OrgList' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /v1/admin/plugins:
+    get:
+      tags:
+      - Admin
+      summary: List what each host is running
+      description: |
+        list reports what each host is actually running: every loaded plugin with its
+        version, pid, uptime, reload and restart counts, and its measured CPU, RSS,
+        thread and fd cost — read from the kernel, which is only answerable at all
+        because a plugin is a process.
+
+        Reading this from deployment config would answer what was INTENDED. Only the
+        process knows what is TRUE, and during a rolling upgrade the two disagree on
+        purpose.
+      operationId: adminPlugins
+      parameters:
+      - name: scope
+        in: query
+        required: false
+        description: |
+          Scope "host" answers for THIS host only. Default "fleet" fans out to every
+          live peer. A peer answers a host-scoped read, which is what stops the
+          fan-out recursing.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Per-host plugin inventory plus the fleet drift roll-up.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListOut'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/admin/plugins/{name}/disable:
+    post:
+      tags:
+      - Admin
+      summary: Disable a plugin — its routes answer 503, not 404
+      description: |
+        disable stops the plugin. Its routes STAY REGISTERED and answer 503 — not 404.
+
+        That is zip's choice and this keeps it. Removing the routes would mutate the
+        route table, and re-adding them on enable would grow it without bound across
+        repeated cycles, which is the invariant that makes reloads flat in memory. It
+        is also the better answer: 404 says "no such API" and a client may cache it
+        and stop retrying, while 503 says "this API exists and is down right now",
+        which is true and retryable. Which of the two 503s this is — deliberate stop
+        or crash — is what the status's disabled flag reports.
+      operationId: adminDisablePlugin
+      parameters:
+      - $ref: '#/components/parameters/PluginName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NameIn'
+      responses:
+        '200':
+          description: Per-host result of the disable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionOut'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/admin/plugins/{name}/enable:
+    post:
+      tags:
+      - Admin
+      summary: Enable a stopped or disabled plugin
+      description: |
+        enable brings a stopped or disabled plugin back on the artifact it already
+        has: the zero Plugin names no new artifact, so Reload reuses the loaded spec
+        and clears the disabled flag. Named for what an operator means by it.
+      operationId: adminEnablePlugin
+      parameters:
+      - $ref: '#/components/parameters/PluginName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NameIn'
+      responses:
+        '200':
+          description: Per-host result of the enable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionOut'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/admin/plugins/{name}/reload:
+    post:
+      tags:
+      - Admin
+      summary: Reload a plugin onto another build
+      description: |
+        reload swaps a plugin for another build without dropping a request. The
+        replacement is started and proven to be LISTENING before any traffic moves to
+        it, so a bad build leaves the old one serving and returns an error rather
+        than a hole; the old process then drains before it is killed.
+
+        With a version or url+sum it pins; naming a digest this host has run before is
+        the rollback, and costs no network because the digest IS the cache key. With
+        neither it restarts what is already loaded.
+
+        Fleet scope applies it to one host at a time and STOPS at the first failure,
+        so a build that cannot come up reaches exactly one host.
+      operationId: adminReloadPlugin
+      parameters:
+      - name: name
+        in: path
+        required: true
+        description: Name is the app, from the path. It must be one the manifest declares.
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReloadIn'
+      responses:
+        '200':
+          description: Per-host result of the reload, with the digest now running.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionOut'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/admin/referrals:
+    get:
+      operationId: adminListReferrals
+      tags:
+      - Admin
+      summary: List every referral with a fleet summary (global-admin)
+      description: 'Returns every referral (both orgs exposed) plus a fleet summary. Global-admin
+
+        only. Wrapped in the `{ status, msg, data }` admin envelope.
+
+        '
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        description: 'Max rows to return. Defaults to 500 when absent/invalid/<=0; capped at 1000.
+
+          '
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 500
+      responses:
+        '200':
+          description: The referral directory and summary, in the admin envelope.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminListEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /v1/admin/referrals/sweep:
+    post:
+      operationId: adminSweepReferrals
+      tags:
+      - Admin
+      summary: Qualify-check every pending referral (global-admin)
+      description: 'The periodic qualify path (cron/operator on demand). Qualify-checks every
+
+        pending referral (bounded to 500 per sweep) and grants the ones that now
+
+        qualify. Global-admin only. Returns counts in the admin envelope.
+
+        '
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Sweep result counts, in the admin envelope.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSweepEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /v1/admin/users:
     get:
       tags: [Identity]
@@ -345,18 +800,557 @@ paths:
         '404': { description: Promo not found }
 
 components:
+  parameters:
+    AffiliateId:
+      name: id
+      in: path
+      required: true
+      description: The affiliate id (e.g. `aff_<hex>`).
+      schema:
+        type: string
+    AuthorId:
+      name: id
+      in: path
+      required: true
+      description: Author id (e.g. aut_...).
+      schema: { type: string }
+    PluginName:
+      name: name
+      in: path
+      required: true
+      description: Name is the app, from the path.
+      schema:
+        type: string
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       description: IAM-issued JWT or `hk-` Cloud API key.
   responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: The requested code is already taken.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Not signed in, or global admin required.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Internal server error.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Affiliate or code not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
     Unauthorized:
       description: Missing or invalid credentials
       content:
         application/json:
           schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
   schemas:
+    ActionOut:
+      type: object
+      description: |
+        The envelope every mutation answers with. Data is per host and in the order
+        applied, so a halted rollout reads as the prefix that succeeded followed by
+        the one that did not.
+      properties:
+        status:
+          type: string
+        msg:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Result'
+    AdminAffiliateEnvelope:
+      type: object
+      description: Admin envelope wrapping a single affiliate.
+      properties:
+        status:
+          type: string
+          example: ok
+        msg:
+          type: string
+        data:
+          type: object
+          properties:
+            affiliate:
+              $ref: '#/components/schemas/AdminAffiliateView'
+    AdminAffiliateView:
+      type: object
+      description: One row in the global-admin directory (org exposed).
+      properties:
+        id:
+          type: string
+        org:
+          type: string
+        code:
+          type: string
+        requestedCode:
+          type: string
+        status:
+          $ref: '#/components/schemas/AffiliateStatus'
+        rateBps:
+          type: integer
+          format: int64
+        referredCount:
+          type: integer
+        accruedCents:
+          type: integer
+          format: int64
+        pendingCents:
+          type: integer
+          format: int64
+        paidCents:
+          type: integer
+          format: int64
+        createdAt:
+          type: integer
+          format: int64
+        approvedAt:
+          type: integer
+          format: int64
+        suspendedAt:
+          type: integer
+          format: int64
+    AdminAuthorEnvelope:
+      title: AdminAuthorEnvelope
+      allOf:
+      - $ref: '#/components/schemas/AdminEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            properties:
+              author: { $ref: '#/components/schemas/AdminAuthorView' }
+    AdminAuthorView:
+      title: AdminAuthorView
+      type: object
+      description: One row in the global-admin directory (org exposed).
+      properties:
+        id: { type: string }
+        org: { type: string }
+        githubLogin: { type: string }
+        status:
+          type: string
+          enum: [connected, approved, suspended]
+        verified: { type: boolean }
+        shareBps: { type: integer, format: int64 }
+        repoCount: { type: integer }
+        deployCount: { type: integer }
+        accruedCents: { type: integer, format: int64 }
+        pendingCents: { type: integer, format: int64 }
+        paidCents: { type: integer, format: int64 }
+        createdAt: { type: integer, format: int64 }
+        approvedAt: { type: integer, format: int64 }
+        suspendedAt: { type: integer, format: int64 }
+    AdminEnvelope:
+      title: AdminEnvelope
+      type: object
+      description: The { status, msg, data } envelope wrapping every admin response.
+      properties:
+        status: { type: string, examples: [ok] }
+        msg: { type: string }
+        data: { type: object }
+    AdminListData:
+      type: object
+      properties:
+        referrals:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminReferralView'
+        summary:
+          $ref: '#/components/schemas/AdminSummary'
+    AdminListEnvelope:
+      type: object
+      description: Admin `{ status, msg, data }` envelope for the affiliate directory.
+      properties:
+        status:
+          type: string
+          example: ok
+        msg:
+          type: string
+        data:
+          type: object
+          properties:
+            affiliates:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminAffiliateView'
+            summary:
+              $ref: '#/components/schemas/AdminSummary'
+    AdminPayoutEnvelope:
+      type: object
+      description: Admin envelope wrapping a recorded payout and the updated affiliate.
+      properties:
+        status:
+          type: string
+          example: ok
+        msg:
+          type: string
+        data:
+          type: object
+          properties:
+            payout:
+              $ref: '#/components/schemas/Payout'
+            affiliate:
+              $ref: '#/components/schemas/AdminAffiliateView'
+    AdminReferralView:
+      type: object
+      description: One row in the global-admin directory (both orgs exposed).
+      properties:
+        id:
+          type: string
+        referrerOrg:
+          type: string
+        refereeOrg:
+          type: string
+        code:
+          type: string
+        status:
+          $ref: '#/components/schemas/ReferralStatus'
+        referrerGrantCents:
+          type: integer
+          format: int64
+        refereeGrantCents:
+          type: integer
+          format: int64
+        referrerTxn:
+          type: string
+          description: Ledger transaction id for the referrer bonus (omitted if empty).
+        refereeTxn:
+          type: string
+          description: Ledger transaction id for the referee bonus (omitted if empty).
+        createdAt:
+          type: integer
+          format: int64
+        qualifiedAt:
+          type: integer
+          format: int64
+        creditedAt:
+          type: integer
+          format: int64
+    AdminSummary:
+      type: object
+      description: Fleet tally for the admin directory.
+      properties:
+        total:
+          type: integer
+        applied:
+          type: integer
+        approved:
+          type: integer
+        suspended:
+          type: integer
+        accruedCents:
+          type: integer
+          format: int64
+        pendingCents:
+          type: integer
+          format: int64
+        paidCents:
+          type: integer
+          format: int64
+    AdminSweepData:
+      type: object
+      properties:
+        swept:
+          type: integer
+          description: Number of pending referrals examined this sweep.
+        credited:
+          type: integer
+          description: Number newly advanced to credited this sweep.
+    AdminSweepEnvelope:
+      type: object
+      description: Admin envelope wrapping the accrual sweep result.
+      properties:
+        status:
+          type: string
+          example: ok
+        msg:
+          type: string
+        data:
+          type: object
+          properties:
+            swept:
+              type: integer
+              description: Total referred-org edges checked across all approved affiliates.
+            accrued:
+              type: integer
+              description: Total new accrual events created this sweep.
+    AffiliateStatus:
+      type: string
+      description: Affiliate lifecycle status. An affiliate advances applied → approved (and can be suspended).
+      enum:
+      - applied
+      - approved
+      - suspended
+    ApproveRequest:
+      type: object
+      description: Optional body for POST /v1/admin/affiliates/{id}/approve.
+      properties:
+        code:
+          type: string
+          description: Explicit code override. If omitted, the requested vanity code or a derived slug is used.
+    Drift:
+      type: object
+      description: |
+        One plugin's agreement across the fleet. Versions holds every distinct
+        digest seen running; more than one means a rollout is incomplete or stuck,
+        which is the single question this whole view exists to answer.
+      properties:
+        name:
+          type: string
+        versions:
+          type: array
+          items:
+            type: string
+        running:
+          type: integer
+        down:
+          type: integer
+        disabled:
+          type: integer
+        drifted:
+          type: boolean
+    Error:
+      type: object
+      description: Standard Hanzo error envelope.
+      properties:
+        error:
+          type: string
+          description: Human-readable error message.
+    Host:
+      type: object
+      description: |
+        One host's own account of what it is running. Reported per host rather than
+        merged, because during a rollout the hosts disagree BY DESIGN and a merged
+        view hides exactly the state an operator is watching for.
+      properties:
+        host:
+          type: string
+          description: |
+            Host is the pod's stable id, and Addr where it was reached. Self is true
+            for the host that answered the request.
+        addr:
+          type: string
+        self:
+          type: boolean
+        error:
+          type: string
+          description: |
+            Err is set when a peer could not be reached. Its plugins are then
+            unknown, which is NOT the same as none, so the list stays empty and the
+            drift below refuses to conclude anything from it.
+        plugins:
+          type: array
+          items:
+            $ref: '#/components/schemas/PluginStatus'
+    ListOut:
+      type: object
+      description: The fleet board — one entry per host, plus the drift roll-up.
+      properties:
+        status:
+          type: string
+        msg:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Host'
+        drift:
+          type: array
+          items:
+            $ref: '#/components/schemas/Drift'
+        data2:
+          type: integer
+    NameIn:
+      type: object
+      description: |
+        Addresses one plugin by name, for the operations that take nothing else.
+      properties:
+        name:
+          type: string
+          description: Name is the app, from the path.
+        scope:
+          type: string
+          description: |
+            Scope "host" applies here only; default "fleet" applies everywhere.
+    Payout:
+      type: object
+      description: One recorded disbursement of accrued commission.
+      properties:
+        id:
+          type: string
+        amountCents:
+          type: integer
+          format: int64
+        method:
+          type: string
+        reference:
+          type: string
+        txn:
+          type: string
+          description: Commerce transaction id for a credits payout (absent for cash payouts).
+        createdAt:
+          type: integer
+          format: int64
+    PayoutRequest:
+      type: object
+      required:
+      - amountCents
+      - method
+      description: Body for POST /v1/admin/affiliates/{id}/payout.
+      properties:
+        amountCents:
+          type: integer
+          format: int64
+          description: Payout amount in USD cents (must be positive; cannot exceed pending commission).
+        method:
+          type: string
+          description: Payout method. `credits` issues a commerce grant; any other value (wire/paypal/check/…) is record-only.
+          example: credits
+        reference:
+          type: string
+          description: Optional external reference for a cash payout.
+    PayoutView:
+      title: PayoutView
+      type: object
+      properties:
+        id: { type: string }
+        amountCents: { type: integer, format: int64 }
+        method: { type: string }
+        reference: { type: string }
+        txn:
+          type: string
+          description: Commerce transaction id for a credits payout.
+        createdAt: { type: integer, format: int64 }
+    PluginStatus:
+      type: object
+      description: |
+        One plugin's process view on one host — what `GET /v1/plugins` cannot
+        answer, because that reports the manifest and this reports the kernel.
+      properties:
+        name:
+          type: string
+        prefix:
+          type: string
+          description: |
+            Prefix is the FIRST subtree this plugin answers — the one a log line
+            names it by. Prefixes is every subtree, and a plugin may own several.
+            Reporting only the first would understate the blast radius of taking
+            this plugin down, which is the question a fleet view exists to answer.
+        prefixes:
+          type: array
+          items:
+            type: string
+        source:
+          type: string
+          description: |
+            Source is where the binary came from: "embedded", "path", "url", or
+            "remote" for an instance this host did not start.
+          enum:
+          - embedded
+          - path
+          - url
+          - remote
+        version:
+          type: string
+          description: |
+            Version is the artifact's SHA-256 when it was installed from a URL —
+            the only version identifier that cannot drift from the bits actually
+            running, since it IS the bits. Empty for the other sources.
+        addr:
+          type: string
+          description: Addr is the socket or address serving it.
+        pid:
+          type: integer
+          description: PID is the child process, or 0 when this host did not start it.
+        running:
+          type: boolean
+          description: |
+            Running is false after Unload, or after a child exited and no Reload has
+            replaced it. Its routes stay registered and answer 503, so a false here
+            is the difference between "not deployed" and "deployed but down".
+        disabled:
+          type: boolean
+          description: |
+            Disabled is true when Unload stopped it deliberately, as opposed to it
+            having crashed. Both answer 503, so without this an operator cannot tell
+            a maintenance window from an outage — and would page for the former.
+        since:
+          type: string
+          format: date-time
+          description: |
+            Since is when the CURRENT instance started — it resets on Reload, so it
+            reports the age of what is running, not of the mount.
+        reloads:
+          type: integer
+          description: |
+            Reloads counts successful swaps since Load. A climbing number on one
+            host and not its peers is the signal that a rollout is uneven.
+        restarts:
+          type: integer
+          description: |
+            Restarts counts times the supervisor brought this plugin back after it
+            died on its own. Distinct from Reloads, which are deliberate: a nonzero
+            Restarts is a plugin crashing, and a climbing one is a crash loop.
+        usage:
+          $ref: '#/components/schemas/PluginUsage'
+    PluginUsage:
+      type: object
+      description: |
+        A plugin's resource cost, measured rather than self-reported.
+
+        This exists because a plugin is a process. A linked-in subsystem cannot be
+        measured this way at any price — one process has one RSS and one CPU clock,
+        and nothing inside it can be attributed to a subsystem. Running a service as
+        its own process makes "which app is eating the memory" a question with an
+        exact answer instead of an argument.
+
+        Zero means not measured (no /proc, or nothing running), not measured-as-zero.
+      properties:
+        cpuNs:
+          type: integer
+          format: int64
+          description: |
+            CPU is total user+system time this instance has consumed since it
+            started, in nanoseconds. It only ever climbs, so a rate is the
+            interesting derivative.
+        rssBytes:
+          type: integer
+          format: int64
+          description: |
+            RSS is resident memory in bytes — the honest number for "what does this
+            plugin cost", as opposed to virtual size.
+        threads:
+          type: integer
+          description: |
+            Threads and FDs are the two limits a busy service hits first, and both
+            are leaks when they climb without bound.
+        fds:
+          type: integer
     RawList:
       type: object
       description: Verbatim IAM list envelope — `data` carries the raw upstream rows.
@@ -373,6 +1367,59 @@ components:
         email: { type: string }
         displayName: { type: string }
         isGlobalAdmin: { type: boolean }
+    ReferralStatus:
+      type: string
+      description: 'A referral advances signed_up -> qualified -> credited. It never moves
+
+        backward; credited is terminal.
+
+        '
+      enum:
+      - signed_up
+      - qualified
+      - credited
+    ReloadIn:
+      type: object
+      description: |
+        Names an artifact to run. Exactly one of Version or URL+Sum, or neither to
+        restart the artifact already loaded — which is how a wedged plugin is
+        bounced without changing what it runs.
+      properties:
+        name:
+          type: string
+          description: |
+            Name is the app, from the path. It must be one the manifest declares.
+        version:
+          type: string
+          description: |
+            Version is a release tag, resolved to a URL and digest through the
+            origin's binaries.json index — the same index CI publishes, so there is
+            no second table mapping versions to digests.
+        url:
+          type: string
+          description: |
+            URL is the artifact directly, for an origin with no index. Sum is its hex
+            SHA-256 and is REQUIRED with it: zip refuses an unverified download, and
+            so does this.
+        sum:
+          type: string
+        scope:
+          type: string
+          description: |
+            Scope "host" applies here only. Default "fleet" rolls it out one host at
+            a time, halting on the first host that fails to come up.
+    Result:
+      type: object
+      description: One host's outcome for one action.
+      properties:
+        host:
+          type: string
+        ok:
+          type: boolean
+        version:
+          type: string
+        msg:
+          type: string
     SourceStatus:
       type: object
       properties:

@@ -27,8 +27,6 @@ tags:
     description: DOKS clusters and node pools
   - name: Catalog
     description: Global compute regions and sizes
-  - name: Bindings
-    description: Agent↔machine bindings
   - name: Bots
     description: Bots (kind=bot machine + agent binding)
 security:
@@ -78,43 +76,7 @@ paths:
         '204': { description: Terminated }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /v1/machines/{id}/bind-agent:
-    post:
-      tags: [Bindings]
-      summary: Bind a cloud Agent to a machine
-      operationId: bindMachineAgent
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string } }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/BindAgentRequest' }
-      responses:
-        '200': { description: Agent binding, content: { application/json: { schema: { $ref: '#/components/schemas/AgentBinding' } } } }
-        '400': { description: agentName is required }
-        '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /v1/machines/{id}/agent-binding:
-    get:
-      tags: [Bindings]
-      summary: Get a machine's agent binding
-      operationId: getMachineAgentBinding
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string } }
-      responses:
-        '200': { description: Agent binding, content: { application/json: { schema: { $ref: '#/components/schemas/AgentBinding' } } } }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { description: No agent binding for machine }
-    delete:
-      tags: [Bindings]
-      summary: Unbind the agent from a machine
-      operationId: unbindMachineAgent
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string } }
-      responses:
-        '204': { description: Unbound }
-        '401': { $ref: '#/components/responses/Unauthorized' }
 
   /v1/gpus:
     get:
@@ -219,64 +181,8 @@ paths:
         '200': { description: Bots, content: { application/json: { schema: { type: object, properties: { bots: { type: array, items: { $ref: '#/components/schemas/BotView' } } } } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /v1/bots/launch:
-    post:
-      tags: [Bots]
-      summary: Launch a bot (machine + agent binding), or dryRun for a quote
-      operationId: launchBot
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/BotLaunchRequest' }
-      responses:
-        '200': { description: Price quote (dryRun), content: { application/json: { schema: { type: object } } } }
-        '201': { description: Bot launched, content: { application/json: { schema: { $ref: '#/components/schemas/BotView' } } } }
-        '400': { description: size / name is required }
-        '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /v1/bots/{id}:
-    get:
-      tags: [Bots]
-      summary: Get one bot by id
-      operationId: getBot
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string } }
-      responses:
-        '200': { description: Bot, content: { application/json: { schema: { $ref: '#/components/schemas/BotView' } } } }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { description: Bot not found }
-    delete:
-      tags: [Bots]
-      summary: Terminate a bot (unbind agent + delete machine)
-      operationId: deleteBot
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string } }
-      responses:
-        '204': { description: Terminated }
-        '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /v1/bots/{id}/{action}:
-    post:
-      tags: [Bots]
-      summary: Act on a bot (stop, pause, or message)
-      description: |
-        `stop` and `pause` both halt the bot's agent runtime (one honest
-        capability). `message` runs the bot's bound agent via the agent runner
-        and returns that run's output verbatim.
-      operationId: botAction
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string } }
-        - { name: action, in: path, required: true, schema: { type: string, enum: [stop, pause, message] } }
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema: { type: object, description: 'For message: the agent run body forwarded to /v1/agents/{ref}/run' }
-      responses:
-        '200': { description: 'Action result — {id,status} for stop/pause, or the agent run output for message', content: { application/json: { schema: { type: object } } } }
-        '400': { description: unknown bot action / bot has no bound agent }
-        '401': { $ref: '#/components/responses/Unauthorized' }
 
 components:
   securitySchemes:
@@ -389,19 +295,3 @@ components:
       properties:
         provider: { type: string }
         count: { type: integer, minimum: 0 }
-    BindAgentRequest:
-      type: object
-      required: [agentName]
-      properties:
-        agentName: { type: string }
-        botVersion: { type: string }
-    BotLaunchRequest:
-      type: object
-      properties:
-        name: { type: string, description: Required for a real launch (not dryRun) }
-        agent: { type: string, description: The cloud Agent the bot runs (defaults to the bot name) }
-        size: { type: string, description: Machine size slug (or use instanceType) }
-        instanceType: { type: string }
-        region: { type: string }
-        botVersion: { type: string }
-        dryRun: { type: boolean }

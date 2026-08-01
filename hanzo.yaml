@@ -41,6 +41,8 @@ tags:
     and signed.'
 - name: kms
   description: 'Package kms is secret custody: your org''s secrets sealed at rest, plus threshold signing.'
+- name: Keys
+  description: 'Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up.'
 - name: security
   description: 'Package security is secret scanning for your code: submit sources, get findings, masked never raw.'
 - name: networks
@@ -56,12 +58,6 @@ tags:
     every Hanzo service authenticates against.'
 - name: agents
   description: 'Package agents is autonomous agents for your org: define them, run them, keep every run.'
-- name: OpenAI Compatible
-  description: Drop-in OpenAI Chat/Completions/Embeddings/Models surface.
-- name: Models
-  description: AI model pricing and listings
-- name: Claude Compatible
-  description: Drop-in Anthropic Messages surface.
 - name: Account
   description: User account operations (login, registration, profile)
 - name: Activities
@@ -81,6 +77,7 @@ tags:
 - name: Graphs
 - name: K8s Status
 - name: Messages
+  description: The `/v1/messages` conversation shape, streamed or whole.
 - name: Nodes
 - name: Permissions
 - name: Preferences
@@ -91,7 +88,6 @@ tags:
   description: DNS record management
 - name: Remote Connections
 - name: Routes
-  description: Custom routing rules
 - name: Scales
 - name: Scans
   description: Submit and read scans
@@ -146,6 +142,15 @@ tags:
   description: "AI summaries (per-user IAM \u2192 org/project/billing)"
 - name: catalog
   description: Package catalog is one place to browse every project, app and site built here.
+- name: datastore
+  description: 'Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store,
+    wired straight into your app.'
+- name: docdb
+  description: 'Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store,
+    wired straight into your app.'
+- name: kv
+  description: 'Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store,
+    wired straight into your app.'
 - name: Clusters
   description: "Package visor is the compute you rent from Hanzo: machines, GPUs and clusters \u2014 launch one, resize it,\
     \ tear it down."
@@ -159,13 +164,8 @@ tags:
   description: 'Package pubsub is your message bus: publish, subscribe, and durable streams your apps read at their own pace.'
 - name: Streams
   description: Append-only log streams
-- name: vector
-  description: Managed vector (Qdrant) collection resources.
-- name: kv
-  description: 'Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store,
-    wired straight into your app.'
 - name: s3
-  description: Managed object storage (S3/MinIO) bucket resources.
+  description: Hanzo S3 API
 - name: Buckets
   description: Bucket management
 - name: Objects
@@ -176,6 +176,11 @@ tags:
   description: Lifecycle management rules
 - name: Encryption
   description: Server-side encryption configuration
+- name: sql
+  description: 'Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store,
+    wired straight into your app.'
+- name: vector
+  description: Hanzo Vector API
 - name: Collections
   description: "Package base is managed Hanzo Base: a hosted backend for your app \u2014 collections, records, access rules\
     \ and sign-in."
@@ -211,7 +216,7 @@ tags:
 - name: Reports
   description: Report creation, management, and execution
 - name: Teams
-  description: Team management
+  description: Team management and membership
 - name: Realtime
   description: Realtime visitor data
 - name: Share
@@ -269,58 +274,45 @@ tags:
 - name: vpcs
   description: "Package do is the org-scoped private-network surface \u2014 /v1/vpcs and /v1/balancers \u2014 carved out of\
     \ Hanzo's OWN house DigitalOcean account."
-- name: Load Balancers
-  description: Regional/global load balancers
 - name: Versions
   description: Function version history
 - name: Logs
   description: Configure logging
+- name: edge
+  description: "Package zt mounts the Hanzo Cloud NETWORKING surface: the tenant's Hanzo Zero Trust footprint \u2014 overlay\
+    \ networks, mesh services and edge nodes \u2014 served as clean, org-scoped REST off the unified cloud binary and fronting\
+    \ the Hanzo Zero Trust controller (hanzoai/zt, an OpenZiti-based fabric)."
 - name: Secrets
   description: Org-scoped secret storage
 - name: Domains
   description: Custom domain management
+- name: Audio
+  description: Speak text as audio.
 - name: Chat
-  description: Chat completions (OpenAI-compatible)
+  description: Turn a conversation into the next message, streamed or whole.
 - name: Completions
-  description: Text completions
+  description: Continue a single block of text.
 - name: Embeddings
-  description: Text embeddings
-- name: Keys
-  description: 'Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up.'
-- name: Spend
-  description: Usage and spend tracking
-- name: Edge
-  description: "Package zt mounts the Hanzo Cloud NETWORKING surface: the tenant's Hanzo Zero Trust footprint \u2014 overlay\
-    \ networks, mesh services and edge nodes \u2014 served as clean, org-scoped REST off the unified cloud binary and fronting\
-    \ the Hanzo Zero Trust controller (hanzoai/zt, an OpenZiti-based fabric)."
-- name: CDN
-  description: CDN caching, purge, and analytics
-- name: DNS
-  description: 'Package dns is your DNS records: the zones and records behind every name you point at Hanzo.'
+  description: Turn text into vectors you can search.
+- name: Images
+  description: Generate images from a text prompt.
+- name: Models
+  description: AI model pricing and listings
+- name: Rerank
+  description: Score a set of documents against a query and order them.
 - name: platform
   description: "Package platform is Hanzo PaaS: deploy containers to your own tenant namespace \u2014 builds, releases, environments,\
     \ logs, custom domains."
-- name: sql
-  description: 'Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store,
-    wired straight into your app.'
-- name: datastore
-  description: 'Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store,
-    wired straight into your app.'
-- name: docdb
-  description: 'Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store,
-    wired straight into your app.'
 - name: machines
   description: "Package visor is the compute you rent from Hanzo: machines, GPUs and clusters \u2014 launch one, resize it,\
     \ tear it down."
-- name: Bindings
-  description: "Agent\u2194machine bindings"
 - name: gpus
   description: "Package visor is the compute you rent from Hanzo: machines, GPUs and clusters \u2014 launch one, resize it,\
     \ tear it down."
 - name: compute
   description: "Package visor is the compute you rent from Hanzo: machines, GPUs and clusters \u2014 launch one, resize it,\
     \ tear it down."
-- name: Bots
+- name: bots
   description: Package bots is a bot doing your work on a real desktop, live, while you watch.
 - name: Cloud
   description: 'Package venue is bring your own cloud: link a DigitalOcean, AWS or GCP account and its clusters show up ready
@@ -375,6 +367,8 @@ tags:
   description: 'Package deploy is Hanzo CD: see what each app is running, sync it, and roll back a bad release.'
 - name: destinations
   description: Package destinations is your events forwarded to the ad and analytics tools you use.
+- name: dns
+  description: 'Package dns is your DNS records: the zones and records behind every name you point at Hanzo.'
 - name: domain
   description: 'Package domain is Hanzo Domains: search a name, see the price, buy it from your prepaid wallet.'
 - name: download
@@ -586,6 +580,7 @@ x-tagGroups:
   - Resources
   - Webhooks
   - kms
+  - Keys
   - security
   - networks
   - mesh
@@ -593,9 +588,6 @@ x-tagGroups:
 - name: Intelligence
   tags:
   - agents
-  - OpenAI Compatible
-  - Models
-  - Claude Compatible
   - Account
   - Activities
   - Answer
@@ -651,20 +643,23 @@ x-tagGroups:
   - catalog
 - name: Data
   tags:
+  - datastore
+  - docdb
+  - kv
   - Clusters
   - Namespaces
   - Hash
   - List
   - Pub/Sub
   - Streams
-  - vector
-  - kv
   - s3
   - Buckets
   - Objects
   - Versioning
   - Lifecycle
   - Encryption
+  - sql
+  - vector
   - Collections
   - Points
   - Service
@@ -717,28 +712,23 @@ x-tagGroups:
   - Zones
   - DNSSEC
   - vpcs
-  - Load Balancers
   - Versions
   - Logs
+  - edge
   - Secrets
   - Domains
+  - Audio
   - Chat
   - Completions
   - Embeddings
-  - Keys
-  - Spend
-  - Edge
-  - CDN
-  - DNS
+  - Images
+  - Models
+  - Rerank
   - platform
-  - sql
-  - datastore
-  - docdb
   - machines
-  - Bindings
   - gpus
   - compute
-  - Bots
+  - bots
   - Cloud
   - ads
   - agent
@@ -763,6 +753,7 @@ x-tagGroups:
   - dataroom
   - deploy
   - destinations
+  - dns
   - domain
   - download
   - embed
@@ -2212,11 +2203,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/affiliates_AdminListEnvelope'
+                $ref: '#/components/schemas/admin_AdminListEnvelope'
         '403':
-          $ref: '#/components/responses/affiliates_Forbidden'
+          $ref: '#/components/responses/admin_Forbidden'
         '500':
-          $ref: '#/components/responses/affiliates_InternalError'
+          $ref: '#/components/responses/admin_InternalError'
   /v1/admin/affiliates/sweep:
     post:
       tags:
@@ -2239,11 +2230,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/affiliates_AdminSweepEnvelope'
+                $ref: '#/components/schemas/admin_AdminSweepEnvelope'
         '403':
-          $ref: '#/components/responses/affiliates_Forbidden'
+          $ref: '#/components/responses/admin_Forbidden'
         '500':
-          $ref: '#/components/responses/affiliates_InternalError'
+          $ref: '#/components/responses/admin_InternalError'
   /v1/admin/affiliates/{id}/approve:
     post:
       tags:
@@ -2267,24 +2258,24 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/affiliates_ApproveRequest'
+              $ref: '#/components/schemas/admin_ApproveRequest'
       responses:
         '200':
           description: The approved affiliate.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/affiliates_AdminAffiliateEnvelope'
+                $ref: '#/components/schemas/admin_AdminAffiliateEnvelope'
         '400':
-          $ref: '#/components/responses/affiliates_BadRequest'
+          $ref: '#/components/responses/admin_BadRequest'
         '403':
-          $ref: '#/components/responses/affiliates_Forbidden'
+          $ref: '#/components/responses/admin_Forbidden'
         '404':
-          $ref: '#/components/responses/affiliates_NotFound'
+          $ref: '#/components/responses/admin_NotFound'
         '409':
-          $ref: '#/components/responses/affiliates_Conflict'
+          $ref: '#/components/responses/admin_Conflict'
         '500':
-          $ref: '#/components/responses/affiliates_InternalError'
+          $ref: '#/components/responses/admin_InternalError'
   /v1/admin/affiliates/{id}/payout:
     post:
       tags:
@@ -2312,22 +2303,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/affiliates_PayoutRequest'
+              $ref: '#/components/schemas/admin_PayoutRequest'
       responses:
         '200':
           description: The recorded payout and the updated affiliate.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/affiliates_AdminPayoutEnvelope'
+                $ref: '#/components/schemas/admin_AdminPayoutEnvelope'
         '400':
-          $ref: '#/components/responses/affiliates_BadRequest'
+          $ref: '#/components/responses/admin_BadRequest'
         '403':
-          $ref: '#/components/responses/affiliates_Forbidden'
+          $ref: '#/components/responses/admin_Forbidden'
         '404':
-          $ref: '#/components/responses/affiliates_NotFound'
+          $ref: '#/components/responses/admin_NotFound'
         '500':
-          $ref: '#/components/responses/affiliates_InternalError'
+          $ref: '#/components/responses/admin_InternalError'
   /v1/admin/affiliates/{id}/rate:
     post:
       description: "Sets one affiliate's DIRECT commission rate, in basis points of Hanzo's margin.\n\nThe rate is CAPPED\
@@ -2371,13 +2362,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/affiliates_AdminAffiliateEnvelope'
+                $ref: '#/components/schemas/admin_AdminAffiliateEnvelope'
         '403':
-          $ref: '#/components/responses/affiliates_Forbidden'
+          $ref: '#/components/responses/admin_Forbidden'
         '404':
-          $ref: '#/components/responses/affiliates_NotFound'
+          $ref: '#/components/responses/admin_NotFound'
         '500':
-          $ref: '#/components/responses/affiliates_InternalError'
+          $ref: '#/components/responses/admin_InternalError'
   /v1/admin/aimetrics:
     get:
       description: "Is the fleet AI board: O11yAI generations (count, cost, avg/p95 latency,\nper-model), per-model usage\
@@ -4747,11 +4738,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/referrals_AdminListEnvelope'
+                $ref: '#/components/schemas/admin_AdminListEnvelope'
         '403':
-          $ref: '#/components/responses/referrals_Forbidden'
+          $ref: '#/components/responses/admin_Forbidden'
         '500':
-          $ref: '#/components/responses/referrals_InternalServerError'
+          $ref: '#/components/responses/admin_InternalServerError'
   /v1/admin/referrals/bonuses:
     get:
       description: "Returns every one-time referral bonus in the ledger with a fleet summary.\n\nSuperAdmin only, fail-closed.\
@@ -15115,16 +15106,16 @@ paths:
   /v1/audio/speech:
     post:
       tags:
-      - OpenAI Compatible
+      - Audio
       summary: Create speech (text-to-speech)
-      description: OpenAI-compatible text-to-speech. Returns binary audio.
-      operationId: ai_createSpeech
+      description: Speak text as audio. Returns the audio bytes, not JSON.
+      operationId: gateway_createSpeech
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ai_SpeechRequest'
+              $ref: '#/components/schemas/gateway_SpeechRequest'
       responses:
         '200':
           description: Audio stream.
@@ -15134,29 +15125,7 @@ paths:
                 type: string
                 format: binary
         '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-  /v1/audio/transcriptions:
-    post:
-      tags:
-      - OpenAI Compatible
-      summary: Create transcription (speech-to-text)
-      description: OpenAI-compatible speech-to-text (Whisper interface).
-      operationId: ai_createTranscription
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ai_TranscriptionRequest'
-      responses:
-        '200':
-          description: Transcription result.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_TranscriptionResponse'
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
+          $ref: '#/components/responses/gateway_Unauthorized'
   /v1/audit:
     get:
       description: "List reads the caller's OWN org audit trail, newest first, with the total the\nfilter matched so a console\
@@ -19347,7 +19316,7 @@ paths:
   /v1/bots:
     get:
       tags:
-      - Bots
+      - bots
       summary: List returns the caller org's live bot runs, read from the bot runtime and projected into the console contract
         with each run's live session URL derived here.
       operationId: cloud_get_v1_bots
@@ -19363,35 +19332,6 @@ paths:
         \ a request field, and it is\nwhat scopes the runtime's answer \u2014 so one tenant can never enumerate another's\n\
         runs. A runtime that cannot answer is an error, not an empty list: [] would tell\nthe caller \"your org has no runs\"\
         , which is a different claim from \"we could not\nask\", and the difference is the whole reason this endpoint exists."
-  /v1/bots/launch:
-    post:
-      tags:
-      - Bots
-      summary: Launch a bot (machine + agent binding), or dryRun for a quote
-      operationId: visor_launchBot
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/visor_BotLaunchRequest'
-      responses:
-        '200':
-          description: Price quote (dryRun)
-          content:
-            application/json:
-              schema:
-                type: object
-        '201':
-          description: Bot launched
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/visor_BotView'
-        '400':
-          description: size / name is required
-        '401':
-          $ref: '#/components/responses/visor_Unauthorized'
   /v1/bots/run:
     post:
       description: "Answers 501 to every call. The bot runtime exposes no launch operation, so nothing here can start a sandbox,\
@@ -19405,95 +19345,10 @@ paths:
       operationId: cloud_post_v1_bots_run
       summary: "Reserved address for launching a bot run \u2014 not implemented, always 501"
       tags:
-      - Bots
+      - bots
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/bots/{id}:
-    get:
-      tags:
-      - Bots
-      summary: Get one bot by id
-      operationId: visor_getBot
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Bot
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/visor_BotView'
-        '401':
-          $ref: '#/components/responses/visor_Unauthorized'
-        '404':
-          description: Bot not found
-    delete:
-      tags:
-      - Bots
-      summary: Terminate a bot (unbind agent + delete machine)
-      operationId: visor_deleteBot
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: Terminated
-        '401':
-          $ref: '#/components/responses/visor_Unauthorized'
-  /v1/bots/{id}/{action}:
-    post:
-      tags:
-      - Bots
-      summary: Act on a bot (stop, pause, or message)
-      description: '`stop` and `pause` both halt the bot''s agent runtime (one honest
-
-        capability). `message` runs the bot''s bound agent via the agent runner
-
-        and returns that run''s output verbatim.
-
-        '
-      operationId: visor_botAction
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: action
-        in: path
-        required: true
-        schema:
-          type: string
-          enum:
-          - stop
-          - pause
-          - message
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              description: 'For message: the agent run body forwarded to /v1/agents/{ref}/run'
-      responses:
-        '200':
-          description: "Action result \u2014 {id,status} for stop/pause, or the agent run output for message"
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          description: unknown bot action / bot has no bound agent
-        '401':
-          $ref: '#/components/responses/visor_Unauthorized'
   /v1/bots/{runId}/stop:
     post:
       description: "Stop terminates one of the caller org's own bot runs and reports its terminal state.\n\nThe own-key guard\
@@ -19518,7 +19373,7 @@ paths:
           description: ok
       summary: Stop terminates one of the caller org's own bot runs and reports its terminal state.
       tags:
-      - Bots
+      - bots
   /v1/builds:
     get:
       description: "Lists the org's BuildKit build records \u2014 the git build step behind a deploy \u2014 each with the\
@@ -20961,38 +20816,38 @@ paths:
   /v1/chat/completions:
     post:
       tags:
-      - OpenAI Compatible
+      - Chat
       summary: Create chat completion
-      description: 'OpenAI-compatible chat completions. Set `stream: true` for an SSE token
+      description: 'Turn a conversation into the next message. Set `stream: true` for an SSE
 
-        stream (`text/event-stream`), otherwise a single JSON response. `model`
+        token stream (`text/event-stream`), otherwise a single JSON response.
 
-        accepts any model id from `GET /v1/models` (including the Zen ladder).
+        `model` accepts any model id from `GET /v1/models`, Zen family included.
 
         '
-      operationId: ai_createChatCompletion
+      operationId: gateway_createChatCompletion
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ai_ChatCompletionRequest'
+              $ref: '#/components/schemas/gateway_ChatCompletionRequest'
       responses:
         '200':
           description: 'Completion (JSON) or SSE stream when `stream: true`.'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ai_ChatCompletionResponse'
+                $ref: '#/components/schemas/gateway_ChatCompletionResponse'
             text/event-stream:
               schema:
                 type: string
         '401':
-          $ref: '#/components/responses/ai_Unauthorized'
+          $ref: '#/components/responses/gateway_Unauthorized'
         '402':
-          $ref: '#/components/responses/ai_PaymentRequired'
+          $ref: '#/components/responses/gateway_PaymentRequired'
         '429':
-          $ref: '#/components/responses/ai_RateLimited'
+          $ref: '#/components/responses/gateway_RateLimited'
   /v1/cloud:
     get:
       description: "Returns the clouds this deployment can link and what linking each\none needs \u2014 the DigitalOcean token,\
@@ -26272,15 +26127,15 @@ paths:
   /v1/completions:
     post:
       tags:
-      - OpenAI Compatible
+      - Completions
       summary: Create completion (legacy text)
-      operationId: ai_createCompletion
+      operationId: gateway_createCompletion
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ai_CompletionRequest'
+              $ref: '#/components/schemas/gateway_CompletionRequest'
       responses:
         '200':
           description: 'Completion (JSON) or SSE stream when `stream: true`.'
@@ -26292,7 +26147,7 @@ paths:
               schema:
                 type: string
         '401':
-          $ref: '#/components/responses/ai_Unauthorized'
+          $ref: '#/components/responses/gateway_Unauthorized'
   /v1/compliance/accreditation:
     get:
       description: "ListAccreditation returns the org's tracked accreditation-state records, newest\nfirst \u2014 evidence\
@@ -28271,7 +28126,7 @@ paths:
         instance''s own in-cluster Service and the port is its HTTP port, 8123.'
   /v1/datastore/{name}:
     parameters:
-    - $ref: '#/components/parameters/provisioning_Name'
+    - $ref: '#/components/parameters/datastore_Name'
     get:
       tags:
       - datastore
@@ -29426,7 +29281,7 @@ paths:
           type: string
       summary: Delete a DNS zone or record
       tags:
-      - DNS
+      - dns
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -29452,7 +29307,7 @@ paths:
           type: string
       summary: Read your org's DNS zones and records
       tags:
-      - DNS
+      - dns
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -29478,7 +29333,7 @@ paths:
           type: string
       summary: Not served by the DNS surface
       tags:
-      - DNS
+      - dns
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -29503,7 +29358,7 @@ paths:
           type: string
       summary: Amend a DNS zone or record
       tags:
-      - DNS
+      - dns
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -29529,7 +29384,7 @@ paths:
           type: string
       summary: Create a DNS zone or record
       tags:
-      - DNS
+      - dns
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -29554,7 +29409,7 @@ paths:
           type: string
       summary: Replace a DNS zone or record
       tags:
-      - DNS
+      - dns
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -29617,7 +29472,7 @@ paths:
         is 27017.'
   /v1/docdb/{name}:
     parameters:
-    - $ref: '#/components/parameters/provisioning_Name'
+    - $ref: '#/components/parameters/docdb_Name'
     get:
       tags:
       - docdb
@@ -30479,7 +30334,7 @@ paths:
   /v1/edge/nodes:
     get:
       tags:
-      - Edge
+      - edge
       summary: Returns the Zero Trust edge-routers the caller's org owns.
       operationId: cloud_get_v1_edge_nodes
       responses:
@@ -30626,24 +30481,24 @@ paths:
   /v1/embeddings:
     post:
       tags:
-      - OpenAI Compatible
+      - Embeddings
       summary: Create embeddings
-      operationId: ai_createEmbeddings
+      operationId: gateway_createEmbeddings
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ai_EmbeddingRequest'
+              $ref: '#/components/schemas/gateway_EmbeddingRequest'
       responses:
         '200':
           description: Embedding vectors.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ai_EmbeddingResponse'
+                $ref: '#/components/schemas/gateway_EmbeddingResponse'
         '401':
-          $ref: '#/components/responses/ai_Unauthorized'
+          $ref: '#/components/responses/gateway_Unauthorized'
   /v1/enablement:
     get:
       description: "GetEnablement returns what the caller's org can actually use: every managed\nitem with its global state,\
@@ -34052,153 +33907,6 @@ paths:
         A function that has never run \u2014 or a name that does not exist in the caller's org \u2014 answers with an empty\
         \ string, not a not-found. Scoped to the caller's org; requires a validated principal."
       parameters: []
-  /v1/gateway/cdn/analytics:
-    get:
-      tags:
-      - CDN
-      summary: CDN cache analytics
-      operationId: gateway_getCDNAnalytics
-      parameters:
-      - name: start_date
-        in: query
-        schema:
-          type: string
-          format: date
-      - name: end_date
-        in: query
-        schema:
-          type: string
-          format: date
-      - name: granularity
-        in: query
-        schema:
-          type: string
-          enum:
-          - minute
-          - hour
-          - day
-          default: hour
-      responses:
-        '200':
-          description: CDN analytics
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  total_requests:
-                    type: integer
-                  cache_hits:
-                    type: integer
-                  cache_misses:
-                    type: integer
-                  hit_ratio:
-                    type: number
-                  bandwidth_bytes:
-                    type: integer
-                  timeseries:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        timestamp:
-                          type: string
-                          format: date-time
-                        requests:
-                          type: integer
-                        hits:
-                          type: integer
-                        misses:
-                          type: integer
-  /v1/gateway/cdn/purge:
-    post:
-      tags:
-      - CDN
-      summary: Purge CDN cache
-      operationId: gateway_purgeCDNCache
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/gateway_CDNPurgeRequest'
-      responses:
-        '200':
-          description: Cache purged
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  purged:
-                    type: integer
-                    description: Number of items purged
-                  status:
-                    type: string
-                    enum:
-                    - ok
-        '400':
-          description: Invalid purge request
-  /v1/gateway/chat/completions:
-    post:
-      tags:
-      - Chat
-      summary: Create chat completion
-      operationId: gateway_createChatCompletion
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/gateway_ChatCompletionRequest'
-      responses:
-        '200':
-          description: Chat completion response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/gateway_ChatCompletionResponse'
-            text/event-stream:
-              schema:
-                type: string
-                description: SSE stream for streaming responses
-  /v1/gateway/completions:
-    post:
-      tags:
-      - Completions
-      summary: Create completion
-      operationId: gateway_createCompletion
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - model
-              - prompt
-              properties:
-                model:
-                  type: string
-                prompt:
-                  oneOf:
-                  - type: string
-                  - type: array
-                    items:
-                      type: string
-                max_tokens:
-                  type: integer
-                temperature:
-                  type: number
-                stream:
-                  type: boolean
-      responses:
-        '200':
-          description: Completion response
-          content:
-            application/json:
-              schema:
-                type: object
   /v1/gateway/config:
     get:
       description: 'Read returns the EFFECTIVE edge policy the caller is subject to: the platform CORS
@@ -34250,548 +33958,6 @@ paths:
       summary: Write updates one policy scope and returns the policy in force after the write.
       tags:
       - gateway
-  /v1/gateway/dns/zones:
-    get:
-      tags:
-      - DNS
-      summary: List DNS zones (proxy to dns.hanzo.ai)
-      operationId: gateway_listDNSZonesProxy
-      responses:
-        '200':
-          description: List of zones
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/gateway/dns/zones/{zone}/records:
-    get:
-      tags:
-      - DNS
-      summary: List DNS records (proxy to dns.hanzo.ai)
-      operationId: gateway_listDNSRecordsProxy
-      parameters:
-      - name: zone
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: List of records
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/gateway/edge/{slug}:
-    post:
-      tags:
-      - Edge
-      summary: Invoke edge function via gateway
-      operationId: gateway_invokeEdgeFunction
-      parameters:
-      - name: slug
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Function slug
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
-      responses:
-        '200':
-          description: Function response
-          content:
-            application/json:
-              schema:
-                type: object
-            text/event-stream:
-              schema:
-                type: string
-        '404':
-          description: Function not found
-        '502':
-          description: Function execution error
-    get:
-      tags:
-      - Edge
-      summary: Invoke edge function (GET)
-      operationId: gateway_invokeEdgeFunctionGet
-      parameters:
-      - name: slug
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Function response
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/gateway/embeddings:
-    post:
-      tags:
-      - Embeddings
-      summary: Create embeddings
-      operationId: gateway_createEmbedding
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/gateway_EmbeddingRequest'
-      responses:
-        '200':
-          description: Embedding response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/gateway_EmbeddingResponse'
-  /v1/gateway/health/liveliness:
-    get:
-      tags:
-      - Health
-      summary: Liveliness check
-      operationId: gateway_livelinessCheck
-      security: []
-      responses:
-        '200':
-          description: Service alive
-          content:
-            text/plain:
-              schema:
-                type: string
-  /v1/gateway/health/readiness:
-    get:
-      tags:
-      - Health
-      summary: Readiness check
-      operationId: gateway_readinessCheck
-      security: []
-      responses:
-        '200':
-          description: Service ready
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  db_status:
-                    type: string
-                  cache_status:
-                    type: string
-  /v1/gateway/key/delete:
-    post:
-      tags:
-      - Keys
-      summary: Delete key
-      operationId: gateway_deleteKey
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - keys
-              properties:
-                keys:
-                  type: array
-                  items:
-                    type: string
-      responses:
-        '200':
-          description: Keys deleted
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/gateway/key/generate:
-    post:
-      tags:
-      - Keys
-      summary: Generate API key
-      operationId: gateway_generateKey
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                key_alias:
-                  type: string
-                duration:
-                  type: string
-                  description: Duration like "30d", "1h", etc.
-                models:
-                  type: array
-                  items:
-                    type: string
-                max_budget:
-                  type: number
-                user_id:
-                  type: string
-                team_id:
-                  type: string
-                metadata:
-                  type: object
-      responses:
-        '200':
-          description: Generated key
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/gateway_Key'
-  /v1/gateway/key/info:
-    get:
-      tags:
-      - Keys
-      summary: Get key info
-      operationId: gateway_getKeyInfo
-      parameters:
-      - name: key
-        in: query
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Key information
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/gateway_Key'
-  /v1/gateway/key/update:
-    post:
-      tags:
-      - Keys
-      summary: Update key
-      operationId: gateway_updateKey
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - key
-              properties:
-                key:
-                  type: string
-                models:
-                  type: array
-                  items:
-                    type: string
-                max_budget:
-                  type: number
-                metadata:
-                  type: object
-      responses:
-        '200':
-          description: Key updated
-          content:
-            application/json:
-              schema:
-                type: object
-  /v1/gateway/models:
-    get:
-      tags:
-      - Models
-      summary: List models
-      operationId: gateway_listModels
-      responses:
-        '200':
-          description: List of models
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  object:
-                    type: string
-                    enum:
-                    - list
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/gateway_Model'
-  /v1/gateway/models/{model}:
-    get:
-      tags:
-      - Models
-      summary: Get model
-      operationId: gateway_getModel
-      parameters:
-      - name: model
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Model details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/gateway_Model'
-  /v1/gateway/routes:
-    get:
-      tags:
-      - Routes
-      summary: List custom routing rules
-      operationId: gateway_listRoutes
-      responses:
-        '200':
-          description: List of routing rules
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/gateway_RoutingRule'
-    post:
-      tags:
-      - Routes
-      summary: Create routing rule
-      operationId: gateway_createRoute
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/gateway_RoutingRule'
-      responses:
-        '201':
-          description: Rule created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/gateway_RoutingRule'
-  /v1/gateway/routes/{id}:
-    get:
-      tags:
-      - Routes
-      summary: Get routing rule
-      operationId: gateway_getRoute
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: Routing rule
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/gateway_RoutingRule'
-    put:
-      tags:
-      - Routes
-      summary: Update routing rule
-      operationId: gateway_updateRoute
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/gateway_RoutingRule'
-      responses:
-        '200':
-          description: Rule updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/gateway_RoutingRule'
-    delete:
-      tags:
-      - Routes
-      summary: Delete routing rule
-      operationId: gateway_deleteRoute
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '204':
-          description: Rule deleted
-  /v1/gateway/spend/calculate:
-    post:
-      tags:
-      - Spend
-      summary: Calculate spend for request
-      operationId: gateway_calculateSpend
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                model:
-                  type: string
-                messages:
-                  type: array
-                  items:
-                    type: object
-                completion:
-                  type: string
-      responses:
-        '200':
-          description: Calculated spend
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  input_cost:
-                    type: number
-                  output_cost:
-                    type: number
-                  total_cost:
-                    type: number
-  /v1/gateway/spend/logs:
-    get:
-      tags:
-      - Spend
-      summary: Get spend logs
-      operationId: gateway_getSpendLogs
-      parameters:
-      - name: user_id
-        in: query
-        schema:
-          type: string
-      - name: team_id
-        in: query
-        schema:
-          type: string
-      - name: start_date
-        in: query
-        schema:
-          type: string
-          format: date
-      - name: end_date
-        in: query
-        schema:
-          type: string
-          format: date
-      responses:
-        '200':
-          description: Spend logs
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    request_id:
-                      type: string
-                    model:
-                      type: string
-                    api_key:
-                      type: string
-                    spend:
-                      type: number
-                    total_tokens:
-                      type: integer
-                    startTime:
-                      type: string
-                      format: date-time
-  /v1/gateway/team/info:
-    get:
-      tags:
-      - Teams
-      summary: Get team info
-      operationId: gateway_getTeamInfo
-      parameters:
-      - name: team_id
-        in: query
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Team information
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/gateway_Team'
-  /v1/gateway/team/list:
-    get:
-      tags:
-      - Teams
-      summary: List teams
-      operationId: gateway_listTeams
-      responses:
-        '200':
-          description: List of teams
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/gateway_Team'
-  /v1/gateway/team/new:
-    post:
-      tags:
-      - Teams
-      summary: Create team
-      operationId: gateway_createTeam
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                team_alias:
-                  type: string
-                organization_id:
-                  type: string
-                admins:
-                  type: array
-                  items:
-                    type: string
-                members:
-                  type: array
-                  items:
-                    type: string
-                max_budget:
-                  type: number
-                models:
-                  type: array
-                  items:
-                    type: string
-      responses:
-        '200':
-          description: Team created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/gateway_Team'
   /v1/git/keys:
     post:
       tags:
@@ -42543,29 +41709,29 @@ paths:
   /v1/images/generations:
     post:
       tags:
-      - OpenAI Compatible
+      - Images
       summary: Create image
-      description: OpenAI-compatible text-to-image generation.
-      operationId: ai_createImage
+      description: Generate an image from a text prompt.
+      operationId: gateway_createImage
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ai_ImageGenerationRequest'
+              $ref: '#/components/schemas/gateway_ImageGenerationRequest'
       responses:
         '200':
           description: Generated image(s).
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ai_ImageResponse'
+                $ref: '#/components/schemas/gateway_ImageResponse'
         '401':
-          $ref: '#/components/responses/ai_Unauthorized'
+          $ref: '#/components/responses/gateway_Unauthorized'
         '402':
-          $ref: '#/components/responses/ai_PaymentRequired'
+          $ref: '#/components/responses/gateway_PaymentRequired'
         '429':
-          $ref: '#/components/responses/ai_RateLimited'
+          $ref: '#/components/responses/gateway_RateLimited'
   /v1/index/health:
     get:
       description: "Answers Meilisearch's `{\"status\":\"available\"}` when the index store is readable. It FAILS CLOSED \u2014\
@@ -46430,7 +45596,7 @@ paths:
                     type: integer
   /v1/kv/{name}:
     parameters:
-    - $ref: '#/components/parameters/provisioning_Name'
+    - $ref: '#/components/parameters/kv_Name'
     get:
       tags:
       - kv
@@ -47131,98 +46297,6 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/load-balancers:
-    get:
-      tags:
-      - Load Balancers
-      summary: List the caller's load balancers
-      operationId: do_listLoadBalancers
-      responses:
-        '200':
-          description: Load balancers
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  loadBalancers:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/do_LoadBalancer'
-        '401':
-          $ref: '#/components/responses/do_Unauthorized'
-        '502':
-          description: DigitalOcean upstream error
-        '503':
-          description: DigitalOcean not configured
-    post:
-      tags:
-      - Load Balancers
-      summary: Create a load balancer
-      operationId: do_createLoadBalancer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/do_LoadBalancerCreate'
-      responses:
-        '201':
-          description: Load balancer created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/do_LoadBalancer'
-        '400':
-          description: Invalid name or missing region
-        '401':
-          $ref: '#/components/responses/do_Unauthorized'
-        '409':
-          description: A load balancer with that name already exists
-        '502':
-          description: DigitalOcean upstream error
-        '503':
-          description: DigitalOcean not configured
-  /v1/load-balancers/{id}:
-    parameters:
-    - name: id
-      in: path
-      required: true
-      schema:
-        type: string
-      description: DO load balancer id
-    get:
-      tags:
-      - Load Balancers
-      summary: Get one load balancer (owned)
-      operationId: do_getLoadBalancer
-      responses:
-        '200':
-          description: Load balancer
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/do_LoadBalancer'
-        '401':
-          $ref: '#/components/responses/do_Unauthorized'
-        '404':
-          description: Load balancer not found
-        '503':
-          description: DigitalOcean not configured
-    delete:
-      tags:
-      - Load Balancers
-      summary: Delete one load balancer (owned)
-      operationId: do_deleteLoadBalancer
-      responses:
-        '204':
-          description: Deleted
-        '401':
-          $ref: '#/components/responses/do_Unauthorized'
-        '404':
-          description: Load balancer not found
-        '503':
-          description: DigitalOcean not configured
   /v1/logs/health:
     get:
       description: "Reports the native log store's live state for the calling tenant: the subsystem version and `records`,\
@@ -47498,74 +46572,6 @@ paths:
         @hanzo/bot runtime.'
       tags:
       - machines
-  /v1/machines/{id}/agent-binding:
-    get:
-      tags:
-      - Bindings
-      summary: Get a machine's agent binding
-      operationId: visor_getMachineAgentBinding
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: Agent binding
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/visor_AgentBinding'
-        '401':
-          $ref: '#/components/responses/visor_Unauthorized'
-        '404':
-          description: No agent binding for machine
-    delete:
-      tags:
-      - Bindings
-      summary: Unbind the agent from a machine
-      operationId: visor_unbindMachineAgent
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: Unbound
-        '401':
-          $ref: '#/components/responses/visor_Unauthorized'
-  /v1/machines/{id}/bind-agent:
-    post:
-      tags:
-      - Bindings
-      summary: Bind a cloud Agent to a machine
-      operationId: visor_bindMachineAgent
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/visor_BindAgentRequest'
-      responses:
-        '200':
-          description: Agent binding
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/visor_AgentBinding'
-        '400':
-          description: agentName is required
-        '401':
-          $ref: '#/components/responses/visor_Unauthorized'
   /v1/marketing/audiences:
     get:
       description: Returns the org's saved audiences, most recently updated first.
@@ -48917,38 +47923,40 @@ paths:
   /v1/messages:
     post:
       tags:
-      - Claude Compatible
-      summary: Create a message (Anthropic-compatible)
-      description: 'Anthropic Messages-compatible endpoint. Set `stream: true` for an SSE
+      - Messages
+      summary: Create a message
+      description: 'The `/v1/messages` conversation shape: a system prompt plus alternating
 
-        event stream. Drop-in for the Anthropic SDK and Claude Code''s
+        user/assistant turns, answered as one message. Set `stream: true` for an
 
-        `ANTHROPIC_BASE_URL`.
+        SSE event stream. Any client that speaks this shape can point its base
+
+        URL at `https://api.hanzo.ai` and use it unchanged.
 
         '
-      operationId: ai_createMessage
+      operationId: gateway_createMessage
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ai_MessageRequest'
+              $ref: '#/components/schemas/gateway_MessageRequest'
       responses:
         '200':
           description: 'Message (JSON) or SSE stream when `stream: true`.'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ai_MessageResponse'
+                $ref: '#/components/schemas/gateway_MessageResponse'
             text/event-stream:
               schema:
                 type: string
         '401':
-          $ref: '#/components/responses/ai_Unauthorized'
+          $ref: '#/components/responses/gateway_Unauthorized'
         '402':
-          $ref: '#/components/responses/ai_PaymentRequired'
+          $ref: '#/components/responses/gateway_PaymentRequired'
         '429':
-          $ref: '#/components/responses/ai_RateLimited'
+          $ref: '#/components/responses/gateway_RateLimited'
   /v1/metrics/batch:
     post:
       description: "Writes every sample in a luxfi/metric `MetricBatch` into the calling org's store and answers `{written}`:\
@@ -49750,23 +48758,23 @@ paths:
       tags:
       - Models
       summary: List available models
-      description: OpenAI-compatible model list across every routable provider.
-      operationId: ai_listModels
+      description: Every model this gateway will route to, across every provider it can reach.
+      operationId: gateway_listModels
       responses:
         '200':
           description: Model list.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ai_ModelList'
+                $ref: '#/components/schemas/gateway_ModelList'
         '401':
-          $ref: '#/components/responses/ai_Unauthorized'
+          $ref: '#/components/responses/gateway_Unauthorized'
   /v1/models/{model}:
     get:
       tags:
       - Models
       summary: Retrieve a model
-      operationId: ai_retrieveModel
+      operationId: gateway_retrieveModel
       parameters:
       - name: model
         in: path
@@ -49779,11 +48787,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ai_Model'
+                $ref: '#/components/schemas/gateway_Model'
         '401':
-          $ref: '#/components/responses/ai_Unauthorized'
+          $ref: '#/components/responses/gateway_Unauthorized'
         '404':
-          $ref: '#/components/responses/ai_NotFound'
+          $ref: '#/components/responses/gateway_NotFound'
   /v1/mq/health:
     get:
       description: Reports whether the message plane behind this surface answers.
@@ -54865,9 +53873,9 @@ paths:
   /v1/rerank:
     post:
       tags:
-      - OpenAI Compatible
+      - Rerank
       summary: Rerank documents against a query
-      operationId: ai_rerank
+      operationId: gateway_rerank
       requestBody:
         required: true
         content:
@@ -54897,7 +53905,7 @@ paths:
               schema:
                 type: object
         '401':
-          $ref: '#/components/responses/ai_Unauthorized'
+          $ref: '#/components/responses/gateway_Unauthorized'
   /v1/research/artifacts:
     post:
       tags:
@@ -56089,7 +55097,7 @@ paths:
           description: Versioning updated
   /v1/s3/{name}:
     parameters:
-    - $ref: '#/components/parameters/provisioning_Name'
+    - $ref: '#/components/parameters/s3_Name'
     get:
       tags:
       - s3
@@ -57484,7 +56492,7 @@ paths:
                 $ref: '#/components/schemas/search_WebhookResults'
   /v1/search/{name}:
     parameters:
-    - $ref: '#/components/parameters/provisioning_Name'
+    - $ref: '#/components/parameters/search_Name'
     get:
       tags:
       - Search
@@ -58592,7 +57600,7 @@ paths:
         in-cluster Service and the port is 5432.'
   /v1/sql/{name}:
     parameters:
-    - $ref: '#/components/parameters/provisioning_Name'
+    - $ref: '#/components/parameters/sql_Name'
     get:
       tags:
       - sql
@@ -62735,7 +61743,7 @@ paths:
                 type: object
   /v1/vector/{name}:
     parameters:
-    - $ref: '#/components/parameters/provisioning_Name'
+    - $ref: '#/components/parameters/vector_Name'
     get:
       tags:
       - vector
@@ -65355,6 +64363,167 @@ components:
           type: array
           items:
             type: string
+    admin_ActionOut:
+      type: object
+      description: 'The envelope every mutation answers with. Data is per host and in the order
+
+        applied, so a halted rollout reads as the prefix that succeeded followed by
+
+        the one that did not.
+
+        '
+      properties:
+        status:
+          type: string
+        msg:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/admin_Result'
+    admin_AdminAffiliateEnvelope:
+      type: object
+      description: Admin envelope wrapping a single affiliate.
+      properties:
+        status:
+          type: string
+          example: ok
+        msg:
+          type: string
+        data:
+          type: object
+          properties:
+            affiliate:
+              $ref: '#/components/schemas/admin_AdminAffiliateView'
+    admin_AdminAffiliateView:
+      type: object
+      description: One row in the global-admin directory (org exposed).
+      properties:
+        id:
+          type: string
+        org:
+          type: string
+        code:
+          type: string
+        requestedCode:
+          type: string
+        status:
+          $ref: '#/components/schemas/admin_AffiliateStatus'
+        rateBps:
+          type: integer
+          format: int64
+        referredCount:
+          type: integer
+        accruedCents:
+          type: integer
+          format: int64
+        pendingCents:
+          type: integer
+          format: int64
+        paidCents:
+          type: integer
+          format: int64
+        createdAt:
+          type: integer
+          format: int64
+        approvedAt:
+          type: integer
+          format: int64
+        suspendedAt:
+          type: integer
+          format: int64
+    admin_AdminAuthorEnvelope:
+      allOf:
+      - $ref: '#/components/schemas/admin_AdminEnvelope'
+      - type: object
+        properties:
+          data:
+            type: object
+            properties:
+              author:
+                $ref: '#/components/schemas/admin_AdminAuthorView'
+    admin_AdminAuthorView:
+      type: object
+      description: One row in the global-admin directory (org exposed).
+      properties:
+        id:
+          type: string
+        org:
+          type: string
+        githubLogin:
+          type: string
+        status:
+          type: string
+          enum:
+          - connected
+          - approved
+          - suspended
+        verified:
+          type: boolean
+        shareBps:
+          type: integer
+          format: int64
+        repoCount:
+          type: integer
+        deployCount:
+          type: integer
+        accruedCents:
+          type: integer
+          format: int64
+        pendingCents:
+          type: integer
+          format: int64
+        paidCents:
+          type: integer
+          format: int64
+        createdAt:
+          type: integer
+          format: int64
+        approvedAt:
+          type: integer
+          format: int64
+        suspendedAt:
+          type: integer
+          format: int64
+    admin_AdminEnvelope:
+      type: object
+      description: The { status, msg, data } envelope wrapping every admin response.
+      properties:
+        status:
+          type: string
+          examples:
+          - ok
+        msg:
+          type: string
+        data:
+          type: object
+    admin_AdminListData:
+      type: object
+      properties:
+        referrals:
+          type: array
+          items:
+            $ref: '#/components/schemas/admin_AdminReferralView'
+        summary:
+          $ref: '#/components/schemas/admin_AdminSummary'
+    admin_AdminListEnvelope:
+      type: object
+      description: Admin `{ status, msg, data }` envelope for the affiliate directory.
+      properties:
+        status:
+          type: string
+          example: ok
+        msg:
+          type: string
+        data:
+          type: object
+          properties:
+            affiliates:
+              type: array
+              items:
+                $ref: '#/components/schemas/admin_AdminAffiliateView'
+            summary:
+              $ref: '#/components/schemas/admin_AdminSummary'
     admin_AdminMe:
       type: object
       properties:
@@ -65368,6 +64537,112 @@ components:
           type: string
         isGlobalAdmin:
           type: boolean
+    admin_AdminPayoutEnvelope:
+      type: object
+      description: Admin envelope wrapping a recorded payout and the updated affiliate.
+      properties:
+        status:
+          type: string
+          example: ok
+        msg:
+          type: string
+        data:
+          type: object
+          properties:
+            payout:
+              $ref: '#/components/schemas/admin_Payout'
+            affiliate:
+              $ref: '#/components/schemas/admin_AdminAffiliateView'
+    admin_AdminReferralView:
+      type: object
+      description: One row in the global-admin directory (both orgs exposed).
+      properties:
+        id:
+          type: string
+        referrerOrg:
+          type: string
+        refereeOrg:
+          type: string
+        code:
+          type: string
+        status:
+          $ref: '#/components/schemas/admin_ReferralStatus'
+        referrerGrantCents:
+          type: integer
+          format: int64
+        refereeGrantCents:
+          type: integer
+          format: int64
+        referrerTxn:
+          type: string
+          description: Ledger transaction id for the referrer bonus (omitted if empty).
+        refereeTxn:
+          type: string
+          description: Ledger transaction id for the referee bonus (omitted if empty).
+        createdAt:
+          type: integer
+          format: int64
+        qualifiedAt:
+          type: integer
+          format: int64
+        creditedAt:
+          type: integer
+          format: int64
+    admin_AdminSummary:
+      type: object
+      description: Fleet tally for the admin directory.
+      properties:
+        total:
+          type: integer
+        applied:
+          type: integer
+        approved:
+          type: integer
+        suspended:
+          type: integer
+        accruedCents:
+          type: integer
+          format: int64
+        pendingCents:
+          type: integer
+          format: int64
+        paidCents:
+          type: integer
+          format: int64
+    admin_AdminSweepData:
+      type: object
+      properties:
+        swept:
+          type: integer
+          description: Number of pending referrals examined this sweep.
+        credited:
+          type: integer
+          description: Number newly advanced to credited this sweep.
+    admin_AdminSweepEnvelope:
+      type: object
+      description: Admin envelope wrapping the accrual sweep result.
+      properties:
+        status:
+          type: string
+          example: ok
+        msg:
+          type: string
+        data:
+          type: object
+          properties:
+            swept:
+              type: integer
+              description: Total referred-org edges checked across all approved affiliates.
+            accrued:
+              type: integer
+              description: Total new accrual events created this sweep.
+    admin_AffiliateStatus:
+      type: string
+      description: "Affiliate lifecycle status. An affiliate advances applied \u2192 approved (and can be suspended)."
+      enum:
+      - applied
+      - approved
+      - suspended
     admin_AnalyticsData:
       type: object
       properties:
@@ -65455,6 +64730,13 @@ components:
           format: int64
         hint:
           type: string
+    admin_ApproveRequest:
+      type: object
+      description: Optional body for POST /v1/admin/affiliates/{id}/approve.
+      properties:
+        code:
+          type: string
+          description: Explicit code override. If omitted, the requested vanity code or a derived slug is used.
     admin_AuditIntegrity:
       type: object
       description: Hash-chain verification summary.
@@ -65703,6 +64985,37 @@ components:
           type: string
         description:
           type: string
+    admin_Drift:
+      type: object
+      description: 'One plugin''s agreement across the fleet. Versions holds every distinct
+
+        digest seen running; more than one means a rollout is incomplete or stuck,
+
+        which is the single question this whole view exists to answer.
+
+        '
+      properties:
+        name:
+          type: string
+        versions:
+          type: array
+          items:
+            type: string
+        running:
+          type: integer
+        down:
+          type: integer
+        disabled:
+          type: integer
+        drifted:
+          type: boolean
+    admin_Error:
+      type: object
+      description: Standard Hanzo error envelope.
+      properties:
+        error:
+          type: string
+          description: Human-readable error message.
     admin_FinanceCost:
       type: object
       properties:
@@ -65765,6 +65078,72 @@ components:
         creditsConsumedCents:
           type: integer
           format: int64
+    admin_Host:
+      type: object
+      description: 'One host''s own account of what it is running. Reported per host rather than
+
+        merged, because during a rollout the hosts disagree BY DESIGN and a merged
+
+        view hides exactly the state an operator is watching for.
+
+        '
+      properties:
+        host:
+          type: string
+          description: 'Host is the pod''s stable id, and Addr where it was reached. Self is true
+
+            for the host that answered the request.
+
+            '
+        addr:
+          type: string
+        self:
+          type: boolean
+        error:
+          type: string
+          description: 'Err is set when a peer could not be reached. Its plugins are then
+
+            unknown, which is NOT the same as none, so the list stays empty and the
+
+            drift below refuses to conclude anything from it.
+
+            '
+        plugins:
+          type: array
+          items:
+            $ref: '#/components/schemas/admin_PluginStatus'
+    admin_ListOut:
+      type: object
+      description: "The fleet board \u2014 one entry per host, plus the drift roll-up."
+      properties:
+        status:
+          type: string
+        msg:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/admin_Host'
+        drift:
+          type: array
+          items:
+            $ref: '#/components/schemas/admin_Drift'
+        data2:
+          type: integer
+    admin_NameIn:
+      type: object
+      description: 'Addresses one plugin by name, for the operations that take nothing else.
+
+        '
+      properties:
+        name:
+          type: string
+          description: Name is the app, from the path.
+        scope:
+          type: string
+          description: 'Scope "host" applies here only; default "fleet" applies everywhere.
+
+            '
     admin_O11yGlobal:
       type: object
       properties:
@@ -66008,6 +65387,168 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/admin_SourceStatus'
+    admin_Payout:
+      type: object
+      description: One recorded disbursement of accrued commission.
+      properties:
+        id:
+          type: string
+        amountCents:
+          type: integer
+          format: int64
+        method:
+          type: string
+        reference:
+          type: string
+        txn:
+          type: string
+          description: Commerce transaction id for a credits payout (absent for cash payouts).
+        createdAt:
+          type: integer
+          format: int64
+    admin_PayoutRequest:
+      type: object
+      required:
+      - amountCents
+      - method
+      description: Body for POST /v1/admin/affiliates/{id}/payout.
+      properties:
+        amountCents:
+          type: integer
+          format: int64
+          description: Payout amount in USD cents (must be positive; cannot exceed pending commission).
+        method:
+          type: string
+          description: "Payout method. `credits` issues a commerce grant; any other value (wire/paypal/check/\u2026) is record-only."
+          example: credits
+        reference:
+          type: string
+          description: Optional external reference for a cash payout.
+    admin_PayoutView:
+      type: object
+      properties:
+        id:
+          type: string
+        amountCents:
+          type: integer
+          format: int64
+        method:
+          type: string
+        reference:
+          type: string
+        txn:
+          type: string
+          description: Commerce transaction id for a credits payout.
+        createdAt:
+          type: integer
+          format: int64
+    admin_PluginStatus:
+      type: object
+      description: "One plugin's process view on one host \u2014 what `GET /v1/plugins` cannot\nanswer, because that reports\
+        \ the manifest and this reports the kernel.\n"
+      properties:
+        name:
+          type: string
+        prefix:
+          type: string
+          description: "Prefix is the FIRST subtree this plugin answers \u2014 the one a log line\nnames it by. Prefixes is\
+            \ every subtree, and a plugin may own several.\nReporting only the first would understate the blast radius of\
+            \ taking\nthis plugin down, which is the question a fleet view exists to answer.\n"
+        prefixes:
+          type: array
+          items:
+            type: string
+        source:
+          type: string
+          description: 'Source is where the binary came from: "embedded", "path", "url", or
+
+            "remote" for an instance this host did not start.
+
+            '
+          enum:
+          - embedded
+          - path
+          - url
+          - remote
+        version:
+          type: string
+          description: "Version is the artifact's SHA-256 when it was installed from a URL \u2014\nthe only version identifier\
+            \ that cannot drift from the bits actually\nrunning, since it IS the bits. Empty for the other sources.\n"
+        addr:
+          type: string
+          description: Addr is the socket or address serving it.
+        pid:
+          type: integer
+          description: PID is the child process, or 0 when this host did not start it.
+        running:
+          type: boolean
+          description: 'Running is false after Unload, or after a child exited and no Reload has
+
+            replaced it. Its routes stay registered and answer 503, so a false here
+
+            is the difference between "not deployed" and "deployed but down".
+
+            '
+        disabled:
+          type: boolean
+          description: "Disabled is true when Unload stopped it deliberately, as opposed to it\nhaving crashed. Both answer\
+            \ 503, so without this an operator cannot tell\na maintenance window from an outage \u2014 and would page for\
+            \ the former.\n"
+        since:
+          type: string
+          format: date-time
+          description: "Since is when the CURRENT instance started \u2014 it resets on Reload, so it\nreports the age of what\
+            \ is running, not of the mount.\n"
+        reloads:
+          type: integer
+          description: 'Reloads counts successful swaps since Load. A climbing number on one
+
+            host and not its peers is the signal that a rollout is uneven.
+
+            '
+        restarts:
+          type: integer
+          description: 'Restarts counts times the supervisor brought this plugin back after it
+
+            died on its own. Distinct from Reloads, which are deliberate: a nonzero
+
+            Restarts is a plugin crashing, and a climbing one is a crash loop.
+
+            '
+        usage:
+          $ref: '#/components/schemas/admin_PluginUsage'
+    admin_PluginUsage:
+      type: object
+      description: "A plugin's resource cost, measured rather than self-reported.\n\nThis exists because a plugin is a process.\
+        \ A linked-in subsystem cannot be\nmeasured this way at any price \u2014 one process has one RSS and one CPU clock,\n\
+        and nothing inside it can be attributed to a subsystem. Running a service as\nits own process makes \"which app is\
+        \ eating the memory\" a question with an\nexact answer instead of an argument.\n\nZero means not measured (no /proc,\
+        \ or nothing running), not measured-as-zero.\n"
+      properties:
+        cpuNs:
+          type: integer
+          format: int64
+          description: 'CPU is total user+system time this instance has consumed since it
+
+            started, in nanoseconds. It only ever climbs, so a rate is the
+
+            interesting derivative.
+
+            '
+        rssBytes:
+          type: integer
+          format: int64
+          description: "RSS is resident memory in bytes \u2014 the honest number for \"what does this\nplugin cost\", as opposed\
+            \ to virtual size.\n"
+        threads:
+          type: integer
+          description: 'Threads and FDs are the two limits a busy service hits first, and both
+
+            are leaks when they climb without bound.
+
+            '
+        fds:
+          type: integer
     admin_ProductRow:
       type: object
       properties:
@@ -66137,6 +65678,61 @@ components:
             additionalProperties: true
         data2:
           type: integer
+    admin_ReferralStatus:
+      type: string
+      description: 'A referral advances signed_up -> qualified -> credited. It never moves
+
+        backward; credited is terminal.
+
+        '
+      enum:
+      - signed_up
+      - qualified
+      - credited
+    admin_ReloadIn:
+      type: object
+      description: "Names an artifact to run. Exactly one of Version or URL+Sum, or neither to\nrestart the artifact already\
+        \ loaded \u2014 which is how a wedged plugin is\nbounced without changing what it runs.\n"
+      properties:
+        name:
+          type: string
+          description: 'Name is the app, from the path. It must be one the manifest declares.
+
+            '
+        version:
+          type: string
+          description: "Version is a release tag, resolved to a URL and digest through the\norigin's binaries.json index \u2014\
+            \ the same index CI publishes, so there is\nno second table mapping versions to digests.\n"
+        url:
+          type: string
+          description: 'URL is the artifact directly, for an origin with no index. Sum is its hex
+
+            SHA-256 and is REQUIRED with it: zip refuses an unverified download, and
+
+            so does this.
+
+            '
+        sum:
+          type: string
+        scope:
+          type: string
+          description: 'Scope "host" applies here only. Default "fleet" rolls it out one host at
+
+            a time, halting on the first host that fails to come up.
+
+            '
+    admin_Result:
+      type: object
+      description: One host's outcome for one action.
+      properties:
+        host:
+          type: string
+        ok:
+          type: boolean
+        version:
+          type: string
+        msg:
+          type: string
     admin_RetentionCohort:
       type: object
       properties:
@@ -66312,130 +65908,6 @@ components:
           - estimated
         note:
           type: string
-    affiliates_AdminAffiliateEnvelope:
-      type: object
-      description: Admin envelope wrapping a single affiliate.
-      properties:
-        status:
-          type: string
-          example: ok
-        msg:
-          type: string
-        data:
-          type: object
-          properties:
-            affiliate:
-              $ref: '#/components/schemas/affiliates_AdminAffiliateView'
-    affiliates_AdminAffiliateView:
-      type: object
-      description: One row in the global-admin directory (org exposed).
-      properties:
-        id:
-          type: string
-        org:
-          type: string
-        code:
-          type: string
-        requestedCode:
-          type: string
-        status:
-          $ref: '#/components/schemas/affiliates_AffiliateStatus'
-        rateBps:
-          type: integer
-          format: int64
-        referredCount:
-          type: integer
-        accruedCents:
-          type: integer
-          format: int64
-        pendingCents:
-          type: integer
-          format: int64
-        paidCents:
-          type: integer
-          format: int64
-        createdAt:
-          type: integer
-          format: int64
-        approvedAt:
-          type: integer
-          format: int64
-        suspendedAt:
-          type: integer
-          format: int64
-    affiliates_AdminListEnvelope:
-      type: object
-      description: Admin `{ status, msg, data }` envelope for the affiliate directory.
-      properties:
-        status:
-          type: string
-          example: ok
-        msg:
-          type: string
-        data:
-          type: object
-          properties:
-            affiliates:
-              type: array
-              items:
-                $ref: '#/components/schemas/affiliates_AdminAffiliateView'
-            summary:
-              $ref: '#/components/schemas/affiliates_AdminSummary'
-    affiliates_AdminPayoutEnvelope:
-      type: object
-      description: Admin envelope wrapping a recorded payout and the updated affiliate.
-      properties:
-        status:
-          type: string
-          example: ok
-        msg:
-          type: string
-        data:
-          type: object
-          properties:
-            payout:
-              $ref: '#/components/schemas/affiliates_Payout'
-            affiliate:
-              $ref: '#/components/schemas/affiliates_AdminAffiliateView'
-    affiliates_AdminSummary:
-      type: object
-      description: Fleet tally for the admin directory.
-      properties:
-        total:
-          type: integer
-        applied:
-          type: integer
-        approved:
-          type: integer
-        suspended:
-          type: integer
-        accruedCents:
-          type: integer
-          format: int64
-        pendingCents:
-          type: integer
-          format: int64
-        paidCents:
-          type: integer
-          format: int64
-    affiliates_AdminSweepEnvelope:
-      type: object
-      description: Admin envelope wrapping the accrual sweep result.
-      properties:
-        status:
-          type: string
-          example: ok
-        msg:
-          type: string
-        data:
-          type: object
-          properties:
-            swept:
-              type: integer
-              description: Total referred-org edges checked across all approved affiliates.
-            accrued:
-              type: integer
-              description: Total new accrual events created this sweep.
     affiliates_AffiliateDashboard:
       type: object
       description: The caller org's affiliate dashboard.
@@ -66512,13 +65984,6 @@ components:
         created:
           type: boolean
           description: True if this apply created a new affiliate record.
-    affiliates_ApproveRequest:
-      type: object
-      description: Optional body for POST /v1/admin/affiliates/{id}/approve.
-      properties:
-        code:
-          type: string
-          description: Explicit code override. If omitted, the requested vanity code or a derived slug is used.
     affiliates_AttributeRequest:
       type: object
       required:
@@ -66581,24 +66046,6 @@ components:
         createdAt:
           type: integer
           format: int64
-    affiliates_PayoutRequest:
-      type: object
-      required:
-      - amountCents
-      - method
-      description: Body for POST /v1/admin/affiliates/{id}/payout.
-      properties:
-        amountCents:
-          type: integer
-          format: int64
-          description: Payout amount in USD cents (must be positive; cannot exceed pending commission).
-        method:
-          type: string
-          description: "Payout method. `credits` issues a commerce grant; any other value (wire/paypal/check/\u2026) is record-only."
-          example: credits
-        reference:
-          type: string
-          description: Optional external reference for a cash payout.
     agents_ActivityView:
       type: object
       properties:
@@ -67007,129 +66454,6 @@ components:
           type: string
         serviceAccountId:
           type: string
-    ai_ChatChoice:
-      type: object
-      properties:
-        index:
-          type: integer
-        message:
-          $ref: '#/components/schemas/ai_ChatMessage'
-        finish_reason:
-          type: string
-          examples:
-          - stop
-          - length
-          - tool_calls
-          - content_filter
-    ai_ChatCompletionRequest:
-      type: object
-      required:
-      - model
-      - messages
-      properties:
-        model:
-          type: string
-        messages:
-          type: array
-          items:
-            $ref: '#/components/schemas/ai_ChatMessage'
-        stream:
-          type: boolean
-          default: false
-        temperature:
-          type: number
-        top_p:
-          type: number
-        max_tokens:
-          type: integer
-        tools:
-          type: array
-          items:
-            type: object
-        tool_choice: {}
-    ai_ChatCompletionResponse:
-      type: object
-      properties:
-        id:
-          type: string
-        object:
-          type: string
-          examples:
-          - chat.completion
-        created:
-          type: integer
-        model:
-          type: string
-        choices:
-          type: array
-          items:
-            $ref: '#/components/schemas/ai_ChatChoice'
-        usage:
-          $ref: '#/components/schemas/ai_Usage'
-    ai_ChatMessage:
-      type: object
-      required:
-      - role
-      properties:
-        role:
-          type: string
-          enum:
-          - system
-          - user
-          - assistant
-          - tool
-        content: {}
-        name:
-          type: string
-        tool_calls:
-          type: array
-          items:
-            type: object
-    ai_CompletionRequest:
-      type: object
-      required:
-      - model
-      - prompt
-      properties:
-        model:
-          type: string
-        prompt: {}
-        stream:
-          type: boolean
-          default: false
-        max_tokens:
-          type: integer
-        temperature:
-          type: number
-    ai_EmbeddingRequest:
-      type: object
-      required:
-      - model
-      - input
-      properties:
-        model:
-          type: string
-        input: {}
-        encoding_format:
-          type: string
-          enum:
-          - float
-          - base64
-    ai_EmbeddingResponse:
-      type: object
-      properties:
-        object:
-          type: string
-          examples:
-          - list
-        data:
-          type: array
-          items:
-            type: object
-        model:
-          type: string
-        usage:
-          $ref: '#/components/schemas/ai_Usage'
     ai_Envelope:
       description: 'The response shape of every `/v1/ai/<resource>` route.
 
@@ -67171,183 +66495,6 @@ components:
               type: string
             code:
               type: string
-    ai_ImageGenerationRequest:
-      type: object
-      required:
-      - prompt
-      properties:
-        model:
-          type: string
-        prompt:
-          type: string
-        n:
-          type: integer
-          default: 1
-        size:
-          type: string
-          examples:
-          - 1024x1024
-        quality:
-          type: string
-          enum:
-          - standard
-          - hd
-        response_format:
-          type: string
-          enum:
-          - url
-          - b64_json
-    ai_ImageResponse:
-      type: object
-      properties:
-        created:
-          type: integer
-        data:
-          type: array
-          items:
-            type: object
-            properties:
-              url:
-                type: string
-              b64_json:
-                type: string
-              revised_prompt:
-                type: string
-    ai_MessageRequest:
-      type: object
-      required:
-      - model
-      - messages
-      - max_tokens
-      properties:
-        model:
-          type: string
-        messages:
-          type: array
-          items:
-            type: object
-        max_tokens:
-          type: integer
-        stream:
-          type: boolean
-          default: false
-        system: {}
-        temperature:
-          type: number
-        tools:
-          type: array
-          items:
-            type: object
-    ai_MessageResponse:
-      type: object
-      properties:
-        id:
-          type: string
-        type:
-          type: string
-          examples:
-          - message
-        role:
-          type: string
-          examples:
-          - assistant
-        model:
-          type: string
-        content:
-          type: array
-          items:
-            type: object
-        stop_reason:
-          type: string
-        usage:
-          type: object
-    ai_Model:
-      type: object
-      properties:
-        id:
-          type: string
-        object:
-          type: string
-          examples:
-          - model
-        created:
-          type: integer
-        owned_by:
-          type: string
-    ai_ModelList:
-      type: object
-      properties:
-        object:
-          type: string
-          examples:
-          - list
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/ai_Model'
-    ai_SpeechRequest:
-      type: object
-      required:
-      - model
-      - input
-      - voice
-      properties:
-        model:
-          type: string
-        input:
-          type: string
-        voice:
-          type: string
-        response_format:
-          type: string
-          enum:
-          - mp3
-          - opus
-          - aac
-          - flac
-          - wav
-          - pcm
-        speed:
-          type: number
-    ai_TranscriptionRequest:
-      type: object
-      required:
-      - file
-      - model
-      properties:
-        file:
-          type: string
-          format: binary
-        model:
-          type: string
-        language:
-          type: string
-        prompt:
-          type: string
-        response_format:
-          type: string
-          enum:
-          - json
-          - text
-          - srt
-          - verbose_json
-          - vtt
-        temperature:
-          type: number
-    ai_TranscriptionResponse:
-      type: object
-      properties:
-        text:
-          type: string
-    ai_Usage:
-      type: object
-      properties:
-        prompt_tokens:
-          type: integer
-        completion_tokens:
-          type: integer
-        total_tokens:
-          type: integer
     analytics_DateRange:
       type: object
       required:
@@ -67702,141 +66849,6 @@ components:
           type: string
           format: date-time
           nullable: true
-    authors_AdminAuthorEnvelope:
-      allOf:
-      - $ref: '#/components/schemas/authors_AdminEnvelope'
-      - type: object
-        properties:
-          data:
-            type: object
-            properties:
-              author:
-                $ref: '#/components/schemas/authors_AdminAuthorView'
-    authors_AdminAuthorView:
-      type: object
-      description: One row in the global-admin directory (org exposed).
-      properties:
-        id:
-          type: string
-        org:
-          type: string
-        githubLogin:
-          type: string
-        status:
-          type: string
-          enum:
-          - connected
-          - approved
-          - suspended
-        verified:
-          type: boolean
-        shareBps:
-          type: integer
-          format: int64
-        repoCount:
-          type: integer
-        deployCount:
-          type: integer
-        accruedCents:
-          type: integer
-          format: int64
-        pendingCents:
-          type: integer
-          format: int64
-        paidCents:
-          type: integer
-          format: int64
-        createdAt:
-          type: integer
-          format: int64
-        approvedAt:
-          type: integer
-          format: int64
-        suspendedAt:
-          type: integer
-          format: int64
-    authors_AdminEnvelope:
-      type: object
-      description: The { status, msg, data } envelope wrapping every admin response.
-      properties:
-        status:
-          type: string
-          examples:
-          - ok
-        msg:
-          type: string
-        data:
-          type: object
-    authors_AdminListEnvelope:
-      allOf:
-      - $ref: '#/components/schemas/authors_AdminEnvelope'
-      - type: object
-        properties:
-          data:
-            type: object
-            properties:
-              authors:
-                type: array
-                items:
-                  $ref: '#/components/schemas/authors_AdminAuthorView'
-              summary:
-                $ref: '#/components/schemas/authors_AdminSummary'
-    authors_AdminPayoutEnvelope:
-      allOf:
-      - $ref: '#/components/schemas/authors_AdminEnvelope'
-      - type: object
-        properties:
-          data:
-            type: object
-            properties:
-              payout:
-                $ref: '#/components/schemas/authors_PayoutView'
-              author:
-                $ref: '#/components/schemas/authors_AdminAuthorView'
-    authors_AdminSummary:
-      type: object
-      description: Fleet tally for the admin directory.
-      properties:
-        total:
-          type: integer
-        connected:
-          type: integer
-        approved:
-          type: integer
-        suspended:
-          type: integer
-        accruedCents:
-          type: integer
-          format: int64
-        pendingCents:
-          type: integer
-          format: int64
-        paidCents:
-          type: integer
-          format: int64
-    authors_AdminSweepEnvelope:
-      allOf:
-      - $ref: '#/components/schemas/authors_AdminEnvelope'
-      - type: object
-        properties:
-          data:
-            type: object
-            properties:
-              swept:
-                type: integer
-                description: Deploying-org checks performed across all approved authors.
-              accrued:
-                type: integer
-                description: Accruals newly created.
-    authors_ApproveRequest:
-      type: object
-      description: Optional royalty-share override.
-      properties:
-        shareBps:
-          type: integer
-          minimum: 0
-          maximum: 10000
-          description: Royalty share in basis points (500 = 5%).
     authors_AuthorDashboard:
       type: object
       description: The connected author's dashboard.
@@ -67999,26 +67011,6 @@ components:
           type: string
           examples:
           - https://hanzo.app
-    authors_PayoutRequest:
-      type: object
-      required:
-      - amountCents
-      - method
-      properties:
-        amountCents:
-          type: integer
-          format: int64
-          minimum: 1
-          description: Payout amount in USD minor units (cents). Must be positive and not exceed pending.
-        method:
-          type: string
-          description: "Payout method. 'credits' issues a commerce grant; any other value (wire, paypal, check, \u2026) is\
-            \ record-only."
-          examples:
-          - credits
-        reference:
-          type: string
-          description: Optional external reference for a cash disbursement.
     authors_PayoutView:
       type: object
       properties:
@@ -90705,6 +89697,160 @@ components:
           type: integer
         opportunities:
           type: integer
+    datastore_CreateRequest:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
+          description: Resource name (lowercased/trimmed server-side).
+          example: analytics
+    datastore_CreateResponse:
+      type: object
+      description: 'Returned on 201. `password` and `username` are present only for secretful
+
+        kinds (sql, kv, and the dedicated datastore/docdb admin credential). The
+
+        password is returned ONCE and is never retrievable again.
+
+        '
+      required:
+      - id
+      - kind
+      - name
+      - status
+      - host
+      - port
+      - database
+      - connectionString
+      properties:
+        id:
+          type: string
+          description: Server-generated resource id.
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        name:
+          type: string
+        status:
+          type: string
+          description: Resource status (e.g. "ready", or "provisioning" for a dedicated instance still coming up).
+          example: ready
+        host:
+          type: string
+          description: Customer-facing host (public gateway host, or dedicated instance service).
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
+        connectionString:
+          type: string
+          description: Public, routable DSN (internal admin host is remapped out).
+        password:
+          type: string
+          description: Present only for secretful kinds; returned ONCE.
+    datastore_Error:
+      type: object
+      required:
+      - status
+      - msg
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+        msg:
+          type: string
+          description: Human-readable error message.
+        code:
+          type: integer
+        requestId:
+          type: string
+    datastore_GetResponse:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - status
+      - host
+      - port
+      - database
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
+    datastore_ListItem:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - status
+      - host
+      - port
+      - createdAt
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        createdAt:
+          type: integer
+          format: int64
+          description: Unix seconds.
     dns_DNSSECStatus:
       type: object
       properties:
@@ -90928,56 +90074,6 @@ components:
         zone:
           type: string
           description: Zone name (e.g. example.com)
-    do_ForwardingRule:
-      type: object
-      properties:
-        entry_protocol:
-          type: string
-        entry_port:
-          type: integer
-        target_protocol:
-          type: string
-        target_port:
-          type: integer
-    do_LoadBalancer:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        type:
-          type: string
-        targets:
-          type: integer
-          description: Count of attached backend droplets
-        ip:
-          type: string
-        status:
-          type: string
-    do_LoadBalancerCreate:
-      type: object
-      required:
-      - name
-      - region
-      properties:
-        name:
-          type: string
-          description: Friendly name; must match ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
-        region:
-          type: string
-          description: DO region slug
-        type:
-          type: string
-          description: "empty \u2192 DO default (REGIONAL)"
-        size:
-          type: string
-          description: DO size slug
-        forwarding_rules:
-          type: array
-          items:
-            $ref: '#/components/schemas/do_ForwardingRule'
-          description: "empty \u2192 default http 80\u219280"
     do_Vpc:
       type: object
       properties:
@@ -91011,6 +90107,160 @@ components:
         ip_range:
           type: string
           description: "CIDR (empty \u2192 DO auto-assigns)"
+    docdb_CreateRequest:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
+          description: Resource name (lowercased/trimmed server-side).
+          example: analytics
+    docdb_CreateResponse:
+      type: object
+      description: 'Returned on 201. `password` and `username` are present only for secretful
+
+        kinds (sql, kv, and the dedicated datastore/docdb admin credential). The
+
+        password is returned ONCE and is never retrievable again.
+
+        '
+      required:
+      - id
+      - kind
+      - name
+      - status
+      - host
+      - port
+      - database
+      - connectionString
+      properties:
+        id:
+          type: string
+          description: Server-generated resource id.
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        name:
+          type: string
+        status:
+          type: string
+          description: Resource status (e.g. "ready", or "provisioning" for a dedicated instance still coming up).
+          example: ready
+        host:
+          type: string
+          description: Customer-facing host (public gateway host, or dedicated instance service).
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
+        connectionString:
+          type: string
+          description: Public, routable DSN (internal admin host is remapped out).
+        password:
+          type: string
+          description: Present only for secretful kinds; returned ONCE.
+    docdb_Error:
+      type: object
+      required:
+      - status
+      - msg
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+        msg:
+          type: string
+          description: Human-readable error message.
+        code:
+          type: integer
+        requestId:
+          type: string
+    docdb_GetResponse:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - status
+      - host
+      - port
+      - database
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
+    docdb_ListItem:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - status
+      - host
+      - port
+      - createdAt
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        createdAt:
+          type: integer
+          format: int64
+          description: Unix seconds.
     edge_Domain:
       type: object
       properties:
@@ -91059,6 +90309,23 @@ components:
           type: string
         function_slug:
           type: string
+    edge_EdgeNodeView:
+      type: object
+      description: One row per ZT edge-router.
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        region:
+          type: string
+          description: From a "region-<slug>" role attribute; omitted when none
+        status:
+          type: string
+          enum:
+          - online
+          - disabled
+          - offline
     edge_Error:
       type: object
       properties:
@@ -91751,24 +91018,6 @@ components:
           type: string
         functionName:
           type: string
-    gateway_CDNPurgeRequest:
-      type: object
-      properties:
-        urls:
-          type: array
-          items:
-            type: string
-            format: uri
-          description: Specific URLs to purge
-        tags:
-          type: array
-          items:
-            type: string
-          description: Cache tags to purge
-        purge_all:
-          type: boolean
-          default: false
-          description: Purge all cached content
     gateway_ChatCompletionRequest:
       type: object
       required:
@@ -91777,7 +91026,7 @@ components:
       properties:
         model:
           type: string
-          description: Model ID (e.g., gpt-4, claude-3-opus)
+          description: A model id from `GET /v1/models` (e.g. `zen5-pro`).
         messages:
           type: array
           items:
@@ -91881,6 +91130,22 @@ components:
             type: object
         tool_call_id:
           type: string
+    gateway_CompletionRequest:
+      type: object
+      required:
+      - model
+      - prompt
+      properties:
+        model:
+          type: string
+        prompt: {}
+        stream:
+          type: boolean
+          default: false
+        max_tokens:
+          type: integer
+        temperature:
+          type: number
     gateway_EmbeddingRequest:
       type: object
       required:
@@ -91936,36 +91201,107 @@ components:
               type: integer
             total_tokens:
               type: integer
-    gateway_Key:
+    gateway_Error:
       type: object
       properties:
-        key:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            type:
+              type: string
+            code:
+              type: string
+    gateway_ImageGenerationRequest:
+      type: object
+      required:
+      - prompt
+      properties:
+        model:
           type: string
-          description: The API key (only shown once on creation)
-        key_name:
+        prompt:
           type: string
-        key_alias:
+        n:
+          type: integer
+          default: 1
+        size:
           type: string
-        user_id:
+          examples:
+          - 1024x1024
+        quality:
           type: string
-        team_id:
+          enum:
+          - standard
+          - hd
+        response_format:
           type: string
-        org_id:
-          type: string
-        models:
+          enum:
+          - url
+          - b64_json
+    gateway_ImageResponse:
+      type: object
+      properties:
+        created:
+          type: integer
+        data:
           type: array
           items:
-            type: string
-        spend:
-          type: number
-        max_budget:
-          type: number
-        budget_duration:
+            type: object
+            properties:
+              url:
+                type: string
+              b64_json:
+                type: string
+              revised_prompt:
+                type: string
+    gateway_MessageRequest:
+      type: object
+      required:
+      - model
+      - messages
+      - max_tokens
+      properties:
+        model:
           type: string
-        expires:
+        messages:
+          type: array
+          items:
+            type: object
+        max_tokens:
+          type: integer
+        stream:
+          type: boolean
+          default: false
+        system: {}
+        temperature:
+          type: number
+        tools:
+          type: array
+          items:
+            type: object
+    gateway_MessageResponse:
+      type: object
+      properties:
+        id:
           type: string
-          format: date-time
-        metadata:
+        type:
+          type: string
+          examples:
+          - message
+        role:
+          type: string
+          examples:
+          - assistant
+        model:
+          type: string
+        content:
+          type: array
+          items:
+            type: object
+        stop_reason:
+          type: string
+        usage:
           type: object
     gateway_Model:
       type: object
@@ -91980,92 +91316,41 @@ components:
           type: integer
         owned_by:
           type: string
-    gateway_RoutingRule:
+    gateway_ModelList:
+      type: object
+      properties:
+        object:
+          type: string
+          examples:
+          - list
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/gateway_Model'
+    gateway_SpeechRequest:
       type: object
       required:
-      - id
-      - match
-      - action
+      - model
+      - input
+      - voice
       properties:
-        id:
+        model:
           type: string
-          format: uuid
-        name:
+        input:
           type: string
-        match:
-          type: object
-          properties:
-            path:
-              type: string
-              description: Path pattern (supports wildcards)
-            method:
-              type: string
-              enum:
-              - GET
-              - POST
-              - PUT
-              - DELETE
-              - PATCH
-              - '*'
-            headers:
-              type: object
-              additionalProperties:
-                type: string
-        action:
-          type: object
-          properties:
-            type:
-              type: string
-              enum:
-              - proxy
-              - redirect
-              - rewrite
-              - block
-            target:
-              type: string
-              description: Target URL or service
-            headers:
-              type: object
-              additionalProperties:
-                type: string
-            strip_prefix:
-              type: boolean
-        priority:
-          type: integer
-          default: 100
-        enabled:
-          type: boolean
-          default: true
-        created_at:
+        voice:
           type: string
-          format: date-time
-    gateway_Team:
-      type: object
-      properties:
-        team_id:
+        response_format:
           type: string
-        team_alias:
-          type: string
-        organization_id:
-          type: string
-        admins:
-          type: array
-          items:
-            type: string
-        members:
-          type: array
-          items:
-            type: string
-        max_budget:
+          enum:
+          - mp3
+          - opus
+          - aac
+          - flac
+          - wav
+          - pcm
+        speed:
           type: number
-        spend:
-          type: number
-        models:
-          type: array
-          items:
-            type: string
-        metadata:
-          type: object
     git_CreateRepo:
       type: object
       required:
@@ -95109,6 +94394,70 @@ components:
           - volatile-lfu
           - allkeys-random
           default: allkeys-lru
+    kv_CreateRequest:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
+          description: Resource name (lowercased/trimmed server-side).
+          example: analytics
+    kv_CreateResponse:
+      type: object
+      description: 'Returned on 201. `password` and `username` are present only for secretful
+
+        kinds (sql, kv, and the dedicated datastore/docdb admin credential). The
+
+        password is returned ONCE and is never retrievable again.
+
+        '
+      required:
+      - id
+      - kind
+      - name
+      - status
+      - host
+      - port
+      - database
+      - connectionString
+      properties:
+        id:
+          type: string
+          description: Server-generated resource id.
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        name:
+          type: string
+        status:
+          type: string
+          description: Resource status (e.g. "ready", or "provisioning" for a dedicated instance still coming up).
+          example: ready
+        host:
+          type: string
+          description: Customer-facing host (public gateway host, or dedicated instance service).
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
+        connectionString:
+          type: string
+          description: Public, routable DSN (internal admin host is remapped out).
+        password:
+          type: string
+          description: Present only for secretful kinds; returned ONCE.
     kv_Error:
       type: object
       properties:
@@ -95116,6 +94465,43 @@ components:
           type: string
         code:
           type: integer
+    kv_GetResponse:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - status
+      - host
+      - port
+      - database
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
     kv_KeyValue:
       type: object
       properties:
@@ -95138,6 +94524,42 @@ components:
         size:
           type: integer
           description: Size in bytes
+    kv_ListItem:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - status
+      - host
+      - port
+      - createdAt
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        createdAt:
+          type: integer
+          format: int64
+          description: Unix seconds.
     kv_Namespace:
       type: object
       properties:
@@ -96179,7 +95601,7 @@ components:
         costCents:
           type: integer
           format: int64
-    plan_Catalog:
+    plans_Catalog:
       type: object
       description: Opaque plan-catalog JSON emitted by the @hanzo/plans bundle (shape varies per route).
       additionalProperties: true
@@ -96334,49 +95756,7 @@ components:
             $ref: '#/components/schemas/platform_EnvVarJSON'
           type: array
       type: object
-    plugin_ActionOut:
-      type: object
-      description: 'The envelope every mutation answers with. Data is per host and in the order
-
-        applied, so a halted rollout reads as the prefix that succeeded followed by
-
-        the one that did not.
-
-        '
-      properties:
-        status:
-          type: string
-        msg:
-          type: string
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/plugin_Result'
-    plugin_Drift:
-      type: object
-      description: 'One plugin''s agreement across the fleet. Versions holds every distinct
-
-        digest seen running; more than one means a rollout is incomplete or stuck,
-
-        which is the single question this whole view exists to answer.
-
-        '
-      properties:
-        name:
-          type: string
-        versions:
-          type: array
-          items:
-            type: string
-        running:
-          type: integer
-        down:
-          type: integer
-        disabled:
-          type: integer
-        drifted:
-          type: boolean
-    plugin_Error:
+    plugins_Error:
       type: object
       description: Standard error envelope.
       properties:
@@ -96389,73 +95769,7 @@ components:
               type: string
             code:
               type: string
-    plugin_Host:
-      type: object
-      description: 'One host''s own account of what it is running. Reported per host rather than
-
-        merged, because during a rollout the hosts disagree BY DESIGN and a merged
-
-        view hides exactly the state an operator is watching for.
-
-        '
-      properties:
-        host:
-          type: string
-          description: 'Host is the pod''s stable id, and Addr where it was reached. Self is true
-
-            for the host that answered the request.
-
-            '
-        addr:
-          type: string
-        self:
-          type: boolean
-        error:
-          type: string
-          description: 'Err is set when a peer could not be reached. Its plugins are then
-
-            unknown, which is NOT the same as none, so the list stays empty and the
-
-            drift below refuses to conclude anything from it.
-
-            '
-        plugins:
-          type: array
-          items:
-            $ref: '#/components/schemas/plugin_PluginStatus'
-    plugin_ListOut:
-      type: object
-      description: "The fleet board \u2014 one entry per host, plus the drift roll-up."
-      properties:
-        status:
-          type: string
-        msg:
-          type: string
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/plugin_Host'
-        drift:
-          type: array
-          items:
-            $ref: '#/components/schemas/plugin_Drift'
-        data2:
-          type: integer
-    plugin_NameIn:
-      type: object
-      description: 'Addresses one plugin by name, for the operations that take nothing else.
-
-        '
-      properties:
-        name:
-          type: string
-          description: Name is the app, from the path.
-        scope:
-          type: string
-          description: 'Scope "host" applies here only; default "fleet" applies everywhere.
-
-            '
-    plugin_PluginInfo:
+    plugins_PluginInfo:
       type: object
       description: 'Introspection view of one mounted plugin. Derived from the manifest
 
@@ -96476,7 +95790,7 @@ components:
           type: string
           description: Mount point at which the plugin's routes are served.
           example: /v1/pricing
-    plugin_PluginList:
+    plugins_PluginList:
       type: object
       description: The set of plugins mounted from the runtime manifest.
       required:
@@ -96485,158 +95799,7 @@ components:
         plugins:
           type: array
           items:
-            $ref: '#/components/schemas/plugin_PluginInfo'
-    plugin_PluginStatus:
-      type: object
-      description: "One plugin's process view on one host \u2014 what `GET /v1/plugins` cannot\nanswer, because that reports\
-        \ the manifest and this reports the kernel.\n"
-      properties:
-        name:
-          type: string
-        prefix:
-          type: string
-          description: "Prefix is the FIRST subtree this plugin answers \u2014 the one a log line\nnames it by. Prefixes is\
-            \ every subtree, and a plugin may own several.\nReporting only the first would understate the blast radius of\
-            \ taking\nthis plugin down, which is the question a fleet view exists to answer.\n"
-        prefixes:
-          type: array
-          items:
-            type: string
-        source:
-          type: string
-          description: 'Source is where the binary came from: "embedded", "path", "url", or
-
-            "remote" for an instance this host did not start.
-
-            '
-          enum:
-          - embedded
-          - path
-          - url
-          - remote
-        version:
-          type: string
-          description: "Version is the artifact's SHA-256 when it was installed from a URL \u2014\nthe only version identifier\
-            \ that cannot drift from the bits actually\nrunning, since it IS the bits. Empty for the other sources.\n"
-        addr:
-          type: string
-          description: Addr is the socket or address serving it.
-        pid:
-          type: integer
-          description: PID is the child process, or 0 when this host did not start it.
-        running:
-          type: boolean
-          description: 'Running is false after Unload, or after a child exited and no Reload has
-
-            replaced it. Its routes stay registered and answer 503, so a false here
-
-            is the difference between "not deployed" and "deployed but down".
-
-            '
-        disabled:
-          type: boolean
-          description: "Disabled is true when Unload stopped it deliberately, as opposed to it\nhaving crashed. Both answer\
-            \ 503, so without this an operator cannot tell\na maintenance window from an outage \u2014 and would page for\
-            \ the former.\n"
-        since:
-          type: string
-          format: date-time
-          description: "Since is when the CURRENT instance started \u2014 it resets on Reload, so it\nreports the age of what\
-            \ is running, not of the mount.\n"
-        reloads:
-          type: integer
-          description: 'Reloads counts successful swaps since Load. A climbing number on one
-
-            host and not its peers is the signal that a rollout is uneven.
-
-            '
-        restarts:
-          type: integer
-          description: 'Restarts counts times the supervisor brought this plugin back after it
-
-            died on its own. Distinct from Reloads, which are deliberate: a nonzero
-
-            Restarts is a plugin crashing, and a climbing one is a crash loop.
-
-            '
-        usage:
-          $ref: '#/components/schemas/plugin_PluginUsage'
-    plugin_PluginUsage:
-      type: object
-      description: "A plugin's resource cost, measured rather than self-reported.\n\nThis exists because a plugin is a process.\
-        \ A linked-in subsystem cannot be\nmeasured this way at any price \u2014 one process has one RSS and one CPU clock,\n\
-        and nothing inside it can be attributed to a subsystem. Running a service as\nits own process makes \"which app is\
-        \ eating the memory\" a question with an\nexact answer instead of an argument.\n\nZero means not measured (no /proc,\
-        \ or nothing running), not measured-as-zero.\n"
-      properties:
-        cpuNs:
-          type: integer
-          format: int64
-          description: 'CPU is total user+system time this instance has consumed since it
-
-            started, in nanoseconds. It only ever climbs, so a rate is the
-
-            interesting derivative.
-
-            '
-        rssBytes:
-          type: integer
-          format: int64
-          description: "RSS is resident memory in bytes \u2014 the honest number for \"what does this\nplugin cost\", as opposed\
-            \ to virtual size.\n"
-        threads:
-          type: integer
-          description: 'Threads and FDs are the two limits a busy service hits first, and both
-
-            are leaks when they climb without bound.
-
-            '
-        fds:
-          type: integer
-    plugin_ReloadIn:
-      type: object
-      description: "Names an artifact to run. Exactly one of Version or URL+Sum, or neither to\nrestart the artifact already\
-        \ loaded \u2014 which is how a wedged plugin is\nbounced without changing what it runs.\n"
-      properties:
-        name:
-          type: string
-          description: 'Name is the app, from the path. It must be one the manifest declares.
-
-            '
-        version:
-          type: string
-          description: "Version is a release tag, resolved to a URL and digest through the\norigin's binaries.json index \u2014\
-            \ the same index CI publishes, so there is\nno second table mapping versions to digests.\n"
-        url:
-          type: string
-          description: 'URL is the artifact directly, for an origin with no index. Sum is its hex
-
-            SHA-256 and is REQUIRED with it: zip refuses an unverified download, and
-
-            so does this.
-
-            '
-        sum:
-          type: string
-        scope:
-          type: string
-          description: 'Scope "host" applies here only. Default "fleet" rolls it out one host at
-
-            a time, halting on the first host that fails to come up.
-
-            '
-    plugin_Result:
-      type: object
-      description: One host's outcome for one action.
-      properties:
-        host:
-          type: string
-        ok:
-          type: boolean
-        version:
-          type: string
-        msg:
-          type: string
+            $ref: '#/components/schemas/plugins_PluginInfo'
     pricing_BlockStoragePricing:
       type: object
       properties:
@@ -97585,253 +96748,6 @@ components:
         createdAt:
           type: string
           format: date-time
-    provisioning_CreateRequest:
-      type: object
-      required:
-      - name
-      properties:
-        name:
-          type: string
-          pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
-          description: Resource name (lowercased/trimmed server-side).
-          example: analytics
-    provisioning_CreateResponse:
-      type: object
-      description: 'Returned on 201. `password` and `username` are present only for secretful
-
-        kinds (sql, kv, and the dedicated datastore/docdb admin credential). The
-
-        password is returned ONCE and is never retrievable again.
-
-        '
-      required:
-      - id
-      - kind
-      - name
-      - status
-      - host
-      - port
-      - database
-      - connectionString
-      properties:
-        id:
-          type: string
-          description: Server-generated resource id.
-        kind:
-          type: string
-          enum:
-          - sql
-          - vector
-          - datastore
-          - kv
-          - search
-          - s3
-          - docdb
-        name:
-          type: string
-        status:
-          type: string
-          description: Resource status (e.g. "ready", or "provisioning" for a dedicated instance still coming up).
-          example: ready
-        host:
-          type: string
-          description: Customer-facing host (public gateway host, or dedicated instance service).
-        port:
-          type: integer
-        username:
-          type: string
-          description: Present only for secretful kinds.
-        database:
-          type: string
-        connectionString:
-          type: string
-          description: Public, routable DSN (internal admin host is remapped out).
-        password:
-          type: string
-          description: Present only for secretful kinds; returned ONCE.
-    provisioning_Error:
-      type: object
-      required:
-      - status
-      - msg
-      properties:
-        status:
-          type: string
-          enum:
-          - error
-        msg:
-          type: string
-          description: Human-readable error message.
-        code:
-          type: integer
-        requestId:
-          type: string
-    provisioning_GetResponse:
-      type: object
-      required:
-      - id
-      - name
-      - kind
-      - status
-      - host
-      - port
-      - database
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        kind:
-          type: string
-          enum:
-          - sql
-          - vector
-          - datastore
-          - kv
-          - search
-          - s3
-          - docdb
-        status:
-          type: string
-          example: ready
-        host:
-          type: string
-        port:
-          type: integer
-        username:
-          type: string
-          description: Present only for secretful kinds.
-        database:
-          type: string
-    provisioning_ListItem:
-      type: object
-      required:
-      - id
-      - name
-      - kind
-      - status
-      - host
-      - port
-      - createdAt
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        kind:
-          type: string
-          enum:
-          - sql
-          - vector
-          - datastore
-          - kv
-          - search
-          - s3
-          - docdb
-        status:
-          type: string
-          example: ready
-        host:
-          type: string
-        port:
-          type: integer
-        createdAt:
-          type: integer
-          format: int64
-          description: Unix seconds.
-    referrals_AdminListData:
-      type: object
-      properties:
-        referrals:
-          type: array
-          items:
-            $ref: '#/components/schemas/referrals_AdminReferralView'
-        summary:
-          $ref: '#/components/schemas/referrals_AdminSummary'
-    referrals_AdminListEnvelope:
-      type: object
-      description: The `{ status, msg, data }` admin envelope.
-      properties:
-        status:
-          type: string
-          enum:
-          - ok
-        msg:
-          type: string
-        data:
-          $ref: '#/components/schemas/referrals_AdminListData'
-    referrals_AdminReferralView:
-      type: object
-      description: One row in the global-admin directory (both orgs exposed).
-      properties:
-        id:
-          type: string
-        referrerOrg:
-          type: string
-        refereeOrg:
-          type: string
-        code:
-          type: string
-        status:
-          $ref: '#/components/schemas/referrals_ReferralStatus'
-        referrerGrantCents:
-          type: integer
-          format: int64
-        refereeGrantCents:
-          type: integer
-          format: int64
-        referrerTxn:
-          type: string
-          description: Ledger transaction id for the referrer bonus (omitted if empty).
-        refereeTxn:
-          type: string
-          description: Ledger transaction id for the referee bonus (omitted if empty).
-        createdAt:
-          type: integer
-          format: int64
-        qualifiedAt:
-          type: integer
-          format: int64
-        creditedAt:
-          type: integer
-          format: int64
-    referrals_AdminSummary:
-      type: object
-      description: The fleet tally for the admin directory.
-      properties:
-        total:
-          type: integer
-        signedUp:
-          type: integer
-        qualified:
-          type: integer
-        credited:
-          type: integer
-        grantedCents:
-          type: integer
-          format: int64
-          description: Total promo credit granted across both sides of all referrals.
-    referrals_AdminSweepData:
-      type: object
-      properties:
-        swept:
-          type: integer
-          description: Number of pending referrals examined this sweep.
-        credited:
-          type: integer
-          description: Number newly advanced to credited this sweep.
-    referrals_AdminSweepEnvelope:
-      type: object
-      description: The `{ status, msg, data }` admin envelope.
-      properties:
-        status:
-          type: string
-          enum:
-          - ok
-        msg:
-          type: string
-        data:
-          $ref: '#/components/schemas/referrals_AdminSweepData'
     referrals_ClaimRequest:
       type: object
       required:
@@ -98337,6 +97253,70 @@ components:
                   type: string
               Condition:
                 type: object
+    s3_CreateRequest:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
+          description: Resource name (lowercased/trimmed server-side).
+          example: analytics
+    s3_CreateResponse:
+      type: object
+      description: 'Returned on 201. `password` and `username` are present only for secretful
+
+        kinds (sql, kv, and the dedicated datastore/docdb admin credential). The
+
+        password is returned ONCE and is never retrievable again.
+
+        '
+      required:
+      - id
+      - kind
+      - name
+      - status
+      - host
+      - port
+      - database
+      - connectionString
+      properties:
+        id:
+          type: string
+          description: Server-generated resource id.
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        name:
+          type: string
+        status:
+          type: string
+          description: Resource status (e.g. "ready", or "provisioning" for a dedicated instance still coming up).
+          example: ready
+        host:
+          type: string
+          description: Customer-facing host (public gateway host, or dedicated instance service).
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
+        connectionString:
+          type: string
+          description: Public, routable DSN (internal admin host is remapped out).
+        password:
+          type: string
+          description: Present only for secretful kinds; returned ONCE.
     s3_EncryptionConfig:
       type: object
       properties:
@@ -98390,6 +97370,43 @@ components:
               - mq
             url:
               type: string
+    s3_GetResponse:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - status
+      - host
+      - port
+      - database
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
     s3_LifecycleRule:
       type: object
       properties:
@@ -98417,6 +97434,42 @@ components:
               type: integer
             storage_class:
               type: string
+    s3_ListItem:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - status
+      - host
+      - port
+      - createdAt
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        createdAt:
+          type: integer
+          format: int64
+          description: Unix seconds.
     s3_ObjectInfo:
       type: object
       properties:
@@ -98535,6 +97588,87 @@ components:
         expiresAt:
           type: string
           format: date-time
+    search_CreateRequest:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
+          description: Resource name (lowercased/trimmed server-side).
+          example: analytics
+    search_CreateResponse:
+      type: object
+      description: 'Returned on 201. `password` and `username` are present only for secretful
+
+        kinds (sql, kv, and the dedicated datastore/docdb admin credential). The
+
+        password is returned ONCE and is never retrievable again.
+
+        '
+      required:
+      - id
+      - kind
+      - name
+      - status
+      - host
+      - port
+      - database
+      - connectionString
+      properties:
+        id:
+          type: string
+          description: Server-generated resource id.
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        name:
+          type: string
+        status:
+          type: string
+          description: Resource status (e.g. "ready", or "provisioning" for a dedicated instance still coming up).
+          example: ready
+        host:
+          type: string
+          description: Customer-facing host (public gateway host, or dedicated instance service).
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
+        connectionString:
+          type: string
+          description: Public, routable DSN (internal admin host is remapped out).
+        password:
+          type: string
+          description: Present only for secretful kinds; returned ONCE.
+    search_Error:
+      type: object
+      required:
+      - status
+      - msg
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+        msg:
+          type: string
+          description: Human-readable error message.
+        code:
+          type: integer
+        requestId:
+          type: string
     search_FederatedSearch:
       type: object
       required:
@@ -98585,6 +97719,43 @@ components:
           type: object
         facetStats:
           type: object
+    search_GetResponse:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - status
+      - host
+      - port
+      - database
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
     search_HealthResponse:
       type: object
       properties:
@@ -98664,6 +97835,42 @@ components:
         updatedAt:
           type: string
           format: date-time
+    search_ListItem:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - status
+      - host
+      - port
+      - createdAt
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        createdAt:
+          type: integer
+          format: int64
+          description: Unix seconds.
     search_MultiSearchResults:
       type: object
       properties:
@@ -99333,6 +98540,160 @@ components:
           description: At least one file; max 500 files / 8 MiB total
           items:
             $ref: '#/components/schemas/security_FileInput'
+    sql_CreateRequest:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
+          description: Resource name (lowercased/trimmed server-side).
+          example: analytics
+    sql_CreateResponse:
+      type: object
+      description: 'Returned on 201. `password` and `username` are present only for secretful
+
+        kinds (sql, kv, and the dedicated datastore/docdb admin credential). The
+
+        password is returned ONCE and is never retrievable again.
+
+        '
+      required:
+      - id
+      - kind
+      - name
+      - status
+      - host
+      - port
+      - database
+      - connectionString
+      properties:
+        id:
+          type: string
+          description: Server-generated resource id.
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        name:
+          type: string
+        status:
+          type: string
+          description: Resource status (e.g. "ready", or "provisioning" for a dedicated instance still coming up).
+          example: ready
+        host:
+          type: string
+          description: Customer-facing host (public gateway host, or dedicated instance service).
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
+        connectionString:
+          type: string
+          description: Public, routable DSN (internal admin host is remapped out).
+        password:
+          type: string
+          description: Present only for secretful kinds; returned ONCE.
+    sql_Error:
+      type: object
+      required:
+      - status
+      - msg
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+        msg:
+          type: string
+          description: Human-readable error message.
+        code:
+          type: integer
+        requestId:
+          type: string
+    sql_GetResponse:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - status
+      - host
+      - port
+      - database
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
+    sql_ListItem:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - status
+      - host
+      - port
+      - createdAt
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        createdAt:
+          type: integer
+          format: int64
+          description: Unix seconds.
     templates_Template:
       type: object
       properties:
@@ -99561,11 +98922,92 @@ components:
           $ref: '#/components/schemas/vector_OptimizerConfig'
         wal_config:
           $ref: '#/components/schemas/vector_WalConfig'
+    vector_CreateRequest:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
+          description: Resource name (lowercased/trimmed server-side).
+          example: analytics
+    vector_CreateResponse:
+      type: object
+      description: 'Returned on 201. `password` and `username` are present only for secretful
+
+        kinds (sql, kv, and the dedicated datastore/docdb admin credential). The
+
+        password is returned ONCE and is never retrievable again.
+
+        '
+      required:
+      - id
+      - kind
+      - name
+      - status
+      - host
+      - port
+      - database
+      - connectionString
+      properties:
+        id:
+          type: string
+          description: Server-generated resource id.
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        name:
+          type: string
+        status:
+          type: string
+          description: Resource status (e.g. "ready", or "provisioning" for a dedicated instance still coming up).
+          example: ready
+        host:
+          type: string
+          description: Customer-facing host (public gateway host, or dedicated instance service).
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
+        connectionString:
+          type: string
+          description: Public, routable DSN (internal admin host is remapped out).
+        password:
+          type: string
+          description: Present only for secretful kinds; returned ONCE.
     vector_DenseVector:
       description: One unnamed vector.
       type: array
       items:
         type: number
+    vector_Error:
+      type: object
+      required:
+      - status
+      - msg
+      properties:
+        status:
+          type: string
+          enum:
+          - error
+        msg:
+          type: string
+          description: Human-readable error message.
+        code:
+          type: integer
+        requestId:
+          type: string
     vector_FieldSelector:
       description: Every field (true), none (false), or the named subset.
       oneOf:
@@ -99588,6 +99030,43 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/vector_Condition'
+    vector_GetResponse:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - status
+      - host
+      - port
+      - database
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+          description: Present only for secretful kinds.
+        database:
+          type: string
     vector_HnswConfig:
       type: object
       properties:
@@ -99603,6 +99082,42 @@ components:
           type: integer
         on_disk:
           type: boolean
+    vector_ListItem:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - status
+      - host
+      - port
+      - createdAt
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - sql
+          - vector
+          - datastore
+          - kv
+          - search
+          - s3
+          - docdb
+        status:
+          type: string
+          example: ready
+        host:
+          type: string
+        port:
+          type: integer
+        createdAt:
+          type: integer
+          format: int64
+          description: Unix seconds.
     vector_Match:
       type: object
       properties:
@@ -99823,35 +99338,6 @@ components:
           type: string
         updatedTime:
           type: string
-    visor_BindAgentRequest:
-      type: object
-      required:
-      - agentName
-      properties:
-        agentName:
-          type: string
-        botVersion:
-          type: string
-    visor_BotLaunchRequest:
-      type: object
-      properties:
-        name:
-          type: string
-          description: Required for a real launch (not dryRun)
-        agent:
-          type: string
-          description: The cloud Agent the bot runs (defaults to the bot name)
-        size:
-          type: string
-          description: Machine size slug (or use instanceType)
-        instanceType:
-          type: string
-        region:
-          type: string
-        botVersion:
-          type: string
-        dryRun:
-          type: boolean
     visor_BotView:
       allOf:
       - $ref: '#/components/schemas/visor_MachineView'
@@ -100089,23 +99575,6 @@ components:
           description: Optional target language.
       required:
       - headlines
-    zt_EdgeNodeView:
-      type: object
-      description: One row per ZT edge-router.
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        region:
-          type: string
-          description: From a "region-<slug>" role attribute; omitted when none
-        status:
-          type: string
-          enum:
-          - online
-          - disabled
-          - offline
     zt_MeshView:
       type: object
       description: One row per ZT edge service.
@@ -100136,6 +99605,42 @@ components:
           type: integer
           description: Router count
   responses:
+    admin_BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/admin_Error'
+    admin_Conflict:
+      description: The requested code is already taken.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/admin_Error'
+    admin_Forbidden:
+      description: Not signed in, or global admin required.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/admin_Error'
+    admin_InternalError:
+      description: Internal server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/admin_Error'
+    admin_InternalServerError:
+      description: Internal server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/admin_Error'
+    admin_NotFound:
+      description: Affiliate or code not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/admin_Error'
     admin_Unauthorized:
       description: Missing or invalid credentials
       content:
@@ -100149,12 +99654,6 @@ components:
                 type: string
     affiliates_BadRequest:
       description: Invalid request.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/affiliates_Error'
-    affiliates_Conflict:
-      description: The requested code is already taken.
       content:
         application/json:
           schema:
@@ -100208,24 +99707,6 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ai_Error'
-    ai_NotFound:
-      description: Resource not found.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ai_Error'
-    ai_PaymentRequired:
-      description: "Insufficient balance \u2014 add credits."
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ai_Error'
-    ai_RateLimited:
-      description: Rate limit exceeded.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ai_Error'
     ai_Unauthorized:
       description: Missing or invalid credentials.
       content:
@@ -100246,12 +99727,6 @@ components:
             $ref: '#/components/schemas/authors_Error'
     authors_InternalServerError:
       description: Internal server error.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/authors_Error'
-    authors_NotFound:
-      description: Author not found.
       content:
         application/json:
           schema:
@@ -100464,6 +99939,76 @@ components:
                 type: string
               msg:
                 type: string
+    datastore_BadGateway:
+      description: The backend provisioner or dedicated-instance operation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/datastore_Error'
+    datastore_BadRequest:
+      description: Invalid name or malformed request body.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/datastore_Error'
+    datastore_Conflict:
+      description: A resource with this name (or physical name) already exists.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/datastore_Error'
+    datastore_Created:
+      description: Resource provisioned. Password (if any) is returned ONCE here.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/datastore_CreateResponse'
+    datastore_Deleted:
+      description: Resource deprovisioned. No content.
+    datastore_Forbidden:
+      description: No validated principal, or empty org without admin claim.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/datastore_Error'
+    datastore_NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/datastore_Error'
+    datastore_PaymentRequired:
+      description: Org balance gate failed (unfunded org).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/datastore_Error'
+    datastore_Resource:
+      description: Resource metadata (never a password).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/datastore_GetResponse'
+    datastore_ResourceList:
+      description: The caller's org resources of this kind (never a password).
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/datastore_ListItem'
+    datastore_ServiceUnavailable:
+      description: 'Kind is honestly gated (cannot grant a per-tenant-safe credential), or the
+
+        cluster orchestrator is unavailable for a dedicated kind, or commerce is
+
+        unreachable in the fail-closed posture.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/datastore_Error'
     dns_BadRequest:
       description: Bad Request
       content:
@@ -100505,6 +100050,76 @@ components:
                 type: string
               msg:
                 type: string
+    docdb_BadGateway:
+      description: The backend provisioner or dedicated-instance operation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/docdb_Error'
+    docdb_BadRequest:
+      description: Invalid name or malformed request body.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/docdb_Error'
+    docdb_Conflict:
+      description: A resource with this name (or physical name) already exists.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/docdb_Error'
+    docdb_Created:
+      description: Resource provisioned. Password (if any) is returned ONCE here.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/docdb_CreateResponse'
+    docdb_Deleted:
+      description: Resource deprovisioned. No content.
+    docdb_Forbidden:
+      description: No validated principal, or empty org without admin claim.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/docdb_Error'
+    docdb_NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/docdb_Error'
+    docdb_PaymentRequired:
+      description: Org balance gate failed (unfunded org).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/docdb_Error'
+    docdb_Resource:
+      description: Resource metadata (never a password).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/docdb_GetResponse'
+    docdb_ResourceList:
+      description: The caller's org resources of this kind (never a password).
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/docdb_ListItem'
+    docdb_ServiceUnavailable:
+      description: 'Kind is honestly gated (cannot grant a per-tenant-safe credential), or the
+
+        cluster orchestrator is unavailable for a dedicated kind, or commerce is
+
+        unreachable in the fail-closed posture.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/docdb_Error'
     edge_BadRequest:
       description: Bad Request
       content:
@@ -100517,6 +100132,17 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/edge_Error'
+    edge_NotConfigured:
+      description: "Networking is not configured on this deployment (ZT credential absent \u2014 fail-closed)"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+              msg:
+                type: string
     edge_NotFound:
       description: Not Found
       content:
@@ -100606,6 +100232,30 @@ components:
                 type: string
               msg:
                 type: string
+    gateway_NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/gateway_Error'
+    gateway_PaymentRequired:
+      description: "Insufficient balance \u2014 add credits."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/gateway_Error'
+    gateway_RateLimited:
+      description: Rate limit exceeded.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/gateway_Error'
+    gateway_Unauthorized:
+      description: Missing or invalid credentials.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/gateway_Error'
     git_Unauthorized:
       description: Missing or invalid credentials
       content:
@@ -100672,8 +100322,34 @@ components:
                 type: string
               msg:
                 type: string
+    kv_BadGateway:
+      description: The backend provisioner or dedicated-instance operation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/kv_Error'
     kv_BadRequest:
       description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/kv_Error'
+    kv_Conflict:
+      description: A resource with this name (or physical name) already exists.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/kv_Error'
+    kv_Created:
+      description: Resource provisioned. Password (if any) is returned ONCE here.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/kv_CreateResponse'
+    kv_Deleted:
+      description: Resource deprovisioned. No content.
+    kv_Forbidden:
+      description: No validated principal, or empty org without admin claim.
       content:
         application/json:
           schema:
@@ -100686,6 +100362,38 @@ components:
             $ref: '#/components/schemas/kv_Error'
     kv_NotFound:
       description: Key not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/kv_Error'
+    kv_PaymentRequired:
+      description: Org balance gate failed (unfunded org).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/kv_Error'
+    kv_Resource:
+      description: Resource metadata (never a password).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/kv_GetResponse'
+    kv_ResourceList:
+      description: The caller's org resources of this kind (never a password).
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/kv_ListItem'
+    kv_ServiceUnavailable:
+      description: 'Kind is honestly gated (cannot grant a per-tenant-safe credential), or the
+
+        cluster orchestrator is unavailable for a dedicated kind, or commerce is
+
+        unreachable in the fail-closed posture.
+
+        '
       content:
         application/json:
           schema:
@@ -100859,7 +100567,7 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/o11y_Error'
-    plan_Unauthorized:
+    plans_Unauthorized:
       description: Missing or invalid credentials
       content:
         application/json:
@@ -100870,12 +100578,12 @@ components:
                 type: string
               msg:
                 type: string
-    plugin_Unauthorized:
+    plugins_Unauthorized:
       description: Missing or invalid bearer token.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/plugin_Error'
+            $ref: '#/components/schemas/plugins_Error'
     pricing_NotReady:
       description: Pricing data not yet available (initial sync in progress)
       content:
@@ -100936,76 +100644,6 @@ components:
                 type: string
               msg:
                 type: string
-    provisioning_BadGateway:
-      description: The backend provisioner or dedicated-instance operation failed.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/provisioning_Error'
-    provisioning_BadRequest:
-      description: Invalid name or malformed request body.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/provisioning_Error'
-    provisioning_Conflict:
-      description: A resource with this name (or physical name) already exists.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/provisioning_Error'
-    provisioning_Created:
-      description: Resource provisioned. Password (if any) is returned ONCE here.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/provisioning_CreateResponse'
-    provisioning_Deleted:
-      description: Resource deprovisioned. No content.
-    provisioning_Forbidden:
-      description: No validated principal, or empty org without admin claim.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/provisioning_Error'
-    provisioning_NotFound:
-      description: Resource not found.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/provisioning_Error'
-    provisioning_PaymentRequired:
-      description: Org balance gate failed (unfunded org).
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/provisioning_Error'
-    provisioning_Resource:
-      description: Resource metadata (never a password).
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/provisioning_GetResponse'
-    provisioning_ResourceList:
-      description: The caller's org resources of this kind (never a password).
-      content:
-        application/json:
-          schema:
-            type: array
-            items:
-              $ref: '#/components/schemas/provisioning_ListItem'
-    provisioning_ServiceUnavailable:
-      description: 'Kind is honestly gated (cannot grant a per-tenant-safe credential), or the
-
-        cluster orchestrator is unavailable for a dedicated kind, or commerce is
-
-        unreachable in the fail-closed posture.
-
-        '
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/provisioning_Error'
     referrals_BadRequest:
       description: Bad Request - Invalid input parameters
       content:
@@ -101055,23 +100693,6 @@ components:
                 status: error
                 msg: Resource not found
                 code: 404
-    referrals_Unauthorized:
-      description: Unauthorized - Authentication required
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/referrals_Error'
-          examples:
-            missingToken:
-              value:
-                status: error
-                msg: Authentication required
-                code: 401
-            invalidToken:
-              value:
-                status: error
-                msg: Invalid or expired token
-                code: 401
     research_BadRequest:
       description: Malformed request
       content:
@@ -101090,12 +100711,146 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/research_Error'
+    s3_BadGateway:
+      description: The backend provisioner or dedicated-instance operation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/s3_Error'
+    s3_BadRequest:
+      description: Invalid name or malformed request body.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/s3_Error'
+    s3_Conflict:
+      description: A resource with this name (or physical name) already exists.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/s3_Error'
+    s3_Created:
+      description: Resource provisioned. Password (if any) is returned ONCE here.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/s3_CreateResponse'
+    s3_Deleted:
+      description: Resource deprovisioned. No content.
+    s3_Forbidden:
+      description: No validated principal, or empty org without admin claim.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/s3_Error'
+    s3_NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/s3_Error'
+    s3_PaymentRequired:
+      description: Org balance gate failed (unfunded org).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/s3_Error'
+    s3_Resource:
+      description: Resource metadata (never a password).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/s3_GetResponse'
+    s3_ResourceList:
+      description: The caller's org resources of this kind (never a password).
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/s3_ListItem'
+    s3_ServiceUnavailable:
+      description: 'Kind is honestly gated (cannot grant a per-tenant-safe credential), or the
+
+        cluster orchestrator is unavailable for a dedicated kind, or commerce is
+
+        unreachable in the fail-closed posture.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/s3_Error'
+    search_BadGateway:
+      description: The backend provisioner or dedicated-instance operation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/search_Error'
+    search_BadRequest:
+      description: Invalid name or malformed request body.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/search_Error'
+    search_Conflict:
+      description: A resource with this name (or physical name) already exists.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/search_Error'
+    search_Created:
+      description: Resource provisioned. Password (if any) is returned ONCE here.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/search_CreateResponse'
+    search_Deleted:
+      description: Resource deprovisioned. No content.
+    search_Forbidden:
+      description: No validated principal, or empty org without admin claim.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/search_Error'
     search_NotFound:
       description: Resource not found
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/search_ResponseError'
+    search_PaymentRequired:
+      description: Org balance gate failed (unfunded org).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/search_Error'
+    search_Resource:
+      description: Resource metadata (never a password).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/search_GetResponse'
+    search_ResourceList:
+      description: The caller's org resources of this kind (never a password).
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/search_ListItem'
+    search_ServiceUnavailable:
+      description: 'Kind is honestly gated (cannot grant a per-tenant-safe credential), or the
+
+        cluster orchestrator is unavailable for a dedicated kind, or commerce is
+
+        unreachable in the fail-closed posture.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/search_Error'
     search_Unauthorized:
       description: Missing or invalid authorization header
       content:
@@ -101113,6 +100868,76 @@ components:
                 type: string
               msg:
                 type: string
+    sql_BadGateway:
+      description: The backend provisioner or dedicated-instance operation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/sql_Error'
+    sql_BadRequest:
+      description: Invalid name or malformed request body.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/sql_Error'
+    sql_Conflict:
+      description: A resource with this name (or physical name) already exists.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/sql_Error'
+    sql_Created:
+      description: Resource provisioned. Password (if any) is returned ONCE here.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/sql_CreateResponse'
+    sql_Deleted:
+      description: Resource deprovisioned. No content.
+    sql_Forbidden:
+      description: No validated principal, or empty org without admin claim.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/sql_Error'
+    sql_NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/sql_Error'
+    sql_PaymentRequired:
+      description: Org balance gate failed (unfunded org).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/sql_Error'
+    sql_Resource:
+      description: Resource metadata (never a password).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/sql_GetResponse'
+    sql_ResourceList:
+      description: The caller's org resources of this kind (never a password).
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/sql_ListItem'
+    sql_ServiceUnavailable:
+      description: 'Kind is honestly gated (cannot grant a per-tenant-safe credential), or the
+
+        cluster orchestrator is unavailable for a dedicated kind, or commerce is
+
+        unreachable in the fail-closed posture.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/sql_Error'
     tasks_EngineNotReady:
       description: Tasks engine not ready (resolved lazily; retry once it is wired)
       content:
@@ -101159,6 +100984,76 @@ components:
                 type: string
               msg:
                 type: string
+    vector_BadGateway:
+      description: The backend provisioner or dedicated-instance operation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/vector_Error'
+    vector_BadRequest:
+      description: Invalid name or malformed request body.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/vector_Error'
+    vector_Conflict:
+      description: A resource with this name (or physical name) already exists.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/vector_Error'
+    vector_Created:
+      description: Resource provisioned. Password (if any) is returned ONCE here.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/vector_CreateResponse'
+    vector_Deleted:
+      description: Resource deprovisioned. No content.
+    vector_Forbidden:
+      description: No validated principal, or empty org without admin claim.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/vector_Error'
+    vector_NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/vector_Error'
+    vector_PaymentRequired:
+      description: Org balance gate failed (unfunded org).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/vector_Error'
+    vector_Resource:
+      description: Resource metadata (never a password).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/vector_GetResponse'
+    vector_ResourceList:
+      description: The caller's org resources of this kind (never a password).
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/vector_ListItem'
+    vector_ServiceUnavailable:
+      description: 'Kind is honestly gated (cannot grant a per-tenant-safe credential), or the
+
+        cluster orchestrator is unavailable for a dedicated kind, or commerce is
+
+        unreachable in the fail-closed posture.
+
+        '
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/vector_Error'
     visor_Unauthorized:
       description: Missing or invalid credentials
       content:
@@ -101215,11 +101110,25 @@ components:
               msg:
                 type: string
   parameters:
-    affiliates_AffiliateId:
+    admin_AffiliateId:
       name: id
       in: path
       required: true
       description: The affiliate id (e.g. `aff_<hex>`).
+      schema:
+        type: string
+    admin_AuthorId:
+      name: id
+      in: path
+      required: true
+      description: Author id (e.g. aut_...).
+      schema:
+        type: string
+    admin_PluginName:
+      name: name
+      in: path
+      required: true
+      description: Name is the app, from the path.
       schema:
         type: string
     agents_Ref:
@@ -101333,13 +101242,6 @@ components:
       schema:
         type: string
         format: uuid
-    authors_AuthorId:
-      name: id
-      in: path
-      required: true
-      description: Author id (e.g. aut_...).
-      schema:
-        type: string
     commerce_display:
       name: display
       in: query
@@ -101370,6 +101272,30 @@ components:
       schema:
         type: string
         default: -UpdatedAt
+    datastore_Name:
+      name: name
+      in: path
+      required: true
+      description: 'The user-supplied resource name (slug). Lowercased and trimmed server-side;
+
+        must match `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`.
+
+        '
+      schema:
+        type: string
+        pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
+    docdb_Name:
+      name: name
+      in: path
+      required: true
+      description: 'The user-supplied resource name (slug). Lowercased and trimmed server-side;
+
+        must match `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`.
+
+        '
+      schema:
+        type: string
+        pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
     kms_envId:
       name: envId
       in: path
@@ -101384,13 +101310,18 @@ components:
       schema:
         type: string
         format: uuid
-    plugin_PluginName:
+    kv_Name:
       name: name
       in: path
       required: true
-      description: Name is the app, from the path.
+      description: 'The user-supplied resource name (slug). Lowercased and trimmed server-side;
+
+        must match `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`.
+
+        '
       schema:
         type: string
+        pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
     projects_DeploymentId:
       name: id
       in: path
@@ -101406,7 +101337,7 @@ components:
       schema:
         type: string
         pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
-    provisioning_Name:
+    s3_Name:
       name: name
       in: path
       required: true
@@ -101426,10 +101357,82 @@ components:
         type: string
         pattern: ^[a-zA-Z0-9_-]+$
       description: Unique index identifier
+    search_Name:
+      name: name
+      in: path
+      required: true
+      description: 'The user-supplied resource name (slug). Lowercased and trimmed server-side;
+
+        must match `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`.
+
+        '
+      schema:
+        type: string
+        pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
+    sql_Name:
+      name: name
+      in: path
+      required: true
+      description: 'The user-supplied resource name (slug). Lowercased and trimmed server-side;
+
+        must match `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`.
+
+        '
+      schema:
+        type: string
+        pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
+    vector_Name:
+      name: name
+      in: path
+      required: true
+      description: 'The user-supplied resource name (slug). Lowercased and trimmed server-side;
+
+        must match `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`.
+
+        '
+      schema:
+        type: string
+        pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
   requestBodies:
-    provisioning_CreateResource:
+    datastore_CreateResource:
       required: true
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/provisioning_CreateRequest'
+            $ref: '#/components/schemas/datastore_CreateRequest'
+    docdb_CreateResource:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/docdb_CreateRequest'
+    kv_CreateResource:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/kv_CreateRequest'
+    s3_CreateResource:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/s3_CreateRequest'
+    search_CreateResource:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/search_CreateRequest'
+    sql_CreateResource:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/sql_CreateRequest'
+    vector_CreateResource:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/vector_CreateRequest'

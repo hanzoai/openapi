@@ -25,7 +25,9 @@ prefixes, no cross-brand references.
   `hanzoai/js-sdk`'s `scripts/generate.sh:22` fetches it unauthenticated today
   and dies on `curl -f`. The in-repo path (`generate.py`, which reads the local
   file) needs no network at all and is the one to prefer.
-- `<service>/openapi.yaml` — one self-contained spec per service.
+- `<service>/openapi.yaml` — one self-contained spec per service. The route IS
+  the identity: `<svc>/openapi.yaml` describes `/v1/<svc>` and nothing else, and
+  `test_placement.py` is its gate (below).
 - `cloud/openapi.yaml` — the ONE spec NOT authored here: hanzoai/cloud's own
   woven document, copied verbatim by `sync.py`. Source-true, and it wins (below).
 - `sync.py` — the resync, one command: pull cloud's document, then merge.
@@ -117,6 +119,41 @@ service's name rather than landing in `DefaultApi`, and an operation with no
 invented — gets a `default` that says exactly that, so the document validates
 without anyone inventing a schema.
 
+## Placement — one product, one owning spec
+
+`capabilities.yaml` states it: "the route IS the identity: one capability = one
+name = one `/v1/<name>` = one `<name>/openapi.yaml`." Nothing enforced it, so it
+drifted three ways at once, and `test_placement.py` now gates all three.
+
+**Two specs described one product.** `provisioning/openapi.yaml` claimed
+`/v1/sql`, `/v1/vector`, `/v1/datastore`, `/v1/kv`, `/v1/search`, `/v1/s3` and
+`/v1/docdb` — seven other products' roots — while `vector/`, `kv/`, `s3/` and
+`search/` claimed the same prefixes. Asking "who owns `/v1/vector`" got two
+answers and every consumer picked one. There was never a `/v1/provisioning`
+route: `Mount` registers one CRUD quartet per KIND, so each kind's spec owns its
+own quartet now and `provisioning` is `collapsed`. `sql`, `datastore` and
+`docdb` are their own specs, in `data`, because they are their own products.
+
+**A spec's name disagreed with its route.** `plan/` served `/v1/plans` and
+`plugin/` served `/v1/plugins`. The route is immutable and the directory is not,
+so the directories moved: `plans/`, `plugins/`. The old `collapsed` entries said
+the singular was canonical — backwards, and the law above is why.
+
+**One binary's surface sat in another binary's spec.** The inference edge
+(`/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/rerank`,
+`/v1/models`, `/v1/messages`, `/v1/images/generations`, `/v1/audio/speech`) was
+authored in `ai/openapi.yaml`, which describes hanzoai/ai. The gateway serves
+them; they live in `gateway/openapi.yaml` now. The same move deleted the phantom
+`/v1/gateway/*` copy of that surface — 23 paths, all route-level 404 and none in
+the live route table — which is also why three operationIds had to be suffixed
+to stay distinct in codegen and no longer do.
+
+Where a binary really does answer at a noun that is not its service's name, the
+path is declared in `OFF_PREFIX` in `test_placement.py` with the reason. That
+table is the honest statement of the remaining 48; the fix for each is a route
+move in the serving repo, not a re-file here. Everything not in it fails the
+gate.
+
 ## Validate
 
 ```bash
@@ -139,7 +176,7 @@ python3 -c "import yaml, glob; [yaml.safe_load(open(s)) for s in glob.glob('*/op
 
 ## Generated specs — a spec cannot describe a route its service does not serve
 
-The 69 `<service>/openapi.yaml` files are hand-written, and a hand-written spec
+The `<service>/openapi.yaml` files are hand-written, and a hand-written spec
 drifts silently in both directions: it declares operations nothing serves, and
 it misses operations that are served. `generated/` is the other reading — what
 a binary emits from its OWN route table — and `audit.py` is the measurement

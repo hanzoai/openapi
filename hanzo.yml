@@ -29,6 +29,11 @@ test:
     # flows.yaml still exists in hanzo.yaml, so deleting a route breaks one gate
     # here instead of six SDKs' examples quietly and separately.
     #
+    # test_placement.py enforces the law capabilities.yaml states and nothing
+    # checked: one product, one owning spec, one /v1/<name>. It went in the day
+    # four products (kv, s3, search, vector) were each described by two specs at
+    # once and 103 authored paths sat outside their owner's prefix.
+    #
     # uv rather than a bare python3 — the arc runner image promises no
     # interpreter, let alone one with PyYAML.
     run: |
@@ -38,4 +43,4 @@ test:
         UV="$HOME/.local/bin/uv"
       fi
       "$UV" run --no-project --python 3.12 --with pyyaml --with pytest \
-        python -m pytest test_audit.py test_skills.py test_flows.py -q
+        python -m pytest test_audit.py test_skills.py test_flows.py test_placement.py -q

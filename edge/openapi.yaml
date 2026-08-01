@@ -44,6 +44,7 @@ tags:
   description: Environment secrets for functions
 - name: Domains
   description: Custom domain management
+- name: Edge
 security:
 - BearerAuth: []
 components:
@@ -60,6 +61,14 @@ components:
       description: 'Bearer JWT issued by Hanzo IAM (https://hanzo.id). Discovery: https://hanzo.id/.well-known/openid-configuration.
         Obtain via /v1/iam/auth/login, /oauth/token, or the API key UI on hanzo.id.'
   schemas:
+    EdgeNodeView:
+      type: object
+      description: One row per ZT edge-router.
+      properties:
+        id: { type: string }
+        name: { type: string }
+        region: { type: string, description: From a "region-<slug>" role attribute; omitted when none }
+        status: { type: string, enum: [online, disabled, offline] }
     Error:
       type: object
       properties:
@@ -291,6 +300,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+    NotConfigured:
+      description: Networking is not configured on this deployment (ZT credential absent — fail-closed)
+      content:
+        application/json:
+          schema: { type: object, properties: { status: { type: string }, msg: { type: string } } }
     Unauthorized:
       description: Unauthorized
       content:
@@ -677,6 +691,15 @@ paths:
                   $ref: '#/components/schemas/FunctionMetrics'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/edge/nodes:
+    get:
+      tags: [Edge]
+      summary: List the org's ZT edge-routers
+      operationId: listEdgeNodes
+      responses:
+        '200': { description: Edge nodes, content: { application/json: { schema: { type: object, properties: { nodes: { type: array, items: { $ref: '#/components/schemas/EdgeNodeView' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/NotConfigured' }
   /v1/edge/secrets:
     get:
       tags:

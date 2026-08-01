@@ -2,6 +2,53 @@
 
 ## v1.0.0
 
+### One product, one owning spec — placement, and 31 dead paths deleted
+
+`capabilities.yaml` has always stated the law — "the route IS the identity: one
+capability = one name = one /v1/<name> = one <name>/openapi.yaml" — and nothing
+enforced it. Measured against the live route table at api.hanzo.ai: **103
+authored paths** sat outside their owner's prefix and **four products** (`kv`,
+`s3`, `search`, `vector`) were described by TWO specs at once.
+
+`provisioning/openapi.yaml` was the bucket: it claimed `/v1/sql`, `/v1/vector`,
+`/v1/datastore`, `/v1/kv`, `/v1/search`, `/v1/s3` and `/v1/docdb` — seven other
+products' roots — and its own header says why it could: "these routes are keyed
+by RESOURCE KIND at top-level /v1/, NOT under /v1/provisioning/." There is no
+`/v1/provisioning` route and never was. Each kind's spec owns its own quartet
+now; `sql`, `datastore` and `docdb` became their own specs under `data`;
+`provisioning` is `collapsed`.
+
+The inference edge — `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`,
+`/v1/rerank`, `/v1/models`, `/v1/models/{model}`, `/v1/messages`,
+`/v1/images/generations`, `/v1/audio/speech` — moved from `ai/` to `gateway/`,
+the binary that answers it. The `/v1/admin/*` operations authored in
+`affiliates/`, `authors/`, `referrals/` and `plugin/` moved to `admin/`;
+`/v1/edge/nodes` moved from `zt/` to `edge/`. `plan/` → `plans/` and `plugin/` →
+`plugins/`, because the routes are `/v1/plans` and `/v1/plugins` and the route is
+the part that cannot move.
+
+**31 paths deleted**, each probed at api.hanzo.ai and absent from the live route
+table: the whole `/v1/gateway/*` subtree (23 — a phantom second copy of the
+inference edge, which is also why three operationIds needed a `_2` suffix to
+stay distinct in codegen and no longer do), `/v1/load-balancers` ×2 (the served
+product is `/v1/balancers`), `/v1/bots/launch|{id}|{id}/{action}` (served at
+`/v1/compute/bots/*`), `/v1/machines/{id}/bind-agent|agent-binding` (served at
+`/v1/machines/{id}/agent`), and `/v1/audio/transcriptions`. Nothing served was
+removed: hanzo.yaml went 1742 → 1711 paths, 31 removed and 0 added.
+
+Fifteen more authored paths 404 at the server while the live route table lists
+them as keys — `/v1/admin/{affiliates,authors}/*` writes, `/v1/admin/plugins/*`
+control, `/v1/sites/deploy`, `/v1/clusters/{clusterId}/pools*`. Those are
+hanzoai/cloud describing routes whose handlers are not reachable, not authoring
+defects, so they stay until cloud fixes them — this repo cannot refute the
+registry it trusts.
+
+`test_placement.py` is the gate, in CI via `hanzo.yml`. Rule 1 (no two authored
+specs claim one product) is absolute. Rule 2 (a spec claims its own prefix)
+carries `OFF_PREFIX`, 48 declared exceptions each measured live, each a binary
+answering at a top-level noun that is not its service's name — the fix for those
+is a route move in the serving repo, and a stated gap beats a silent one.
+
 ### An empty field from the winner was deleting a populated one — 182 shapes back
 
 The resync's worst defect, and it outlived two rounds of measurement here
