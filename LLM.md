@@ -154,6 +154,45 @@ table is the honest statement of the remaining 48; the fix for each is a route
 move in the serving repo, not a re-file here. Everything not in it fails the
 gate.
 
+**A declared tag no operation carries is the same defect one level up**, and
+`test_no_orphan_tag_declarations` gates it. The tag namespace is global in
+`hanzo.yaml` and spellings fold case-insensitively, so `search`'s leftover
+`Logs: "Configure logging"` — declared after `/v1/search/logs/stream` was
+refuted — was being merged as the description of cloud's `/v1/logs`
+observability product. 27 such declarations went with the paths they described.
+
+### What is NOT gated yet, and why
+
+- **`ai` cannot be refuted at all.** `apps/ai` mounts that subsystem as one
+  greedy `app.All("/v1/*")` — cloud's own comment calls the address "a FALLBACK,
+  not a front door" — so cloud's route table publishes ZERO `/v1/ai` paths and
+  the registry has no opinion about any of the 108. Every other product is
+  checked against that table; this one against nothing. All 85 GETs answer live,
+  so nothing there is dead today — the point is that no one would know. The fix
+  is registration upstream, not a rule here.
+- **Eight nouns are owned twice.** `/v1/ai/{users,applications,sessions,
+  permissions,records,forms,providers,system}` describe nouns `/v1/iam/*` already
+  owns, from a different binary and a different store. Rule 1 does not see it
+  because the products differ (`ai` vs `iam`) even though the capability does
+  not. A route move upstream settles it; deleting a served route here would only
+  lose the capability.
+- **18 tags are claimed by more than one authored spec** (`ai` accounts for 13 of
+  the collisions, which is what a catch-all looks like in the table of contents;
+  the rest are genuine near-synonyms like `Search` across `kb`/`search`/`vector`/
+  `websearch`). Gating this today would be red on arrival, and the remedy —
+  renaming a tag — changes SDK namespaces and MCP tool grouping, so it is a
+  decision to take deliberately rather than a cleanup to slip in.
+- **Three served paths are in no cloud document**: `/v1/{world,evals,referrals}/
+  health` answer 200 and appear in neither the authored spec (now) nor cloud's.
+  `POST /v1/mcp` answers 202 and is likewise absent. Served-but-undescribed is
+  cloud's projection to fix; until then the refutation sweep must probe with the
+  operation's OWN method, because a `GET` 404 on a POST-only route says nothing.
+- **39 paths under `search`, `kv` and `vector` cannot be probed** without a
+  credential: those prefixes auth-gate BEFORE routing
+  (`/v1/vector/zzz-nonsense` → 403 `X-Org-Id required`), so a 401/403 there is
+  the gate answering rather than the router. They stay authored until an
+  authenticated probe or a cloud-side fix decides them.
+
 ## Validate
 
 ```bash

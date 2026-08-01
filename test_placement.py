@@ -99,6 +99,24 @@ def specs():
     return out
 
 
+def tags():
+    """Per authored spec: (declared tag names, tag names its operations use)."""
+    out = {}
+    for f in sorted(glob.glob(os.path.join(ROOT, "*", "openapi.yaml"))):
+        svc = os.path.basename(os.path.dirname(f))
+        if svc == TRUTH:
+            continue
+        doc = yaml.safe_load(open(f)) or {}
+        declared = [t.get("name") for t in (doc.get("tags") or [])]
+        used = set()
+        for item in (doc.get("paths") or {}).values():
+            for method, op in (item or {}).items():
+                if method in ("get", "post", "put", "patch", "delete"):
+                    used.update(op.get("tags") or [])
+        out[svc] = (declared, used)
+    return out
+
+
 def product(path):
     seg = path.split("/")
     return seg[2] if len(seg) > 2 and seg[1] == "v1" else None
@@ -132,6 +150,28 @@ def test_the_route_is_the_identity():
         "does answer it there — add it to OFF_PREFIX in this file with the "
         "reason:\n" +
         "\n".join(f"  {k}/openapi.yaml claims {v}" for k, v in sorted(stray.items())))
+
+
+def test_no_orphan_tag_declarations():
+    """A tag is a BUCKET, and a bucket with nothing in it is a claim on a name
+    that no operation redeems.
+
+    The tag namespace is GLOBAL in the merged `hanzo.yaml`: every spec's tags land
+    in one list, and an SDK, the MCP tool list and the docs all group by it. So a
+    declaration left behind after its operations go on claiming a name another
+    product may need — and worse, describing it. `search` declared `Logs:
+    "Configure logging"` after `/v1/search/logs/stream` was refuted; the merge
+    folds names case-insensitively, so that sentence became the description of
+    cloud's `/v1/logs` observability product, which is not what it describes.
+
+    Same rule as OFF_PREFIX above: an exception that names nothing is a comment
+    pretending to be a rule, and it must go when the thing it named does.
+    """
+    stale = {s: [t for t in decl if t not in used] for s, (decl, used) in tags().items()}
+    stale = {s: t for s, t in stale.items() if t}
+    assert not stale, (
+        "a spec declares tags no operation in it uses — delete the declarations:\n" +
+        "\n".join(f"  {k}/openapi.yaml: {v}" for k, v in sorted(stale.items())))
 
 
 def test_no_stale_exceptions():

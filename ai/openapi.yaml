@@ -1,22 +1,44 @@
 openapi: 3.1.0
 info:
-  title: Hanzo AI — Inference API
-  summary: Top-level OpenAI- and Claude-compatible inference surface (hanzoai/ai).
+  title: Hanzo AI
+  summary: The entity surface of the `hanzoai/ai` subsystem, served at /v1/ai/*.
   description: |
-    The Hanzo inference API served by the `hanzoai/ai` subsystem of the unified
-    cloud binary (HIP-0106), reached through the gateway at `api.hanzo.ai`.
+    The stored objects the `hanzoai/ai` subsystem of the unified cloud binary
+    keeps for an org: chats and messages, stores and vectors, files, records,
+    tasks and workflows, videos, articles, assets and scans, forms, graphs,
+    scales, nodes and remote connections, templates and providers. Every route
+    here is `/v1/ai/<resource>` — the route is the identity, and `ai` owns this
+    prefix and nothing else.
 
-    NAMESPACE EXCEPTION — these routes are TOP-LEVEL `/v1/*`, NOT `/v1/ai/*`.
-    Every OTHER Hanzo service lives under `/v1/<service>/<resource>`; inference is
-    the one deliberate exception because it is drop-in OpenAI- and Anthropic-
-    Claude-compatible: every OpenAI/Anthropic SDK hard-codes `/v1/chat/completions`
-    and `/v1/messages`, so the path IS the contract. `hanzoai/ai` folds its routes
-    into top-level `/v1/`; nothing here nests under `/v1/cloud` or `/v1/gateway`.
+    THIS FILE ONCE DESCRIBED THE INFERENCE API AND NO LONGER DOES. The model
+    calls — chat completions, completions, embeddings, rerank, messages, models,
+    image and speech generation — are TOP-LEVEL `/v1/*` and moved to
+    `gateway/openapi.yaml`, the binary that answers them. The header stayed
+    behind claiming "these routes are TOP-LEVEL /v1/*, NOT /v1/ai/*" while 108 of
+    the 109 paths below were `/v1/ai/*` (the exception is `/v1/router/data`,
+    declared in test_placement.py's OFF_PREFIX), which is how this became the
+    bucket everything unclaimed fell into.
 
-    Two wire dialects, one backend:
-      - OpenAI:  /v1/chat/completions, /v1/completions, /v1/embeddings,
-                 /v1/models, /v1/rerank, /v1/audio/*, /v1/images/*
-      - Claude:  /v1/messages
+    TWO PLACEMENT FACTS ABOUT THIS SURFACE, STATED RATHER THAN HIDDEN. Neither
+    is fixable in this repo, because both are decided by a route.
+
+      1. `ai` CANNOT BE REFUTED. `apps/ai` mounts this subsystem as a single
+         greedy `app.All("/v1/*")` fallback — cloud's own code calls that address
+         "a FALLBACK, not a front door" — so cloud's route table publishes ZERO
+         `/v1/ai` paths and the registry can never say an operation here is
+         unserved. Every other product is checked against that table; this one is
+         checked against nothing. (Measured: all 85 GET paths here answer live, so
+         nothing below is dead — the point is that no one would know if it were.)
+         The fix is for those routes to be registered rather than proxied.
+
+      2. EIGHT NOUNS ARE OWNED TWICE. `/v1/ai/{users,applications,sessions,
+         permissions,records,forms,providers,system}` describe the same nouns
+         `/v1/iam/*` already owns, from a different binary and a different store,
+         so `hanzo ai users` and `hanzo iam users` are two ways to do one thing.
+         `iam` is the identity product; the `ai` copies are the vendor client
+         embedded in that subsystem. The fix is a route move upstream, not a
+         deletion here — these answer today, and deleting a served route is how a
+         capability goes missing.
 
     Authentication: Bearer JWT issued by Hanzo IAM (`https://hanzo.id`). The same
     token authenticates every Hanzo service. API keys (`hk-...`) minted on hanzo.id
