@@ -214,7 +214,6 @@ by this repo's `regenerate-sdks.yml`.
 | TypeScript | `hanzoai/js-sdk` | `typescript-axios` | `hanzoai` on npm (`src/`) | `generate.py` |
 | Java | `hanzoai/java-sdk` | `java` (okhttp-gson) | `ai.hanzo:hanzo-java-cloud` | `generate.py` |
 | Kotlin | `hanzoai/kotlin-sdk` | `kotlin` (okhttp4+gson) | `ai.hanzo:hanzo-kotlin-cloud` | `generate.py` |
-| Ruby | `hanzoai/ruby-sdk` | `ruby` | gem | `generate.py` |
 | Rust | **`hanzo-rs/sdk`** | `rust` (reqwest) | `crates/hanzo-client`, not on crates.io | its own `scripts/generate.sh` |
 | Go | **`hanzo-go/sdk`** | `go` | `package hanzoai` at the MODULE ROOT, imported as `github.com/hanzoai/go-sdk` | its own `scripts/generate.sh` |
 
@@ -253,6 +252,17 @@ Both deleted rows would have written a SECOND client beside the shipped one
 rather than updating it — `go` at `cloud/` with `packageName: cloud`, `rust` at
 `crates/hanzo-cloud` — and both had been verified against a LOCAL checkout.
 Check a `take` against the canonical remote.
+
+**ruby was a third deleted row, and a different kind of wrong** — not a
+departure under the rule above, but a row naming a client nobody ever shipped.
+`hanzoai/ruby-sdk` is a hard 404 with NO redirect, and every SDK repo that was
+really renamed answers a 301 instead (`go-sdk`, `rust-sdk`, `cpp-sdk`,
+`kotlin-sdk` all do), so this is absence and not a move. rubygems has no gem
+under `hanzoai_cloud` — the name the row's own `gemName` declared — nor under
+`hanzoai` or any other candidate; the gem literally named `hanzo` there is a
+third party's Heroku tool. `sdks.yaml` and this table were the only things in
+the fleet asserting a Ruby client, so both lose the row: no repo, no gem, no
+row. A visible gap is honest; a row that generates into nothing is not.
 
 Generator version pinned to **7.14.0** everywhere. The merged surface is
 verified codegen-clean AND compile-clean for go / python / typescript-axios

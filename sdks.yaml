@@ -196,20 +196,6 @@ sdks:
       # name is still carried by @SerializedName.
       name-mappings: distinct_id=distinctIdLegacy
 
-  ruby:
-    repo: ruby-sdk
-    generator: ruby
-    # Two paths because the Ruby generator puts the entry point beside the
-    # directory it loads, not inside it.
-    take:
-      lib/hanzoai_cloud: lib/hanzoai_cloud
-      lib/hanzoai_cloud.rb: lib/hanzoai_cloud.rb
-    properties:
-      gemName: hanzoai_cloud
-      moduleName: HanzoaiCloud
-      library: faraday
-      gemVersion: 8.0.0
-
   # rust is DELIBERATELY ABSENT, for the reason above and not for lack of a
   # generator: openapi-generator emits Rust (reqwest) and hanzo-rs/sdk ships it
   # as crates/hanzo-client. What this file cannot hold is the TEMPLATE.
@@ -264,3 +250,20 @@ sdks:
   #
   # Canonical repo is hanzo-cpp/sdk; `hanzoai/cpp-sdk` is a rename redirect to
   # it.
+
+  # ruby is ABSENT, and not the way the three above are. Those are DEPARTURES
+  # under the rule at the top — the invocation needs something that is not data,
+  # so it lives beside that thing, and the client ships either way. There is no
+  # Ruby client to ship.
+  #
+  # `hanzoai/ruby-sdk` answers a hard 404 with no redirect, and every SDK repo
+  # that was really renamed answers a redirect instead (go-sdk, rust-sdk,
+  # cpp-sdk, kotlin-sdk all 301). rubygems has no gem under `hanzoai_cloud` —
+  # the name the deleted row itself declared — nor under `hanzoai` or any other
+  # candidate; the gem literally named `hanzo` there is someone else's Heroku
+  # tool. The row named a repo to write into and a gem to ship, and neither
+  # exists.
+  #
+  # README.md and LLM.md render this file as the SDK matrix, so the row WAS the
+  # claim — nothing else asserted a Ruby client. No repo, no gem, no row. A
+  # visible gap is honest; a row that generates into nothing is not.
