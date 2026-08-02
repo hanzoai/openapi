@@ -255,7 +255,7 @@ def render_skill_md(sk: Skill, brand: str, description: str) -> str:
     if sk.requires_auth:
         L.append(f"Bearer JWT issued by {b['display']} IAM (OIDC issuer `{b['issuer']}`). "
                  f"Send it as `Authorization: Bearer <token>`. The same token "
-                 f"authenticates every {b['display']} service; a `hk-…` API key minted "
+                 f"authenticates every {b['display']} service; an `sk-…` API key minted "
                  f"on `{b['issuer']}` is also accepted.")
     else:
         L.append("Public — no credential required.")
