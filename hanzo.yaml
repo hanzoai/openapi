@@ -52,10 +52,12 @@ tags:
   description: "Package ai is Hanzo AI \u2014 the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the\
     \ rest of hanzoai/ai's surface) \u2014 mounted into a cloud binary with the money, ingest and telemetry callbacks cloud\
     \ BUILDS but cannot INSTALL."
+- name: Deployments
+  description: Deploy a project to the S3 origin, purge its edge cache, and inspect its versioned deployment history.
+- name: Signin Sessions
+- name: Usages
 - name: Records
   description: DNS record management
-- name: users
-  description: The people in an organization.
 - name: evals
   description: Package eval is scoring a model on your own data, with a judge you choose.
 - name: Exec
@@ -485,6 +487,8 @@ tags:
 - name: Search
   description: 'Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store,
     wired straight into your app.'
+- name: users
+  description: The people in an organization.
 - name: tokens
   description: Issued access tokens, so you can see and revoke them.
 - name: upload
@@ -576,8 +580,10 @@ x-tagGroups:
   tags:
   - agents
   - ai
+  - Deployments
+  - Signin Sessions
+  - Usages
   - Records
-  - users
   - evals
   - Exec
   - Files
@@ -758,6 +764,7 @@ x-tagGroups:
   - personas
   - integrations
   - Search
+  - users
   - tokens
   - upload
   - framework
@@ -6388,145 +6395,24 @@ paths:
     get:
       description: List the caller's applications.
       operationId: cloud_get_v1_ai_applications
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
       summary: List applications
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
     post:
       description: Create one application.
       operationId: cloud_post_v1_ai_applications
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
       summary: Create a application
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/ai/applications/{owner}/{name}:
-    get:
-      description: Read one application by its (owner, name) key.
-      operationId: cloud_get_v1_ai_applications_by_owner_by_name
-      parameters:
-      - in: path
-        name: owner
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
-      summary: Retrieve a application
-      tags:
-      - ai
-      x-app: github.com/hanzoai/ai
-    put:
-      description: "Identical to PATCH \u2014 the handler takes a whole object either way."
-      operationId: cloud_put_v1_ai_applications_by_owner_by_name
-      parameters:
-      - in: path
-        name: owner
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
-      summary: Replace a application
-      tags:
-      - ai
-      x-app: github.com/hanzoai/ai
-    patch:
-      description: Update one application. PATCH and PUT reach the same handler, which has always taken a whole object.
-      operationId: cloud_patch_v1_ai_applications_by_owner_by_name
-      parameters:
-      - in: path
-        name: owner
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
-      summary: Update a application
-      tags:
-      - ai
-      x-app: github.com/hanzoai/ai
     delete:
       description: Delete one application.
       operationId: cloud_delete_v1_ai_applications_by_owner_by_name
@@ -6541,21 +6427,76 @@ paths:
         required: true
         schema:
           type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
       summary: Delete a application
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+    get:
+      description: Read one application by its (owner, name) key.
+      operationId: cloud_get_v1_ai_applications_by_owner_by_name
+      parameters:
+      - in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      summary: Retrieve a application
+      tags:
+      - ai
+      x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+    patch:
+      description: Update one application. PATCH and PUT reach the same handler, which has always taken a whole object.
+      operationId: cloud_patch_v1_ai_applications_by_owner_by_name
+      parameters:
+      - in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      summary: Update a application
+      tags:
+      - ai
+      x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+    put:
+      description: "Identical to PATCH \u2014 the handler takes a whole object either way."
+      operationId: cloud_put_v1_ai_applications_by_owner_by_name
+      parameters:
+      - in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      summary: Replace a application
+      tags:
+      - ai
+      x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/ai/applications/{owner}/{name}/deploy:
     post:
       operationId: cloud_post_v1_ai_applications_by_owner_by_name_deploy
@@ -6570,27 +6511,13 @@ paths:
         required: true
         schema:
           type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
       summary: Deploy (application)
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/ai/applications/{owner}/{name}/undeploy:
     post:
       operationId: cloud_post_v1_ai_applications_by_owner_by_name_undeploy
@@ -6605,27 +6532,13 @@ paths:
         required: true
         schema:
           type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
       summary: Undeploy (application)
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/ai/articles:
     get:
       description: List the caller's articles.
@@ -7417,6 +7330,252 @@ paths:
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+  /v1/ai/deployments:
+    get:
+      description: List the caller's deployments.
+      operationId: ai_getApplications
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: List deployments
+      tags:
+      - Deployments
+    post:
+      description: Create one application.
+      operationId: ai_addApplication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: Create a application
+      tags:
+      - Deployments
+  /v1/ai/deployments/{owner}/{name}:
+    get:
+      description: Read one application by its (owner, name) key.
+      operationId: ai_getApplication
+      parameters:
+      - description: Owning organization.
+        in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - description: Resource name, unique within the owner.
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: Retrieve a application
+      tags:
+      - Deployments
+    put:
+      description: "Identical to PATCH \u2014 the handler takes a whole object either way."
+      operationId: ai_replaceApplication
+      parameters:
+      - description: Owning organization.
+        in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - description: Resource name, unique within the owner.
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: Replace a application
+      tags:
+      - Deployments
+    patch:
+      description: Update one application. PATCH and PUT reach the same handler, which has always taken a whole object.
+      operationId: ai_updateApplication
+      parameters:
+      - description: Owning organization.
+        in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - description: Resource name, unique within the owner.
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: Update a application
+      tags:
+      - Deployments
+    delete:
+      description: Delete one application.
+      operationId: ai_deleteApplication
+      parameters:
+      - description: Owning organization.
+        in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - description: Resource name, unique within the owner.
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: Delete a application
+      tags:
+      - Deployments
+  /v1/ai/deployments/{owner}/{name}/deploy:
+    post:
+      operationId: ai_deployApplication
+      parameters:
+      - description: Owning organization.
+        in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - description: Resource name, unique within the owner.
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: Deploy (application)
+      tags:
+      - Deployments
+  /v1/ai/deployments/{owner}/{name}/undeploy:
+    post:
+      operationId: ai_undeployApplication
+      parameters:
+      - description: Owning organization.
+        in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - description: Resource name, unique within the owner.
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: Undeploy (application)
+      tags:
+      - Deployments
   /v1/ai/files:
     get:
       description: List the caller's files.
@@ -8634,145 +8793,24 @@ paths:
     get:
       description: List the caller's permissions.
       operationId: cloud_get_v1_ai_permissions
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
       summary: List permissions
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
     post:
       description: Create one permission.
       operationId: cloud_post_v1_ai_permissions
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
       summary: Create a permission
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/ai/permissions/{owner}/{name}:
-    get:
-      description: Read one permission by its (owner, name) key.
-      operationId: cloud_get_v1_ai_permissions_by_owner_by_name
-      parameters:
-      - in: path
-        name: owner
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
-      summary: Retrieve a permission
-      tags:
-      - ai
-      x-app: github.com/hanzoai/ai
-    put:
-      description: "Identical to PATCH \u2014 the handler takes a whole object either way."
-      operationId: cloud_put_v1_ai_permissions_by_owner_by_name
-      parameters:
-      - in: path
-        name: owner
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
-      summary: Replace a permission
-      tags:
-      - ai
-      x-app: github.com/hanzoai/ai
-    patch:
-      description: Update one permission. PATCH and PUT reach the same handler, which has always taken a whole object.
-      operationId: cloud_patch_v1_ai_permissions_by_owner_by_name
-      parameters:
-      - in: path
-        name: owner
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
-      summary: Update a permission
-      tags:
-      - ai
-      x-app: github.com/hanzoai/ai
     delete:
       description: Delete one permission.
       operationId: cloud_delete_v1_ai_permissions_by_owner_by_name
@@ -8787,21 +8825,76 @@ paths:
         required: true
         schema:
           type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
       summary: Delete a permission
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+    get:
+      description: Read one permission by its (owner, name) key.
+      operationId: cloud_get_v1_ai_permissions_by_owner_by_name
+      parameters:
+      - in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      summary: Retrieve a permission
+      tags:
+      - ai
+      x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+    patch:
+      description: Update one permission. PATCH and PUT reach the same handler, which has always taken a whole object.
+      operationId: cloud_patch_v1_ai_permissions_by_owner_by_name
+      parameters:
+      - in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      summary: Update a permission
+      tags:
+      - ai
+      x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+    put:
+      description: "Identical to PATCH \u2014 the handler takes a whole object either way."
+      operationId: cloud_put_v1_ai_permissions_by_owner_by_name
+      parameters:
+      - in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      summary: Replace a permission
+      tags:
+      - ai
+      x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/ai/preferences:
     put:
       operationId: cloud_put_v1_ai_preferences
@@ -10161,163 +10254,34 @@ paths:
     get:
       description: List the caller's sessions.
       operationId: cloud_get_v1_ai_sessions
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
       summary: List sessions
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
     post:
       description: Create one session.
       operationId: cloud_post_v1_ai_sessions
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
       summary: Create a session
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/ai/sessions/duplicated:
     get:
       operationId: cloud_get_v1_ai_sessions_duplicated
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
       summary: Duplicated (session)
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/ai/sessions/{owner}/{name}:
-    get:
-      description: Read one session by its (owner, name) key.
-      operationId: cloud_get_v1_ai_sessions_by_owner_by_name
-      parameters:
-      - in: path
-        name: owner
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
-      summary: Retrieve a session
-      tags:
-      - ai
-      x-app: github.com/hanzoai/ai
-    put:
-      description: "Identical to PATCH \u2014 the handler takes a whole object either way."
-      operationId: cloud_put_v1_ai_sessions_by_owner_by_name
-      parameters:
-      - in: path
-        name: owner
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
-      summary: Replace a session
-      tags:
-      - ai
-      x-app: github.com/hanzoai/ai
-    patch:
-      description: Update one session. PATCH and PUT reach the same handler, which has always taken a whole object.
-      operationId: cloud_patch_v1_ai_sessions_by_owner_by_name
-      parameters:
-      - in: path
-        name: owner
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
-      summary: Update a session
-      tags:
-      - ai
-      x-app: github.com/hanzoai/ai
     delete:
       description: Delete one session.
       operationId: cloud_delete_v1_ai_sessions_by_owner_by_name
@@ -10332,21 +10296,76 @@ paths:
         required: true
         schema:
           type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
       summary: Delete a session
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+    get:
+      description: Read one session by its (owner, name) key.
+      operationId: cloud_get_v1_ai_sessions_by_owner_by_name
+      parameters:
+      - in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      summary: Retrieve a session
+      tags:
+      - ai
+      x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+    patch:
+      description: Update one session. PATCH and PUT reach the same handler, which has always taken a whole object.
+      operationId: cloud_patch_v1_ai_sessions_by_owner_by_name
+      parameters:
+      - in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      summary: Update a session
+      tags:
+      - ai
+      x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+    put:
+      description: "Identical to PATCH \u2014 the handler takes a whole object either way."
+      operationId: cloud_put_v1_ai_sessions_by_owner_by_name
+      parameters:
+      - in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      summary: Replace a session
+      tags:
+      - ai
+      x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/ai/signin:
     post:
       operationId: cloud_post_v1_ai_signin
@@ -10371,6 +10390,197 @@ paths:
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+  /v1/ai/signin-sessions:
+    get:
+      description: List the caller's signin-sessions.
+      operationId: ai_getSessions
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: List signin-sessions
+      tags:
+      - Signin Sessions
+    post:
+      description: Create one session.
+      operationId: ai_addSession
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: Create a session
+      tags:
+      - Signin Sessions
+  /v1/ai/signin-sessions/duplicated:
+    get:
+      operationId: ai_isSessionDuplicated
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: Duplicated (session)
+      tags:
+      - Signin Sessions
+  /v1/ai/signin-sessions/{owner}/{name}:
+    get:
+      description: Read one session by its (owner, name) key.
+      operationId: ai_getSingleSession
+      parameters:
+      - description: Owning organization.
+        in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - description: Resource name, unique within the owner.
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: Retrieve a session
+      tags:
+      - Signin Sessions
+    put:
+      description: "Identical to PATCH \u2014 the handler takes a whole object either way."
+      operationId: ai_replaceSession
+      parameters:
+      - description: Owning organization.
+        in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - description: Resource name, unique within the owner.
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: Replace a session
+      tags:
+      - Signin Sessions
+    patch:
+      description: Update one session. PATCH and PUT reach the same handler, which has always taken a whole object.
+      operationId: ai_updateSession
+      parameters:
+      - description: Owning organization.
+        in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - description: Resource name, unique within the owner.
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: Update a session
+      tags:
+      - Signin Sessions
+    delete:
+      description: Delete one session.
+      operationId: ai_deleteSession
+      parameters:
+      - description: Owning organization.
+        in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+      - description: Resource name, unique within the owner.
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: Delete a session
+      tags:
+      - Signin Sessions
   /v1/ai/signout:
     post:
       operationId: cloud_post_v1_ai_signout
@@ -11316,6 +11526,23 @@ paths:
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+  /v1/ai/usages/by-user:
+    get:
+      operationId: ai_getUserTableInfos
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: By User (usage)
+      tags:
+      - Usages
   /v1/ai/usages/cloud:
     get:
       operationId: cloud_get_v1_ai_usages_cloud
@@ -11352,43 +11579,44 @@ paths:
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+  /v1/ai/usages/user-names:
+    get:
+      operationId: ai_getUsers
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ai_Envelope'
+          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
+        '401':
+          $ref: '#/components/responses/ai_Unauthorized'
+        '403':
+          $ref: '#/components/responses/ai_Forbidden'
+      summary: User Names (usage)
+      tags:
+      - Usages
   /v1/ai/users:
     get:
       description: List the caller's users.
       operationId: cloud_get_v1_ai_users
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
       summary: List users
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/ai/users/table-infos:
     get:
       operationId: cloud_get_v1_ai_users_table-infos
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ai_Envelope'
-          description: "Envelope. `status` is \"ok\" or \"error\" \u2014 check it; a handled failure is still HTTP 200."
-        '401':
-          $ref: '#/components/responses/ai_Unauthorized'
-        '403':
-          $ref: '#/components/responses/ai_Forbidden'
       summary: Table Infos (user)
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/ai/vectors:
     get:
       description: List the caller's vectors.
@@ -24713,6 +24941,28 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/edge/nodes:
+    get:
+      tags:
+      - Edge
+      summary: List the org's ZT edge-routers
+      operationId: edge_listEdgeNodes
+      responses:
+        '200':
+          description: Edge nodes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/edge_EdgeNodeView'
+        '401':
+          $ref: '#/components/responses/edge_Unauthorized'
+        '503':
+          $ref: '#/components/responses/edge_NotConfigured'
   /v1/embed:
     get:
       description: "EmbedStatus reports whether one of this brand's shared embedded apps (cms, erp,\nhelp) may be framed by\
