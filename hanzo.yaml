@@ -2280,7 +2280,7 @@ paths:
       x-app: admin
   /v1/admin/catalog:
     get:
-      description: 'GetAdminCatalog returns the full model and provider catalog annotated with
+      description: 'Returns the full model and provider catalog annotated with
 
         each entry''s enablement state, for the operator console. Nothing is hidden:
 
@@ -2295,8 +2295,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/cloud_adminCatalogOut'
           description: ok
-      summary: GetAdminCatalog returns the full model and provider catalog annotated with each entry's enablement state, for
-        the operator console.
+      summary: Returns the full model and provider catalog annotated with each entry's enablement state, for the operator
+        console.
       tags:
       - admin
       x-app: pricing
@@ -2332,7 +2332,7 @@ paths:
           description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/admin/catalog/providers/{name}:
     patch:
-      description: 'PatchProvider sets one provider''s availability overlay.
+      description: 'Sets one provider''s availability overlay.
 
 
         The overlay decides whether a provider is off, in beta for named orgs, or
@@ -2368,7 +2368,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/cloud_Overlay'
           description: ok
-      summary: PatchProvider sets one provider's availability overlay.
+      summary: Sets one provider's availability overlay.
       tags:
       - admin
       x-app: pricing
@@ -2661,10 +2661,9 @@ paths:
       x-app: admin
   /v1/admin/enablement:
     get:
-      description: "ListEnablement returns every item an operator has set an enablement state on \u2014\nits global state\
-        \ (off, beta or ga) and the orgs granted its beta. An item\nnobody has touched is absent, because an untouched item\
-        \ is generally\navailable; the console composes the candidate list from the live catalog.\nSuperAdmin only; every\
-        \ other caller is refused."
+      description: "Returns every item an operator has set an enablement state on \u2014\nits global state (off, beta or ga)\
+        \ and the orgs granted its beta. An item\nnobody has touched is absent, because an untouched item is generally\navailable;\
+        \ the console composes the candidate list from the live catalog.\nSuperAdmin only; every other caller is refused."
       operationId: cloud_get_v1_admin_enablement
       responses:
         '200':
@@ -2673,16 +2672,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/cloud_adminEnablementBoard'
           description: ok
-      summary: "ListEnablement returns every item an operator has set an enablement state on \u2014 its global state (off,\
-        \ beta or ga) and the orgs granted its beta."
+      summary: "Returns every item an operator has set an enablement state on \u2014 its global state (off, beta or ga) and\
+        \ the orgs granted its beta."
       tags:
       - admin
       x-app: pricing
     put:
-      description: "SetEnablement sets one item's global enablement state \u2014 off, beta or ga \u2014 and\noptionally replaces\
-        \ the list of orgs granted its beta. It is generic over\nkind, so the same call manages models, providers and product\
-        \ features through\nthe one registry. `off` is an absolute kill switch: a self-service opt-in can\nnever re-open it.\
-        \ SuperAdmin only; every other caller is refused."
+      description: "Sets one item's global enablement state \u2014 off, beta or ga \u2014 and\noptionally replaces the list\
+        \ of orgs granted its beta. It is generic over\nkind, so the same call manages models, providers and product features\
+        \ through\nthe one registry. `off` is an absolute kill switch: a self-service opt-in can\nnever re-open it. SuperAdmin\
+        \ only; every other caller is refused."
       operationId: cloud_put_v1_admin_enablement
       requestBody:
         content:
@@ -2703,8 +2702,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/cloud_adminEnablementItem'
           description: ok
-      summary: "SetEnablement sets one item's global enablement state \u2014 off, beta or ga \u2014 and optionally replaces\
-        \ the list of orgs granted its beta."
+      summary: "Sets one item's global enablement state \u2014 off, beta or ga \u2014 and optionally replaces the list of\
+        \ orgs granted its beta."
       tags:
       - admin
       x-app: pricing
@@ -8128,6 +8127,36 @@ paths:
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+  /v1/ai/mcp/tools:
+    get:
+      description: "Tools reports what this binary's MCP door carries: every tool the build\npublishes, how many of them this\
+        \ process actually serves, and which subsystem\neach belongs to. It is the answer to \"is the door up and does it\
+        \ have anything\nbehind it\" \u2014 a question a status code cannot answer, since an empty door and a\nfull one are\
+        \ both 200."
+      operationId: cloud_aiMCPTools
+      parameters:
+      - description: 'App names one subsystem whose tool NAMES to list. Empty answers counts
+
+          only: nine hundred names is a page no operator reads and no model can
+
+          afford to be handed by accident.'
+        in: query
+        name: app
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/cloud_aiMCPSurface'
+          description: ok
+      summary: 'Tools reports what this binary''s MCP door carries: every tool the build publishes, how many of them this
+        process actually serves, and which subsystem each belongs to.'
+      tags:
+      - ai
+      x-app: ai
   /v1/ai/messages:
     get:
       description: List the caller's messages.
@@ -24770,10 +24799,10 @@ paths:
       x-app: github.com/hanzoai/ai
   /v1/enablement:
     get:
-      description: "GetEnablement returns what the caller's org can actually use: every managed\nitem with its global state,\
-        \ whether it is effective here, whether this org is\nalready opted into its beta, and whether it may still opt in.\
-        \ Read-only and\nsafe for any caller \u2014 one without a validated principal simply sees the\ngenerally-available\
-        \ items and no opt-in affordance, never another org's state."
+      description: "Returns what the caller's org can actually use: every managed\nitem with its global state, whether it\
+        \ is effective here, whether this org is\nalready opted into its beta, and whether it may still opt in. Read-only\
+        \ and\nsafe for any caller \u2014 one without a validated principal simply sees the\ngenerally-available items and\
+        \ no opt-in affordance, never another org's state."
       operationId: cloud_get_v1_enablement
       responses:
         '200':
@@ -24782,17 +24811,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/cloud_enablementBoard'
           description: ok
-      summary: 'GetEnablement returns what the caller''s org can actually use: every managed item with its global state, whether
-        it is effective here, whether this org is already opted into its beta, and whether it may still opt in.'
+      summary: 'Returns what the caller''s org can actually use: every managed item with its global state, whether it is effective
+        here, whether this org is already opted into its beta, and whether it may still opt in.'
       tags:
       - enablement
       x-app: pricing
   /v1/enablement/optin:
     post:
-      description: "OptIntoBeta opts the caller's OWN org into a beta item. The org is the\ncaller's validated one, so this\
-        \ can never target another org, and the registry\nrefuses anything not in beta \u2014 so it can neither re-open an\
-        \ item an operator\nturned off nor touch one that is already generally available. Requires a\nsigned-in caller with\
-        \ an org."
+      description: "Opts the caller's OWN org into a beta item. The org is the\ncaller's validated one, so this can never\
+        \ target another org, and the registry\nrefuses anything not in beta \u2014 so it can neither re-open an item an operator\n\
+        turned off nor touch one that is already generally available. Requires a\nsigned-in caller with an org."
       operationId: cloud_post_v1_enablement_optin
       requestBody:
         content:
@@ -24810,13 +24838,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/cloud_userEnablementItem'
           description: ok
-      summary: OptIntoBeta opts the caller's OWN org into a beta item.
+      summary: Opts the caller's OWN org into a beta item.
       tags:
       - enablement
       x-app: pricing
   /v1/enablement/optout:
     post:
-      description: 'OptOutOfBeta removes the caller''s OWN org from a beta item''s grant list, the
+      description: 'Removes the caller''s OWN org from a beta item''s grant list, the
 
         reverse of OptIntoBeta and idempotent. The org is the caller''s validated one,
 
@@ -24840,7 +24868,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/cloud_userEnablementItem'
           description: ok
-      summary: OptOutOfBeta removes the caller's OWN org from a beta item's grant list, the reverse of OptIntoBeta and idempotent.
+      summary: Removes the caller's OWN org from a beta item's grant list, the reverse of OptIntoBeta and idempotent.
       tags:
       - enablement
       x-app: pricing
@@ -43784,12 +43812,12 @@ paths:
   /v1/pricing:
     get:
       operationId: cloud_get_v1_pricing
-      summary: 'GetPricing returns the whole pricing catalog in one document: Zen and third-party models, providers, model
-        families, the free-model list, plan and infrastructure pricing.'
-      description: "GetPricing returns the whole pricing catalog in one document: Zen and\nthird-party models, providers,\
-        \ model families, the free-model list, plan and\ninfrastructure pricing. Every model and provider it names is filtered\
-        \ to what\nthe caller's org may see \u2014 the same gate the leaf routes apply, so this can\nnever be an un-gated\
-        \ second source for what they hide."
+      summary: 'Returns the whole pricing catalog in one document: Zen and third-party models, providers, model families,
+        the free-model list, plan and infrastructure pricing.'
+      description: "Returns the whole pricing catalog in one document: Zen and\nthird-party models, providers, model families,\
+        \ the free-model list, plan and\ninfrastructure pricing. Every model and provider it names is filtered to what\nthe\
+        \ caller's org may see \u2014 the same gate the leaf routes apply, so this can\nnever be an un-gated second source\
+        \ for what they hide."
       tags:
       - pricing
       responses:
@@ -43804,8 +43832,8 @@ paths:
       x-app: pricing
   /v1/pricing/base:
     get:
-      description: "ListBasePlans returns the Hanzo Base plans \u2014 the managed-instance tiers,\neach with its monthly and\
-        \ annual price, storage and request allowances and\nfeature list."
+      description: "Returns the Hanzo Base plans \u2014 the managed-instance tiers,\neach with its monthly and annual price,\
+        \ storage and request allowances and\nfeature list."
       operationId: cloud_get_v1_pricing_base
       responses:
         '200':
@@ -43814,18 +43842,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/cloud_pricingPlanList'
           description: ok
-      summary: "ListBasePlans returns the Hanzo Base plans \u2014 the managed-instance tiers, each with its monthly and annual\
-        \ price, storage and request allowances and feature list."
+      summary: "Returns the Hanzo Base plans \u2014 the managed-instance tiers, each with its monthly and annual price, storage\
+        \ and request allowances and feature list."
       tags:
       - pricing
       x-app: pricing
   /v1/pricing/blockchain:
     get:
       operationId: cloud_get_v1_pricing_blockchain
-      summary: "ListBlockchainPlans returns the blockchain access plans \u2014 the RPC and node tiers, each with its monthly\
-        \ price, compute-unit allowance and feature list."
-      description: "ListBlockchainPlans returns the blockchain access plans \u2014 the RPC and node\ntiers, each with its\
-        \ monthly price, compute-unit allowance and feature list."
+      summary: "Returns the blockchain access plans \u2014 the RPC and node tiers, each with its monthly price, compute-unit\
+        \ allowance and feature list."
+      description: "Returns the blockchain access plans \u2014 the RPC and node\ntiers, each with its monthly price, compute-unit\
+        \ allowance and feature list."
       tags:
       - pricing
       responses:
@@ -43839,12 +43867,11 @@ paths:
   /v1/pricing/cloud:
     get:
       operationId: cloud_get_v1_pricing_cloud
-      summary: 'GetCloudPricing returns the public cloud section of the catalog in one document: its instance plans, its regions
-        and its block-storage prices.'
-      description: "GetCloudPricing returns the public cloud section of the catalog in one\ndocument: its instance plans,\
-        \ its regions and its block-storage prices. The\nsection's internal half \u2014 the provider costs Hanzo pays and\
-        \ the plan-to-\nprovider routing table \u2014 is stripped before it is served, so this is what a\ncustomer may see\
-        \ and nothing more."
+      summary: 'Returns the public cloud section of the catalog in one document: its instance plans, its regions and its block-storage
+        prices.'
+      description: "Returns the public cloud section of the catalog in one\ndocument: its instance plans, its regions and\
+        \ its block-storage prices. The\nsection's internal half \u2014 the provider costs Hanzo pays and the plan-to-\nprovider\
+        \ routing table \u2014 is stripped before it is served, so this is what a\ncustomer may see and nothing more."
       tags:
       - pricing
       responses:
@@ -43860,10 +43887,10 @@ paths:
   /v1/pricing/cloud/plans:
     get:
       operationId: cloud_get_v1_pricing_cloud_plans
-      summary: "GetCloudPlans returns just the cloud instance plans \u2014 each with its vCPU, memory, disk, CPU type, VM\
-        \ allowance, feature list and monthly and hourly price."
-      description: "GetCloudPlans returns just the cloud instance plans \u2014 each with its vCPU,\nmemory, disk, CPU type,\
-        \ VM allowance, feature list and monthly and hourly\nprice. It is the plans of the cloud section on their own."
+      summary: "Returns just the cloud instance plans \u2014 each with its vCPU, memory, disk, CPU type, VM allowance, feature\
+        \ list and monthly and hourly price."
+      description: "Returns just the cloud instance plans \u2014 each with its vCPU,\nmemory, disk, CPU type, VM allowance,\
+        \ feature list and monthly and hourly\nprice. It is the plans of the cloud section on their own."
       tags:
       - pricing
       responses:
@@ -43877,9 +43904,8 @@ paths:
   /v1/pricing/cloud/regions:
     get:
       operationId: cloud_get_v1_pricing_cloud_regions
-      summary: GetCloudRegions returns the regions a cloud instance can be placed in, each with its id, display name and physical
-        location.
-      description: 'GetCloudRegions returns the regions a cloud instance can be placed in, each
+      summary: Returns the regions a cloud instance can be placed in, each with its id, display name and physical location.
+      description: 'Returns the regions a cloud instance can be placed in, each
 
         with its id, display name and physical location. It is the regions of the
 
@@ -43897,9 +43923,9 @@ paths:
   /v1/pricing/cloud/storage:
     get:
       operationId: cloud_get_v1_pricing_cloud_storage
-      summary: 'GetCloudStoragePricing returns the block-storage prices of the cloud section: the per-GB monthly rate and
-        the volume size bounds a caller may ask for.'
-      description: 'GetCloudStoragePricing returns the block-storage prices of the cloud
+      summary: 'Returns the block-storage prices of the cloud section: the per-GB monthly rate and the volume size bounds
+        a caller may ask for.'
+      description: 'Returns the block-storage prices of the cloud
 
         section: the per-GB monthly rate and the volume size bounds a caller may ask
 
@@ -43919,12 +43945,11 @@ paths:
   /v1/pricing/compute:
     get:
       operationId: cloud_get_v1_pricing_compute
-      summary: 'GetComputePricing returns the compute section of the catalog: the cloud provider and region the prices are
-        quoted for, the monthly markup applied to them, the full instance-size tier list and the named presets.'
-      description: "GetComputePricing returns the compute section of the catalog: the cloud\nprovider and region the prices\
-        \ are quoted for, the monthly markup applied to\nthem, the full instance-size tier list and the named presets. It\
-        \ is the\nwhole section as the pricing source records it, un-gated \u2014 no model or\nprovider identity appears in\
-        \ it."
+      summary: 'Returns the compute section of the catalog: the cloud provider and region the prices are quoted for, the monthly
+        markup applied to them, the full instance-size tier list and the named presets.'
+      description: "Returns the compute section of the catalog: the cloud\nprovider and region the prices are quoted for,\
+        \ the monthly markup applied to\nthem, the full instance-size tier list and the named presets. It is the\nwhole section\
+        \ as the pricing source records it, un-gated \u2014 no model or\nprovider identity appears in it."
       tags:
       - pricing
       responses:
@@ -43940,11 +43965,11 @@ paths:
   /v1/pricing/compute/presets:
     get:
       operationId: cloud_get_v1_pricing_compute_presets
-      summary: "GetComputePresets returns just the named compute sizes \u2014 the short, human-labelled list (\"Starter\"\
-        , \"Pro\") a size picker renders, each carrying its provider slug, vCPU, memory, disk and price."
-      description: "GetComputePresets returns just the named compute sizes \u2014 the short,\nhuman-labelled list (\"Starter\"\
-        , \"Pro\") a size picker renders, each carrying\nits provider slug, vCPU, memory, disk and price. It is the presets\
-        \ of the\ncompute section on their own, for a caller that does not need the full tier\ntable."
+      summary: "Returns just the named compute sizes \u2014 the short, human-labelled list (\"Starter\", \"Pro\") a size picker\
+        \ renders, each carrying its provider slug, vCPU, memory, disk and price."
+      description: "Returns just the named compute sizes \u2014 the short,\nhuman-labelled list (\"Starter\", \"Pro\") a size\
+        \ picker renders, each carrying\nits provider slug, vCPU, memory, disk and price. It is the presets of the\ncompute\
+        \ section on their own, for a caller that does not need the full tier\ntable."
       tags:
       - pricing
       responses:
@@ -43955,11 +43980,32 @@ paths:
                 $ref: '#/components/schemas/cloud_pricingPresetList'
           description: ok
       x-app: pricing
+  /v1/pricing/datastore:
+    get:
+      description: "Returns the Hanzo Datastore rate card: the tier list, the\nper-GB storage and egress usage rates, the\
+        \ annual discount and the trial. It is\nthe section as authored, un-gated \u2014 no provider identity appears in it.\n\
+        \nThe route was missing while the data existed, so this 404d and every visitor to\nhanzo.ai's Infrastructure tab was\
+        \ told pricing was \"temporarily unavailable\"."
+      operationId: cloud_get_v1_pricing_datastore
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: object
+                type: object
+          description: ok
+      summary: 'Returns the Hanzo Datastore rate card: the tier list, the per-GB storage and egress usage rates, the annual
+        discount and the trial.'
+      tags:
+      - pricing
+      x-app: pricing
   /v1/pricing/featured:
     get:
       operationId: cloud_get_v1_pricing_featured
-      summary: ListFeaturedModels returns the models the catalog highlights, filtered to what the caller's org may see.
-      description: 'ListFeaturedModels returns the models the catalog highlights, filtered to what
+      summary: Returns the models the catalog highlights, filtered to what the caller's org may see.
+      description: 'Returns the models the catalog highlights, filtered to what
 
         the caller''s org may see. It is the same catalog as ListModels narrowed to
 
@@ -43977,8 +44023,8 @@ paths:
   /v1/pricing/free:
     get:
       operationId: cloud_get_v1_pricing_free
-      summary: ListFreeModels returns the models that cost nothing to call, filtered to what the caller's org may see.
-      description: 'ListFreeModels returns the models that cost nothing to call, filtered to what
+      summary: Returns the models that cost nothing to call, filtered to what the caller's org may see.
+      description: 'Returns the models that cost nothing to call, filtered to what
 
         the caller''s org may see. It is the same catalog as ListModels narrowed to
 
@@ -44053,11 +44099,11 @@ paths:
   /v1/pricing/model/{name}:
     get:
       operationId: cloud_get_v1_pricing_model_name
-      summary: "GetModel returns one model's catalog entry \u2014 its pricing, context window and capabilities as the pricing\
-        \ source records them."
-      description: "GetModel returns one model's catalog entry \u2014 its pricing, context window and\ncapabilities as the\
-        \ pricing source records them. A model hidden for the\ncaller's org answers the same 404 an unknown name does, so\
-        \ a disabled model\ngets no existence oracle."
+      summary: "Returns one model's catalog entry \u2014 its pricing, context window and capabilities as the pricing source\
+        \ records them."
+      description: "Returns one model's catalog entry \u2014 its pricing, context window and\ncapabilities as the pricing\
+        \ source records them. A model hidden for the\ncaller's org answers the same 404 an unknown name does, so a disabled\
+        \ model\ngets no existence oracle."
       tags:
       - pricing
       parameters:
@@ -44085,11 +44131,11 @@ paths:
   /v1/pricing/models:
     get:
       operationId: cloud_get_v1_pricing_models
-      summary: "ListModels returns the whole model catalog \u2014 Hanzo's own Zen models and every third-party model \u2014\
-        \ filtered to what the caller's org may see."
-      description: "ListModels returns the whole model catalog \u2014 Hanzo's own Zen models and every\nthird-party model\
-        \ \u2014 filtered to what the caller's org may see. A model an\nadmin has disabled is absent; one in beta appears\
-        \ only for an org granted it.\nA SuperAdmin sees every model, each annotated with its enablement state."
+      summary: "Returns the whole model catalog \u2014 Hanzo's own Zen models and every third-party model \u2014 filtered\
+        \ to what the caller's org may see."
+      description: "Returns the whole model catalog \u2014 Hanzo's own Zen models and every\nthird-party model \u2014 filtered\
+        \ to what the caller's org may see. A model an\nadmin has disabled is absent; one in beta appears only for an org\
+        \ granted it.\nA SuperAdmin sees every model, each annotated with its enablement state."
       tags:
       - pricing
       responses:
@@ -44120,12 +44166,12 @@ paths:
   /v1/pricing/policy:
     get:
       operationId: cloud_get_v1_pricing_policy
-      summary: "GetPricingPolicy returns the pricing policy document: the revenue-sharing terms (the idle-resale share and\
-        \ the open-source share, each with its percentage and who is eligible) and the commitments Hanzo makes about how it\
-        \ bills \u2014 no hidden fees, no egress charges, no surprise bills."
-      description: "GetPricingPolicy returns the pricing policy document: the revenue-sharing\nterms (the idle-resale share\
-        \ and the open-source share, each with its\npercentage and who is eligible) and the commitments Hanzo makes about\
-        \ how it\nbills \u2014 no hidden fees, no egress charges, no surprise bills."
+      summary: "Returns the pricing policy document: the revenue-sharing terms (the idle-resale share and the open-source\
+        \ share, each with its percentage and who is eligible) and the commitments Hanzo makes about how it bills \u2014 no\
+        \ hidden fees, no egress charges, no surprise bills."
+      description: "Returns the pricing policy document: the revenue-sharing\nterms (the idle-resale share and the open-source\
+        \ share, each with its\npercentage and who is eligible) and the commitments Hanzo makes about how it\nbills \u2014\
+        \ no hidden fees, no egress charges, no surprise bills."
       tags:
       - pricing
       responses:
@@ -44141,11 +44187,11 @@ paths:
   /v1/pricing/providers:
     get:
       operationId: cloud_get_v1_pricing_providers
-      summary: ListProviders returns the model providers the catalog knows, each with its info object, filtered to what the
-        caller's org may see.
-      description: "ListProviders returns the model providers the catalog knows, each with its\ninfo object, filtered to what\
-        \ the caller's org may see. A provider an admin\nhas disabled is absent \u2014 and so are its models everywhere else\
-        \ on this\nsurface, because a provider's state cascades to what it serves."
+      summary: Returns the model providers the catalog knows, each with its info object, filtered to what the caller's org
+        may see.
+      description: "Returns the model providers the catalog knows, each with its\ninfo object, filtered to what the caller's\
+        \ org may see. A provider an admin\nhas disabled is absent \u2014 and so are its models everywhere else on this\n\
+        surface, because a provider's state cascades to what it serves."
       tags:
       - pricing
       responses:
@@ -44159,10 +44205,10 @@ paths:
   /v1/pricing/subscriptions:
     get:
       operationId: cloud_get_v1_pricing_subscriptions
-      summary: "ListSubscriptionPlans returns the API subscription plans \u2014 the account-level tiers a customer subscribes\
-        \ to, each with its monthly and annual price, included credit, rate limits and feature list."
-      description: "ListSubscriptionPlans returns the API subscription plans \u2014 the account-level\ntiers a customer subscribes\
-        \ to, each with its monthly and annual price,\nincluded credit, rate limits and feature list."
+      summary: "Returns the API subscription plans \u2014 the account-level tiers a customer subscribes to, each with its\
+        \ monthly and annual price, included credit, rate limits and feature list."
+      description: "Returns the API subscription plans \u2014 the account-level\ntiers a customer subscribes to, each with\
+        \ its monthly and annual price,\nincluded credit, rate limits and feature list."
       tags:
       - pricing
       responses:
@@ -44176,11 +44222,10 @@ paths:
   /v1/pricing/summary:
     get:
       operationId: cloud_get_v1_pricing_summary
-      summary: "GetPricingSummary returns the catalog's headline statistics \u2014 model counts by family and the provider\
-        \ directory."
-      description: "GetPricingSummary returns the catalog's headline statistics \u2014 model counts by\nfamily and the provider\
-        \ directory. The provider sub-object is filtered to what\nthe caller's org may see, so a disabled provider's name\
-        \ never leaks; the\naggregate counts are the catalog's own, over everything it holds."
+      summary: "Returns the catalog's headline statistics \u2014 model counts by family and the provider directory."
+      description: "Returns the catalog's headline statistics \u2014 model counts by\nfamily and the provider directory. The\
+        \ provider sub-object is filtered to what\nthe caller's org may see, so a disabled provider's name never leaks; the\n\
+        aggregate counts are the catalog's own, over everything it holds."
       tags:
       - pricing
       responses:
@@ -44196,9 +44241,9 @@ paths:
   /v1/pricing/sync:
     post:
       operationId: cloud_post_v1_pricing_sync
-      summary: SyncPricing refreshes the third-party section of the catalog from its upstream listings and returns the time
-        the refreshed catalog was stamped with.
-      description: 'SyncPricing refreshes the third-party section of the catalog from its upstream
+      summary: Refreshes the third-party section of the catalog from its upstream listings and returns the time the refreshed
+        catalog was stamped with.
+      description: 'Refreshes the third-party section of the catalog from its upstream
 
         listings and returns the time the refreshed catalog was stamped with. The
 
@@ -44220,11 +44265,10 @@ paths:
   /v1/pricing/tools:
     get:
       operationId: cloud_get_v1_pricing_tools
-      summary: "ListToolPrices returns the per-use tool prices \u2014 web search, code interpreter, file storage, image generation,\
-        \ speech-to-text and text-to-speech \u2014 each with the unit it is billed by and its price in that unit."
-      description: "ListToolPrices returns the per-use tool prices \u2014 web search, code\ninterpreter, file storage, image\
-        \ generation, speech-to-text and\ntext-to-speech \u2014 each with the unit it is billed by and its price in that\n\
-        unit."
+      summary: "Returns the per-use tool prices \u2014 web search, code interpreter, file storage, image generation, speech-to-text\
+        \ and text-to-speech \u2014 each with the unit it is billed by and its price in that unit."
+      description: "Returns the per-use tool prices \u2014 web search, code\ninterpreter, file storage, image generation,\
+        \ speech-to-text and\ntext-to-speech \u2014 each with the unit it is billed by and its price in that\nunit."
       tags:
       - pricing
       responses:
@@ -66296,6 +66340,47 @@ components:
           type: array
         updatedAt:
           type: string
+      type: object
+    cloud_aiMCPApp:
+      properties:
+        name:
+          description: Name is the subsystem, as the manifest names it.
+          type: string
+        names:
+          description: Names are its tool names, present only for the subsystem the query named.
+          items:
+            type: string
+          type: array
+        served:
+          description: 'Served reports that THIS process actually mounted it, so its tools are on
+
+            the door a client can call rather than only in the build.'
+          type: boolean
+        tools:
+          description: Tools is how many tools its committed catalogue publishes.
+          type: integer
+      type: object
+    cloud_aiMCPSurface:
+      properties:
+        apps:
+          description: Apps is one row per subsystem the build publishes, in manifest order.
+          items:
+            $ref: '#/components/schemas/cloud_aiMCPApp'
+          type: array
+        local:
+          description: 'Local is the part of Served this process registered ITSELF, rather than
+
+            composing from a mounted child''s catalogue.'
+          type: integer
+        published:
+          description: "Published is every tool this BUILD can serve \u2014 the union of every\nsubsystem's committed catalogue,\
+            \ which is a property of the artifact and\ntherefore the same answer in every process."
+          type: integer
+        served:
+          description: "Served is what THIS PROCESS's door actually composed. It is the number that\ncan be far smaller than\
+            \ Published \u2014 a host that mounted nothing serves\nnothing \u2014 and the only one that describes the door\
+            \ a client is talking to."
+          type: integer
       type: object
     cloud_aiMetrics:
       properties:
