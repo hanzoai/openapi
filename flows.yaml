@@ -43,21 +43,27 @@ flows:
   hello:
     summary: Identity — prove the key works and print who it belongs to.
     # The route must FAIL on a bad key, which is the whole point of the flow, so
-    # this choice was made by probing api.hanzo.ai rather than by reading the
+    # this choice was made by probing api.hanzo.ai rather than by reading a
     # spec. ai_getAccount reads like the obvious pick and is disqualified: it
     # answers 200 with type="anonymous-user" to a request with NO Authorization
     # header, so a `hello` built on it prints a cheerful identity for a key that
     # would 401 everywhere else. Also not the IAM OIDC userinfo endpoint, which
     # is on a different ORIGIN and also answers 200 unauthenticated.
-    operations: [bot_authMe]
+    #
+    # WAS bot_authMe (GET /v1/bot/auth/me). That operation exists only in this
+    # repo's hand-merged master, not in the document the SDKs now project, and
+    # it cannot be shown to exist at all: /v1/bot answers 403 to every path
+    # under it, real or invented, so the probe that "verified" it could not tell
+    # it from a nonsense sibling. The canonical hello is IAM's, which is where
+    # identity lives by law.
+    operations: [get_v1_iam_whoami]
     notes: >-
-      Verified: GET /v1/bot/auth/me returns 403 {"error":"no validated
-      principal"} with no key and with a bogus one, and returns the typed
-      bot_User with a real one. An SDK's hello must be the call that says no. Print data.owner and data.name.
+      GET /v1/iam/whoami. An SDK's hello must be the call that says no on a bad
+      key. Print the caller's org and subject.
 
   chat:
     summary: One completion.
-    operations: [gateway_createChatCompletion]
+    operations: [post_v1_chat_completions]
     notes: >-
       POST /v1/chat/completions, the gateway's own inference route. Non-streaming
       on purpose — streaming is a different transport (SSE) that the generated
@@ -66,7 +72,7 @@ flows:
 
   money:
     summary: Balance, then the usage that moved it.
-    operations: [cloud_get_v1_billing_balance, cloud_get_v1_billing_usage]
+    operations: [get_v1_billing_balance, get_v1_billing_usage]
     notes: >-
       Neither takes an org: both derive the tenant server-side from the JWT
       `owner` claim, so a key can only read its own money. Both ids are cloud's
@@ -83,7 +89,7 @@ flows:
 
   store:
     summary: KV round-trip — create a store, read it back, delete it.
-    operations: [cloud_post_v1_kv, cloud_get_v1_kv_name, cloud_delete_v1_kv_name]
+    operations: [post_v1_kv, get_v1_kv_name, delete_v1_kv_name]
     notes: >-
       The delete belongs in the language's finally/defer, so a failed read still
       cleans up instead of leaving the store for the next run to collide with.
@@ -103,9 +109,9 @@ flows:
   agent:
     summary: Create an agent, run it, read the run back.
     operations:
-      - cloud_post_v1_agents
-      - cloud_post_v1_agents_by_ref_run
-      - cloud_get_v1_agents_ref_runs
+      - post_v1_agents
+      - post_v1_agents_by_ref_run
+      - get_v1_agents_ref_runs
     notes: >-
       `ref` accepts the public id (agent_...) OR the org-unique name, which is
       why run and read can both use the name just created without waiting for an
@@ -115,14 +121,18 @@ flows:
 
   tools:
     summary: List the MCP tools this key can reach.
-    operations: [mcp_rpc]
+    operations: [get_v1_tools]
     notes: >-
-      Send method=tools/list, assert the count is greater than zero, print three
-      names. POST /v1/mcp is the fleet's one MCP door — it composes the typed
-      product operations with the external MCP servers the caller's org has
-      enabled — and it is now IN hanzo.yaml, which is what this flow was waiting
-      for: an example built on an undeclared route is a hand-rolled HTTP call
-      inside a generated client, the exact drift these SDKs exist to prevent.
+      GET /v1/tools, the tool catalogue this key can reach. List it and print
+      three names.
+      WAS mcp_rpc (POST /v1/mcp), and that is the flow this one is standing in
+      for. The JSON-RPC door is REAL — it answers 202 unauthenticated where a
+      nonsense sibling 404s — but hanzoai/cloud's emitted document does not
+      describe it, and this file may only name operations the document has. It
+      was declared in this repo's hand-merged master; being declared there was
+      never evidence that a client could reach it, because no client generates
+      from that file any more. The moment cloud projects POST /v1/mcp, this flow
+      goes back to tools/list.
       JSON-RPC reports failure INSIDE a 200, so an example reads `error` before
       `result` and `result.isError` before `result.content`. The same operation
       with method=tools/call runs one. `cloud_get_v1_tools` is the REST view of

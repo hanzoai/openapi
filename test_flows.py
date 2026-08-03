@@ -4,10 +4,17 @@
 Runnable standalone (`python3 test_flows.py`, non-zero exit on failure) AND under
 pytest, like test_audit.py beside it.
 
-The manifest is only worth having if it cannot drift from the spec it names. An
-operationId that no longer exists is the exact failure this catches: without it,
-deleting a route upstream leaves six SDKs each carrying an example that no longer
-compiles, discovered six separate times. Here it is one red test in one repo.
+The manifest is only worth having if it cannot drift from THE DOCUMENT — which
+is `cloud/openapi.yaml`, hanzoai/cloud's own emission, resynced by sync.py and
+gated hourly by .hanzo/workflows/spec-sync.yml. Every SDK and the docs project
+that document, so an example must name an operationId IT has; naming one only
+`hanzo.yaml` has is how six SDKs each ship an example that does not compile,
+discovered six separate times.
+
+This test read `hanzo.yaml` until now, and that is why it was RED on origin/main
+and nobody knew: flows.yaml named `gateway_createChatCompletion`, which the
+master itself had stopped carrying. A gate pointed at the wrong document fails
+for the wrong reason, and a gate nothing runs fails silently either way.
 """
 import os
 import sys
@@ -23,7 +30,7 @@ CANONICAL = ["hello", "chat", "money", "store", "agent", "tools"]
 
 def load():
     flows = yaml.safe_load(open(os.path.join(ROOT, "flows.yaml")))["flows"]
-    spec = yaml.safe_load(open(os.path.join(ROOT, "hanzo.yaml")))
+    spec = yaml.safe_load(open(os.path.join(ROOT, "cloud", "openapi.yaml")))
     methods = ("get", "post", "put", "patch", "delete", "head", "options")
     ids = {
         op["operationId"]
@@ -47,7 +54,8 @@ def test_every_operation_exists_in_the_spec():
         for op in flow["operations"]
         if op not in ids
     ]
-    assert not missing, "flows.yaml names operations hanzo.yaml does not have: " + repr(missing)
+    assert not missing, ("flows.yaml names operations cloud/openapi.yaml does not have: "
+                        + repr(missing))
 
 
 def test_every_flow_says_what_it_does():
