@@ -14,17 +14,24 @@ prefixes, no cross-brand references.
 - `CAPABILITIES.md` — GENERATED from `capabilities.yaml` by `merge.py`. A
   derived human index; never hand-edit (it carries a `GENERATED — DO NOT EDIT`
   header).
-- `hanzo.yaml` — THE PUBLISHED DOCUMENT. Every SDK, doc site and tool generates
-  from this file and from nothing else, at
-  `https://raw.githubusercontent.com/hanzoai/openapi/main/hanzo.yaml`. Consumers
-  PULL it; nothing here pushes to them. Aggregated by `merge.py` and grouped
-  (`x-tagGroups`) from `capabilities.yaml`.
-  **The repo is private: that URL is a 404 without `Authorization: Bearer
-  $GITHUB_TOKEN`, and 200 with it.** A 404 for a private file reads as "the file
-  moved", so a fetcher missing the header goes looking for the wrong bug —
-  `hanzoai/js-sdk`'s `scripts/generate.sh:22` fetches it unauthenticated today
-  and dies on `curl -f`. The in-repo path (`generate.py`, which reads the local
-  file) needs no network at all and is the one to prefer.
+- `hanzo.yaml` — **NO LONGER THE DOCUMENT ANY CLIENT READS.** It is the union of
+  the authored specs with `cloud/openapi.yaml` on top, aggregated by `merge.py`
+  and grouped (`x-tagGroups`) from `capabilities.yaml`. Its remaining reader in
+  this repo is `audit.py`.
+
+  It stopped being an SDK input because it is a SECOND AUTHORITY ON WHAT EXISTS.
+  Measured against `hanzoai/cloud@v1.801.383` (`git show` of both, operations
+  keyed by METHOD+path): the master carries **2093** operations, cloud's
+  document **2333**, they share **1908**, and **185 master operations are not in
+  cloud's document at all** — 40 `search`, 32 `bot`, 17 `ai`, 16 `dns`, 15
+  `vector`, 14 `s3`, 13 `o11y`, 8 `tasks`, 6 `kv`, 5 `collections`, and 19 more.
+  Every one of those reached four SDKs as a method, and the ones cloud does not
+  serve reach a caller as a 404 with a type signature. A projection may lose
+  prose; it may not invent an endpoint.
+
+  Two of those buckets are DIFFERENT problems wearing the same number and it
+  matters which is which — see "The 185, triaged" below.
+
 - `<service>/openapi.yaml` — one self-contained spec per service. The route IS
   the identity: `<svc>/openapi.yaml` describes `/v1/<svc>` and nothing else, and
   `test_placement.py` is its gate (below).
@@ -41,6 +48,51 @@ prefixes, no cross-brand references.
 - `audit.py` — measures a generated spec against that contract.
 - `README.md` — the front door.
 - `CHANGELOG.md` — release notes.
+
+### The 185, triaged — 164 were never evidence of anything
+
+Each master-only operation was probed at `api.hanzo.ai` **with its own method**,
+and each probe carries a NONSENSE-SIBLING CONTROL: the same prefix with a last
+segment nothing can serve. Identical codes on both means the answer came from a
+door or a gate, not from a route, and the probe decided nothing.
+
+| verdict | n |
+|---|---|
+| unfalsifiable — control answered identically (403×89, 401×37, 404×36, 200×2) | **164** |
+| decidably PRESENT — live, and cloud's document lacks it | **19** |
+| decidably ABSENT — 404 where the control was not | **0** |
+
+**164 of 183 were unfalsifiable.** `/v1/bot` (32) and `/v1/dns` (16) answer 403
+to every path under them, real or invented; `/v1/vector` and `/v1/search` gate
+before routing; `/v1/s3` and `/v1/kv` answer 404 to both. The master asserted
+those operations exist on evidence that cannot distinguish them from nonsense. A
+door is not a list. That is the whole argument for taking existence from the
+code instead: the emitter cannot answer "does this exist" with a wildcard.
+
+**The 19 that ARE live and undescribed are the honest cost**, and every one is a
+`hanzoai/cloud` defect to fix at the source rather than a reason to keep a second
+document:
+
+```
+GET  /v1/ai/deployments 401           POST /v1/ai/deployments 403
+POST /v1/ai/deployments/{o}/{n}/deploy 403    .../undeploy 200
+GET  /v1/ai/signin-sessions 401       POST /v1/ai/signin-sessions 403
+GET  /v1/ai/signin-sessions/duplicated 200
+GET  /v1/ai/usages/by-user 401        GET  /v1/ai/usages/user-names 401
+GET  /v1/{evals,referrals,world}/health 200   GET /v1/tasks/{health,settings,cluster,cluster/health} 200
+POST /v1/search/indexes 401           POST /v1/mcp 202      GET /v1/o11y/services 405
+```
+
+Nine of the nineteen are `/v1/ai/*`, which is the `apps/ai` seam reached from a
+second direction: cloud projects that product from a committed
+`plugin/ai/openapi.json` subset instead of the mounted plugin's live registry, so
+the emission is a stale copy — a second authority INSIDE cloud, same disease. The
+four `/v1/tasks` and three `*/health` ops are served-but-untyped. `POST /v1/mcp`
+answers 202 and is in no document at all; note it answers 404 to GET, which is
+why a GET-only sweep has twice concluded it does not exist.
+
+None of the nineteen is fixable here. Authoring them back into `hanzo.yaml`
+would restore exactly the property this change removes.
 
 `merge.py` enforces one-and-one-way as a build invariant: every present
 `<service>/openapi.yaml` dir MUST map to exactly one entry across
@@ -259,11 +311,30 @@ they disagree about what an unserved operation means — which is the whole reas
 
 | consumer | reads | filters against the live router? |
 |---|---|---|
-| `hanzoai/cli` | `hanzo.yaml` → `genspec` → `spec/cloud.json` → `genproduct` | YES — refutes per owned product |
+| `hanzoai/cli` | **cloud `openapi.yaml`** @ `.spec-lock` → `genspec` → `genproduct` | N/A — nothing to refute; the document IS the router |
+| the four `sdks.yaml` clients | **cloud `openapi.yaml`** @ each client's `.spec-lock`, via `generate.py` | N/A — same reason |
+| `hanzo-go/sdk`, `hanzo-rs/sdk` | **cloud `openapi.yaml`** @ their own `.spec-lock`, own call site | N/A |
+| `hanzo-docs/docs` | **cloud `openapi.yaml`** @ `openapi-specs/cloud.pin` | N/A |
 | `hanzoai/console` | `hanzo.yaml` (proxy-allow test) | YES — asserts the proxy allows only declared paths |
 | `hanzoai/cloud` agent-skills | `<svc>/openapi.yaml` via `skills.py` | **NO** |
 | hanzo.ai oss-catalog | `capabilities.yaml` + `<svc>/openapi.yaml` | NO |
 | `hanzoai/world` cloud-pulse | `hanzo.yaml` | NO |
+
+The top four rows moved off `hanzo.yaml` and the column stopped applying to
+them: "does this operation exist" is no longer a question a projection has to
+re-litigate against the wire, because the only document it reads is the one the
+router emitted. Refutation was scaffolding for having two authorities.
+
+**The three rows still on hand-authored input are the remaining work, and
+`skills.py` is the sharp one** — it opens `<svc>/openapi.yaml` and emits a
+`SKILL.md` per authored operation with no liveness filter at all, so an
+unserved operation ships as a live instruction to an agent to call a dead
+endpoint. It cannot simply be repointed: the per-service specs carry skill prose
+the emitted document has no field for. Fixing it means teaching cloud's emission
+to carry that prose (the typed-op doc comment already is that prose for typed
+routes) and then deriving the catalogue from the document. Until then, the
+authored specs and `merge.py` stay for `skills.py`, `audit.py`, console and
+cloud-pulse — and for nothing that generates a client.
 
 **`skills.py` has NO liveness filter.** It opens `<svc>/openapi.yaml` directly
 (never the wire) and emits a `SKILL.md` for every
@@ -287,12 +358,18 @@ to this repo the day it is actually served.
 
 ## SDK generation — the ONE way (Stainless RETIRED, 2026-07)
 
-The one interface is `hanzo.yaml`; the generator backend is
-**openapi-generator** for EVERY language — no Stainless, no API key. Each
-language repo owns its generation via a `scripts/generate.sh` that runs
-openapi-generator against this `hanzo.yaml`, plus a `generate.yml` workflow
-that regenerates + opens a PR on the `spec-update` repository_dispatch fired
-by this repo's `regenerate-sdks.yml`.
+**The one interface is hanzoai/cloud's `openapi.yaml`, at the ref each client's
+own `.spec-lock` names.** Not `hanzo.yaml`, and not `main` of anything: a client
+is a projection of ONE release, and the release is what wrote the lock. The
+generator backend is **openapi-generator** for every language — no Stainless, no
+API key. Each language repo owns only a `scripts/generate.sh` call site;
+hanzoai/ci's `client:` lane fetches the document at the dispatched sha, verifies
+the digest the release published, exports `SPEC`, and runs that call site.
+
+`generate.py --spec` takes the document by value (what the lane does). Omitted,
+`document()` reads the client's `.spec-lock` and fetches that exact ref, refusing
+if the bytes hash to anything else — a tag that moved is not a thing to
+regenerate through. There is deliberately no fallback to a file in this repo.
 
 | Lang | Canonical repo | Generator | Ships as | Driven by |
 |------|------|-----------|---------|---------|
@@ -325,7 +402,7 @@ that, and neither is neglect.
   with, or the halves drift apart.
 
 Both then own their whole invocation in their own `scripts/generate.sh` — same
-generator, same 7.14.0 pin, same `hanzo.yaml` pulled from here. What is NOT
+generator, same 7.14.0 pin, same document at the same locked ref. What is NOT
 allowed is a row here AND flags there: two declarations of one contract.
 `hanzoai/js-sdk` and `hanzoai/java-sdk` are the other shape and the reason the
 line matters — their scripts carry no flags at all, they exec `generate.py`, and
