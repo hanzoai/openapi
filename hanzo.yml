@@ -14,28 +14,28 @@ images:
 
 test:
   - name: spec
-    # This repo had 25 tests and no `test:` block, so none of them had ever
-    # gated a commit. They matter more here than in most repos: hanzo.yaml is
-    # the single input to SEVEN language SDKs, so a defect merged here is a
-    # defect merged into all seven at once, discovered seven separate times.
+    # hanzo.yaml is the single input to SEVEN language SDKs, the doc site and the
+    # agent-skills catalog, so a defect merged here is a defect merged into all
+    # of them at once, discovered separately in each.
     #
-    # It is not hypothetical. hanzo.yaml spent this whole period unable to
-    # generate ANY client in ANY language — 35 /v1/platform operations carried
-    # no `responses`, which OAS 3.x requires and openapi-generator refuses the
-    # entire document over. Nothing in this repo noticed, because nothing in
-    # this repo ever tried.
+    # test_publish.py is the offline half of the artifact gate: it reads the
+    # COMMITTED hanzo.yaml and asserts the properties publish.py promises —
+    # every operation generatable, operationIds unique to a GENERATOR and not
+    # merely as strings, a security scheme a client can authenticate with, every
+    # capability grouped exactly once, and no `<svc>/openapi.yaml` back on disk.
+    # It needs no network and no hanzoai/cloud checkout.
     #
-    # test_flows.py is the new one: it asserts every operationId named in
-    # flows.yaml still exists in hanzo.yaml, so deleting a route breaks one gate
-    # here instead of six SDKs' examples quietly and separately.
+    # The ONLINE half is `publish.py --check` in the `spec sync` workflow, which
+    # re-derives from the pinned ref and diffs. That is what catches a hand edit
+    # that happens to be well-formed — the one this repo exists to make
+    # impossible now that hanzo.yaml is output rather than input.
     #
-    # test_placement.py enforces the law capabilities.yaml states and nothing
-    # checked: one product, one owning spec, one /v1/<name>. It went in the day
-    # four products (kv, s3, search, vector) were each described by two specs at
-    # once and 103 authored paths sat outside their owner's prefix.
+    # test_flows.py asserts every operationId flows.yaml names still exists in
+    # hanzo.yaml, so a route that stops being served breaks one gate here instead
+    # of six SDKs' examples quietly and separately.
     #
-    # uv rather than a bare python3 — the arc runner image promises no
-    # interpreter, let alone one with PyYAML.
+    # uv rather than a bare python3 — the runner image promises no interpreter,
+    # let alone one with PyYAML.
     run: |
       set -e
       if command -v uv >/dev/null 2>&1; then UV=uv; else
@@ -43,4 +43,4 @@ test:
         UV="$HOME/.local/bin/uv"
       fi
       "$UV" run --no-project --python 3.12 --with pyyaml --with pytest \
-        python -m pytest test_audit.py test_skills.py test_flows.py test_placement.py -q
+        python -m pytest test_publish.py test_flows.py test_skills.py -q

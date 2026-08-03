@@ -8,8 +8,10 @@
 #
 # `operations` are operationIds in hanzo.yaml, in call order. That is the part a
 # language cannot fudge: test_flows.py asserts every id here exists in the
-# merged spec, so deleting or renaming a route upstream breaks THIS gate — one
-# place — instead of breaking six SDKs quietly and separately.
+# published document, so a route that stops being served breaks THIS gate — one
+# place — instead of breaking six SDKs quietly and separately. Since hanzo.yaml
+# is now derived from hanzoai/cloud's own emission, an id here is a served
+# operation by construction, and there is no way to name one that is not.
 #
 # Existing in the spec is necessary and not sufficient: an id can resolve and
 # still 404 on the wire. Every flow below was PROBED at api.hanzo.ai, and where
@@ -43,21 +45,31 @@ flows:
   hello:
     summary: Identity — prove the key works and print who it belongs to.
     # The route must FAIL on a bad key, which is the whole point of the flow, so
-    # this choice was made by probing api.hanzo.ai rather than by reading the
-    # spec. ai_getAccount reads like the obvious pick and is disqualified: it
-    # answers 200 with type="anonymous-user" to a request with NO Authorization
-    # header, so a `hello` built on it prints a cheerful identity for a key that
-    # would 401 everywhere else. Also not the IAM OIDC userinfo endpoint, which
-    # is on a different ORIGIN and also answers 200 unauthenticated.
-    operations: [bot_authMe]
+    # this choice is made by probing api.hanzo.ai rather than by reading the
+    # document. Three candidates were disqualified for answering 200 to a caller
+    # with no credential at all — GET /v1/ai/account (type="anonymous-user"),
+    # GET /v1/iam/whoami and GET /v1/iam/account (both {"status":"error",
+    # "msg":"please sign in first"}, 200) — and a `hello` built on any of them
+    # prints a cheerful identity for a key that would 403 everywhere else.
+    operations: [get_v1_keys]
     notes: >-
-      Verified: GET /v1/bot/auth/me returns 403 {"error":"no validated
-      principal"} with no key and with a bogus one, and returns the typed
-      bot_User with a real one. An SDK's hello must be the call that says no. Print data.owner and data.name.
+      Verified with a nonsense-sibling control: GET /v1/keys answers 403
+      {"code":"forbidden","error":"sign in to manage API keys"} with NO key and
+      with a bogus one, while GET /v1/keys-zzq9 answers 404 — so the 403 is this
+      route refusing, not a wildcard door. With a real key it returns the
+      caller's own keys. An SDK's hello must be the call that says no.
+
+
+      This replaces bot_authMe (GET /v1/bot/auth/me), which no longer resolves:
+      cloud relays all of /v1/bot through one `app.All("/v1/bot/*")`, so the
+      document has `/v1/bot/{wildcard1}` and no operation named that address. The
+      old id existed only in bot/openapi.yaml, and a hand-authored id vanishes
+      with the hand-authored spec — which is exactly why an id here must come
+      from the served document.
 
   chat:
     summary: One completion.
-    operations: [gateway_createChatCompletion]
+    operations: [post_v1_chat_completions]
     notes: >-
       POST /v1/chat/completions, the gateway's own inference route. Non-streaming
       on purpose — streaming is a different transport (SSE) that the generated
@@ -66,46 +78,37 @@ flows:
 
   money:
     summary: Balance, then the usage that moved it.
-    operations: [cloud_get_v1_billing_balance, cloud_get_v1_billing_usage]
+    operations: [get_v1_billing_balance, get_v1_billing_usage]
     notes: >-
       Neither takes an org: both derive the tenant server-side from the JWT
       `owner` claim, so a key can only read its own money. Both ids are cloud's
-      now — /v1/billing is among the routes where the binary's own woven document
-      replaced a hand-written spec, so the prose is the handler's.
+      cloud's, and so is the prose: it comes out of the handler's doc comment.
 
 
-      An example CAN ask for a window again: /v1/billing/usage takes `start` and
-      `end`. It briefly did not — the merge was replacing the whole authored
-      operation with cloud's undescribed one, and this note said to stop asking.
-      Both are restored, along with the response schema, so an SDK reads a typed
-      body rather than decoding by hand. See LLM.md, "An empty field from the
-      winner must not delete a populated one".
+      /v1/billing/usage takes `start` and `end`, and both operations carry a
+      typed 2xx body, so an SDK reads a struct rather than decoding by hand.
+      Those are cloud's own declarations, from the handlers' `In`/`Out` types —
+      not a shape anybody wrote here on their behalf.
 
   store:
     summary: KV round-trip — create a store, read it back, delete it.
-    operations: [cloud_post_v1_kv, cloud_get_v1_kv_name, cloud_delete_v1_kv_name]
+    operations: [post_v1_kv, get_v1_kv_name, delete_v1_kv_name]
     notes: >-
       The delete belongs in the language's finally/defer, so a failed read still
       cleans up instead of leaving the store for the next run to collide with.
-      This is the provisioning plane, and it is here because it is the one that
-      answers. The value plane (/v1/kv/keys/{key} — kv_setKey, kv_getKey,
-      kv_deleteKey) is authored in kv/openapi.yaml and is mounted nowhere.
-
-
-      The discriminator, since a 404 body alone proves nothing: auth middleware
-      runs BEFORE the handler, so a route that EXISTS refuses with 403 and a
-      route that does not is 404/405. /v1/kv, /v1/kv/demo, /v1/kv/keys and the
-      control /v1/agents/{ref} all answer 403 "X-Org-Id required";
-      /v1/kv/keys/x answers 404. The parent collection routes and the child
-      does not — which is the shape of a plane that was authored and never
-      mounted, not of a key that is merely absent.
+      This is the provisioning plane — create a KV STORE, read it, drop it — and
+      it is here because it is the one cloud registers. The VALUE plane
+      (/v1/kv/keys/{key}) was authored in kv/openapi.yaml and mounted nowhere;
+      that spec is deleted and the addresses went with it. apps/provisioning
+      registers exactly `/v1/kv`, `/v1/kv/:name` and nothing else, which the
+      document now says without anyone having to remember it.
 
   agent:
     summary: Create an agent, run it, read the run back.
     operations:
-      - cloud_post_v1_agents
-      - cloud_post_v1_agents_by_ref_run
-      - cloud_get_v1_agents_ref_runs
+      - post_v1_agents
+      - post_v1_agents_by_ref_run
+      - get_v1_agents_ref_runs
     notes: >-
       `ref` accepts the public id (agent_...) OR the org-unique name, which is
       why run and read can both use the name just created without waiting for an
@@ -115,17 +118,24 @@ flows:
 
   tools:
     summary: List the MCP tools this key can reach.
-    operations: [mcp_rpc]
+    operations: [get_v1_tools]
     notes: >-
-      Send method=tools/list, assert the count is greater than zero, print three
-      names. POST /v1/mcp is the fleet's one MCP door — it composes the typed
-      product operations with the external MCP servers the caller's org has
-      enabled — and it is now IN hanzo.yaml, which is what this flow was waiting
-      for: an example built on an undeclared route is a hand-rolled HTTP call
-      inside a generated client, the exact drift these SDKs exist to prevent.
-      JSON-RPC reports failure INSIDE a 200, so an example reads `error` before
-      `result` and `result.isError` before `result.content`. The same operation
-      with method=tools/call runs one. `cloud_get_v1_tools` is the REST view of
-      the same catalogue and stays available; the door is what an MCP client
-      speaks. The automations door (/v1/automations/mcp — automations_mcp) is
-      retired: it replies 405 to POST, the method it documents.
+      GET /v1/tools is the catalogue read: every tool the caller's org and
+      project can reach, from every source, each flagged with whether it is
+      activated. Assert the count is greater than zero and print three names.
+
+
+      This flow named `mcp_rpc` (POST /v1/mcp, the JSON-RPC door) until the
+      document became the only authority on what exists. That door IS live —
+      POST /v1/mcp answers 200 with the tool list while POST /v1/mcp-zzq9
+      answers 404, so the address is real and the control refutes nothing — but
+      cloud's emission does not declare it, so it has no operationId and no
+      generated method. An example may not reach for an address the document
+      does not carry: that is a hand-rolled HTTP call inside a generated client,
+      the exact drift these SDKs exist to prevent. `POST /v1/mcp` returns here
+      the release cloud declares it (LLM.md, "Handed to hanzoai/cloud").
+
+
+      Note for whoever writes that declaration: JSON-RPC reports failure INSIDE a
+      200, so a client reads `error` before `result` and `result.isError` before
+      `result.content`. The same door with method=tools/call runs one.

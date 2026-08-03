@@ -2,6 +2,43 @@
 
 ## v1.0.0
 
+### The repo stops being where the API is DECIDED
+
+`hanzo.yaml` is now OUTPUT: `publish.py` derives it from hanzoai/cloud's own
+emitted `openapi.yaml` at the release `.spec-lock` pins, and `publish.py --check`
+regenerates and diffs on every push. An operation no code declares is now
+structurally impossible to publish.
+
+DELETED — 52 hand-authored `<service>/openapi.yaml` specs, `shared/`, `cloud/`,
+`generated/`, `merge.py`, `sync.py`, `audit.py`, `test_audit.py`,
+`test_placement.py`, and 14 Swagger 2.0 documents for `api.hanzo.io` (a parked
+domain: real path and nonsense control both return the registrar's lander).
+
+MEASURED at `hanzoai/cloud@v1.801.383`: the hand-merged master carried 2093
+operations against cloud's 2333, sharing 1908 — so it described 185 operations
+nothing serves under that name and missed 425 that are served. Of the 185, 36 are
+refuted outright (real 404, nonsense-sibling control 404), 44 are unfalsifiable
+behind a prefix auth gate, 66 sit under a `{wildcardN}` relay door, and **39 are
+live and undescribed** — every one a hanzoai/cloud defect, itemised in LLM.md.
+
+The projection is six codegen rules and nothing else. It exists because
+`openapi-generator validate` refuses cloud's emission with **1012 errors** (one
+per route published with an address and no `responses`) and `generate` writes
+zero files in every language; against `hanzo.yaml` it reports 0 errors. Each rule
+is a candidate to move upstream into cloud's emitter, and rule 5 alone is 90% of
+this file.
+
+BREAKING — operationIds lose the `<svc>_` prefix `merge.py` applied:
+`cloud_get_v1_billing_balance` is `get_v1_billing_balance`. The prefix existed to
+keep 52 authored specs from colliding and there is exactly one collision in 2284
+operations now. Two `flows.yaml` journeys moved with the ids that vanished:
+`hello` is `get_v1_keys` (403 with no key and with a bogus one, control 404) and
+`tools` is `get_v1_tools`.
+
+`capabilities.yaml` keeps one job — which DOMAIN a capability is shown under —
+and is gated both ways: a served capability it does not group fails the publish,
+and a name it groups that the document does not carry fails too.
+
 ### IAM: the dead store's document is gone, and a path names a thing
 
 `iam/openapi.yaml` was the entity store this fleet replaced, imported whole. It

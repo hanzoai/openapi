@@ -1,34 +1,45 @@
-# The staleness gate on the ONE spec here that is not authored here.
+# The gate on the artifact, in both directions.
 #
-# `cloud/openapi.yaml` is hanzoai/cloud's woven document, and `merge.py` lets it
-# WIN every route an authored spec also claims. That makes it the most load-bearing
-# file in the repo and the only one whose correctness depends on a DIFFERENT repo's
-# HEAD — so it goes stale on a push nobody makes here, which is exactly the kind of
-# drift no push-triggered CI can catch.
+# `hanzo.yaml` is OUTPUT — `publish.py` derives it from hanzoai/cloud's own
+# emitted `openapi.yaml` at the ref `.spec-lock` pins. Two things can be wrong
+# with an output, and they need different questions:
 #
-# Measured before this existed: cloud/openapi.yaml lagged cloud's origin/main twice
-# in one afternoon, and each time every SDK, doc page and MCP tool generated from
-# `hanzo.yaml` was describing a router that had already moved. The resync itself is
-# one command and always was; what was missing is anything that NOTICES.
+#   • publish.py --check   the committed artifact is NOT what its own pinned
+#                          input projects to. Somebody hand-edited a generated
+#                          file, and an edit to THIS one describes a release
+#                          nobody shipped — to seven SDKs, the doc site and the
+#                          agent-skills catalog at once. HARD failure on every
+#                          push and PR.
+#   • publish.py --current the pin is behind cloud's origin/main. Nothing is
+#                          wrong with the artifact; it describes an older release
+#                          than the one being deployed.
 #
-# So the trigger is a clock, not a push. A push here cannot be the signal, because
-# the event that invalidates the file happens in hanzoai/cloud.
+# The second is why the trigger is also a clock. The event that makes the pin
+# stale happens in hanzoai/cloud, so no push-triggered CI here can catch it —
+# measured before this workflow existed: the copy lagged cloud's origin/main
+# twice in one afternoon, and each time every SDK, doc page and MCP tool
+# generated from it described a router that had already moved. It runs ONLY on
+# the clock, because a stale pin is not a broken artifact and must not fail a PR
+# that has nothing to do with it.
 #
-# --check only. This job does not resync and does not commit: a bot pushing a 2 MB
-# regenerated document into main is a second writer on the file merge.py owns, and
-# the failure mode — an unreviewed spec change reaching every SDK — is worse than
-# the staleness it would fix. Red build, one command in the log, a person runs it.
+# --check only, and NOTHING is committed. A bot pushing a 3 MB regenerated
+# document into main is a second writer on the artifact, and the failure mode —
+# an unreviewed API change reaching every client — is worse than the staleness it
+# would fix. Red build, one command in the log, a person runs it.
 name: spec sync
 
 on:
+  push:
+    branches: [main]
+  pull_request:
   schedule:
     # Hourly. Cloud deploys many times a day and each one can move the document;
-    # a daily check would let a stale spec ship SDKs for most of a working day.
+    # a daily check would let a stale artifact ship SDKs for most of a working day.
     - cron: '17 * * * *'
   workflow_dispatch:
 
 concurrency:
-  group: spec-sync
+  group: spec-sync-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -37,28 +48,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # sync.py reads a hanzoai/cloud CHECKOUT's origin/main rather than a release
-      # artifact, because the document it wants is the one cloud's own drift gate
-      # just proved equal to its router. fetch-depth 1 is enough: it reads one ref.
+      # publish.py reads a hanzoai/cloud CHECKOUT rather than a release artifact,
+      # because the document it wants is the one cloud's own drift gate just
+      # proved equal to its router. fetch-depth 0: the pin is a TAG, and a
+      # shallow clone does not have it.
       - name: Check out hanzoai/cloud
         uses: actions/checkout@v4
         with:
           repository: hanzoai/cloud
           path: .cloud
-          fetch-depth: 1
+          fetch-depth: 0
 
-      - name: Is cloud/openapi.yaml current?
+      - name: Is hanzo.yaml what its own input projects to?
         run: |
           # --break-system-packages: the runner image ships a PEP 668
           # "externally managed" interpreter, so a bare pip install exits 1.
-          # Under `bash -e` that killed the step BEFORE the gate below ever
-          # ran, and the log still showed the gate's error text — so this read
-          # as "the spec is stale" when the check had not executed at all.
-          # Safe here: the container is discarded after the job.
+          # Under `bash -e` that killed the step BEFORE the gate below ever ran,
+          # and the log still showed the gate's error text — so this read as
+          # "the spec is stale" when the check had not executed at all. Safe
+          # here: the container is discarded after the job.
           python3 -m pip install --quiet --break-system-packages pyyaml
-          # Fail loudly and say the ONE command that fixes it. A gate whose message
-          # is "differs" and nothing else sends the reader looking for a diff tool.
-          if ! python3 sync.py --check --cloud .cloud; then
-            echo "::error::cloud/openapi.yaml is behind hanzoai/cloud. Every SDK and doc page generated from hanzo.yaml is describing a router that moved. Fix: python3 sync.py && git commit -am 'sync: resync cloud'"
+          # Fail loudly and say the ONE command that fixes it. A gate whose
+          # message is "differs" sends the reader looking for a diff tool.
+          if ! python3 publish.py --check --cloud .cloud; then
+            echo "::error::hanzo.yaml is not what its pinned hanzoai/cloud release projects to. It is a GENERATED artifact, so an edit to it describes a release nobody shipped — to every SDK, the doc site and the skills catalog. Fix: change the API in hanzoai/cloud, then run 'python3 publish.py'"
+            exit 1
+          fi
+
+      - name: Is the pin still cloud's origin/main?
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          python3 -m pip install --quiet --break-system-packages pyyaml
+          if ! python3 publish.py --current --cloud .cloud; then
+            echo "::error::hanzo.yaml describes an older cloud release than origin/main. Every SDK and doc page generated from it describes a router that moved. Fix: python3 publish.py && git commit -am 'publish: <cloud ref>'"
             exit 1
           fi

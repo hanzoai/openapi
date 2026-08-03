@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the Agent Skills Discovery surface from the per-service OpenAPI specs.
+"""Generate the Agent Skills Discovery surface from the published document.
 
     python3 skills.py                    # write dist/agent-skills/ (all brands)
     python3 skills.py --check            # drift gate: regenerate to a temp dir and
@@ -7,9 +7,21 @@
     python3 skills.py --no-services      # master tree only (what the cloud binary embeds)
     python3 skills.py --brands hanzo,lux # subset of brands
 
-ONE source of truth. This reads the SAME per-service `<svc>/openapi.yaml` specs
-`merge.py` aggregates (and reuses merge.py's registry loader, so `internal`
-services are excluded here EXACTLY as they are from `hanzo.yaml`). It emits the
+ONE source of truth, and this plane is the reason it has to be the served one.
+Every skill below is an INSTRUCTION TO AN AGENT to call an address, and nothing
+downstream re-checks it — there is no refutation step, no liveness filter, no
+human between the SKILL.md and the request. So a skill for an operation nothing
+serves is not a stale document, it is a working instruction to call a dead
+endpoint, and an agent obeys it.
+
+That is why this reads `hanzo.yaml`, which is a projection of hanzoai/cloud's
+own emission, and no longer the 52 hand-authored `<svc>/openapi.yaml` specs it
+used to. Measured at cloud@v1.801.383, those specs carried 185 operations the
+router does not serve — 36 of them refuted outright, real address 404 and
+nonsense sibling 404 — and every one was eligible to become a skill.
+
+A capability here is a TAG the document carries, which is the product the
+serving binary filed the operation under. It emits the
 `/.well-known/agent-skills/` discovery surface — per the Agent Skills Discovery
 convention: a per-skill `SKILL.md` (YAML frontmatter + a worked, injection-guarded
 body) plus an `index.json` catalogue carrying a sha256 of every skill file.
@@ -42,9 +54,8 @@ import tempfile
 
 import yaml
 
-import merge  # reuse load_registry / spec_dirs — the ONE registry, no second copy
-
 ROOT = os.path.dirname(os.path.abspath(__file__))
+DOCUMENT = os.path.join(ROOT, "hanzo.yaml")
 
 # White-label brands. Mirrors cloud/brand.go's `brands` registry (HIP-0111): the
 # base URL is api.<domain>, the OIDC issuer is the brand's .id host. NEVER cross
@@ -92,9 +103,35 @@ def rebrand(text: str, brand: str) -> str:
     return text
 
 
-def load_spec(svc: str) -> dict:
-    with open(os.path.join(ROOT, svc, "openapi.yaml")) as f:
-        return yaml.safe_load(f) or {}
+def slices() -> dict:
+    """`hanzo.yaml` cut into one self-contained spec PER CAPABILITY.
+
+    The cut is by the operation's own tag — the product the serving binary filed
+    it under — and never by the path prefix, because the two disagree wherever a
+    binary answers at a noun that is not its own name (`/v1/chat/completions` is
+    `chat`, `/v1/models` is `models`). Reading the tag means this file has no
+    opinion about placement at all: it asks the document who owns an operation
+    and believes the answer.
+
+    Each slice shares the document's `components` and top-level `security`, so
+    every `$ref` still resolves and `op_auth` still sees the default."""
+    doc = yaml.safe_load(open(DOCUMENT)) or {}
+    out = {}
+    for path, item in (doc.get("paths") or {}).items():
+        if not isinstance(item, dict):
+            continue
+        for method, op in item.items():
+            if method != "get" or not isinstance(op, dict):
+                continue
+            tag = (op.get("tags") or [None])[0]
+            if not tag:
+                continue
+            spec = out.setdefault(tag, {"paths": {},
+                                        "components": doc.get("components") or {},
+                                        "security": doc.get("security")})
+            spec["paths"][path] = {k: v for k, v in item.items()
+                                   if k in ("get", "parameters")}
+    return out
 
 
 def resolve_ref(spec: dict, ref: str):
@@ -255,7 +292,7 @@ def render_skill_md(sk: Skill, brand: str, description: str) -> str:
     if sk.requires_auth:
         L.append(f"Bearer JWT issued by {b['display']} IAM (OIDC issuer `{b['issuer']}`). "
                  f"Send it as `Authorization: Bearer <token>`. The same token "
-                 f"authenticates every {b['display']} service; an `sk-…` API key minted "
+                 f"authenticates every {b['display']} service; a `hk-…` API key minted "
                  f"on `{b['issuer']}` is also accepted.")
     else:
         L.append("Public — no credential required.")
@@ -355,17 +392,13 @@ def index_json(brand: str, entries: list, scope: str, service: str | None = None
 
 
 def generate(out_dir: str, brands: list, include_services: bool, only: list | None = None):
-    categories, internal, collapsed, cap = merge.load_registry()
-    present = merge.spec_dirs()
-    merge.check_invariant(present, categories, internal, collapsed)
-    services = [s for s in present if s not in internal]
-    if only:
-        services = [s for s in services if s in set(only)]
+    specs = slices()
+    services = sorted(specs) if not only else sorted(set(specs) & set(only))
 
-    # Build skills once per service (brand-independent structure), then render per brand.
+    # Build skills once per capability (brand-independent structure), then render per brand.
     per_service_skills = {}
     for svc in services:
-        skills = build_skills(svc, load_spec(svc))
+        skills = build_skills(svc, specs[svc])
         if skills:
             per_service_skills[svc] = skills
 
