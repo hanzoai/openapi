@@ -1,17 +1,37 @@
 #!/usr/bin/env python3
-"""Generate every language SDK from hanzo.yaml — one spec, N projections.
+"""Project the Hanzo Cloud API document into every language SDK.
 
     python3 generate.py --all              # regenerate every client in place
-    python3 generate.py python go          # just these
+    python3 generate.py python typescript  # just these
     python3 generate.py --all --check      # fail if a committed client drifted
     python3 generate.py python --repo DIR  # the SDK repo is somewhere else
 
-merge.py produces the spec; this produces the clients. Both live here so that a
-client cannot be written by hand and cannot describe a route the spec does not
-have. Every per-language knob is data in sdks.yaml and every SDK repo carries
-only a call site (scripts/generate.sh), so there is nothing in a client repo
-that can drift on its own — `--check` is what makes that a fact rather than a
-convention.
+THE DOCUMENT COMES FROM THE CODE, AND NOT FROM THIS REPO.
+
+hanzoai/cloud emits `openapi.yaml` by projecting its own routers, and gates the
+emission by regenerating from source and failing on any diff — so it cannot
+describe a route the binary does not serve and cannot miss one it does. That is
+the only description of this API with that property, and a client generated from
+anything else describes a release nobody shipped.
+
+`hanzo.yaml` — this repo's hand-merged document — is NOT that, and no client is
+generated from it any more. It was a SECOND authority on what EXISTS: measured
+at cloud@v1.801.383 it carried 185 operations cloud does not serve, and each one
+reached every SDK as a method that 404s. A projection may lose prose; it may not
+invent an endpoint.
+
+WHICH document is therefore a fact about the CLIENT and not about this checkout.
+Each SDK repo's `.spec-lock` names the ref and the sha256 it is a projection of,
+written there by hanzoai/ci's `client:` lane when a cloud release dispatched to
+it. That receipt is the one declaration, so `document()` reads it; `--spec` is
+the same document passed by value when the caller already fetched it (which the
+lane always does). There is no third way and no default ref — a default ref
+would name a release nobody chose.
+
+This file and sdks.yaml stay: the INVOCATION is still logic that lives once, and
+every per-language knob is still data beside it. An SDK repo carries only a call
+site, so nothing in a client repo can drift on its own — `--check` is what makes
+that a fact rather than a convention.
 """
 import argparse
 import concurrent.futures as futures
@@ -22,6 +42,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import urllib.request
 from fnmatch import fnmatch
 
@@ -57,11 +78,11 @@ def as_json(path):
     """The document as JSON, because YAML has a ceiling and JSON does not.
 
     swagger-parser hands a YAML document to snakeyaml, which refuses anything
-    over 3 * 1024 * 1024 = 3145728 code points. hanzo.yaml passed that mark at
-    1bac13f (3,654,449) and the failure does not say so: the parser logs
-    SnakeException, silently falls through to the SWAGGER 2.0 compat reader, and
-    dies with "Issues with the OpenAPI input", which reads like a malformed
-    spec. It is not — the document validates at 0 errors.
+    over 3 * 1024 * 1024 = 3145728 code points. The document passed that mark
+    long ago (cloud@v1.801.383 is 3,568,239 bytes) and the failure does not say
+    so: the parser logs SnakeException, silently falls through to the SWAGGER
+    2.0 compat reader, and dies with "Issues with the OpenAPI input", which
+    reads like a malformed spec. It is not — the document validates at 0 errors.
 
     `-DmaxYamlCodePoints` lifts the cap, and it is NOT the fix: the property is
     honoured by the swagger-parser in generator 7.24.0 and IGNORED by the one in
@@ -72,12 +93,104 @@ def as_json(path):
     growing into.
 
     Deliberately not written back to disk as a second committed artifact. There
-    is one document, and it is hanzo.yaml.
+    is one document, it lives in hanzoai/cloud, and every copy of it anywhere
+    else is a copy that can be stale.
     """
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
                                      dir=os.environ.get("TMPDIR")) as f:
         json.dump(yaml.safe_load(open(path)), f)
         return f.name
+
+
+def lock(repo):
+    """`.spec-lock` as a dict — the client's own statement of which document it is.
+
+    hanzoai/ci's `client:` lane writes it (ref, sha256, repo, path) the moment a
+    cloud release regenerates this tree, and re-verifies the digest on every
+    later push. So it is a receipt, not configuration: nobody edits it to choose
+    a document, a release moves it.
+    """
+    path = os.path.join(repo, ".spec-lock")
+    if not os.path.exists(path):
+        return None
+    out = {}
+    for line in open(path):
+        k, _, v = line.strip().partition("=")
+        if k:
+            out[k] = v
+    return out
+
+
+def fetch(spec, dest):
+    """The document at the locked ref, from GitHub, digest-checked.
+
+    hanzoai/cloud is private, so raw.githubusercontent.com answers 404 rather
+    than 403 and an anonymous miss is indistinguishable from a deleted file. The
+    contents API with a token says which case it is. Same credential names every
+    SDK call site already takes.
+    """
+    token = (os.environ.get("SPEC_TOKEN") or os.environ.get("GH_TOKEN")
+             or os.environ.get("GITHUB_TOKEN")
+             or subprocess.run(["gh", "auth", "token"], capture_output=True,
+                               text=True).stdout.strip())
+    if not token:
+        sys.exit(f"generate: {spec['repo']} is private and no SPEC_TOKEN / GH_TOKEN /"
+                 f" GITHUB_TOKEN is set (nor `gh auth login`). Pass --spec instead.")
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{spec['repo']}/contents/{spec['path']}"
+        f"?ref={spec['ref']}",
+        headers={"Authorization": f"Bearer {token}",
+                 "Accept": "application/vnd.github.raw"})
+    with urllib.request.urlopen(req) as r, open(dest, "wb") as f:
+        shutil.copyfileobj(r, f)
+    got = hashlib.sha256(open(dest, "rb").read()).hexdigest()
+    # A pinned ref whose bytes moved means someone moved a tag, and no amount of
+    # regenerating makes that safe. The same refusal hanzoai/ci makes, for the
+    # same reason, so a hand run and a CI run cannot disagree about what they read.
+    want = spec.get("sha256")
+    if want and got != want:
+        sys.exit(f"generate: {spec['repo']}@{spec['ref']}:{spec['path']} hashes to "
+                 f"{got}, but .spec-lock says {want} — the ref moved under this "
+                 f"projection")
+    return dest
+
+
+ONE_DOCUMENT = threading.Lock()
+
+
+def document(repo, given, cache):
+    """THE document this client is a projection of, as a path to JSON.
+
+    `given` is `--spec`: the same document by value, already fetched and already
+    digest-checked by hanzoai/ci's lane. Otherwise the client's own `.spec-lock`
+    names it. There is deliberately no third source and no fallback to a file in
+    THIS repo — that fallback is exactly how a client came to carry methods for
+    routes cloud does not serve.
+
+    Cached per distinct document rather than per language: `--all` projects ONE
+    release into every client, which is G2 (one release, one document) and not
+    an optimisation.
+    """
+    if given:
+        key, spec = ("given", os.path.abspath(given)), given
+    else:
+        spec = lock(repo)
+        if not spec or not spec.get("ref"):
+            sys.exit(f"generate: no --spec and no .spec-lock in {repo}.\n"
+                     f"         A client is a projection of ONE document at ONE ref "
+                     f"and nothing here may choose it for you: hanzoai/ci's client: "
+                     f"lane writes the lock when a cloud release dispatches, or pass "
+                     f"--spec /path/to/openapi.yaml.")
+        key = (spec["repo"], spec["path"], spec["ref"])
+    with ONE_DOCUMENT:
+        if key not in cache:
+            if not given:
+                print(f"document: {spec['repo']}@{spec['ref']}:{spec['path']}", flush=True)
+                spec = fetch(spec, tempfile.NamedTemporaryFile(
+                    suffix=".yaml", delete=False,
+                    dir=os.environ.get("TMPDIR")).name)
+            cache[key] = as_json(spec)
+        return cache[key]
 
 
 def digest(path):
@@ -207,9 +320,11 @@ def main():
     # THE DOCUMENT IS AN ARGUMENT, not a fact about this checkout. hanzoai/cloud's
     # release hands each client repo openapi.yaml AT THE SHA IT DEPLOYED, and a
     # projection generated from anything else describes a release nobody shipped.
-    # Defaulting to the checkout's own hanzo.yaml keeps every existing call site
-    # working unchanged, and is what a maintainer regenerating by hand still gets.
-    ap.add_argument("--spec", help="the API document to project; default this checkout's own (sdks.yaml `spec:`)")
+    # Omitted, the client's OWN `.spec-lock` names the same document — see
+    # `document()`. There is no fallback to a file in this repo: that fallback was
+    # `hanzo.yaml`, a hand-merged second authority, and every operation it carried
+    # that cloud does not serve reached an SDK as a method that 404s.
+    ap.add_argument("--spec", help="the API document to project; default: the ref this client's .spec-lock names")
     # java -Xmx2g per worker, and this box has been OOMed by less.
     ap.add_argument("-j", type=int, default=2, help="parallel generators")
     a = ap.parse_args()
@@ -217,8 +332,7 @@ def main():
     langs = sorted(conf["sdks"]) if (a.all or not a.langs) else a.langs
     if a.repo and len(langs) != 1:
         ap.error("--repo takes exactly one language")
-    spec = as_json(a.spec or os.path.join(ROOT, conf["spec"]))
-    version = str(conf["generator"])
+    docs, version = {}, str(conf["generator"])
 
     def one(name):
         cfg = conf["sdks"][name]
@@ -226,7 +340,8 @@ def main():
         if not os.path.isdir(repo):
             sys.stderr.write(f"[{name}] no checkout at {repo}\n")
             return False
-        return sdk(name, cfg, spec, version, conf["drop"], repo, a.check)
+        return sdk(name, cfg, document(repo, a.spec, docs), version,
+                   conf["drop"], repo, a.check)
 
     with futures.ThreadPoolExecutor(max_workers=a.j) as pool:
         results = list(pool.map(one, langs))

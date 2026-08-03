@@ -2,7 +2,15 @@
 
 # Hanzo OpenAPI
 
-**`hanzo.yaml` is THE published document.** One OpenAPI 3.1 surface for every
+**Not the SDK input any more.** Every generated client, the CLI and the docs
+read **hanzoai/cloud's `openapi.yaml`** at the ref their own `.spec-lock` names
+— the document cloud emits from its routers and gates against them. `hanzo.yaml`
+here is the hand-merged union; it carried 185 operations cloud does not serve,
+and 164 of those could not be told apart from an invented path by any probe. See
+LLM.md, "The 185, triaged". What remains below describes the authored specs,
+which still feed `skills.py`, `audit.py` and the capability registry.
+
+**`hanzo.yaml` is a published document.** One OpenAPI 3.1 surface for every
 Hanzo service — the one every SDK, every doc site and every tool generates from.
 
 ```bash
