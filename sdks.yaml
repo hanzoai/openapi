@@ -6,19 +6,24 @@
 # client lands in src/ or src/cloud/, which built an orphan second copy of all
 # 2143 files.
 #
-# Every row is one language projection of THE DOCUMENT — hanzoai/cloud's
-# `openapi.yaml` at the ref that client's own `.spec-lock` names. There is no
-# `spec:` key here any more and no document in this repo the generator falls
-# back to: `hanzo.yaml` is hand-merged, it carries operations cloud does not
-# serve, and each of those reached an SDK as a method that 404s. WHICH document
-# a client is a projection of is a fact about the CLIENT (its lock), not about
-# this checkout, so it is not expressible as a row here.
+# Every row is one language projection of THE DOCUMENT — `hanzo.yaml`, which
+# `publish.py` derives from hanzoai/cloud's own emission at the ref `.spec-lock`
+# pins. There is still no `spec:` key: WHICH document a client is a projection of
+# is a fact about the CLIENT (its own lock, written by a release) and not about
+# this checkout, so it is not expressible as a row here — generate.py resolves it
+# per repo, falling back to this checkout's `hanzo.yaml` for a hand run.
+#
+# That fallback was removed once, correctly, when `hanzo.yaml` was a hand-merged
+# union carrying 185 operations cloud does not serve. It is back because the file
+# is not that any more, and because the alternative was measured: cloud's raw
+# emission fails `openapi-generator validate` with 1012 errors — every route the
+# weave publishes with an address and no `responses` — and `generate` writes zero
+# files from it in every language. See generate.py's header.
 #
 # `take` maps a path in the generator's output onto a path in the SDK repo that
-# the generator OWNS
-# ENTIRELY: generate.py replaces it wholesale and --check diffs it. Anything
-# outside a `take` path is the repo's own (build files, the legacy published
-# client) and is never touched.
+# the generator OWNS ENTIRELY: generate.py replaces it wholesale and --check
+# diffs it. Anything outside a `take` path is the repo's own (build files, the
+# legacy published client) and is never touched.
 #
 # WHEN A LANGUAGE LEAVES THIS FILE — the boundary, so it is a rule and not a
 # mood: a row exists while the WHOLE invocation is expressible as data. A

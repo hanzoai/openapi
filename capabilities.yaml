@@ -1,114 +1,100 @@
-# capabilities.yaml — the ONE registry of Hanzo public capabilities.
+# capabilities.yaml — the ONE editorial decision left in this repo.
 #
-# This file is the single source of truth. merge.py READS it (there is no
-# hand-kept GROUPS dict anymore) to build hanzo.yaml's x-tagGroups AND to
-# generate CAPABILITIES.md. CAPABILITIES.md is a DERIVED artifact — never edit it
-# by hand; edit this file and run `python3 merge.py`.
+# NOT a registry of what exists. hanzoai/cloud decides that, by registering a
+# route; `hanzo.yaml` reports it. This file answers the one question the document
+# does not: which DOMAIN a capability belongs under when a reader is shown the
+# whole API at once. That is presentation, and presentation has no source in the
+# code — a doc site's movements are a taste decision about a reader, not a fact
+# about a router.
 #
-# One and one way, by construction:
-#   • every openapi/<name>/openapi.yaml MUST appear here exactly once, across
-#     domains ∪ core — merge.py FAILS the build on an orphan spec (dir with no
-#     entry), an unlisted spec, or a name in two entries. Orthogonality is a
-#     build invariant, not a hope.
-#   • a `collapsed` name MUST have NO spec dir (build fails if a dir reappears).
-#   • `internal` names are EXCLUDED from the master, x-tagGroups, SDKs and docs.
-#   • `pending`/`review`/domain names WITHOUT a dir are fine (not-yet-authored or
-#     future-fold); only a spec dir on disk is load-bearing for the invariant.
-#   • the route IS the identity: one capability = one name = one /v1/<name> = one
-#     <name>/openapi.yaml.  No svc suffix, no singular/plural twins, no facade.
-#   • merge.py emits x-tagGroups from `domains`+`core` so Redoc/Scalar render the
-#     movements automatically.  Docs + SDKs derive from hanzo.yaml — never hand-kept.
+# It is curation over the document, and curation is gated BOTH ways by
+# publish.py:
 #
-# version: the API path stays /v1 (the compatibility contract, immutable).  The
-# release/generation is V8 — info.version: 8.0.0 on hanzo.yaml + every spec.
-
-edition: "V8 · Open Edition"
-version: "8.0.0"
+#   • a capability the document carries and this file does not group FAILS the
+#     publish. A new product is a name somebody has to place, and letting one
+#     default into a bucket is how 235 tags once ended up ungrouped while the
+#     doc site rendered four.
+#   • a name grouped here that the document does NOT carry FAILS too. Nothing
+#     serves it, so nothing can be filed under it — and a name that outlives its
+#     routes is exactly the drift this repo was rebuilt to make impossible.
+#
+# So the list below cannot describe an API other than the one that is served. It
+# can only be a worse or better arrangement of the one that is.
+#
+# `tags:` are the tags OPERATIONS CARRY in cloud's emission — the product, which
+# is the first path segment after /v1/, or the owning Go package where a route
+# has no /v1 prefix. They are not directory names. There are no directories.
 
 domains:
   - id: identity
     title: "Identity & Trust"
     role: "who you are · what you may touch · where secrets live"
-    services: [iam, authz, kms, security, zt]
+    tags: [iam, admin, authz, kms, security, keys, csrf, org, orgs, team,
+           audit, compliance, risk, validators, wallets, entitlements]
 
   - id: intelligence
     title: "Intelligence"
     role: "models · agents · evaluation — the mind of the cloud"
-    services: [ai, ml, agents, evals, research, prompts, functions, exec, graph, mcp]
+    # The bare-/v1 inference surface (chat, completions, embeddings, messages,
+    # rerank, models, images, audio, videos, responses) is Hanzo AI's OpenAI- and
+    # Anthropic-compatible door: there the PATH is the compatibility contract,
+    # because every vendor SDK hard-codes it. It is served by cloud like
+    # everything else — measured with nonsense-sibling controls: GET /v1/models
+    # 200 while /v1/models-zzq9 404s, POST /v1/chat/completions 401 while its
+    # sibling 404s. There is no edge exception and there never was.
+    #
+    # The long tail here (query, query_multiple, install-patch, dev-bridge,
+    # wecom-bot, traffic, provider-flags, docs, health, feedback, documents) is
+    # SHRAPNEL from one seam, not eleven products: apps/ai relays a whole
+    # embedded router through one door and hand-declares the operations behind
+    # it, so its declarations tag themselves. Those names disappear from this
+    # file the release apps/ai projects the mounted registry instead.
+    tags: [ai, router, agent, agents, ml, train, finetune, evals, benchmark,
+           research, prompts, exec, files, upload, download, mcp, tools, skills,
+           ask, code, memory, rag, engine, run, runner, chat, completions,
+           embeddings, messages, rerank, models, images, audio, videos,
+           responses, translate, summary, documents, docs, feedback,
+           generate-text-to-speech-audio, generate-text-to-speech-audio-stream,
+           process-speech-to-text, query, query_multiple, dev-bridge,
+           install-patch, provider-flags, traffic, wecom-bot, health]
 
   - id: data
     title: "Data"
     role: "the stores every capability writes to and reads from"
-    services: [storage, s3, base, kv, vector, sql, datastore, docdb]
+    tags: [s3, base, collections, kv, vector, sql, datastore, docdb, search,
+           index, indexers, oracles, kb, catalog, sync, crawl, scrape,
+           websearch]
 
   - id: streams
     title: "Streams"
     role: "messaging · durable tasks · async orchestration"
-    services: [tasks, notify, automations]
+    tags: [tasks, pubsub, mq, notify, automations, auto, flow, webhooks, event,
+           channels, destinations, connector, connectors, pipelines]
 
   - id: observability
     title: "Observability"
     role: "see everything — telemetry · analytics · usage"
-    services: [o11y, analytics]
+    tags: [o11y, sentry, logs, traces, metrics, errors, analytics, insights,
+           usage, openapi]
 
   - id: commerce
     title: "Commerce"
     role: "the economy — meter · price · bill · reward"
-    services: [commerce, billing, pricing, plans, crm, referrals, affiliates, licensing]
+    tags: [commerce, store, marketplace, billing, pricing, plans, finance,
+           books, captable, crm, referrals, affiliates, authors, licensing,
+           x402, marketing, campaign, ads, experiments, enablement]
 
   - id: platform
     title: "Platform"
     role: "the cloud fabric — deploy · provision · route · host"
-    services: [cloud, platform, gateway, visor, edge, dns, do]
+    tags: [platform, cloud, deploy, projects, sites, builds, releases,
+           environments, registry, gateway, ingress, dns, domain, cloudflare,
+           networks, vpcs, balancers, mesh, k8s, clusters, machines, compute,
+           gpus, fleet, plugins, flags]
 
   - id: applications
     title: "Applications"
     role: "the user-facing surfaces built on all of the above"
-    services: [projects, git, templates, integrations, bot, kb, search, websearch, world, authors, sites, tracker, framework]
-
-# Core — governance that owns no single domain.
-core: [admin, plugins]
-
-# Internal — power the music, are not instruments. Excluded from /v1, SDKs, docs.
-internal: [principal, goja, mpc, controlplane, metrics, audit]
-
-# Derived — the ratchet. A name here has a spec under generated/ that measurably
-# covers its hand-written contract (`python3 audit.py`), so `audit.py --check`
-# FAILS the build if it ever stops covering it. Everything else is report-only:
-# an unpromoted service is information, not a broken build. Promote a name only
-# once its audit row shows 0 missing and 0 prose lost — never to silence a diff.
-derived: []
-
-# Collapsed — resolved duplicates / consolidations. merge.py asserts these have
-# NO spec dir (they were removed), and records where the capability now lives.
-collapsed:
-  eval:      evals                     # pure dup — same /v1/evals
-  operative: bot + visor              # computer-using-agent split: bot = the CUA (@hanzo/bot), visor = the VM it runs on
-  plan:      plans                     # the route is /v1/plans; the route IS the identity
-  plugin:    plugins                   # the route is /v1/plugins; the route IS the identity
-  provisioning: sql + vector + datastore + kv + search + s3 + docdb   # never had a /v1/provisioning route — it mounted one CRUD quartet per KIND, so each kind's spec now owns its own
-  featuregate: featureflags            # policy toggles → one feature-flags surface (Policy)
-  ads:       marketing                 # ad surfaces fold into marketing
-  cms:       content                   # content management = content
-  cron:      tasks                     # scheduled jobs = durable tasks
-  connectorruntime: automations        # connector runtime = the automations engine
-  gojabase:  goja                      # internal goja JS-runtime lib, not a public service
-  paas:      platform                  # one deploy plane — /v1/platform is the served one
-  observe:   o11y                      # declared o11y's own /v1/o11y reads — cloud serves all four
-  app:       projects                  # declared only /v1/projects/* — a strict subset of projects
-  product:   vector + search-docs       # declared only /v1/vector/* + /v1/search-docs/*, never /v1/product
-
-# Not-yet-scored — LIVE surfaces missing a spec. Author these to complete the set.
-# team / wallets / usage / fleet left this list when cloud/openapi.yaml became
-# hanzoai/cloud's own woven document: the binary describes them, so they are in
-# hanzo.yaml. treasury is served by nothing and stays.
-pending: [treasury]
-
-# Braids under review — same concern, different names? A spec dir still exists
-# (so it is GROUPED into a domain above and counts for the invariant); folding it
-# away is a separate, verified decision — do NOT silently consolidate here (would
-# lose capability). merge.py groups them; it does not fold them.
-review:
-  do_is_a_provider: "do (DigitalOcean VPCs/LBs, grouped→platform) is a PROVIDER, not a capability — fold into provisioning/platform?"
-  s3_vs_storage: "s3 (/v1/s3/*, grouped→data) is the present object store; storage is the canonical rename target (no dir yet) — fold s3→storage once the dir is renamed?"
-  retrieval_cluster: "search vs kb (semantic) vs vector (store) — overlapping retrieval; is search distinct from kb?"
+    tags: [git, templates, blueprint, integrations, bot, bots, world, tracker,
+           framework, content, guide, help, meet, share, social, links, esign,
+           dataroom, company, legal, prefs, settings, embed, functions, sbom]

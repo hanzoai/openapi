@@ -1,375 +1,348 @@
 # openapi
 
-OpenAPI 3.1 specifications for all Hanzo services. Release generation
-**V8 · Open Edition** (`info.version: 8.0.0`); the `/v1` route prefix is the
-immutable compatibility contract. No backwards compatibility, no `/api/`
-prefixes, no cross-brand references.
+**This repo does not decide what the Hanzo API is. It publishes what the API
+says about itself.**
 
-## Layout
-
-- `capabilities.yaml` — the ONE canonical registry: every capability name, in
-  exactly one domain (or `core`), plus `internal` / `collapsed` / `pending` /
-  `review`. This is the single source of truth — `merge.py` READS it. Edit
-  this, then run `python3 merge.py`.
-- `CAPABILITIES.md` — GENERATED from `capabilities.yaml` by `merge.py`. A
-  derived human index; never hand-edit (it carries a `GENERATED — DO NOT EDIT`
-  header).
-- `hanzo.yaml` — **NO LONGER THE DOCUMENT ANY CLIENT READS.** It is the union of
-  the authored specs with `cloud/openapi.yaml` on top, aggregated by `merge.py`
-  and grouped (`x-tagGroups`) from `capabilities.yaml`. Its remaining reader in
-  this repo is `audit.py`.
-
-  It stopped being an SDK input because it is a SECOND AUTHORITY ON WHAT EXISTS.
-  Measured against `hanzoai/cloud@v1.801.383` (`git show` of both, operations
-  keyed by METHOD+path): the master carries **2093** operations, cloud's
-  document **2333**, they share **1908**, and **185 master operations are not in
-  cloud's document at all** — 40 `search`, 32 `bot`, 17 `ai`, 16 `dns`, 15
-  `vector`, 14 `s3`, 13 `o11y`, 8 `tasks`, 6 `kv`, 5 `collections`, and 19 more.
-  Every one of those reached four SDKs as a method, and the ones cloud does not
-  serve reach a caller as a 404 with a type signature. A projection may lose
-  prose; it may not invent an endpoint.
-
-  Two of those buckets are DIFFERENT problems wearing the same number and it
-  matters which is which — see "The 185, triaged" below.
-
-- `<service>/openapi.yaml` — one self-contained spec per service. The route IS
-  the identity: `<svc>/openapi.yaml` describes `/v1/<svc>` and nothing else, and
-  `test_placement.py` is its gate (below).
-- `cloud/openapi.yaml` — the ONE spec NOT authored here: hanzoai/cloud's own
-  woven document, copied verbatim by `sync.py`. Source-true, and it wins (below).
-- `sync.py` — the resync, one command: pull cloud's document, then merge.
-- `flows.yaml` — the canonical example set. Six journeys, named by operationId,
-  rendered by every SDK's `examples/` so they are the SAME journeys everywhere.
-  `test_flows.py` is its gate: an id that stops resolving fails there, once.
-- `shared/` — shared schemas usable by individual specs in their `components`.
-- `generated/<name>.json` — specs a SERVICE EMITTED from its own routes. Not
-  hand-written, not merged into the master; the measured counterpart of the
-  contract of the same name (see below).
-- `audit.py` — measures a generated spec against that contract.
-- `README.md` — the front door.
-- `CHANGELOG.md` — release notes.
-
-### The 185, triaged — 164 were never evidence of anything
-
-Each master-only operation was probed at `api.hanzo.ai` **with its own method**,
-and each probe carries a NONSENSE-SIBLING CONTROL: the same prefix with a last
-segment nothing can serve. Identical codes on both means the answer came from a
-door or a gate, not from a route, and the probe decided nothing.
-
-| verdict | n |
-|---|---|
-| unfalsifiable — control answered identically (403×89, 401×37, 404×36, 200×2) | **164** |
-| decidably PRESENT — live, and cloud's document lacks it | **19** |
-| decidably ABSENT — 404 where the control was not | **0** |
-
-**164 of 183 were unfalsifiable.** `/v1/bot` (32) and `/v1/dns` (16) answer 403
-to every path under them, real or invented; `/v1/vector` and `/v1/search` gate
-before routing; `/v1/s3` and `/v1/kv` answer 404 to both. The master asserted
-those operations exist on evidence that cannot distinguish them from nonsense. A
-door is not a list. That is the whole argument for taking existence from the
-code instead: the emitter cannot answer "does this exist" with a wildcard.
-
-**The 19 that ARE live and undescribed are the honest cost**, and every one is a
-`hanzoai/cloud` defect to fix at the source rather than a reason to keep a second
-document:
+`hanzo.yaml` is OUTPUT. It is derived, by `publish.py`, from hanzoai/cloud's own
+emitted `openapi.yaml` at one pinned release. To change the API you change the
+code in hanzoai/cloud; there is nothing here to edit that would make a route
+exist, and nothing here that can describe one that does not.
 
 ```
-GET  /v1/ai/deployments 401           POST /v1/ai/deployments 403
-POST /v1/ai/deployments/{o}/{n}/deploy 403    .../undeploy 200
-GET  /v1/ai/signin-sessions 401       POST /v1/ai/signin-sessions 403
-GET  /v1/ai/signin-sessions/duplicated 200
-GET  /v1/ai/usages/by-user 401        GET  /v1/ai/usages/user-names 401
-GET  /v1/{evals,referrals,world}/health 200   GET /v1/tasks/{health,settings,cluster,cluster/health} 200
-POST /v1/search/indexes 401           POST /v1/mcp 202      GET /v1/o11y/services 405
+hanzoai/cloud  typed ops + handler doc comments
+     │           (projected per app, woven, gated by regenerate-and-diff)
+     ▼
+  openapi.yaml @ a release   ── the ONE authority on what exists
+     │
+     ▼  publish.py            ── six codegen rules; no new operations, no new prose
+  hanzo.yaml + CAPABILITIES.md + .spec-lock   ── this repo's whole output
+     │
+     ├─→ generate.py → python · typescript · java · kotlin  (+ go, rust: own call site)
+     ├─→ skills.py   → /.well-known/agent-skills/  (hanzo · lux · zoo)
+     └─→ the doc site, hanzoai/console's proxy-allow test, hanzoai/world
 ```
 
-Nine of the nineteen are `/v1/ai/*`, which is the `apps/ai` seam reached from a
-second direction: cloud projects that product from a committed
-`plugin/ai/openapi.json` subset instead of the mounted plugin's live registry, so
-the emission is a stale copy — a second authority INSIDE cloud, same disease. The
-four `/v1/tasks` and three `*/health` ops are served-but-untyped. `POST /v1/mcp`
-answers 202 and is in no document at all; note it answers 404 to GET, which is
-why a GET-only sweep has twice concluded it does not exist.
-
-None of the nineteen is fixable here. Authoring them back into `hanzo.yaml`
-would restore exactly the property this change removes.
-
-`merge.py` enforces one-and-one-way as a build invariant: every present
-`<service>/openapi.yaml` dir MUST map to exactly one entry across
-`domains ∪ core` in `capabilities.yaml` (orphan / unlisted / double-listed →
-build fails); a `collapsed` name must have NO spec dir; `internal` services are
-excluded from the master and `x-tagGroups`; no two AUTHORED specs may claim one
-route.
-
-## The one source-true spec — cloud wins
-
-`cloud/openapi.yaml` is hanzoai/cloud's own woven document, not a contract
-written here. Cloud builds it by projecting each app's router into
-`plugin/<app>/openapi.json`, weaving the projections, and gating the weave by
-REGENERATING from source and failing on any diff — so it cannot describe a route
-the binary does not serve, and cannot miss one it does. That is the property no
-hand-written spec has.
-
-So `merge.py` merges it LAST and lets it WIN every route an authored spec also
-claims (298 of them today), explicitly rather than by where `cloud` falls in the
-alphabet, which is how those paths used to resolve. The authored specs describe
-what the OTHER binaries serve — iam, ai, kv, s3, search, commerce, world — and
-cloud's document describes what cloud serves; `hanzo.yaml` is the union with
-truth on top.
-
-`python3 sync.py` is the whole resync: fetch `origin/main` in a hanzoai/cloud
-checkout, write `origin/main:openapi.yaml` here byte-for-byte, re-merge.
-`--check` reports staleness without writing. It is one-way BY CONSTRUCTION —
-this repo reads a ref and never writes to hanzoai/cloud.
-
-There is no `generated/hanzo.json` any more. It was a second, older copy of the
-same emission, and measuring `hanzo.yaml` against a document `hanzo.yaml` now
-CONTAINS is tautology dressed as a gate. `audit.py` still measures every service
-that has one (`iam`), and the cloud half of that question is now answered
-structurally instead of reported. `hanzoai/cli`'s offline fallback reads that
-path — its successor is `cloud/openapi.yaml`, the same document fresher, and its
-product registry can now come from `hanzo.yaml`'s own tags (below).
-
-## Conventions
-
-- Routing: every route is `/v1/<service>/<resource>`.
-- IAM additionally answers OIDC/OAuth DISCOVERY at the three unprefixed
-  addresses the standards fix — `/.well-known/openid-configuration`,
-  `/.well-known/jwks`, `/.well-known/oauth-authorization-server` — each the
-  same handler as its `/v1/iam/` twin. The protocol endpoints themselves are
-  under `/v1/iam/oauth/`, which is what iam's own discovery document says.
-- A path segment names a THING; the METHOD says the verb. No verb-noun
-  addresses. Where a service still answers at one it inherited, it tags that
-  operation `compat` and `merge.py` keeps it out of the master: served for
-  consumers pinned to it, taught nowhere. `compat` is not a name this repo
-  assigns — the serving repo declares it, and dropping it here is respecting
-  the declaration, not overruling the server.
-- Security: every operation uses `BearerAuth` (JWT from `https://hanzo.id`).
-- `info.version: 8.0.0` on every spec (the V8 generation; the `/v1` path is the
-  immutable contract).
-- operationIds are BARE in each spec (e.g. `logs_query`); `merge.py` namespaces
-  them `<svc>_` in the master. Never self-prefix a spec's operationIds.
-- No cross-file `$ref`. Each spec is self-contained.
-- No `deprecated: true`. Forward-only.
-- No `/api/` prefix anywhere.
-- Master grouping: `merge.py` emits `x-tagGroups` from the domains in
-  `capabilities.yaml` (their `title`) plus a `Core` group; every present spec
-  must belong to exactly one group or the merge fails.
-
-## Tags — the document's own table of contents
-
-`tags` and `x-tagGroups` describe the tags OPERATIONS CARRY. They used to
-describe the spec DIRECTORIES: 55 names, four of which any operation carried, so
-a doc site grouped 4 of 239 tags and every description it had belonged to a
-heading nothing was filed under. Now every tag an operation carries is declared
-once (260), described where the declaring spec said anything (210 — cloud's are
-the owning Go package's doc synopsis), and grouped exactly once. The registry
-still decides the movements: a tag's group is the domain of the SERVICE that
-introduced it, so there is no second taxonomy to keep.
-
-Three normalizations make a tag or an id mean one thing to a generator, all in
-`namespace_ops`/`build_unified` and nowhere else: tags collapse to the first
-(two tags = the operation emitted twice); tag SPELLING canonicalizes on
-case/punctuation (`AI` and `ai` are one module, and the loser used to vanish);
-and operationIds are made unique under the identity a GENERATOR uses — strip
-punctuation, camel-case — not the string identity OpenAPI states.
-`cloud_get_v1_pricing-policy` (GET /v1/pricing-policy) and
-`cloud_get_v1_pricing_policy` (GET /v1/pricing/policy) are distinct strings and
-the same Go type; the second is suffixed. An operation with no tag takes its
-service's name rather than landing in `DefaultApi`, and an operation with no
-`responses` — 668 of them, the untyped routes cloud publishes with nothing
-invented — gets a `default` that says exactly that, so the document validates
-without anyone inventing a schema.
-
-## Placement — one product, one owning spec
-
-`capabilities.yaml` states it: "the route IS the identity: one capability = one
-name = one `/v1/<name>` = one `<name>/openapi.yaml`." Nothing enforced it, so it
-drifted three ways at once, and `test_placement.py` now gates all three.
-
-**Two specs described one product.** `provisioning/openapi.yaml` claimed
-`/v1/sql`, `/v1/vector`, `/v1/datastore`, `/v1/kv`, `/v1/search`, `/v1/s3` and
-`/v1/docdb` — seven other products' roots — while `vector/`, `kv/`, `s3/` and
-`search/` claimed the same prefixes. Asking "who owns `/v1/vector`" got two
-answers and every consumer picked one. There was never a `/v1/provisioning`
-route: `Mount` registers one CRUD quartet per KIND, so each kind's spec owns its
-own quartet now and `provisioning` is `collapsed`. `sql`, `datastore` and
-`docdb` are their own specs, in `data`, because they are their own products.
-
-**A spec's name disagreed with its route.** `plan/` served `/v1/plans` and
-`plugin/` served `/v1/plugins`. The route is immutable and the directory is not,
-so the directories moved: `plans/`, `plugins/`. The old `collapsed` entries said
-the singular was canonical — backwards, and the law above is why.
-
-**One binary's surface sat in another binary's spec.** The inference edge
-(`/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/rerank`,
-`/v1/models`, `/v1/messages`, `/v1/images/generations`, `/v1/audio/speech`) was
-authored in `ai/openapi.yaml`, which describes hanzoai/ai. The gateway serves
-them; they live in `gateway/openapi.yaml` now. The same move deleted the phantom
-`/v1/gateway/*` copy of that surface — 23 paths, all route-level 404 and none in
-the live route table — which is also why three operationIds had to be suffixed
-to stay distinct in codegen and no longer do.
-
-Where a binary really does answer at a noun that is not its service's name, the
-path is declared in `OFF_PREFIX` in `test_placement.py` with the reason. That
-table is the honest statement of the remaining 48; the fix for each is a route
-move in the serving repo, not a re-file here. Everything not in it fails the
-gate.
-
-**A declared tag no operation carries is the same defect one level up**, and
-`test_no_orphan_tag_declarations` gates it. The tag namespace is global in
-`hanzo.yaml` and spellings fold case-insensitively, so `search`'s leftover
-`Logs: "Configure logging"` — declared after `/v1/search/logs/stream` was
-refuted — was being merged as the description of cloud's `/v1/logs`
-observability product. 27 such declarations went with the paths they described.
-
-### What is NOT gated yet, and why
-
-- **`ai` cannot be refuted at all.** `apps/ai` mounts that subsystem as one
-  greedy `app.All("/v1/*")` — cloud's own comment calls the address "a FALLBACK,
-  not a front door" — so cloud's route table publishes ZERO `/v1/ai` paths and
-  the registry has no opinion about any of the 108. Every other product is
-  checked against that table; this one against nothing. All 85 GETs answer live,
-  so nothing there is dead today — the point is that no one would know. The fix
-  is registration upstream, not a rule here.
-- **Eight nouns are owned twice.** `/v1/ai/{users,applications,sessions,
-  permissions,records,forms,providers,system}` describe nouns `/v1/iam/*` already
-  owns, from a different binary and a different store. Rule 1 does not see it
-  because the products differ (`ai` vs `iam`) even though the capability does
-  not. A route move upstream settles it; deleting a served route here would only
-  lose the capability.
-- **18 tags are claimed by more than one authored spec** (`ai` accounts for 13 of
-  the collisions, which is what a catch-all looks like in the table of contents;
-  the rest are genuine near-synonyms like `Search` across `kb`/`search`/`vector`/
-  `websearch`). Gating this today would be red on arrival, and the remedy —
-  renaming a tag — changes SDK namespaces and MCP tool grouping, so it is a
-  decision to take deliberately rather than a cleanup to slip in.
-- **Three served paths are in no cloud document**: `/v1/{world,evals,referrals}/
-  health` answer 200 and appear in neither the authored spec (now) nor cloud's.
-  `POST /v1/mcp` answers 202 and is likewise absent. Served-but-undescribed is
-  cloud's projection to fix; until then the refutation sweep must probe with the
-  operation's OWN method, because a `GET` 404 on a POST-only route says nothing.
-- **39 paths under `search`, `kv` and `vector` cannot be probed** without a
-  credential: those prefixes auth-gate BEFORE routing
-  (`/v1/vector/zzz-nonsense` → 403 `X-Org-Id required`), so a 401/403 there is
-  the gate answering rather than the router. They stay authored until an
-  authenticated probe or a cloud-side fix decides them.
-
-## Validate
+## The one command
 
 ```bash
-python3 -c "import yaml, glob; [yaml.safe_load(open(s)) for s in glob.glob('*/openapi.yaml') + ['hanzo.yaml']]; print('OK')"
+python3 publish.py                   # re-pin to hanzoai/cloud origin/main, derive, write
+python3 publish.py --ref v1.801.383  # re-pin to one release
+python3 publish.py --check           # THE GATE: re-derive at the pinned ref and diff
+python3 publish.py --current         # is the pin still cloud's origin/main?
 ```
 
-## When changing a spec
+It reads a hanzoai/cloud checkout (`--cloud`, `CLOUD_DIR`, default `../cloud`)
+and writes exactly three files: `hanzo.yaml`, `CAPABILITIES.md`, `.spec-lock`.
+Nothing is ever written back to hanzoai/cloud — the traffic is one-way by
+construction, this repo reads a ref.
 
-1. Bump nothing — `info.version` stays at `8.0.0`; the `/v1` path is immutable.
-2. Add new resources under `/v1/<service>/<resource>`.
-3. Add components in the spec's own `components.schemas`. No `$ref` to
-   other service yamls.
-4. Examples must come from real responses.
-5. If you add or remove a `<service>/openapi.yaml` dir, add/remove its name in
-   `capabilities.yaml` (exactly one domain, or `core`) — the merge FAILS
-   otherwise.
-6. Update `CHANGELOG.md` with a dated entry under the v1.0.0 heading.
-7. Run `python3 merge.py` (regenerates `hanzo.yaml` AND `CAPABILITIES.md`) and
-   commit all three.
+## What was here before, and what it measured out to
 
-## Generated specs — a spec cannot describe a route its service does not serve
+52 hand-authored `<service>/openapi.yaml` specs, merged with cloud's document
+laid on top. Measured at `hanzoai/cloud@v1.801.383`, both documents loaded and
+keyed by (METHOD, path):
 
-The `<service>/openapi.yaml` files are hand-written, and a hand-written spec
-drifts silently in both directions: it declares operations nothing serves, and
-it misses operations that are served. `generated/` is the other reading — what
-a binary emits from its OWN route table — and `audit.py` is the measurement
-between the two. Nothing is overwritten by a generated spec until it measurably
-covers the contract it would replace; `derived:` in `capabilities.yaml` is the
-ratchet, and `audit.py --check` fails the build only for a name on that list.
+| | |
+|---|---:|
+| the hand-merged master | **2093** operations |
+| cloud's emitted document | **2333** |
+| shared | **1908** |
+| **master-only — nothing cloud serves under that name** | **185** |
+| **cloud-only — served, and the master never mentioned it** | **425** |
 
-| generated | emitted by | the ONE command |
+Both halves are the same bug. The master described 8% of an API that does not
+exist and missed 18% of the one that does, and it was the input to seven SDKs,
+the doc site, the MCP tool catalogue and the agent-skills plane.
+
+### The 185, triaged — with a nonsense-sibling control on every probe
+
+Each was probed at `api.hanzo.ai` with **its own method** (a POST-only route
+answers 404 to GET, so a GET sweep cannot tell "absent" from "wrong verb"), and
+each probe carries a CONTROL: the same address with `-zzq9` appended to its last
+literal segment. 119 are addresses no live route pattern covers; 66 sit under a
+`{wildcardN}` relay door, which by construction answers identically for a real
+path and an invented one and therefore decides nothing.
+
+| verdict | n | reading |
+|---|---:|---|
+| **ABSENT** — real 404, control 404 | **36** | refuted. Nothing serves this. |
+| **UNFALSIFIABLE** — real ≠ 404, control identical | **44** | a gate or a door answered, not a route |
+| **SERVED** — real ≠ 404, control 404 | **39** | live, and cloud's document lacks it |
+| absorbed by a `{wildcardN}` door | 66 | unfalsifiable by construction |
+
+**A 404 on both sides IS a refutation, and it is the only way absence can ever be
+shown.** The control exists to stop a 401/403/200 being read as existence — a
+relay answers those for anything. It does not make 404 mean nothing; treating it
+that way makes absence unprovable by construction, which would be a rule about
+falsifiability that is itself unfalsifiable. `hanzoai/cli`'s drift gate settled
+this from the other side: 404 refutes, 403 does not.
+
+The 36 refuted: 8 `search` (Meilisearch's `dumps`, `export`, `keys`,
+`multi-search`, `network`, `snapshots`, `swap-indexes`, `webhooks`), 6 `s3`
+(`PUT /v1/s3/{bucket}` and its five `?policy`-style subresources), 12 `o11y`
+(`api/v2/{healthz,livez,readyz}`, `ingestion`, `vm/query`, `vm/query_range`, and
+six methods of an authored `{wildcard1}`), 3 `kv` (`batch`, `clusters`,
+`namespaces`), 3 `billing` (`gpu-charge`, `gpu-eligibility`, `payment-methods`),
+`POST /v1/admin/promos`, `GET /v1/edge/nodes`, `GET /v1/models/{model}`.
+
+The 44 unfalsifiable are almost all one thing. `apps/product` installs
+`requireKey` middleware on the `/v1/search` and `/v1/vector` subtrees, so every
+address under those prefixes 401s BEFORE routing — real and invented alike —
+while cloud registers exactly four routes under each (`/indexes`, `/stats`;
+`/collections`, `/stats`). The master's 40 `search` and 15 `vector` operations
+were verbatim copies of Meilisearch's and Qdrant's own APIs, describing an
+upstream this fleet proxies nothing to. Decided by SOURCE rather than by probe,
+they are absent too.
+
+**The 39 SERVED are the honest cost, and every one is a hanzoai/cloud defect** —
+itemised under "Handed to hanzoai/cloud". None is fixable here: authoring them
+back would restore exactly the property this change removes.
+
+### Fourteen more that were not even the right API
+
+`account.yaml`, `auth.yaml`, `checkout.yaml`, `collection.yaml`, `coupon.yaml`,
+`form.yaml`, `order.yaml`, `product.yaml`, `referrer.yaml`, `site.yaml`,
+`store.yaml`, `transaction.yaml`, `user.yaml`, `variant.yaml` — **Swagger 2.0**
+documents for `host: api.hanzo.io`, read by nothing in this repo or the fleet.
+`api.hanzo.io` is a parked domain today: HTTPS presents no certificate for the
+name (`tlsv1 unrecognized name`), and over HTTP `/account`, `/store` and the
+control `/account-zzq9` all return the same registrar lander HTML. Deleted.
+
+## `publish.py` — the six rules, and why each exists
+
+A projection may not add an operation, may not remove one that is served, and may
+not invent prose. It may only make the one document generatable. The measurement
+that says the projection is needed at all:
+
+```
+openapi-generator-cli 7.14.0 validate -i <cloud openapi.yaml>  → [error] Spec has 1012 errors
+                              generate -g typescript-axios     → SpecValidationException, 0 files
+same, against hanzo.yaml                                       → 0 errors; api.ts written
+```
+
+| # | rule | n | the failure it prevents |
+|---|---|---:|---|
+| 1 | drop TRACE | 26 | the JVM generator writes `RequestMethod.TRACE` beside an enum that stops at PUT, so no Java or Kotlin client compiles. They are wildcard relays projecting every method their router matches — a fact about the router, not a client surface, and one every edge disables anyway. |
+| 2 | drop `compat`-tagged ops | 23 | the SERVING binary declares that tag for a legacy address it keeps reachable. Dropping it respects the declaration: the served surface is unchanged, and the published one says each thing once instead of shipping two spellings of one operation. |
+| 3 | two tags → the first | 23 | a generator emits one class per tag, so a two-tag operation is emitted twice under one identifier (`ApiPricingGetFullPricingRequest redeclared`). |
+| 4 | no tag → `x-app`, else the `/v1/<product>` segment | 42 | untagged is not ungrouped, it is `DefaultApi`. |
+| 5 | no `responses` → a `default` that says so | 986 | **the 1012.** A `default` with no content states exactly what is known: the route answers, and its shape is not declared at the source. Inventing a schema is the one thing this must not do. |
+| 6 | operationIds unique under `genid` | 1 | unique as STRINGS is what OpenAPI asks and it is not enough — every generator strips punctuation and camel-cases, so `deleteSession` and `DeleteSession` become one name and the client declares one request type twice. |
+
+Plus one addition that is not a rule about operations: cloud's emission declares
+**no security scheme**, so a client generated from it sends no `Authorization`
+header and every call 401s. `publish.py` adds `bearerAuth` and a document-level
+`security`. Saying "one bearer JWT from Hanzo IAM authenticates every route" is
+not a second opinion about the API.
+
+**Every one of these belongs upstream.** The day cloud's emitter writes the
+`default`, tags its own untagged routes and declares its security scheme,
+`publish.py` shrinks to nothing and `hanzo.yaml` becomes a byte copy — or this
+repo becomes unnecessary. That is the intended end state, and rule 5 alone is
+90% of it.
+
+### Three versions, three meanings, and they must not be collapsed
+
+- the **API's** version is `/v1`, in the path, immutable;
+- the **emitting release** is `info.x-spec.ref` (and `.spec-lock`), today
+  `v1.801.383` — the release `api.hanzo.ai` actually serves;
+- `info.version` is **8.0.0**, the generation of this PUBLICATION, and it is what
+  every SDK's package version is cut from (`sdks.yaml`'s rust row pins
+  `packageVersion` to it). It may only move forward: putting the cloud ref there
+  would publish `1.801.383` over an `8.x` npm package and be rejected as a
+  downgrade.
+
+## `capabilities.yaml` — the one editorial decision left here
+
+The document says which product owns an operation. It does not say which DOMAIN
+a product belongs to when a reader is shown the whole API at once, and there is
+no source in the code for that — a doc site's movements are a taste decision
+about a reader. So `capabilities.yaml` groups the document's 180 tags into 8
+domains, and `publish.py` gates it BOTH ways: a served capability it does not
+group fails the publish, and a name it groups that the document does not carry
+fails too. The list cannot describe an API other than the one served; it can only
+be a better or worse arrangement of it.
+
+`internal`, `collapsed`, `pending`, `review` and `derived` are gone with the spec
+dirs they were about. A capability appears the release it starts being served and
+leaves the release it stops.
+
+## The gates
+
+| gate | question | where |
 |---|---|---|
-| `iam.json` | `hanzoai/iam` — zip typed ops | zip's `App.OpenAPISpec()` |
+| `publish.py --check` | is `hanzo.yaml` what its own pinned input projects to? | `spec sync`, every push and PR |
+| `publish.py --current` | is the pin still cloud's origin/main? | same workflow, hourly clock only |
+| `test_publish.py` | does the committed artifact hold the six rules, offline? | `hanzo.yml` `test:` |
+| `test_flows.py` | does every operationId `flows.yaml` names still exist? | same |
+| `test_skills.py` | is the skills surface deterministic and well-formed? | same |
+| `skills.py --check` | did `dist/` drift from the document? | on demand |
+| `generate.py --check` | did a committed client drift from the document? | each SDK repo's own CI |
 
-Cloud left this table by being MERGED instead of measured — `sync.py` +
-`cloud/openapi.yaml`, above. What its emission is has not changed: one document
-folded from two readings of one router — the live route table (every operation,
-its address, its product tag) over zip's typed-op registry (`zip.Get[In, Out]` →
-JSON Schema, parameters, responses, plus the prose `cmd/zipdoc` lifts out of the
-handlers' doc comments at build time). A route that is not a typed op appears
-with its address and nothing invented, which is why `merge.py` gives those
-operations a `default` response rather than a shape nobody knows.
+`--current` is on the clock and not on pushes deliberately: a stale pin is not a
+broken artifact, and failing an unrelated PR for it trains people to ignore red.
 
-Its `info` block comes from the emitting binary, so it carries the API contract
-version (`v1`) rather than this repo's V8 release generation — a machine
-artifact, not one of the authored specs the `8.0.0` convention governs. The
-merged document keeps this repo's `8.0.0`.
+## Who reads this repo
 
-## Who reads this repo — five consumers, two different contracts
-
-An authored spec is not documentation. Five repos read these files as INPUT, and
-they disagree about what an unserved operation means — which is the whole reason
-`generated/` and `audit.py` exist.
-
-| consumer | reads | filters against the live router? |
+| consumer | reads | can it name an unserved route? |
 |---|---|---|
-| `hanzoai/cli` | **cloud `openapi.yaml`** @ `.spec-lock` → `genspec` → `genproduct` | N/A — nothing to refute; the document IS the router |
-| the four `sdks.yaml` clients | **cloud `openapi.yaml`** @ each client's `.spec-lock`, via `generate.py` | N/A — same reason |
-| `hanzo-go/sdk`, `hanzo-rs/sdk` | **cloud `openapi.yaml`** @ their own `.spec-lock`, own call site | N/A |
-| `hanzo-docs/docs` | **cloud `openapi.yaml`** @ `openapi-specs/cloud.pin` | N/A |
-| `hanzoai/console` | `hanzo.yaml` (proxy-allow test) | YES — asserts the proxy allows only declared paths |
-| `hanzoai/cloud` agent-skills | `<svc>/openapi.yaml` via `skills.py` | **NO** |
-| hanzo.ai oss-catalog | `capabilities.yaml` + `<svc>/openapi.yaml` | NO |
-| `hanzoai/world` cloud-pulse | `hanzo.yaml` | NO |
+| `hanzoai/{python,js,java,kotlin}-sdk` | `hanzo.yaml` via `generate.py` | no |
+| `hanzo-go/sdk`, `hanzo-rs/sdk` | `hanzo.yaml` via their own `scripts/generate.sh` | no |
+| `hanzoai/cloud` agent-skills | `hanzo.yaml` via `skills.py` | no |
+| `hanzoai/console` proxy-allow test | `hanzo.yaml` | no |
+| `hanzoai/world` cloud-pulse | `hanzo.yaml` | no |
+| `hanzoai/cli` | `hanzoai/cloud@ref:openapi.yaml` directly — it needs raw existence, not codegen | no |
 
-The top four rows moved off `hanzo.yaml` and the column stopped applying to
-them: "does this operation exist" is no longer a question a projection has to
-re-litigate against the wire, because the only document it reads is the one the
-router emitted. Refutation was scaffolding for having two authorities.
+**The skills plane is why "no" has to be structural.** `skills.py` emits a
+`SKILL.md` per capability and nothing downstream re-checks it: no refutation
+step, no liveness filter, no human between the file and the request. A skill for
+an operation nothing serves is not a stale document, it is a working instruction
+to an agent to call a dead endpoint. It reads `hanzo.yaml` now, cut by the
+operation's own TAG — never by path prefix, because the two disagree wherever a
+binary answers at a noun that is not its name (`/v1/chat/completions` is `chat`).
+506 skills across 159 capabilities × 3 brands.
 
-**The three rows still on hand-authored input are the remaining work, and
-`skills.py` is the sharp one** — it opens `<svc>/openapi.yaml` and emits a
-`SKILL.md` per authored operation with no liveness filter at all, so an
-unserved operation ships as a live instruction to an agent to call a dead
-endpoint. It cannot simply be repointed: the per-service specs carry skill prose
-the emitted document has no field for. Fixing it means teaching cloud's emission
-to carry that prose (the typed-op doc comment already is that prose for typed
-routes) and then deriving the catalogue from the document. Until then, the
-authored specs and `merge.py` stay for `skills.py`, `audit.py`, console and
-cloud-pulse — and for nothing that generates a client.
+## Handed to hanzoai/cloud — the whole cost of this change, itemised
 
-**`skills.py` has NO liveness filter.** It opens `<svc>/openapi.yaml` directly
-(never the wire) and emits a `SKILL.md` for every
-authored operation. So an operation nothing serves still ships as a skill an
-agent will call and get a 404 from. The CLI is protected by refutation; the
-skills plane is protected by nothing but this file being true. Authoring a route
-that does not exist is therefore not a harmless placeholder — it is a live
-instruction to call a dead endpoint.
+Nothing below is fixable in this repo, and every item is measured at
+`cloud@v1.801.383`.
 
-Annotating an unserved product was the previous answer, and it does not hold.
-`genspec` refutes an authored operation only where the live router OWNS its
-product, so a product the router has never heard of is refuted by NOTHING — it
-survives every gate — and a comment at the top of a spec is read by no generator
-at all. So the 18 products that were authored here and served nowhere are now
-DELETED, not annotated: each was probed on its OWN authored routes, at
-`api.hanzo.ai` and at its own host, and every one answered a route-level 404
-(the router's own `404 page not found`, not an empty result from a live
-handler). Deleting the source is the only move every consumer in the table above
-obeys — including the skills plane, which obeys nothing else. A product returns
-to this repo the day it is actually served.
+### 1. Served and undescribed — the 39
+
+- **17 are `/v1/ai/*`**: `deployments` (7), `signin-sessions` (7),
+  `usages/{by-user,user-names}` (2), plus the ones the emission still calls
+  `applications`/`sessions`. `apps/ai` projects that product from a committed
+  `plugin/ai/openapi.json` subset instead of the mounted plugin's live registry —
+  **a second authority INSIDE cloud, the same disease one level down**. This is
+  the highest-value fix on the list, and it also collapses ~11 tags in
+  `capabilities.yaml` (`query`, `query_multiple`, `install-patch`, `dev-bridge`,
+  `wecom-bot`, `traffic`, `provider-flags`, `docs`, `health`, `feedback`,
+  `documents`) that are that seam's hand-declared shrapnel rather than products.
+- **`POST /v1/mcp`** — 200 with the tool list, control `/v1/mcp-zzq9` 404, in no
+  document. The fleet's one MCP door is undeclared, which cost `flows.yaml` its
+  `tools` example. Note it answers 404 to GET, which is why a GET-only sweep has
+  twice concluded it does not exist.
+- **`GET /v1/{world,evals,referrals}/health`** — 200, controls 404, undescribed.
+- **`GET /v1/o11y/services`** — 405, control 404: the address routes, and the
+  verb is wrong on one side or the other.
+- **`GET /v1/s3/` and `GET /v1/s3/{bucket}`** — 403 vs control 404. Cloud
+  registers `/v1/s3/{name}` (provisioning) and `/v1/s3/buckets/…` (storage);
+  `manifest/apps.go:83` already notes those two owners share one prefix.
+
+### 2. Relay doors that can only ever emit `{wildcardN}` — 66 addresses
+
+`bot` (32), `dns` (16), `tasks` (8), `collections` (5), `kms` (2), and one each
+of `download`, `exec`, `files`. Each is a single `app.All("/v1/<x>/*")`
+registration, so there is no per-operation site and the document can only show
+the door. The fix is projecting the mounted registry, exactly as for `apps/ai`;
+until then these addresses are unknowable from outside, and the honest document
+says so rather than guessing a list.
+
+### 3. Shapes only the deleted master had — 302 operations
+
+Not prose: **the master carried ZERO summaries or descriptions the document
+lacks.** That argument is already won — cloud's emission carries a summary on
+2333 of 2333 operations and a description on 2283, out of the handlers' own doc
+comments. What it lacks is TYPES on routes that are not typed ops.
+
+| product | ops | requestBody | 2xx schema | query params |
+|---|---:|---:|---:|---:|
+| ai | 184 | 85 | 183 | 1 |
+| iam | 30 | 24 | 0 | 6 |
+| functions | 10 | 2 | 10 | 2 |
+| agents | 7 | 6 | 7 | 1 |
+| security | 7 | 1 | 7 | 2 |
+| admin | 6 | 2 | 6 | 2 |
+| integrations | 6 | 2 | 1 | 4 |
+| kms | 4 | 2 | 4 | 1 |
+| evals | 4 | 3 | 3 | 1 |
+| notify | 3 | 3 | 3 | 3 |
+| affiliates · authz · git | 3 each | 3 | 9 | 1 |
+| 26 more products | 39 | 25 | 38 | 8 |
+| **TOTAL** | **302** | **152** | **261** | **31** |
+
+Those shapes were hand approximations and they are gone. A route regains its
+shape by becoming a `zip.Get[In, Out]`: the weave then carries body, parameters
+and response from the code itself, and `publish.py` picks it up with no change
+here. Writing them back would mean inventing shapes, which is what rule 5's
+`default` exists to refuse.
+
+**The query parameters are the sharp end**, because a missing filter is a
+capability no client can reach at all:
+
+| route | parameters the binary does not declare |
+|---|---|
+| `GET /v1/iam/oauth/authorize` | `client_id`, `redirect_uri`, `response_type`, `scope`, `state`, `code_challenge`, `code_challenge_method`, `provider` — **the whole OAuth handshake** |
+| `GET /v1/integrations/{provider}/callback` · `/v1/integrations/slack/link{,/callback,/slack}` | `code`, `state`, `error` |
+| `GET /v1/billing/usage` | `start`, `end` |
+| `GET /v1/security/findings` · `/v1/security/scans` | `scanId`, `minSeverity`, `limit` |
+| `GET /v1/platform/fleet` | `env`, `health`, `drift` |
+| `GET /v1/kms/secrets` | `path`, `env` |
+| `GET /v1/ml/models` | `stage`, `search` — a TYPED op whose `In` struct is simply incomplete |
+| `GET /v1/websearch/search` | `q`, `format` — a search endpoint that declares no query |
+| `GET /v1/evals/scores` · `/v1/admin/{affiliates,referrals}` · `/v1/functions/{metrics,{name}/invocations}` | `limit`, `runName`, `range` |
+| `POST /v1/notify/send{,/email,/sms}` | `sync` |
+
+### 4. Tag prose attributed to the wrong package
+
+A tag's description comes from whichever package declared it first, so `org`,
+`docs`, `health`, `memory`, `rag`, `chat` and a dozen more read "Package ai is
+Hanzo AI —", and `files`, `download`, `upload` read "Package exec is the code
+interpreter". Cosmetic, and visible on every doc page and in `CAPABILITIES.md`.
+
+### 5. Three o11y schemas the Go client cannot be generated from — BLOCKING
+
+Every generator Pascal-cases a property name and emits `Get<F>`, `Get<F>Ok`,
+`Has<F>` and `Set<F>` beside it. Three schemas break under that:
+
+| schema | property names | what Go does |
+|---|---|---|
+| `o11y.GettableAgentCheckIn` | `integration_config` **and** `integrationConfig`; `removed_at` **and** `removedAt` | `IntegrationConfig redeclared`, `RemovedAt redeclared` — two spellings of one field, side by side, commented "Older fields for backward compatibility with existing AWS agents" |
+| `o11y.O11yPodOnboarding` | `hasClusterName`, `hasNamespaceName`, `hasNodeName` beside `clusterName`… | `field and method with the same name HasClusterName` |
+| `o11y.PostableProfile` | `has_existing_observability_tool` beside `existing_observability_tool` | same |
+
+MEASURED: `go build ./...` on the client generated from `hanzo.yaml` fails on
+these three **and on nothing else** — renaming those keys in a scratch copy of the
+document and regenerating gives **exit 0**. This repo must NOT rename them: a
+field name is the wire, and a rename here would be exactly the invention the
+whole change removes. `test_publish.py` pins the three as a CEILING, so a fourth
+cannot arrive unnoticed while these stay open.
+
+The old master did not have this because its copy of cloud's document was
+STALE — 1967 operations against cloud's 2333, missing the whole o11y typing lane
+that introduced these schemas. The bug arrives with publishing the current
+release, not with the projection.
+
+### 6. The five emitter rules
+
+Rules 1–5 above plus the security scheme. Landing them deletes `publish.py`.
+
+## The inference surface is NOT answered at an edge
+
+An earlier version of this file, and of `hanzoai/cli`'s, asserted the bare-`/v1`
+inference routes are "answered at the edge, not by cloud". That was a
+rationalization and it is false. Measured with nonsense-sibling controls:
+
+```
+GET  /v1/models            200   |  GET  /v1/models-zzq9            404
+POST /v1/chat/completions  401   |  POST /v1/chat/completions-zzq9  404
+GET  /v1/tools             403   |  GET  /v1/tools-zzq9             404
+POST /v1/event             401   |  POST /v1/event-zzq9             404
+```
+
+All four are in the document, served by the same host that answers everything
+else, on the one chain: ingress → gateway → ZAP → cloud → ZAP/UDS → plugin.
+`/v1/chat/completions` and its siblings are top-level because every OpenAI and
+Anthropic SDK hard-codes those paths — there the PATH is the compatibility
+contract — not because a different server answers them. If you find prose
+anywhere claiming an edge exception, it is a bug in the prose.
 
 ## SDK generation — the ONE way (Stainless RETIRED, 2026-07)
 
-**The one interface is hanzoai/cloud's `openapi.yaml`, at the ref each client's
-own `.spec-lock` names.** Not `hanzo.yaml`, and not `main` of anything: a client
-is a projection of ONE release, and the release is what wrote the lock. The
-generator backend is **openapi-generator** for every language — no Stainless, no
-API key. Each language repo owns only a `scripts/generate.sh` call site;
-hanzoai/ci's `client:` lane fetches the document at the dispatched sha, verifies
-the digest the release published, exports `SPEC`, and runs that call site.
-
-`generate.py --spec` takes the document by value (what the lane does). Omitted,
-`document()` reads the client's `.spec-lock` and fetches that exact ref, refusing
-if the bytes hash to anything else — a tag that moved is not a thing to
-regenerate through. There is deliberately no fallback to a file in this repo.
+The interface is `hanzo.yaml`; the backend is **openapi-generator 7.14.0** for
+every language. Each language repo owns its call site (`scripts/generate.sh`),
+every per-language knob is data in `sdks.yaml`, and the invocation is logic that
+lives once, in `generate.py`.
 
 | Lang | Canonical repo | Generator | Ships as | Driven by |
 |------|------|-----------|---------|---------|
@@ -377,296 +350,69 @@ regenerate through. There is deliberately no fallback to a file in this repo.
 | TypeScript | `hanzoai/js-sdk` | `typescript-axios` | `hanzoai` on npm (`src/`) | `generate.py` |
 | Java | `hanzoai/java-sdk` | `java` (okhttp-gson) | `ai.hanzo:hanzo-java-cloud` | `generate.py` |
 | Kotlin | `hanzoai/kotlin-sdk` | `kotlin` (okhttp4+gson) | `ai.hanzo:hanzo-kotlin-cloud` | `generate.py` |
-| Rust | **`hanzo-rs/sdk`** | `rust` (reqwest) | `crates/hanzo-client`, not on crates.io | its own `scripts/generate.sh` |
+| Rust | **`hanzo-rs/sdk`** | `rust` (reqwest) | `crates/hanzo-client` | its own `scripts/generate.sh` |
 | Go | **`hanzo-go/sdk`** | `go` | `package hanzoai` at the MODULE ROOT, imported as `github.com/hanzoai/go-sdk` | its own `scripts/generate.sh` |
 
-Three of those repos were RENAMED and answer through a redirect —
-`hanzoai/go-sdk` → `hanzo-go/sdk`, `hanzoai/rust-sdk` → `hanzo-rs/sdk`,
-`hanzoai/cpp-sdk` → `hanzo-cpp/sdk` — so a stale name still resolves and hides
-the move. `gh api repos/<old> --jq .full_name` prints the new one. Go's module
-path stays `github.com/hanzoai/go-sdk` regardless: that is what the proxy has
-and what consumers require.
+Three repos were RENAMED and answer through a redirect (`hanzoai/go-sdk` →
+`hanzo-go/sdk`, `hanzoai/rust-sdk` → `hanzo-rs/sdk`, `hanzoai/cpp-sdk` →
+`hanzo-cpp/sdk`), so a stale name still resolves and hides the move;
+`gh api repos/<old> --jq .full_name` prints the new one. Go's module path stays
+`github.com/hanzoai/go-sdk` — that is what the proxy has.
 
-**When a language leaves `sdks.yaml`** — the boundary, so it is a rule and not a
-mood: a row exists while the WHOLE invocation is expressible as data. A language
-leaves when its invocation needs something that is not data. Both departures are
-that, and neither is neglect.
+**When a language leaves `sdks.yaml`**: a row exists while the WHOLE invocation is
+expressible as data. `go` needs the client at the MODULE ROOT, which `take`
+cannot express (`{.: .}` would rmtree the repository); `rust` needs a
+`reqwest/api.mustache` override for 14 operations whose binary body is OPTIONAL,
+and a template is a FILE that must sit beside its flags. What is NOT allowed is a
+row here AND flags there.
 
-- **go** needs the client at the MODULE ROOT, beside `go.mod` and `.git`, which
-  `take` cannot express: `sdk()` rmtree's what it owns, so `{.: .}` deletes the
-  repository.
-- **rust** needs a `reqwest/api.mustache` override for 14 operations whose
-  binary body is OPTIONAL (`Option<Vec<u8>>`, which no type mapping reaches —
-  the problem is the Option, not the type). A template is a FILE; it must sit
-  beside the invocation, and so must the `--type-mappings=file=Vec<u8>` it works
-  with, or the halves drift apart.
+**`hanzoai/ruby-sdk` was a row naming a client nobody shipped** — a hard 404 with
+no redirect, while every genuinely renamed SDK answers 301, and no gem under
+`hanzoai_cloud` or any other candidate. A visible gap is honest; a row that
+generates into nothing is not.
 
-Both then own their whole invocation in their own `scripts/generate.sh` — same
-generator, same 7.14.0 pin, same document at the same locked ref. What is NOT
-allowed is a row here AND flags there: two declarations of one contract.
-`hanzoai/js-sdk` and `hanzoai/java-sdk` are the other shape and the reason the
-line matters — their scripts carry no flags at all, they exec `generate.py`, and
-js-sdk removed its own copy only after the two disagreed about `modelPackage`
-and about whether the client lands in `src/` or `src/cloud/`, which built an
-orphan second copy of all 2143 files. Stripping THEIR properties out of this
-file would recreate exactly that.
+### Which document each client is a projection of
 
-Both deleted rows would have written a SECOND client beside the shipped one
-rather than updating it — `go` at `cloud/` with `packageName: cloud`, `rust` at
-`crates/hanzo-cloud` — and both had been verified against a LOCAL checkout.
-Check a `take` against the canonical remote.
+`generate.py` resolves it per repo: `--spec` (the document by value, what
+hanzoai/ci's `client:` lane passes), else that repo's `.spec-lock`, else this
+checkout's `hanzo.yaml`. The fallback was removed once, correctly, while
+`hanzo.yaml` was the hand-merged master; it is back because the file is a
+projection now, and because the alternative was measured to produce zero files
+in every language.
 
-**ruby was a third deleted row, and a different kind of wrong** — not a
-departure under the rule above, but a row naming a client nobody ever shipped.
-`hanzoai/ruby-sdk` is a hard 404 with NO redirect, and every SDK repo that was
-really renamed answers a 301 instead (`go-sdk`, `rust-sdk`, `cpp-sdk`,
-`kotlin-sdk` all do), so this is absence and not a move. rubygems has no gem
-under `hanzoai_cloud` — the name the row's own `gemName` declared — nor under
-`hanzoai` or any other candidate; the gem literally named `hanzo` there is a
-third party's Heroku tool. `sdks.yaml` and this table were the only things in
-the fleet asserting a Ruby client, so both lose the row: no repo, no gem, no
-row. A visible gap is honest; a row that generates into nothing is not.
+**Open, for the fleet**: each SDK repo's `hanzo.yml` declares
+`client.spec.repo`, defaulting to `hanzoai/cloud`. Those should name
+`hanzoai/openapi` / `hanzo.yaml` — the generatable projection — until rules 1–5
+land upstream, at which point they should name `hanzoai/cloud` again and mean it.
+Not changed here: those are other repos.
 
-Generator version pinned to **7.14.0** everywhere. The merged surface is
-verified codegen-clean AND compile-clean for go / python / typescript-axios
-(spec fixes that made it so: pubsub `ack_wait` int64; platform DeployJob /
-CancelDeploymentJob oneOf → named subschemas; merge.py namespaces operation
-tags + discriminator mappings per-service, collapses to one primary tag, gives
-an untyped route a `default` response, and separates two operationIds the
-generator could not tell apart). `validate` reports 0 errors, 0 warnings; the
-generated Go client builds.
+Every SDK also renders `flows.yaml` into its `examples/` — the same six journeys,
+from the same operationIds, in every language. An SDK does not choose its own
+examples any more than it chooses its own methods. Two of the six moved in this
+change, both because a hand-authored operationId vanished with its hand-authored
+spec: `hello` was `bot_authMe` (`/v1/bot/auth/me`, now behind a relay door) and
+is `get_v1_keys`; `tools` was `mcp_rpc` (`POST /v1/mcp`, undeclared) and is
+`get_v1_tools`. Both replacements were probed with controls — see `flows.yaml`.
 
-Every SDK also renders `flows.yaml` into its `examples/` — the same six
-journeys, from the same operationIds, in every language. An SDK does not choose
-its own examples any more than it chooses its own methods.
+### operationIds changed, deliberately, once
 
-There is NO unified `hanzoai/sdk` multi-lang monorepo generator — that repo's
-`gen/` is the retired SECOND way; `hanzoai/sdk` is CLI-only now.
+The `<svc>_` prefix `merge.py` applied is gone. It existed to keep 52 authored
+specs from colliding, and with one document there is exactly **one** collision in
+2284 operations. `cloud_get_v1_billing_balance` is now `get_v1_billing_balance`;
+`gateway_createChatCompletion` is `post_v1_chat_completions`. A prefix invented
+here was a second naming authority, and the bare id is the one the MCP door
+already uses — a tool name is its operationId. Pin against the document, not
+against a remembered method name.
 
-### Remaining spec-coverage gaps — measured, not remembered
+## Conventions
 
-`python3 audit.py` is the answer to "how far has a contract drifted from its
-binary", and it replaces every anecdote that used to live here. It reads
-`<name>/openapi.yaml` against `generated/<name>.json`, so both numbers move on
-their own the moment either side changes. Cloud is no longer one of its rows:
-its emission is merged, so the drift it measured is gone rather than reported.
-`iam` is its one row, and the shape of the row changed. `iam/openapi.yaml` is
-now built from `App.OpenAPISpec()` plus the untyped OIDC/front-door/SCIM surface
-read off `app.Fiber().GetRoutes()`, so **`undeclared` and `prose lost` are both
-0**, down from 77 and 16: nothing served is unreachable from an SDK, and nothing
-loses its words. `missing` is 58 and is NOT a defect — read the audit's own
-header: it compares against the TYPED emission, and those 58 are the OIDC,
-front-door, SCIM and credential routes iam registers as raw handlers, which
-contribute zero typed ops. They are served; the emission cannot see them. That
-number falls as those routes become typed ops, and it is the honest measure of
-how much of iam is still untyped.
-
-Read the columns as three different bugs. `missing` = the contract declares
-operations nothing serves, so every SDK ships methods that 404. `undeclared` =
-the routes serve operations the contract never named, so no SDK can reach them.
-`prose lost` = an operation both sides have, where only the hand-written side
-has the words — the reason a generated spec does not simply overwrite a contract
-on the day it first covers it, and the reason cloud's emission could be merged
-the day it started carrying prose of its own.
-
-The SDK-generation surface is the FUSED `api.hanzo.ai/v1` binary. `merge.py`
-unions the per-service specs into it, cloud's document last.
-
-### An empty field from the winner must not delete a populated one
-
-This was the resync's worst defect and it survived two rounds of measurement
-here, because I measured `parameters` and never looked at `requestBody`.
-
-`merge.py` took the whole operation OBJECT from `cloud/openapi.yaml` wherever it
-took a route. But an untyped route's emission is an address and nothing else, so
-that replaced described operations with undescribed ones: **47 request bodies**
-and **135 response sets** (100 of them reduced to the synthesized `default`)
-left the document. `POST /v1/authz/check`, `POST /v1/agents/{ref}/run`,
-`POST /v1/kms/secrets`, the five agent-session control ops. Downstream the CLI's
-typed-flag operations fell 574 → 515 and its raw `--data` fallbacks rose
-187 → 378; `hanzo kms secrets create` lost the `value` field its stdin-only
-guard exists to protect, so the guard had nothing to guard.
-
-The error was reading cloud's silence about an untyped route as EMPTY when it
-means UNKNOWN. `fuse()` now overlays field by field: TRUTH still wins existence,
-operationId, tags and prose unconditionally, and wins any field it POPULATES —
-it just no longer deletes by being silent.
-
-`requestBody` and `responses` are kept by `KEEP`; `parameters` by `union()`,
-because their emptiness is ambiguous in one extra way. TRUTH omitting the field
-means unknown. But TRUTH declaring ONLY the path parameters means the same
-thing — the weave derives those from the route template, so `[{id}]` is what an
-untyped route emits whether or not it accepts twenty query parameters. Reading
-that as a complete list is the identical silence-for-emptiness mistake one level
-down, and it cost `GET /v1/integrations/{provider}/callback` its `code` and
-`state` — the whole OAuth handshake — while a sibling route with no path
-template kept everything. Same evidence, opposite outcome, decided by whether
-the URL happened to contain a brace. So parameters union by name, TRUTH's
-definition winning any name it defines.
-
-**An earlier version of this section claimed query parameters were deliberately
-dropped. The code never did that**, and the claim was wrong on the merits too. A
-rule written here that the code does not implement is worse than no rule; the
-check that caught it was reading the published document back and noticing
-`GET /v1/kms/secrets` still had `path` and `env`.
-
-Verified against `d86248f` (the pre-resync document): **0 parameters and 0
-request bodies that existed then are missing now**, and 0 duplicate parameters.
-
-That last number needed its own check, and the reason is worth keeping.
-Uniqueness is per OPERATION and spans both levels — a path item's `parameters`
-apply to every operation under it — and the two sides habitually disagree about
-where the path parameter goes: authored specs hoist `{id}` to the item, the
-weave emits it per operation. Unioning without accounting for that left 115
-operations declaring `{id}` twice. **openapi-generator's validator does not
-resolve `$ref` parameters, so it reported zero errors on a document that was
-invalid** — green and wrong at the same time. Anything the gate cannot see has
-to be measured here instead.
-
-The counter on every build is `kept` — 242 authored shapes that are load-bearing
-because cloud took a route without declaring one. It is not a gate. It is the
-number that **falls to zero as the typing lane converts those routes**: a typed
-`zip.Get[In, Out]` carries body, parameters and response from the code itself,
-`sync.py` picks it up, and the authored shape stops being needed. All 47 body
-losses were routes cloud serves UNTYPED and **zero were typed-with-no-body**, so
-there is no emission bug to chase — only routes to type.
-
-**Bucket (a) — 47 routes whose only body description lives here.** Highest SDK
-value, because no body means no call: `POST /v1/authz/check`,
-`POST /v1/agents/{ref}/run`, the five agent-session controls (`events`,
-`message`, `pause`, `resume`, `stop`), `POST /v1/kms/secrets`, `POST /v1/exec`,
-`POST /v1/upload`, `POST /v1/functions` + `/v1/functions/{name}/invoke`,
-`POST /v1/projects` + `fork` + `{slug}/deploy`, `POST /v1/sites` + `sites/deploy`,
-the four `evals` creates, `POST /v1/notify/send{,/email,/sms}`,
-`POST /v1/o11y/query{,_range}`, `POST /v1/billing/gpu-charge`,
-`POST /v1/billing/spend-alerts` + `PATCH .../{id}`, `POST /v1/affiliates/apply`
-+ `attribute`, `POST /v1/admin/affiliates/{id}/{approve,payout}`,
-`POST /v1/automations/flows/{id}/operations` + `runs/{id}/resume`,
-`POST /v1/machines`, `POST /v1/ml/models`, `POST /v1/security/scans`,
-`POST /v1/tracker/projects` + `{key}/issues`, `POST /v1/framework/{doctype}` +
-`PUT .../{name}`, `POST /v1/integrations/slack/{commands,events}`,
-`POST /v1/kms/auth/login`, `POST /v1/projects/{slug}/deployments/{id}/complete`,
-`PATCH /v1/projects/{slug}`.
-
-28 routes rest on authored query parameters; `GET /v1/ml/models` is the one that
-is a real cloud bug rather than an untyped route — it IS typed, and its `In`
-struct is simply missing `stage` and `search`.
-
-| route | parameters the binary does not declare |
-|---|---|
-| `GET /v1/admin/affiliates` | `limit` |
-| `GET /v1/admin/referrals` | `limit` |
-| `GET /v1/agents/sessions/stream` | `root` |
-| `GET /v1/billing/balance` | `currency` |
-| `GET /v1/billing/gpu-eligibility` | `amountCents`, `minPrepaidCents`, `currency` |
-| `GET /v1/billing/spend-alerts/authorize` | `user`, `project`, `service`, `amount`, `pv`, `currency` |
-| `GET /v1/billing/usage` | `start`, `end` |
-| `GET /v1/evals/scores` | `runName`, `limit` |
-| `GET /v1/functions/metrics` | `range` |
-| `GET /v1/functions/{name}/invocations` | `limit` |
-| `GET /v1/git/{org}/{repo}/info/refs` | `service` |
-| `GET /v1/integrations/slack/link` | `state` |
-| `GET /v1/integrations/slack/link/callback` | `code`, `state`, `error` |
-| `GET /v1/integrations/slack/link/slack` | `code`, `state`, `error` |
-| `GET /v1/integrations/{provider}/callback` | `state`, `code`, `error` |
-| `GET /v1/kms/secrets` | `path`, `env` |
-| `GET /v1/ml/models` | `stage`, `search` — TYPED op, `In` struct incomplete |
-| `POST /v1/notify/send` | `sync` |
-| `POST /v1/notify/send/email` | `sync` |
-| `POST /v1/notify/send/sms` | `sync` |
-| `GET /v1/o11y/vm/query` | `query` |
-| `GET /v1/o11y/vm/query_range` | `query`, `start`, `end`, `step` |
-| `GET /v1/platform/fleet` | `env`, `health`, `drift` |
-| `POST /v1/platform/fleet/{app}/deploy` | `env` |
-| `GET /v1/research/artifacts/{sha256}` | `project` |
-| `GET /v1/security/findings` | `scanId`, `minSeverity`, `limit` |
-| `GET /v1/security/scans` | `limit` |
-| `GET /v1/websearch/search` | `q`, `format` |
-
-Two of those are worse than a missing filter. The three OAuth callbacks take
-`code` and `state`, which is the whole protocol, and `GET /v1/o11y/vm/query`
-takes `query` — a query endpoint that declares no query. If the server honours
-them (it presumably does, or they would not have been authored), the typed
-input is the one place that makes them callable from any client.
-
-### The next quality lever — 637 of 2454 operations declare no 2xx schema
-
-**It was 728, and 91 of those were self-inflicted** — authored response schemas
-the whole-object handover had deleted, restored by `fuse()`. Every number this
-repo reported for that gap before the fix (754, 728, 696) was measuring its own
-damage along with the real thing. The honest figure is 637, 26%, and it is a
-measure of cloud's typed coverage rather than of anything editable here: the
-remainder is the `default` synthesized for routes the weave publishes with an
-address and nothing else, so it still rises with every untyped route cloud adds.
-
-The corollary is worth keeping: a number that only ever went up should have been
-suspicious. This one went up because the pipeline was eating its own inputs.
-
-**What it costs is language-dependent, and worse than it looks.** Go returns
-`*http.Response`, so the body is still there and a caller can decode it by hand.
-**Rust returns `Result<(), _>` and DROPS THE BODY ENTIRELY** — the response is
-unreachable from the generated client at any effort. An operation with no
-response schema projects to a method that returns nothing, which is a method not
-worth calling.
-
-`/v1/billing/balance`, `/v1/billing/usage` and `/v1/agents/{ref}/run` — the
-three canonical `flows.yaml` operations two SDK lanes had to hand-write
-raw-decode helpers for — are now OUT of the set: their authored schemas were
-among the 91 restored, and `agents/{ref}/run` has its request body back too.
-Those helpers can be deleted. 16 of the 25 `/v1/billing` operations remain in
-the gap, and 602 of the 637 are cloud's.
-
-**The lever is in hanzoai/cloud, not here.** A route becomes typed when its
-handler becomes a `zip.Get[In, Out]`; the weave then carries the schema and
-`sync.py` picks it up with no change in this repo. Doing it here instead would
-mean inventing shapes, which is the one thing the `default` exists to refuse.
-Two generator-blocking defects the SDK lanes fixed at the source ARE holding:
-`/v1/platform` is 41 operations with 0 missing `responses`, and
-`ai_ChatCompletionResponse.choices` items now `$ref` `ai_ChatChoice`.
-
-### operationId is the SDK method name — and 249 of them changed
-
-Say it plainly: the resync renamed methods in every language, and it was a
-consequence I did not enumerate at the time. Where cloud's woven document took a
-route an authored spec also described (366 operations), the document now carries
-cloud's operationId. For 117 of those, cloud's id is its handler's own name
-(`adminAnalytics`) and nothing was lost. For **249**, cloud's id is synthesized
-from the route, so `affiliates_adminListAffiliates` became
-`cloud_get_v1_admin_affiliates` — `AdminListAffiliates()` became
-`CloudGetV1AdminAffiliates()` for every consumer.
-
-It stands, deliberately, and the reason is stability rather than beauty. A
-route-derived id is a total function of the `/v1` path, which is the immutable
-contract: it cannot move unless the route moves. A hand-authored id is owned by
-a spec that no longer describes the route, so it changes whenever that spec is
-edited and VANISHES when the spec is deleted — and this repo deletes specs
-routinely, which would make the same break happen again, later, silently. The
-route-derived name is also the one the MCP door already uses (a tool name is the
-operationId minus its `<service>_` prefix), so one name identifies an operation
-in the SDK, in the tool catalogue and in the URL.
-
-The break is therefore once, now, and cannot recur for these operations. Pin
-against the document, not against a remembered method name.
-
-### What is still authored and not served — and how to tell
-
-Two authored surfaces `flows.yaml` had to route around, both measured at
-`api.hanzo.ai`: the KV VALUE plane (`/v1/kv/keys/{key}` — `kv_setKey`,
-`kv_getKey`, `kv_deleteKey`) and the automations MCP door
-(`/v1/automations/mcp` — `automations_mcp`).
-
-The tell is the method spread, and it is worth learning because a bare 404 is
-ambiguous — a live handler says "not found" too. A route the binary HAS replies
-401 or 403 unauthenticated: it routed, then refused (`/v1/kv`, `/v1/kv/namespaces`,
-`/v1/tools`, `/v1/billing/balance`). A route it does NOT have replies 404 to GET
-and **405 method not allowed** to PUT, POST and DELETE, because the only thing
-matching the path is a GET-only wildcard.
-
-**Probe the method the route declares, not GET** — and this is the correction,
-not a nuance. A POST-only route ALSO answers 404 to GET, so a GET probe cannot
-tell "absent" from "wrong verb". `POST /v1/mcp` answers 200 with 796 tools,
-unauthenticated, while `GET /v1/mcp` is 404; reading that 404 as absence is how
-the fleet's one MCP door went undeclared, and how this file previously said it
-did not exist. The two surfaces above survive the corrected test — every method
-their specs declare was probed, and none of them routed — but one verb is never
-a liveness probe, and a single GET has now been wrong once in this repo.
+- Every route is `/v1/<product>/<resource>`; a path segment names a THING and the
+  METHOD says the verb. Where a binary answers at an address it inherited it tags
+  that operation `compat`, and rule 2 keeps it out of the publication.
+- IAM also answers OIDC discovery at the three unprefixed addresses the standards
+  fix — `/.well-known/{openid-configuration,jwks,oauth-authorization-server}` —
+  each the same handler as its `/v1/iam/` twin.
+- No `/api/` prefix, no `deprecated: true`, no cross-brand references. Forward
+  only.
+- White-label is by DOMAIN: `skills.py` rewrites `api.hanzo.ai` / `hanzo.id` /
+  `Hanzo` per brand, longest-host-first, and a Lux surface never says Hanzo.

@@ -6,7 +6,7 @@
     python3 generate.py --all --check      # fail if a committed client drifted
     python3 generate.py python --repo DIR  # the SDK repo is somewhere else
 
-THE DOCUMENT COMES FROM THE CODE, AND NOT FROM THIS REPO.
+THE DOCUMENT COMES FROM THE CODE, AND NOT FROM ANYONE'S OPINION.
 
 hanzoai/cloud emits `openapi.yaml` by projecting its own routers, and gates the
 emission by regenerating from source and failing on any diff — so it cannot
@@ -14,19 +14,39 @@ describe a route the binary does not serve and cannot miss one it does. That is
 the only description of this API with that property, and a client generated from
 anything else describes a release nobody shipped.
 
-`hanzo.yaml` — this repo's hand-merged document — is NOT that, and no client is
-generated from it any more. It was a SECOND authority on what EXISTS: measured
-at cloud@v1.801.383 it carried 185 operations cloud does not serve, and each one
-reached every SDK as a method that 404s. A projection may lose prose; it may not
-invent an endpoint.
+`hanzo.yaml` used to be that anything else: a HAND-MERGED union of 52 authored
+specs with cloud's document laid on top, carrying 185 operations cloud does not
+serve, every one of which reached four SDKs as a method that 404s. It is not any
+more. `publish.py` DERIVES it from cloud's emission at one pinned ref, and
+`--check` regenerates and diffs, so it cannot contain an operation cloud does not
+serve. Existence comes from the code either way; the file is a projection now,
+not a second opinion.
 
-WHICH document is therefore a fact about the CLIENT and not about this checkout.
-Each SDK repo's `.spec-lock` names the ref and the sha256 it is a projection of,
-written there by hanzoai/ci's `client:` lane when a cloud release dispatched to
-it. That receipt is the one declaration, so `document()` reads it; `--spec` is
-the same document passed by value when the caller already fetched it (which the
-lane always does). There is no third way and no default ref — a default ref
-would name a release nobody chose.
+WHY A PROJECTION AND NOT THE EMISSION ITSELF — measured, because the obvious
+answer is wrong. Generating from cloud's raw document produces NOTHING in every
+language:
+
+    openapi-generator-cli 7.14.0 validate -i <cloud openapi.yaml>
+      → [error] Spec has 1012 errors     (one per route the weave publishes
+                                          with an address and no `responses`)
+    …           generate -g typescript-axios -i <same>
+      → SpecValidationException: There were issues with the specification
+      → 0 files written
+
+`hanzo.yaml` is the same document with the six codegen rules in `publish.py`
+applied — 0 errors, and typescript-axios writes `api.ts`. Pointing a client at
+the emission directly is correct about authority and produces no client, which
+is the wrong trade for a repo whose whole output is clients. The rules are all
+candidates to move UPSTREAM into cloud's emitter; the day they do, this default
+becomes cloud's document itself and `publish.py` goes.
+
+WHICH document is still a fact about the CLIENT when the client says so. An SDK
+repo's `.spec-lock` names the ref and sha256 it is a projection of — written by
+hanzoai/ci's `client:` lane when a release dispatched to it — and `document()`
+reads it; `--spec` is the same document passed by value when the caller already
+fetched it (which the lane always does). With neither, this checkout's own
+`hanzo.yaml` is the document, which is what a maintainer regenerating by hand
+gets.
 
 This file and sdks.yaml stay: the INVOCATION is still logic that lives once, and
 every per-language knob is still data beside it. An SDK repo carries only a call
@@ -161,11 +181,14 @@ ONE_DOCUMENT = threading.Lock()
 def document(repo, given, cache):
     """THE document this client is a projection of, as a path to JSON.
 
-    `given` is `--spec`: the same document by value, already fetched and already
+    Three sources, one order, and the last one is safe now in a way it was not
+    before. `given` is `--spec`: the document by value, already fetched and
     digest-checked by hanzoai/ci's lane. Otherwise the client's own `.spec-lock`
-    names it. There is deliberately no third source and no fallback to a file in
-    THIS repo — that fallback is exactly how a client came to carry methods for
-    routes cloud does not serve.
+    names it, which is how a release pins every language to one digest. With
+    neither, this checkout's `hanzo.yaml` — which `publish.py` derives from
+    cloud's emission and `publish.py --check` regenerates and diffs, so it can no
+    longer be the hand-merged second authority whose 185 unserved operations put
+    a 404 behind a type signature in four clients.
 
     Cached per distinct document rather than per language: `--all` projects ONE
     release into every client, which is G2 (one release, one document) and not
@@ -176,12 +199,14 @@ def document(repo, given, cache):
     else:
         spec = lock(repo)
         if not spec or not spec.get("ref"):
-            sys.exit(f"generate: no --spec and no .spec-lock in {repo}.\n"
-                     f"         A client is a projection of ONE document at ONE ref "
-                     f"and nothing here may choose it for you: hanzoai/ci's client: "
-                     f"lane writes the lock when a cloud release dispatches, or pass "
-                     f"--spec /path/to/openapi.yaml.")
-        key = (spec["repo"], spec["path"], spec["ref"])
+            here = os.path.join(ROOT, "hanzo.yaml")
+            if not os.path.exists(here):
+                sys.exit("generate: no --spec, no .spec-lock, and no hanzo.yaml — "
+                         "run `python3 publish.py` first")
+            key, spec = ("given", here), here
+            given = here
+        else:
+            key = (spec["repo"], spec["path"], spec["ref"])
     with ONE_DOCUMENT:
         if key not in cache:
             if not given:
