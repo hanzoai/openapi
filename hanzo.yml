@@ -6,6 +6,18 @@
 # hanzoai/cloud consumes it via `FROM ... AS skills` + `COPY --from=skills
 # /catalog/`, so it never re-runs skills.py inside a cloud release. hanzoai/ci
 # pushes to `repo:` (GHCR) and auto-mirrors to registry.hanzo.ai.
+# THE ROOT `VERSION` FILE IS LOAD-BEARING, AND NOT ONLY FOR THIS IMAGE.
+# hanzoai/ci names every image with bin/imgver, which reads a version from
+# package.json / Cargo.toml / VERSION / pyproject.toml and REFUSES to invent one
+# ("We don't ship shas"). This repo is a Python script plus a YAML document, so
+# it had none of those four files and imgver exited 1 on every run:
+#   imgver: no version for ghcr.io/hanzoai/agent-skills. Declare one — ...
+# That killed `Build & push images`, and because `Test (per hanzo.yml)` is a
+# LATER STEP OF THE SAME JOB, everything below was skipped with it. So the
+# missing version did not cost this repo an image, it cost it every check it
+# has: 100% of cicd runs failed, and the spec checks below had never once run.
+# Bump this when the published document takes a breaking shape change; imgver
+# publishes exactly what is declared here.
 images:
   - name: agent-skills
     context: .

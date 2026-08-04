@@ -183,6 +183,37 @@ def test_the_drift_gate_is_wired_into_the_build():
         "the `served` gate does not run `publish.py --served`")
 
 
+def test_every_declared_image_can_be_named():
+    """The checks above run only if the steps BEFORE them succeed, so this one
+    guards the whole suite's right to execute.
+
+    hanzoai/ci names an image with bin/imgver, which reads a version from
+    package.json / Cargo.toml / VERSION / pyproject.toml and refuses to invent
+    one. This repo is a script and a document; it had none of the four, so imgver
+    exited 1, `Build & push images` failed, and every later step of that job —
+    including the one that runs THIS FILE — was skipped. 100% of cicd runs failed
+    that way, which is how a repo ends up with two carefully-written checks and
+    no evidence either has ever run.
+
+    A version file is therefore not packaging trivia here, it is the precondition
+    for being checked at all. `0.0.0` is spelled out because imgver discards it
+    as a workspace stub, which would fail exactly as if the file were missing.
+    """
+    cfg = yaml.safe_load(open(os.path.join(ROOT, "hanzo.yml"))) or {}
+    for img in (cfg.get("images") or []):
+        ctx = img.get("context", ".")
+        named = [f for f in ("package.json", "Cargo.toml", "VERSION", "pyproject.toml")
+                 if os.path.isfile(os.path.join(ROOT, ctx, f))]
+        assert named, (
+            f"hanzo.yml declares image {img.get('name')!r} at context {ctx!r}, but "
+            f"nothing there declares a version. imgver refuses to publish a sha, so "
+            f"the build fails and every test step after it is skipped.")
+        if "VERSION" in named:
+            v = open(os.path.join(ROOT, ctx, "VERSION")).read().strip().lstrip("v")
+            assert re.fullmatch(r"\d+\.\d+\.\d+", v), f"VERSION is not semver: {v!r}"
+            assert v != "0.0.0", "imgver discards 0.0.0 as a stub — name a real version"
+
+
 if __name__ == "__main__":
     failures = 0
     for name, fn in sorted(globals().items()):

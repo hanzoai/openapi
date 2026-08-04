@@ -72,10 +72,17 @@ jobs:
           repository: hanzoai/cloud
           path: .cloud
           fetch-depth: 0
-          # The job's automatic token is scoped to THIS repository, so it reads
-          # hanzoai/cloud as an anonymous caller and a private repo answers 404
-          # — which reads as "repository not found", not "no credential".
-          token: ${{ secrets.GH_PAT || secrets.SDK_DISPATCH_TOKEN || github.token }}
+          # A TOKEN IS ONLY A CREDENTIAL AT THE HOST IT WAS MINTED FOR, and this
+          # job does not run where the token above was minted. These workflows
+          # are collected and executed by git.hanzo.ai, so `repository:` resolves
+          # against hanzo-git.hanzo.svc, not github.com — and hanzoai/cloud is
+          # PUBLIC on that forge. Handing it a GitHub PAT made checkout send
+          # credentials the forge cannot verify, and it answered
+          #   invalid username, password or token
+          # three times over 36s before failing the step. Not a missing secret: a
+          # secret for the wrong host, which is why provisioning one never helped.
+          # The automatic token is the forge's own, so it is the one that works.
+          token: ${{ github.token }}
 
       - name: Is hanzo.yaml what its own input projects to?
         run: |
