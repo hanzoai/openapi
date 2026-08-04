@@ -2,7 +2,7 @@
 
 # Hanzo Capability Manifest
 
-Every capability the API serves, at `v1.801.410`. GENERATED from `hanzo.yaml` — which is itself generated from hanzoai/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
+Every capability the API serves, at `v1.801.431`. GENERATED from `hanzo.yaml` — which is itself generated from hanzoai/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
 
 ## Identity & Trust
 
@@ -15,10 +15,10 @@ Every capability the API serves, at `v1.801.410`. GENERATED from `hanzo.yaml` �
 | `authz` | 3 |  |
 | `kms` | 7 | Package kms is secret custody: your org's secrets sealed at rest, plus threshold signing. |
 | `security` | 7 | Package security is secret scanning for your code: submit sources, get findings, masked never raw. |
-| `keys` | 3 | Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up. |
-| `csrf` | 1 | Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up. |
+| `keys` | 3 | Package account is your own account: API keys you mint and revoke, and org onboarding. |
+| `csrf` | 1 | Package account is your own account: API keys you mint and revoke, and org onboarding. |
 | `org` | 12 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
-| `orgs` | 3 | Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up. |
+| `orgs` | 3 | Package account is your own account: API keys you mint and revoke, and org onboarding. |
 | `team` | 19 | Package team is your org's shared workspace: documents edited together, files, seats, and agents as teammates. |
 | `audit` | 1 | Package auditlog is your org's tamper-evident audit trail: every security-relevant event, hash-chained and readable. |
 | `compliance` | 17 | Package compliance is your KYC/KYB onboarding, accreditation records, and the evidence trail behind them. |
@@ -26,7 +26,7 @@ Every capability the API serves, at `v1.801.410`. GENERATED from `hanzo.yaml` �
 | `validators` | 4 | Package validators is one-click validator onboarding: prove your Genesis NFT, get a node provisioned, queue its registration. |
 | `wallets` | 8 | Package wallets is blockchain key custody: create wallets, rotate their keys, and sign with them. |
 | `entitlements` | 1 | Package entitlements is what your org may run: what the plan grants, and which of those products are switched on. |
-| `avatar` | 2 | Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up. |
+| `avatar` | 2 | Package account is your own account: API keys you mint and revoke, and org onboarding. |
 
 ## Intelligence
 
@@ -153,10 +153,10 @@ Every capability the API serves, at `v1.801.410`. GENERATED from `hanzo.yaml` �
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `commerce` | 13 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
+| `commerce` | 11 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
 | `store` | 34 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
 | `marketplace` | 6 | Package marketplace is the shop for tools and agents: browse, install into your project, publish your own free or priced. |
-| `billing` | 27 | Package billing is your org's balance, what it has spent, and the cards it pays with. |
+| `billing` | 30 | Package billing is your org's balance, what it has spent, and the cards it pays with. |
 | `pricing` | 25 | Package pricing is the price list: what every model, provider, GPU tier, tool and hosting plan costs. |
 | `plans` | 20 | Package plan is the plan catalog: every tier you can buy, what it costs, and what it grants. |
 | `finance` | 8 |  |
@@ -235,6 +235,6 @@ Every capability the API serves, at `v1.801.410`. GENERATED from `hanzo.yaml` �
 | `legal` | 11 | Package legal is the paperwork your company needs, drafted, signed and filed. |
 | `prefs` | 2 | Package prefs is your own settings — theme, density, pinned nav — following you across every Hanzo app. |
 | `settings` | 2 | Package settings is how an org configures each product it uses, secret fields included. |
-| `embed` | 1 | Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up. |
+| `embed` | 1 | Package account is your own account: API keys you mint and revoke, and org onboarding. |
 | `functions` | 11 | Package functions is your serverless code: publish it, call it over HTTP, watch every run and what it cost. |
 | `sbom` | 3 | Package sbom is what is inside a container image: every component, resolvable by digest or image ref. |

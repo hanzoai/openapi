@@ -31451,39 +31451,6 @@ components:
           description: SSHURL is the repo's scp-style SSH remote.
           type: string
       type: object
-    railList:
-      properties:
-        rails:
-          description: Rails is every (chain, token, treasury) triple this deployment accepts.
-          items:
-            $ref: '#/components/schemas/railView'
-          type: array
-      type: object
-    railView:
-      properties:
-        chain:
-          description: Chain is the human chain name, e.g. "Base".
-          type: string
-        chainId:
-          description: ChainID is the EIP-155 chain id the wallet must be on.
-          type: integer
-        decimals:
-          description: "Decimals is the token's decimal places \u2014 6 for USDC, 18 for an 18-decimal\ntoken. Cents are derived\
-            \ per-rail from it."
-          type: integer
-        id:
-          description: ID is the stable rail id to name when submitting a transfer, e.g. "base-usdc".
-          type: string
-        symbol:
-          description: Symbol is the display symbol, e.g. "USDC".
-          type: string
-        token:
-          description: Token is the ERC-20 contract address to transfer.
-          type: string
-        treasury:
-          description: Treasury is the address on this chain to send funds to.
-          type: string
-      type: object
     rawOut:
       properties:
         data:
@@ -32089,6 +32056,15 @@ components:
         type:
           description: "Type is the key class that was revoked, resolved \u2014 so a caller that named\nnothing can see it\
             \ revoked the secret key."
+          type: string
+      type: object
+    riskAdoptIn:
+      properties:
+        address:
+          description: "Address is one of YOUR organisation's own published values (GET\n/v1/risk/state reports them, and\
+            \ a search reports the one it fitted for you).\nAn address your organisation has not published is NOT FOUND \u2014\
+            \ including one\nanother organisation published, because an address names a value and never\nauthorises reading\
+            \ it."
           type: string
       type: object
     riskAggregates:
@@ -33092,11 +33068,14 @@ components:
           type: string
         values:
           description: "Values is your organisation's own published model values, newest first \u2014\nevery state it deliberately\
-            \ named, each addressed by its own content and\nimmutable. This is what POST /v1/risk/state/restore names, so\
-            \ it is reported\nHERE rather than behind an address of its own: they are part of what a review\nof one model\
-            \ reads, and a list of names is a few hundred bytes.\n\nThe working model is NOT in it. Publication is a boundary\
-            \ somebody marked; the\nstate between two boundaries is in-process counters, and calling those a value\nwould\
-            \ be a claim about reproducibility that nothing could honour."
+            \ named, each addressed by its own content and\nimmutable. This is what PUT /v1/risk/state/model names, so it\
+            \ is reported\nHERE rather than behind an address of its own: they are part of what a review\nof one model reads,\
+            \ and a list of names is a few hundred bytes.\n\nCompare each one's `shape` with the `shape` above: equal means\
+            \ adopting it\nrestores masses into the space this model already runs, and different means\nadopting it REPLANTS\
+            \ the model into the space that value describes \u2014 which is how\nthe shape a search found becomes the shape\
+            \ you are running.\n\nThe working model is NOT in it. Publication is a boundary somebody marked; the\nstate between\
+            \ two boundaries is in-process counters, and calling those a value\nwould be a claim about reproducibility that\
+            \ nothing could honour."
           items:
             $ref: '#/components/schemas/riskModelValue'
           type: array
@@ -33130,9 +33109,11 @@ components:
             contiguous until retention disposes of the oldest.'
           type: integer
         shape:
-          description: 'Shape is the model space the masses are only meaningful against: the feature
-
-            inventory in order and the detector''s geometry parameters.'
+          description: "Shape NAMES the model space the masses are only meaningful against \u2014 the feature\ninventory in\
+            \ order and the detector's geometry parameters, as the engine's own\ndigest. Compare it with the `shape` on your\
+            \ model state (GET /v1/risk/state):\nequal means adopting this value restores masses into the space already running,\n\
+            and different means adopting it REPLANTS the model into the space this value\ndescribes. That is what makes a\
+            \ searched shape installable."
           type: string
         warmed:
           description: 'Warmed is how far your own event surface had been folded in when this value
@@ -33241,6 +33222,20 @@ components:
         version:
           description: Version names this regime in this organisation's history.
           type: integer
+      type: object
+    riskPublishOut:
+      properties:
+        minted:
+          description: "Minted is false when your model was ALREADY published under this name and\nnothing was written. Publication\
+            \ is idempotent on the value itself, which is\nwhat a content address is for \u2014 publishing at every boundary\
+            \ costs nothing\nrather than being the cheapest way to fill a disk."
+          type: boolean
+        tenant:
+          description: Tenant is whose history it entered.
+          type: string
+        value:
+          $ref: '#/components/schemas/riskModelValue'
+          description: 'Value is the published value: its name and what it is, never its masses.'
       type: object
     riskResolveIn:
       properties:
@@ -33351,14 +33346,6 @@ components:
         subject:
           type: string
       type: object
-    riskRestoreIn:
-      properties:
-        address:
-          description: "Address is one of YOUR organisation's own published values (GET\n/v1/risk/state reports them). An\
-            \ address your organisation has not published\nis NOT FOUND \u2014 including one another organisation published,\
-            \ because an\naddress names a value and never authorises reading it."
-          type: string
-      type: object
     riskScoreIn:
       properties:
         event:
@@ -33453,6 +33440,27 @@ components:
         events:
           description: Events is how much of this organisation's history was replayed.
           type: integer
+        fitted:
+          $ref: '#/components/schemas/riskModelValue'
+          description: "Fitted is the winning shape FITTED over your own history and published as one of\nyour organisation's\
+            \ own model values. Name its address on PUT\n/v1/risk/state/model and the winning shape becomes the model you\
+            \ are running.\n\nIt is why this op answers something you can act on. A trial keeps counts and not\nthe model\
+            \ that produced them, so a report without this named a shape nobody could\ninstall \u2014 and the adoption path\
+            \ refused a shape change besides. Fitting the winner\nonce is a sixty-fifth pass over the same history; keeping\
+            \ all sixty-four fitted\nmodels resident instead would cost a measured 21 MiB per run for sixty-three\nshapes\
+            \ nobody adopts.\n\nTwo things about it are worth knowing before you adopt it. Its realised rate can\ndiffer from\
+            \ the winner's above, because the ranking measures every candidate under\none fixed reference geometry so the\
+            \ comparison is a comparison, while this is\nfitted under YOUR geometry \u2014 the one an outsider cannot predict.\
+            \ And it has\nlearned the window this search replayed and nothing older, so adopting it trades\nhistory for fit."
+        gap:
+          description: 'Gap says why the winning shape could not be fitted into an adoptable value, when
+
+            it could not. It is separate from Refusal because they are different facts: a
+
+            refusal means the ranking below proves nothing, a gap means the ranking stands and
+
+            only the value is missing.'
+          type: string
         id:
           description: ID is the run.
           type: string
@@ -33488,20 +33496,6 @@ components:
         id:
           description: ID addresses the run. Read the result back with it.
           type: string
-      type: object
-    riskSnapshotOut:
-      properties:
-        minted:
-          description: "Minted is false when your model was ALREADY published under this name and\nnothing was written. Publication\
-            \ is idempotent on the value itself, which is\nwhat a content address is for \u2014 publishing at every boundary\
-            \ costs nothing\nrather than being the cheapest way to fill a disk."
-          type: boolean
-        tenant:
-          description: Tenant is whose history it entered.
-          type: string
-        value:
-          $ref: '#/components/schemas/riskModelValue'
-          description: 'Value is the published value: its name and what it is, never its masses.'
       type: object
     riskSourceCoverage:
       properties:
@@ -36469,48 +36463,6 @@ components:
             $ref: '#/components/schemas/Wallet'
           type: array
       type: object
-    walletTopupReq:
-      properties:
-        fromAddress:
-          description: 'FromAddress is the wallet the transfer was sent from. Optional; when given it
-
-            must match the transfer''s on-chain sender.'
-          type: string
-        rail:
-          description: 'Which accepted rail the transfer was sent on, e.g. "base-usdc". The client
-
-            names it rather than the server guessing from the tx: the same address can
-
-            exist on several chains, so inferring would risk crediting against the wrong
-
-            treasury. It may be omitted only while exactly one rail is enabled.'
-          type: string
-        txHash:
-          description: 'TxHash is the hash of the ERC-20 transfer that was already sent to the rail''s
-
-            treasury. The receipt is read from that chain; nothing is credited that the
-
-            chain did not confirm.'
-          type: string
-      type: object
-    walletTopupResp:
-      properties:
-        balance:
-          description: 'Balance is the org''s new USD-ledger balance in cents. Best-effort: a read
-
-            failure reports 0, and the credit has already landed either way.'
-          type: integer
-        creditedCents:
-          description: "CreditedCents is the USD credit recorded, derived from the ON-CHAIN value\nusing the token's own decimals\
-            \ \u2014 never a client-supplied number."
-          type: integer
-        status:
-          description: Status is how commerce recorded the payment.
-          type: string
-        txHash:
-          description: TxHash is the transfer that was credited.
-          type: string
-      type: object
     workerList:
       properties:
         workers:
@@ -36588,8 +36540,8 @@ info:
   x-spec:
     repo: hanzoai/cloud
     path: openapi.yaml
-    ref: v1.801.410
-    sha256: 1798032429783a108ddfe6785c579a782e532a03ae00b875b5f33dfa21e78de4
+    ref: v1.801.431
+    sha256: 0972db21075a171195a23789d079703dc910a48e9f1de71fc683745692f933ae
 openapi: 3.1.0
 paths:
   /:
@@ -46907,6 +46859,29 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/billing/methods/{id}:
+    delete:
+      description: "Detaches a card on file: the stored reference is removed here AND withdrawn from the processor's vault,\
+        \ so nothing is left that a later charge could bill.\n\nThe id is resolved INSIDE the caller's own org, so it can\
+        \ only ever name a card this org can list. Another tenant's id does not resolve and answers 404 \u2014 not 403, because\
+        \ a status that separates 'not yours' from 'not there' turns an id into something worth guessing.\n\nRemoving the\
+        \ card an auto-recharge or a running GPU lease bills leaves that arrangement with nothing to charge; it is the customer's\
+        \ call to make, and this makes it rather than refusing on their behalf.\n\n401 without a validated principal \u2014\
+        \ the org is the validated owner claim, never a client-supplied field, so this cannot be pointed at another tenant."
+      operationId: delete_v1_billing_methods_by_id
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      summary: Remove a saved card from the caller's org
+      tags:
+      - billing
+      x-app: billing
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/billing/mode:
     post:
       description: "Flips the org's live flag, which is the single authority for both the payment environment and the ledger\
@@ -46947,6 +46922,49 @@ paths:
         \ what this caller has."
       operationId: get_v1_billing_plans
       summary: The public plan catalog, annotated with the active platform promotion
+      tags:
+      - billing
+      x-app: commerce
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/billing/portal/methods:
+    get:
+      description: "Answers the org's saved payment methods as masked descriptors: brand, last four, expiry and the processor's\
+        \ reusable reference. No card number and no security code exist here to return; both live at the processor and never\
+        \ enter this system.\n\nThis is the SERVICE-TOKEN face of the same list a customer reads at /v1/billing/methods, and\
+        \ it exists as its own address because the host that publishes that one cannot forward to it \u2014 the forward would\
+        \ re-enter its own handler. Both answer the same rows.\n\nThe customer filter is pinned to the VALIDATED caller before\
+        \ the handler runs, so a browser sees only its own subject's cards whatever customerId it sends; only a caller holding\
+        \ the internal service token may name the subject, and the org it may name it within is fixed by the gateway. Cross-tenant\
+        \ is closed by the org namespace for both, so an id or a subject from another org resolves to nothing. A caller who\
+        \ is neither is refused before the read."
+      operationId: get_v1_billing_portal_methods
+      summary: "Cards saved against the caller's org, masked \u2014 the portal read"
+      tags:
+      - billing
+      x-app: commerce
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/billing/portal/methods/{id}:
+    delete:
+      description: "Detaches the addressed card: the stored reference is removed here AND withdrawn from the processor's vault,\
+        \ so nothing is left that a later charge could bill.\n\nThe service-token twin of the customer's DELETE /v1/billing/methods/{id},\
+        \ at its own address for the same reason the portal list is \u2014 the host that publishes the customer address proxies\
+        \ here rather than into itself.\n\nThe id is resolved INSIDE the caller's org namespace, so another tenant's card\
+        \ is not found there and answers 404 \u2014 never 403, which would confirm the id exists. That bound holds for the\
+        \ service token too: it may act for any subject within the org the gateway pinned, and for no subject outside it.\n\
+        \nRemoving the card an auto-recharge or a running lease bills leaves that arrangement with nothing to charge; that\
+        \ is the customer's call to make."
+      operationId: delete_v1_billing_portal_methods_by_id
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      summary: "Remove a saved card \u2014 the portal detach"
       tags:
       - billing
       x-app: commerce
@@ -51838,58 +51856,6 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/commerce/topup/rails:
-    get:
-      description: "Lists the accepted (chain, token, treasury) triples, so a browser can\nrender \"send USDC here\" without\
-        \ the addresses being baked into its bundle.\n\nThis exists because the console previously gated its top-up UI on\n\
-        NEXT_PUBLIC_HANZO_HUSD_ADDRESS/_TREASURY \u2014 build-time constants. Enabling a rail\ntherefore meant rebuilding\
-        \ and redeploying the frontend, and with them unset the\nUI reported \"not available yet\" no matter what the server\
-        \ could actually accept.\nServing the set at runtime keeps ONE source of truth (the server's config) and\nlets a rail\
-        \ be switched on without shipping a bundle.\n\nEverything here is public on-chain data; no secret is exposed, and\
-        \ the set is\nempty on a deployment that accepts no crypto rail."
-      operationId: get_v1_commerce_topup_rails
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/railList'
-          description: ok
-      summary: Lists the accepted (chain, token, treasury) triples, so a browser can render "send USDC here" without the addresses
-        being baked into its bundle.
-      tags:
-      - commerce
-      x-app: account
-  /v1/commerce/topup/wallet:
-    post:
-      description: "Credits the caller's org for a stablecoin transfer they already sent\nto the treasury. It reads the receipt\
-        \ from that rail's chain, confirms a mined,\nsuccessful ERC-20 Transfer to the rail's treasury, derives USD cents\
-        \ from the\non-chain value using the token's own decimals, records the credit, and returns\nthe amount plus the new\
-        \ balance.\n\nThe credited amount is the ON-CHAIN value, never a number the caller sends, and\nthe credit lands on\
-        \ the caller's own validated org \u2014 there is no way to name a\nthird-party subject. Nothing is credited that the\
-        \ chain did not confirm: a\nmissing, failed or non-matching transaction is refused, and a deployment with no\npayment\
-        \ rail enabled says so rather than inventing a credit."
-      operationId: post_v1_commerce_topup_wallet
-      requestBody:
-        content:
-          application/json:
-            example:
-              rail: base-usdc
-              txHash: '0x0000000000000000000000000000000000000000000000000000000000000001'
-            schema:
-              $ref: '#/components/schemas/walletTopupReq'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/walletTopupResp'
-          description: ok
-      summary: Credits the caller's org for a stablecoin transfer they already sent to the treasury.
-      tags:
-      - commerce
-      x-app: account
   /v1/commerce/webhooks/{provider}:
     post:
       description: "Forwards the provider's event \u2014 body and original signature headers intact \u2014 to the backend\
@@ -56147,7 +56113,7 @@ paths:
     get:
       description: "Model reads one model's load state \u2014 loaded, unloading, or not_found, as\nthe engine itself reports\
         \ it."
-      operationId: get_v1_engine_model
+      operationId: engineModel
       parameters:
       - description: Model is the model id to inspect, exactly as the model list reports it.
         example: Qwen/Qwen3-4B
@@ -56162,7 +56128,7 @@ paths:
             application/json:
               schema: {}
           description: ok
-      summary: "Model reads one model's load state \u2014 loaded, unloading, or not_found, as the engine itself reports it."
+      summary: Read one model's load state on the serving runtime
       tags:
       - engine
       x-app: engine
@@ -56170,15 +56136,14 @@ paths:
     get:
       description: "Models lists the models the engine serves, each with its load state \u2014 the\nserver's own model table\
         \ (its standard list envelope, load status\nincluded), relayed verbatim."
-      operationId: get_v1_engine_models
+      operationId: engineModels
       responses:
         '200':
           content:
             application/json:
               schema: {}
           description: ok
-      summary: "Models lists the models the engine serves, each with its load state \u2014 the server's own model table (its\
-        \ standard list envelope, load status included), relayed verbatim."
+      summary: List the models the serving runtime holds, with each one's load state
       tags:
       - engine
       x-app: engine
@@ -56186,7 +56151,7 @@ paths:
     get:
       description: "Status reports whether the engine deployment is reachable and which build\nrevision it runs \u2014 an\
         \ honest lens for \"is the serving runtime up\", never a\nfabricated ok."
-      operationId: get_v1_engine_status
+      operationId: engineStatus
       responses:
         '200':
           content:
@@ -56194,8 +56159,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/engineStatus'
           description: ok
-      summary: "Status reports whether the engine deployment is reachable and which build revision it runs \u2014 an honest\
-        \ lens for \"is the serving runtime up\", never a fabricated ok."
+      summary: Whether the serving runtime is reachable, and which build it runs
       tags:
       - engine
       x-app: engine
@@ -56204,16 +56168,14 @@ paths:
       description: "System reads the engine host's inventory: OS, CPU, memory, every accelerator\ndevice with its VRAM and\
         \ compute capability, and the build's capabilities\n(CUDA/Metal/flash-attention) \u2014 the real hardware under the\
         \ serving runtime,\nrelayed verbatim."
-      operationId: get_v1_engine_system
+      operationId: engineSystem
       responses:
         '200':
           content:
             application/json:
               schema: {}
           description: ok
-      summary: "System reads the engine host's inventory: OS, CPU, memory, every accelerator device with its VRAM and compute\
-        \ capability, and the build's capabilities (CUDA/Metal/flash-attention) \u2014 the real hardware under the serving\
-        \ runtime, relayed verbatim."
+      summary: 'The serving host''s own inventory: devices, memory and build capabilities'
       tags:
       - engine
       x-app: engine
@@ -83123,16 +83085,18 @@ paths:
       x-app: projects
     post:
       description: "Attaches one or more CUSTOM public hostnames to this org's site.\n\nBinding a host you do not own would\
-        \ let you shadow it at the edge, so which\noutcome you get depends on whether ownership is already established: a\n\
-        platform admin or the platform-operator org \u2014 which manages customer DNS, so\nits bind IS the vouch \u2014 binds\
-        \ VERIFIED immediately; any other org has the host\nCLAIMED as pending and gets the DNS challenge back in `bound[].records`.\
-        \ A\npending claim HOLDS the name so nobody else can take it, but it does not route\nuntil POST .../domains/{host}/verify\
-        \ proves control.\n\nA hostname we operate is refused to a non-vouched caller (those are assigned\nby the platform,\
-        \ never claimed), a host another site already holds is a 409,\nand a reserved label is a 400. Claims and binds are\
-        \ idempotent for the same\n(org, slug), and re-claiming returns the SAME token rather than invalidating a\nrecord\
-        \ the customer has already published. The edge cache-tag is flushed\nafterwards so a newly-verified host serves the\
-        \ current build immediately.\n\nScope: a validated principal is required (403 without one) and the site is\nresolved\
-        \ within that principal's org, so another tenant's slug is a 404."
+        \ let you shadow it at the edge, so which\noutcome you get depends on whether ownership is already established: a\
+        \ caller\nvouches (a SuperAdmin, or an ADMIN of a platform-operator org \u2014 which manages\ncustomer DNS, so its\
+        \ admin's bind IS the vouch) and binds VERIFIED immediately;\nevery other caller, INCLUDING a plain member of an operator\
+        \ org, has the host\nCLAIMED as pending and gets the DNS challenge back in `bound[].records`. A\npending claim HOLDS\
+        \ the name so nobody else can take it, but it does not route\nuntil POST .../domains/{host}/verify proves control.\n\
+        \nA hostname we operate is refused to a non-vouched caller (those are assigned\nby the platform, never claimed), a\
+        \ host another site already holds is a 409,\nand a name the platform holds is a 400 for EVERY caller \u2014 a vouch\
+        \ skips the\nownership proof, never the host table's own invariant. Claims and binds are\nidempotent for the same\n\
+        (org, slug), and re-claiming returns the SAME token rather than invalidating a\nrecord the customer has already published.\
+        \ The edge cache-tag is flushed\nafterwards so a newly-verified host serves the current build immediately.\n\nScope:\
+        \ a validated principal is required (403 without one) and the site is\nresolved within that principal's org, so another\
+        \ tenant's slug is a 404."
       operationId: post_v1_platform_sites_slug_domains
       parameters:
       - description: Slug is the site the hosts attach to, from the path.
@@ -84408,16 +84372,18 @@ paths:
       x-app: projects
     post:
       description: "Attaches one or more CUSTOM public hostnames to this org's site.\n\nBinding a host you do not own would\
-        \ let you shadow it at the edge, so which\noutcome you get depends on whether ownership is already established: a\n\
-        platform admin or the platform-operator org \u2014 which manages customer DNS, so\nits bind IS the vouch \u2014 binds\
-        \ VERIFIED immediately; any other org has the host\nCLAIMED as pending and gets the DNS challenge back in `bound[].records`.\
-        \ A\npending claim HOLDS the name so nobody else can take it, but it does not route\nuntil POST .../domains/{host}/verify\
-        \ proves control.\n\nA hostname we operate is refused to a non-vouched caller (those are assigned\nby the platform,\
-        \ never claimed), a host another site already holds is a 409,\nand a reserved label is a 400. Claims and binds are\
-        \ idempotent for the same\n(org, slug), and re-claiming returns the SAME token rather than invalidating a\nrecord\
-        \ the customer has already published. The edge cache-tag is flushed\nafterwards so a newly-verified host serves the\
-        \ current build immediately.\n\nScope: a validated principal is required (403 without one) and the site is\nresolved\
-        \ within that principal's org, so another tenant's slug is a 404."
+        \ let you shadow it at the edge, so which\noutcome you get depends on whether ownership is already established: a\
+        \ caller\nvouches (a SuperAdmin, or an ADMIN of a platform-operator org \u2014 which manages\ncustomer DNS, so its\
+        \ admin's bind IS the vouch) and binds VERIFIED immediately;\nevery other caller, INCLUDING a plain member of an operator\
+        \ org, has the host\nCLAIMED as pending and gets the DNS challenge back in `bound[].records`. A\npending claim HOLDS\
+        \ the name so nobody else can take it, but it does not route\nuntil POST .../domains/{host}/verify proves control.\n\
+        \nA hostname we operate is refused to a non-vouched caller (those are assigned\nby the platform, never claimed), a\
+        \ host another site already holds is a 409,\nand a name the platform holds is a 400 for EVERY caller \u2014 a vouch\
+        \ skips the\nownership proof, never the host table's own invariant. Claims and binds are\nidempotent for the same\n\
+        (org, slug), and re-claiming returns the SAME token rather than invalidating a\nrecord the customer has already published.\
+        \ The edge cache-tag is flushed\nafterwards so a newly-verified host serves the current build immediately.\n\nScope:\
+        \ a validated principal is required (403 without one) and the site is\nresolved within that principal's org, so another\
+        \ tenant's slug is a 404."
       operationId: post_v1_projects_slug_domains
       parameters:
       - description: Slug is the site the hosts attach to, from the path.
@@ -86020,7 +85986,7 @@ paths:
         \ surface actually carries,\nmeasured over the window: how many of its buckets carry each dimension at all,\nand what\
         \ the dimension reads where it is present. A dimension present in no\nbucket is BLIND, and saying so is the difference\
         \ between no risk and no data."
-      operationId: riskFeatures
+      operationId: v1.risk.riskFeatures
       parameters:
       - description: 'Days is how far back to measure the organisation''s own coverage, 1 to 400.
 
@@ -86333,7 +86299,7 @@ paths:
         \nA RETRY IS INERT. The record deduplicates on the event id you send, and an event\nalready in it moves nothing, costs\
         \ nothing and is not counted \u2014 so a client that\ntimed out can send the same batch again and its model holds\
         \ what it holds.\nWithout an id of your own there is nothing to converge on: two identical bodies\nare two events."
-      operationId: riskLearn
+      operationId: v1.risk.riskLearn
       requestBody:
         content:
           application/json:
@@ -86367,7 +86333,7 @@ paths:
         \ the policy in force when it was taken cannot be defended.\n\nIt covers ONE organisation. The history is on that\
         \ organisation's own shelf, so\nanother's versions are not filtered out of the answer \u2014 they are not in the file\n\
         the answer is read from."
-      operationId: riskPolicy
+      operationId: v1.risk.riskPolicy
       responses:
         '200':
           content:
@@ -86393,7 +86359,7 @@ paths:
         \ there is no flag for it.\n\nLearned state survives the change. The model's identity covers its SHAPE \u2014 the\n\
         inventory and the geometry \u2014 and not its appetite, so restating policy unlearns\nnothing. It also does not REPORT\
         \ the learned state: what the model is is read\nfrom the model."
-      operationId: riskSetPolicy
+      operationId: v1.risk.riskSetPolicy
       requestBody:
         content:
           application/json:
@@ -86638,7 +86604,7 @@ paths:
         declines with a reason rather than answering zero, because silence must never
 
         read as a clean result.'
-      operationId: riskScore
+      operationId: v1.risk.riskScore
       requestBody:
         content:
           application/json:
@@ -86671,7 +86637,7 @@ paths:
         \ and the one that fit\nbest, ranked on how closely it honoured the stated appetite, whether it warmed\nat all, whether\
         \ it saturated, and how much of the coordinate space it left\nblind.\n\nAn empty history is REFUSED rather than reported\
         \ as zero alerts, because \"no\nalerts\" is exactly what a quiet model looks like."
-      operationId: riskSearch
+      operationId: v1.risk.riskSearch
       requestBody:
         content:
           application/json:
@@ -86696,7 +86662,7 @@ paths:
       description: "Reads back one search run: every shape tried over this\norganisation's own history, best first, and the\
         \ one that fit.\n\nA run another organisation started is simply not there \u2014 the same 404 an\nunknown id gives,\
         \ so the read is not a probe oracle."
-      operationId: riskSearchResult
+      operationId: v1.risk.riskSearchResult
       parameters:
       - description: "ID is the run, taken from the path. A run another organisation started is\nsimply not there \u2014 the\
           \ same answer an unknown id gives."
@@ -86735,7 +86701,7 @@ paths:
         or behaviour from it, because the state is read out of a model that holds only
 
         its own.'
-      operationId: riskState
+      operationId: v1.risk.riskState
       responses:
         '200':
           content:
@@ -86747,23 +86713,57 @@ paths:
       tags:
       - risk
       x-app: risk
-  /v1/risk/state/restore:
+  /v1/risk/state/model:
     post:
-      description: "Restore puts one of your organisation's OWN PUBLISHED VALUES back in force, by\nname \u2014 which is what\
-        \ an instant rollback is, and what promoting a challenger is.\n\nIT TAKES AN ADDRESS AND NEVER STATE. The masses are\
-        \ read from your own store, so\nnothing about your model has to be held by whatever is making this call. That\ncloses\
-        \ the sharpest edge the previous shape had: a body of counters is something\na caller can COMPOSE, and a region filled\
-        \ until activity inside it reads as\nordinary is a model that has been shaped rather than learned. The engine's mass\n\
-        invariant was the only thing standing between a composed body and the model; with\nan address there is no body to\
-        \ compose.\n\nAn address your organisation has not published is NOT FOUND. That includes one\nanother organisation\
+      description: "Publishes your organisation's model as a NAMED VALUE, so a decision\ntaken today can be reconstructed\
+        \ tomorrow and a change made today can be undone.\n\nIt answers with a NAME and not with the state. The masses stay\
+        \ on your\norganisation's own encrypted store and are referred to by an address computed\nfrom their own content:\
+        \ the shape, the geometry seed, the position in the window,\nthe threshold, the masses themselves as IEEE-754 bits,\
+        \ and the fold watermark\nbehind them. That is what makes the value nameable without making the caller its\ncustodian.\n\
+        \nIT IS IDEMPOTENT ON THE VALUE. A model that has not changed publishes to the name\nit already has and mints nothing,\
+        \ reporting minted=false \u2014 so publishing at every\nboundary that matters is free. Ten values are retained per\
+        \ organisation, bounded\nin BYTES rather than in rows, and the oldest is disposed of past that.\n\nA model that has\
+        \ learned nothing is refused: planted is not learned, and a value\nthat reproduces nothing is not a value.\n\nIt is\
+        \ POST and PUT on one address because they are one plane's two verbs over one\nkind of thing: POST mints a value from\
+        \ the model in force, PUT puts a value in\nforce. They were /v1/risk/state/snapshot and /v1/risk/state/restore \u2014\
+        \ two addresses\nnamed after the operation rather than after the thing, which is how a reader ends\nup asking what\
+        \ the difference between a snapshot and a value is."
+      operationId: v1.risk.riskPublishModel
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskPublishOut'
+          description: created
+      summary: Publish your organisation's model as a named, immutable value
+      tags:
+      - risk
+      x-app: risk
+    put:
+      description: "Puts one of your organisation's OWN PUBLISHED VALUES in force, by name \u2014\nwhich is what an instant\
+        \ rollback is, what promoting a challenger is, and what\ninstalling the shape a search found is.\n\nIT TAKES AN ADDRESS\
+        \ AND NEVER STATE. The masses are read from your own store, so\nnothing about your model has to be held by whatever\
+        \ is making this call. That\ncloses the sharpest edge the previous shape had: a body of counters is something\na caller\
+        \ can COMPOSE, and a region filled until activity inside it reads as\nordinary is a model that has been shaped rather\
+        \ than learned. The engine's mass\ninvariant was the only thing standing between a composed body and the model; with\n\
+        an address there is no body to compose.\n\nIT ADOPTS THE SHAPE, NOT ONLY THE MASSES. A value records the model space\
+        \ its\nmasses were taken in, and a value whose space differs from the one in force\nREPLANTS your model into that\
+        \ space before restoring them. That is what makes\nPOST /v1/risk/search actionable: a search answers with the shape\
+        \ that fits your own\nhistory best and publishes it fitted, and its address is what you name here. Before\nthis, a\
+        \ winning shape was advice nobody could take \u2014 the adoption path refused every\nshape change, and a winner is\
+        \ a different shape by definition.\n\nWHAT ADOPTING A SEARCHED SHAPE COSTS, SAID PLAINLY: the value a search fits\
+        \ has\nlearned the window the search replayed and nothing older, so installing it trades\nhistory for fit. Your appetite\
+        \ is untouched \u2014 that is your policy record's, with its\nown versions \u2014 and so is the geometry, which stays\
+        \ your own.\n\nAn address your organisation has not published is NOT FOUND. That includes one\nanother organisation\
         \ published, and it is not a lookup that failed: the store is\nper organisation and the address is a name, never an\
         \ authority."
-      operationId: riskRestore
+      operationId: v1.risk.riskAdoptModel
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/riskRestoreIn'
+              $ref: '#/components/schemas/riskAdoptIn'
         required: true
       responses:
         '200':
@@ -86772,30 +86772,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/riskModelState'
           description: ok
-      summary: Install previously pinned state into your organisation's model
-      tags:
-      - risk
-      x-app: risk
-  /v1/risk/state/snapshot:
-    post:
-      description: "Snapshot publishes your organisation's model as a NAMED VALUE, so a decision\ntaken today can be reconstructed\
-        \ tomorrow and a change made today can be undone.\n\nIt answers with a NAME and not with the state. The masses stay\
-        \ on your\norganisation's own encrypted store and are referred to by an address computed\nfrom their own content:\
-        \ the shape, the geometry seed, the position in the window,\nthe threshold, the masses themselves as IEEE-754 bits,\
-        \ and the fold watermark\nbehind them. That is what makes the value nameable without making the caller its\ncustodian.\n\
-        \nIT IS IDEMPOTENT ON THE VALUE. A model that has not changed publishes to the name\nit already has and mints nothing,\
-        \ reporting minted=false \u2014 so publishing at every\nboundary that matters is free. Ten values are retained per\
-        \ organisation, bounded\nin BYTES rather than in rows, and the oldest is disposed of past that.\n\nA model that has\
-        \ learned nothing is refused: planted is not learned, and a value\nthat reproduces nothing is not a value."
-      operationId: riskSnapshot
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/riskSnapshotOut'
-          description: created
-      summary: Pin your organisation's learned state so a decision can be reproduced
+      summary: Put one of your organisation's own published model values in force
       tags:
       - risk
       x-app: risk
@@ -94687,15 +94664,15 @@ tags:
 - name: security
   description: 'Package security is secret scanning for your code: submit sources, get findings, masked never raw.'
 - name: keys
-  description: 'Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up.'
+  description: 'Package account is your own account: API keys you mint and revoke, and org onboarding.'
 - name: csrf
-  description: 'Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up.'
+  description: 'Package account is your own account: API keys you mint and revoke, and org onboarding.'
 - name: org
   description: "Package ai is Hanzo AI \u2014 the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the\
     \ rest of hanzoai/ai's surface) \u2014 mounted into a cloud binary with the money, ingest and telemetry callbacks cloud\
     \ BUILDS but cannot INSTALL."
 - name: orgs
-  description: 'Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up.'
+  description: 'Package account is your own account: API keys you mint and revoke, and org onboarding.'
 - name: team
   description: 'Package team is your org''s shared workspace: documents edited together, files, seats, and agents as teammates.'
 - name: audit
@@ -94715,7 +94692,7 @@ tags:
   description: 'Package entitlements is what your org may run: what the plan grants, and which of those products are switched
     on.'
 - name: avatar
-  description: 'Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up.'
+  description: 'Package account is your own account: API keys you mint and revoke, and org onboarding.'
 - name: ai
   description: "Package ai is Hanzo AI \u2014 the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the\
     \ rest of hanzoai/ai's surface) \u2014 mounted into a cloud binary with the money, ingest and telemetry callbacks cloud\
@@ -95131,7 +95108,7 @@ tags:
 - name: settings
   description: Package settings is how an org configures each product it uses, secret fields included.
 - name: embed
-  description: 'Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up.'
+  description: 'Package account is your own account: API keys you mint and revoke, and org onboarding.'
 - name: functions
   description: 'Package functions is your serverless code: publish it, call it over HTTP, watch every run and what it cost.'
 - name: sbom
