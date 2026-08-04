@@ -71,9 +71,17 @@ stops.
 
 ```bash
 python3 publish.py            # re-pin to hanzoai/cloud origin/main, derive, write
-python3 publish.py --check    # the gate: re-derive at the pinned ref and diff
+python3 publish.py --check    # re-derive at the pinned ref and diff
 python3 publish.py --current  # is the pin still cloud's origin/main?
+python3 publish.py --served   # THE GATE: is every published operation one api.hanzo.ai answers for?
 ```
+
+The first three read a hanzoai/cloud checkout. `--served` reads nothing but
+`https://api.hanzo.ai/v1/openapi.json` — cloud's own emission, unauthenticated,
+from the binary that is running — which is why it is the one wired into
+`hanzo.yml`'s `test:` block and the one that actually runs. It refutes in one
+direction: a published operation the deployment does not answer for fails the
+build, and it never fails on an unreachable API.
 
 It reads a hanzoai/cloud checkout (`../cloud`, or `--cloud DIR`, or `CLOUD_DIR`)
 and writes exactly three files: `hanzo.yaml`, `CAPABILITIES.md`, `.spec-lock`.
@@ -108,6 +116,7 @@ move upstream into cloud's emitter; see [LLM.md](LLM.md).
 ## Validate
 
 ```bash
+python3 publish.py --served                      # nothing published is unserved
 python3 publish.py --check                       # the artifact is its input's projection
 python3 test_publish.py                          # the six rules, offline
 python3 test_flows.py                            # every example's operationId resolves

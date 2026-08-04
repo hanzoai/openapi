@@ -6,13 +6,17 @@ under pytest, like test_flows.py beside it.
 
 These are the OFFLINE half. They read the committed `hanzo.yaml` and assert the
 properties `publish.py` promises, so a hand edit that satisfies none of them is
-caught here without a network or a hanzoai/cloud checkout. The ONLINE half is
-`python3 publish.py --check`, which re-derives from the pinned ref and diffs —
-that is the gate that catches a hand edit which happens to be well-formed, and
-it is what CI runs.
+caught here without a network or a hanzoai/cloud checkout.
 
-Both are needed and neither replaces the other: `--check` needs the input,
-these need nothing.
+The half that reaches the world is `python3 publish.py --served`, which refutes
+every published operation against the document api.hanzo.ai actually serves. It
+is what CI runs, because it is the only one of the three online questions that
+needs no credential — see the last test in this file, which asserts it is still
+WIRED. `publish.py --check` is the sharper question and needs a hanzoai/cloud
+checkout; it runs where one exists.
+
+None of them replaces another: `--check` needs the input, `--served` needs the
+deployment, these need nothing.
 """
 import os
 import re
@@ -153,6 +157,30 @@ def test_no_authored_spec_survives():
                     if os.path.isfile(os.path.join(ROOT, d, "openapi.yaml")))
     assert not strays, (f"hand-authored spec dir(s) are back: {strays}. The API is "
                         f"declared in hanzoai/cloud; this repo publishes what it emits.")
+
+
+def test_the_drift_gate_is_wired_into_the_build():
+    """A gate that cannot fail a build is not a gate, and this repo proved it.
+
+    `publish.py --check` was the only thing standing between a hand edit and
+    seven SDKs, and it lived in a workflow no forge collected, needing a
+    credential no secret supplied. It exited 1 on `main` for 81 hanzoai/cloud
+    commits while every consumer regenerated happily. Nothing NOTICED, because
+    nothing ran it.
+
+    So the gate that replaced it is asserted from inside the suite that does
+    run: `served` must be a `test:` entry in hanzo.yml — the one file both
+    hanzoai/ci and platform.hanzo.ai read — and it must invoke `--served`.
+    Deleting the gate now has to delete this test, in the same diff, on purpose.
+    """
+    cfg = yaml.safe_load(open(os.path.join(ROOT, "hanzo.yml"))) or {}
+    gates = {g.get("name"): g.get("run", "") for g in (cfg.get("test") or [])}
+    assert "served" in gates, (
+        f"hanzo.yml declares no `served` test gate, so nothing refutes a "
+        f"published operation against the running deployment. Gates: "
+        f"{sorted(gates)}")
+    assert "publish.py --served" in gates["served"], (
+        "the `served` gate does not run `publish.py --served`")
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@
     python3 publish.py --ref v1.801.383  # re-pin to one release
     python3 publish.py --check         # THE GATE: re-derive at the pinned ref and diff
     python3 publish.py --current       # is the pin still cloud's origin/main?
+    python3 publish.py --served        # THE GATE with no checkout: does the deployment answer for every published operation?
 
 THIS REPO DOES NOT DECIDE WHAT THE API IS. It never did well, and it no longer
 claims to. hanzoai/cloud emits `openapi.yaml` by projecting its own routers, and
@@ -38,10 +39,12 @@ hanzoai/ci's client lane writes into every SDK repo. It is what lets anyone ask
 """
 import argparse
 import hashlib
+import json
 import os
 import re
 import subprocess
 import sys
+import urllib.request
 
 import yaml
 
@@ -54,6 +57,10 @@ CLOUD = os.environ.get("CLOUD_DIR") or os.path.join(os.path.dirname(ROOT), "clou
 
 SPEC_REPO = "hanzoai/cloud"
 SPEC_PATH = "openapi.yaml"
+# Cloud SERVES its own emission, unauthenticated, from the binary that is
+# actually running. It is the only input that can refute a published operation
+# without a checkout, a credential or a release tag to take on trust.
+SERVED = os.environ.get("SERVED_DOCUMENT", "https://api.hanzo.ai/v1/openapi.json")
 
 HTTP_METHODS = ("get", "put", "post", "delete", "options", "head", "patch", "trace")
 
@@ -100,6 +107,49 @@ def document(repo, ref):
     git(repo, "fetch", "--quiet", "origin")
     raw = git(repo, "show", f"{ref}:{SPEC_PATH}")
     return raw, hashlib.sha256(raw.encode()).hexdigest()
+
+
+# ------------------------------------------------------------ the deployment
+
+def operations(doc):
+    """{(METHOD, path)} — a document as the set of things a caller can call."""
+    return {(m.upper(), p) for p, item in (doc.get("paths") or {}).items()
+            for m, op in item.items() if m in HTTP_METHODS and isinstance(op, dict)}
+
+
+def refuted(url=SERVED):
+    """Which PUBLISHED operations the deployment does not answer for.
+
+    `--check` proves hanzo.yaml is the projection of a git ref. That is the
+    right question and it needs a hanzoai/cloud checkout to ask, so it can only
+    run where a credential for a private repo exists — and this repo has none.
+    So it has never run, and while it did not, this file went 81 commits stale
+    and shipped `POST /v1/admin/credits` to every SDK for a mint hanzoai/cloud
+    had deleted. A published operation for a route nothing serves is not a stale
+    document: `skills.py` turns it into a SKILL.md, which is a live instruction
+    to an agent to call a dead endpoint.
+
+    This asks the weaker question that needs NOTHING — no checkout, no token, no
+    ref — and therefore actually runs: every operation this repo publishes must
+    be one `api.hanzo.ai` answers for. One direction only. Served-and-unpublished
+    means the pin is behind, which `--current` already reports and which is not a
+    lie about the API; published-and-unserved is the lie.
+
+    Returns (refuted, published, served), or None when the deployment cannot be
+    reached — no network, no verdict, exit 0, said loudly. Same rule as
+    hanzo.ai's scripts/audit-catalog.mjs: a gate that fails on someone else's
+    outage gets switched off, and then it gates nothing.
+    """
+    try:
+        with urllib.request.urlopen(url, timeout=120) as r:
+            live = operations(json.load(r))
+    except Exception as e:                                    # noqa: BLE001
+        print(f"publish: {url} did not answer ({e}) — NO VERDICT. "
+              f"This gate refutes published operations against the running "
+              f"deployment; it cannot do that from an unreachable one.")
+        return None
+    mine = operations(yaml.safe_load(open(TARGET)))
+    return sorted(mine - live), mine, live
 
 
 # ------------------------------------------------------------ the projection
@@ -334,9 +384,35 @@ def main():
                     help="re-derive at the PINNED ref and diff; write nothing")
     ap.add_argument("--current", action="store_true",
                     help="report whether the pin is still cloud's origin/main")
+    ap.add_argument("--served", action="store_true",
+                    help=f"THE GATE that needs no checkout: refute every published "
+                         f"operation against {SERVED}")
     a = ap.parse_args()
 
     have = lock()
+
+    # First, and before `checkout`: this is the one question that needs no
+    # hanzoai/cloud on disk, which is the whole reason it is the one in
+    # `hanzo.yml`'s `test:` block.
+    if a.served:
+        answer = refuted()
+        if answer is None:
+            return 0
+        gone, mine, live = answer
+        if gone:
+            print(f"publish: hanzo.yaml publishes {len(gone)} operation(s) "
+                  f"{SERVED} does not answer for.\n"
+                  f"         Every SDK, doc page and agent skill generated from this "
+                  f"file advertises them. Fix: `python3 publish.py` to re-pin to the "
+                  f"release that is deployed.")
+            for method, path in gone:
+                print(f"           {method:7} {path}")
+            return 1
+        print(f"all {len(mine)} published operations are served "
+              f"({len(live - mine)} more are served and not yet published — "
+              f"`--current` is the question about the pin)")
+        return 0
+
     repo = checkout(a.cloud)
 
     if a.current:

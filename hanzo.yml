@@ -1,5 +1,5 @@
 # Canonical CI config for hanzoai/openapi — read by the hanzoai/ci reusable
-# (.hanzo/workflows/cicd.yml) and platform.hanzo.ai.
+# (.github/workflows/cicd.yml) and platform.hanzo.ai.
 #
 # Publishes the agent-skills catalog (/.well-known/agent-skills, skills.py
 # --no-services) as a versioned immutable image whose rootfs is /catalog.
@@ -25,10 +25,12 @@ test:
     # capability grouped exactly once, and no `<svc>/openapi.yaml` back on disk.
     # It needs no network and no hanzoai/cloud checkout.
     #
-    # The ONLINE half is `publish.py --check` in the `spec sync` workflow, which
-    # re-derives from the pinned ref and diffs. That is what catches a hand edit
-    # that happens to be well-formed — the one this repo exists to make
-    # impossible now that hanzo.yaml is output rather than input.
+    # The half that needs a hanzoai/cloud checkout is `publish.py --check` in the
+    # `spec sync` workflow, which re-derives from the pinned ref and diffs. That
+    # is what catches a hand edit that happens to be well-formed — the one this
+    # repo exists to make impossible now that hanzo.yaml is output rather than
+    # input. The `served` gate below asks the weaker version of that question
+    # with no checkout at all, which is why it is HERE and runs on every build.
     #
     # test_flows.py asserts every operationId flows.yaml names still exists in
     # hanzo.yaml, so a route that stops being served breaks one gate here instead
@@ -44,3 +46,36 @@ test:
       fi
       "$UV" run --no-project --python 3.12 --with pyyaml --with pytest \
         python -m pytest test_publish.py test_flows.py test_skills.py -q
+
+  - name: served
+    # Every operation this repo PUBLISHES must be one api.hanzo.ai answers for.
+    #
+    # The gate that was supposed to hold that line — `publish.py --check` —
+    # needs a hanzoai/cloud checkout, so it can only run where a credential for
+    # a private repo exists, and this repo has exactly one secret
+    # (SDK_DISPATCH_TOKEN) which is not it. So it never ran, and while it did
+    # not: the pin went 81 hanzoai/cloud commits stale, hanzo.yaml was hand-
+    # edited to delete a route (which is the one thing a generated file must
+    # never receive), and it shipped 19 operations to every SDK that nothing
+    # serves — including `POST /v1/admin/credits`, a money mint hanzoai/cloud
+    # had deleted. Measured, not supposed: those 19 are what this gate printed
+    # the first time it was pointed at the committed artifact.
+    #
+    # So this asks the weaker question that needs NOTHING — no checkout, no
+    # token, no ref — and therefore actually runs. Cloud serves its own emission
+    # unauthenticated at /v1/openapi.json, from the binary that is running, and
+    # a route absent from it is refuted by the deployment itself. One direction
+    # only: served-and-unpublished means the pin is behind, which is not a lie
+    # about the API and is `--current`'s question.
+    #
+    # NEVER FAILS ON AN UNREACHABLE API — same rule as hanzo.ai's
+    # scripts/audit-catalog.mjs, which gates the same document the same way. A
+    # gate that goes red for somebody else's outage gets switched off, and then
+    # it gates nothing.
+    run: |
+      set -e
+      if command -v uv >/dev/null 2>&1; then UV=uv; else
+        curl -fsSL https://astral.sh/uv/install.sh | sh
+        UV="$HOME/.local/bin/uv"
+      fi
+      "$UV" run --no-project --python 3.12 --with pyyaml python publish.py --served

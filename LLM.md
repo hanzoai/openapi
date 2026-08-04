@@ -169,18 +169,67 @@ leaves the release it stops.
 
 ## The gates
 
-| gate | question | where |
-|---|---|---|
-| `publish.py --check` | is `hanzo.yaml` what its own pinned input projects to? | `spec sync`, every push and PR |
-| `publish.py --current` | is the pin still cloud's origin/main? | same workflow, hourly clock only |
-| `test_publish.py` | does the committed artifact hold the six rules, offline? | `hanzo.yml` `test:` |
-| `test_flows.py` | does every operationId `flows.yaml` names still exist? | same |
-| `test_skills.py` | is the skills surface deterministic and well-formed? | same |
-| `skills.py --check` | did `dist/` drift from the document? | on demand |
-| `generate.py --check` | did a committed client drift from the document? | each SDK repo's own CI |
+| gate | question | needs | where |
+|---|---|---|---|
+| **`publish.py --served`** | **is every published operation one `api.hanzo.ai` answers for?** | **nothing** | **`hanzo.yml` `test:`, every build** |
+| `test_publish.py` | does the committed artifact hold the six rules, offline? | nothing | same |
+| `test_flows.py` | does every operationId `flows.yaml` names still exist? | nothing | same |
+| `test_skills.py` | is the skills surface deterministic and well-formed? | nothing | same |
+| `publish.py --check` | is `hanzo.yaml` what its own pinned input projects to? | a hanzoai/cloud checkout | `spec sync`, every push and PR |
+| `publish.py --current` | is the pin still cloud's origin/main? | same | same workflow, hourly clock only |
+| `skills.py --check` | did `dist/` drift from the document? | nothing | on demand |
+| `generate.py --check` | did a committed client drift from the document? | nothing | each SDK repo's own CI |
+
+**The `needs` column is the whole lesson, and it was learned the expensive way.**
+`--check` is the better question and it was the only one gating this artifact, so
+when it turned out it could not run, nothing did. It needs a checkout of
+hanzoai/cloud, which is PRIVATE; hanzoai is on the GitHub **Free** plan, where an
+org secret resolves to the empty string inside a private repo; and this repo's
+one repo-level secret is `SDK_DISPATCH_TOKEN`. On top of that, both callers had
+been moved to `.hanzo/workflows`, which only git.hanzo.ai collects, and
+`git.hanzo.ai/hanzoai/openapi` is a 404 — no mirror, so no forge collected
+either file and `gh workflow list` returned nothing at all.
+
+Measured on that state: the pin was **81 hanzoai/cloud commits stale**,
+`hanzo.yaml` carried a **hand edit** (a route deleted straight out of a generated
+file), `--check` exited 1, `--current` exited 1, and `test_publish.py` failed —
+three red gates on `main`, none of them running anywhere. The published document
+advertised **19 operations nothing serves**, including `POST /v1/admin/credits`,
+a money mint hanzoai/cloud had deleted.
+
+`--served` is deliberately the WEAKER question, because it needs nothing: cloud
+serves its own emission unauthenticated at `/v1/openapi.json`, so the running
+deployment refutes a published route by itself. It runs in `hanzo.yml`'s `test:`
+block — the one lane both hanzoai/ci and platform.hanzo.ai read — and it is now
+the gate holding the line. Same shape and same rule as hanzo.ai's
+`scripts/audit-catalog.mjs`, which gates the same document: one direction only,
+and never fail on an unreachable API.
 
 `--current` is on the clock and not on pushes deliberately: a stale pin is not a
 broken artifact, and failing an unrelated PR for it trains people to ignore red.
+
+### The known weakness of `--served`, stated rather than discovered
+
+It ASKS THE NETWORK IN CI, and `hanzoai/cli`'s `driftgate` — the same gate for
+the same document, one repo over — argues against exactly that: *"a gate that
+needs the network in CI gets switched off, and a switched-off gate is worse than
+none."* Its answer is to decomplect the two halves: `--refresh` asks and writes
+`spec/live.json` (evidence, checked in), and the default RULES over that
+evidence with no network at all.
+
+That is the stronger shape and this is not it. `--served` never FAILS on an
+unreachable API — no network, no verdict, exit 0, said loudly — which trades
+driftgate's problem for a quieter one: an outage does not turn the build red, it
+turns the gate OFF for that run, and nothing distinguishes a passing build from
+an unasked one except the word NO VERDICT in the log.
+
+It is the right trade HERE, for a reason that is about this repo rather than
+about gates: the evidence driftgate commits would be a second derived copy of
+the served path set, in the repo whose entire defect was keeping a second copy
+of the API by hand. `hanzo.ai/scripts/audit-catalog.mjs` gates this same
+document the same way for the same reason. If an outage is ever measured to have
+hidden a real drift, take driftgate's shape — the ask and the rule are already
+separate functions here (`refuted()` fetches; the caller decides).
 
 ## Who reads this repo
 

@@ -26,6 +26,20 @@
 # document into main is a second writer on the artifact, and the failure mode —
 # an unreviewed API change reaching every client — is worse than the staleness it
 # would fix. Red build, one command in the log, a person runs it.
+#
+# BOTH QUESTIONS NEED A hanzoai/cloud CHECKOUT, AND THAT IS THIS WORKFLOW'S
+# WEAKNESS RATHER THAN ITS STRENGTH. hanzoai/cloud is private, the hanzoai org
+# is on the FREE plan — where an org secret resolves to the empty string inside
+# a private repo — and this repo's only repo-level secret is
+# SDK_DISPATCH_TOKEN. So the checkout below is credentialed by whatever of those
+# actually reads hanzoai/cloud, and if none does, this workflow is red for a
+# reason that has nothing to do with the commit.
+#
+# THE ENFORCING GATE IS NOT HERE. It is `served` in hanzo.yml, which refutes
+# every published operation against api.hanzo.ai/v1/openapi.json — public, no
+# credential, no checkout, no ref to trust — and therefore runs on every build
+# in the same lane as everything else. This workflow is the deeper question kept
+# where it can be asked when a credential exists, not the one holding the line.
 name: spec sync
 
 on:
@@ -58,6 +72,10 @@ jobs:
           repository: hanzoai/cloud
           path: .cloud
           fetch-depth: 0
+          # The job's automatic token is scoped to THIS repository, so it reads
+          # hanzoai/cloud as an anonymous caller and a private repo answers 404
+          # — which reads as "repository not found", not "no credential".
+          token: ${{ secrets.GH_PAT || secrets.SDK_DISPATCH_TOKEN || github.token }}
 
       - name: Is hanzo.yaml what its own input projects to?
         run: |
