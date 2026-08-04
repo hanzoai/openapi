@@ -175,4 +175,4 @@ Output is white-labeled per brand: a Lux surface reads `Lux` / `api.lux.network`
 
 ## License
 
-BSD 3-Clause. Copyright Hanzo AI, Inc.
+MIT OR Apache-2.0, at your option — per [HIP-0137](https://github.com/hanzoai/hips/blob/main/HIPs/hip-0137-one-license.md). Copyright 2016-2026 Hanzo AI, Inc.
