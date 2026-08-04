@@ -2,7 +2,7 @@
 
 # Hanzo Capability Manifest
 
-Every capability the API serves, at `v1.801.383`. GENERATED from `hanzo.yaml` — which is itself generated from hanzoai/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
+Every capability the API serves, at `v1.801.400`. GENERATED from `hanzo.yaml` — which is itself generated from hanzoai/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
 
 ## Identity & Trust
 
@@ -10,7 +10,7 @@ Every capability the API serves, at `v1.801.383`. GENERATED from `hanzo.yaml` �
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `iam` | 172 | Package iam is Hanzo's identity provider: users, organizations, applications, and the OIDC/OAuth2 endpoints every Hanzo service authenticates against. |
+| `iam` | 173 | Package iam is Hanzo's identity provider: users, organizations, applications, and the OIDC/OAuth2 endpoints every Hanzo service authenticates against. |
 | `admin` | 87 | Package admin is the operator's view of the fleet: orgs, users, roles, spend and system health. |
 | `authz` | 3 |  |
 | `kms` | 7 | Package kms is secret custody: your org's secrets sealed at rest, plus threshold signing. |
@@ -26,6 +26,7 @@ Every capability the API serves, at `v1.801.383`. GENERATED from `hanzo.yaml` �
 | `validators` | 4 | Package validators is one-click validator onboarding: prove your Genesis NFT, get a node provisioned, queue its registration. |
 | `wallets` | 8 | Package wallets is blockchain key custody: create wallets, rotate their keys, and sign with them. |
 | `entitlements` | 1 | Package entitlements is what your org may run: what the plan grants, and which of those products are switched on. |
+| `avatar` | 2 | Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up. |
 
 ## Intelligence
 
@@ -33,11 +34,11 @@ Every capability the API serves, at `v1.801.383`. GENERATED from `hanzo.yaml` �
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `ai` | 214 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
+| `ai` | 208 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `router` | 35 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `agent` | 4 | Package agent is a conversation that uses your org's own tools to get an answer. |
 | `agents` | 31 | Package agents is autonomous agents for your org: define them, run them, keep every run. |
-| `ml` | 7 | Package ml is model serving and training: deploy a model behind an endpoint, run a training job, tune it with experiments. |
+| `ml` | 14 | Package ml is model serving and training: deploy a model behind an endpoint, run a training job, tune it with experiments. |
 | `train` | 10 | Package ml is model serving and training: deploy a model behind an endpoint, run a training job, tune it with experiments. |
 | `finetune` | 9 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `evals` | 16 | Package eval is scoring a model on your own data, with a judge you choose. |
