@@ -43,5 +43,25 @@ concurrency:
 
 jobs:
   cicd:
+    # THE 7-LINE CALLER, UNCHANGED — AND `test:` STILL DOES NOT RUN AT @v1.
+    # Not this repo's defect and not fixable here, so nothing is bolted on to
+    # work around it: build.yml guards its test step with `inputs.tests`, and
+    # git.hanzo.ai substitutes a workflow_call input's declared TYPE ZERO VALUE,
+    # which for `type: boolean` is false — every time, whatever the caller says.
+    # Measured on this branch: a caller passing a literal `true` was skipped
+    # (run 26630), and so was `format('{0}', inputs.tests) != 'false'` (26662,
+    # resolved against the fix branch — 23 steps, the count only that branch
+    # has), because the value really is the string 'false'. Five of five repos
+    # with a cicd run on the forge are green with that step skipped: cloud, ci,
+    # openapi, gateway, commerce. The step directly above it in build.yml exists
+    # to refuse a build that tested nothing; it is itself the step not running.
+    #
+    # The repair is one line in hanzoai/ci — `tests` as `type: string`, so the
+    # zero value is '' and only the word false skips — on branch
+    # `deliver-the-tests-input`, PROVEN by openapi run 26700: `test spec` 18
+    # passed in 99.19s, `test served` all 2293 published operations are served.
+    # It is a change to a tag every repo in three orgs pins, so it is an owner's
+    # promotion to make, not a caller's. When @v1 carries it, this file needs no
+    # edit — which is the point of leaving it canonical.
     uses: hanzoai/ci/.github/workflows/build.yml@v1
     secrets: inherit
