@@ -416,3 +416,11 @@ against a remembered method name.
   only.
 - White-label is by DOMAIN: `skills.py` rewrites `api.hanzo.ai` / `hanzo.id` /
   `Hanzo` per brand, longest-host-first, and a Lux surface never says Hanzo.
+
+## Licensing
+
+`MIT OR Apache-2.0`, at your option — per HIP-0137 (`hanzoai/hips`, `HIPs/hip-0137-one-license.md`). Relicensed from BSD-3-Clause,
+which HIP-0137 puts out of scope for `hanzoai`. The history reaches back to 2016
+and is Hanzo's own; no third-party source survives in HEAD. Generated clients
+are projections of this repo's spec and carry the same terms; `dist/` is built,
+never committed.
