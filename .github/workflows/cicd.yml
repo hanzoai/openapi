@@ -44,4 +44,28 @@ concurrency:
 jobs:
   cicd:
     uses: hanzoai/ci/.github/workflows/build.yml@v1
+    # `tests: true` IS NOT A PREFERENCE — WITHOUT IT THIS BUILD RUNS NO TESTS AND
+    # STILL REPORTS SUCCESS.
+    #
+    # build.yml guards its test step with `if: inputs.mode != 'delegate' &&
+    # inputs.tests`, and declares `tests` as `type: boolean, default: true`. On
+    # github.com the default fills in and the step runs. git.hanzo.ai — which is
+    # the forge that actually executes this repo's CI — does not apply
+    # workflow_call input defaults for a caller that omits `with:`, so
+    # `inputs.tests` evaluates falsy and the step is SKIPPED.
+    #
+    # Measured, not inferred: run 26619 on this branch had a green `cicd` whose
+    # `Build & push images` succeeded and whose `Test (per hanzo.yml)` was
+    # skipped. The same is true of hanzoai/ci's OWN build (run 24352, step 18
+    # skipped, conclusion success) — its caller is the bare 7-line one. So the
+    # canonical caller, imported exactly as documented, is green over zero tests
+    # everywhere on this forge. hanzoai/cloud is the repo that does not have the
+    # problem, and the only reason is that it passes `tests:` outright.
+    #
+    # Naming it here costs one line and is what makes the run below evidence.
+    # The fleet-wide repair belongs in build.yml (`inputs.tests != false` reads
+    # an absent input the way the default intends), and that is an owner call on
+    # a tag every repo pins — not something to change from inside one caller.
+    with:
+      tests: true
     secrets: inherit
