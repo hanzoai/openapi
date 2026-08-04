@@ -2,7 +2,7 @@
 
 # Hanzo Capability Manifest
 
-Every capability the API serves, at `v1.801.400`. GENERATED from `hanzo.yaml` — which is itself generated from hanzoai/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
+Every capability the API serves, at `v1.801.410`. GENERATED from `hanzo.yaml` — which is itself generated from hanzoai/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
 
 ## Identity & Trust
 
@@ -11,7 +11,7 @@ Every capability the API serves, at `v1.801.400`. GENERATED from `hanzo.yaml` �
 | Capability | Operations | What it is |
 |---|---:|---|
 | `iam` | 173 | Package iam is Hanzo's identity provider: users, organizations, applications, and the OIDC/OAuth2 endpoints every Hanzo service authenticates against. |
-| `admin` | 87 | Package admin is the operator's view of the fleet: orgs, users, roles, spend and system health. |
+| `admin` | 86 | Package admin is the operator's view of the fleet: orgs, users, roles, spend and system health. |
 | `authz` | 3 |  |
 | `kms` | 7 | Package kms is secret custody: your org's secrets sealed at rest, plus threshold signing. |
 | `security` | 7 | Package security is secret scanning for your code: submit sources, get findings, masked never raw. |
@@ -22,7 +22,7 @@ Every capability the API serves, at `v1.801.400`. GENERATED from `hanzo.yaml` �
 | `team` | 19 | Package team is your org's shared workspace: documents edited together, files, seats, and agents as teammates. |
 | `audit` | 1 | Package auditlog is your org's tamper-evident audit trail: every security-relevant event, hash-chained and readable. |
 | `compliance` | 17 | Package compliance is your KYC/KYB onboarding, accreditation records, and the evidence trail behind them. |
-| `risk` | 10 | Package risk is HANZO RISK's model plane: the per-organisation feature surface and the per-organisation models trained on it. |
+| `risk` | 31 | Package risk is HANZO RISK's model plane: the per-organisation feature surface and the per-organisation models trained on it. |
 | `validators` | 4 | Package validators is one-click validator onboarding: prove your Genesis NFT, get a node provisioned, queue its registration. |
 | `wallets` | 8 | Package wallets is blockchain key custody: create wallets, rotate their keys, and sign with them. |
 | `entitlements` | 1 | Package entitlements is what your org may run: what the plan grants, and which of those products are switched on. |
@@ -38,8 +38,7 @@ Every capability the API serves, at `v1.801.400`. GENERATED from `hanzo.yaml` �
 | `router` | 35 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `agent` | 4 | Package agent is a conversation that uses your org's own tools to get an answer. |
 | `agents` | 31 | Package agents is autonomous agents for your org: define them, run them, keep every run. |
-| `ml` | 14 | Package ml is model serving and training: deploy a model behind an endpoint, run a training job, tune it with experiments. |
-| `train` | 10 | Package ml is model serving and training: deploy a model behind an endpoint, run a training job, tune it with experiments. |
+| `ml` | 7 | Package ml is model serving: deploy a model behind an endpoint and call it. |
 | `finetune` | 9 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `evals` | 16 | Package eval is scoring a model on your own data, with a judge you choose. |
 | `benchmark` | 6 | Package benchmark is one honest score for any model, on the tests everyone quotes. |
@@ -64,7 +63,7 @@ Every capability the API serves, at `v1.801.400`. GENERATED from `hanzo.yaml` �
 | `embeddings` | 1 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `messages` | 2 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `rerank` | 1 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
-| `models` | 3 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
+| `models` | 4 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `images` | 1 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `audio` | 4 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `videos` | 3 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
@@ -81,7 +80,6 @@ Every capability the API serves, at `v1.801.400`. GENERATED from `hanzo.yaml` �
 | `query_multiple` | 1 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `dev-bridge` | 1 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `install-patch` | 1 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
-| `provider-flags` | 1 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `traffic` | 1 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `wecom-bot` | 2 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `health` | 1 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
@@ -158,14 +156,14 @@ Every capability the API serves, at `v1.801.400`. GENERATED from `hanzo.yaml` �
 | `commerce` | 13 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
 | `store` | 34 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
 | `marketplace` | 6 | Package marketplace is the shop for tools and agents: browse, install into your project, publish your own free or priced. |
-| `billing` | 26 | Package billing is your org's balance, what it has spent, and the cards it pays with. |
+| `billing` | 27 | Package billing is your org's balance, what it has spent, and the cards it pays with. |
 | `pricing` | 25 | Package pricing is the price list: what every model, provider, GPU tier, tool and hosting plan costs. |
 | `plans` | 20 | Package plan is the plan catalog: every tier you can buy, what it costs, and what it grants. |
 | `finance` | 8 |  |
 | `books` | 25 | Package books is double-entry accounting: chart of accounts, ledger, bank reconciliation, and the reports that prove the books balance. |
 | `captable` | 31 | Package captable is your cap table: stakeholders, share classes, grants, SAFEs, rounds, and who owns what. |
 | `crm` | 20 | Package crm is your sales pipeline: the companies, the people, the deals in play. |
-| `referrals` | 2 | Package referrals is credit for both sides when someone you refer actually spends. |
+| `referrals` | 2 | Package referrals is referral ATTRIBUTION: who referred whom, and whether that referee ever became a real customer. |
 | `affiliates` | 10 | Package affiliates is a partner program that pays commission on what your referrals spend. |
 | `authors` | 5 | Package authors is a royalty for open-source work: your repo runs, you get paid. |
 | `licensing` | 6 |  |

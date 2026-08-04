@@ -1063,6 +1063,22 @@ components:
         symbol:
           type: string
       type: object
+    ClearReferenceOut:
+      properties:
+        cleared:
+          description: "Cleared is false when your org held no such override \u2014 which is not an\nerror, it is the honest\
+            \ answer to a removal that had nothing to remove."
+          type: boolean
+        key:
+          description: Key is the entry named.
+          type: string
+        overrides:
+          description: Overrides is how many your org still holds in this set.
+          type: integer
+        set:
+          description: Set is the set cleared in.
+          type: string
+      type: object
     ClipBody:
       properties:
         bytes:
@@ -4421,29 +4437,20 @@ components:
           description: Code is the promo code from the path.
           type: string
         instrument:
-          description: 'Instrument identifies the payment method. It is the anti-farming key: one
-
-            redemption per instrument, fleet-wide.'
+          description: "Instrument identifies the payment method. It is the anti-farming key: one\nredemption per instrument,\
+            \ fleet-wide, and it is REQUIRED \u2014 an absent\ninstrument is refused, never waved through."
           type: string
-        plan:
-          description: 'Plan is the plan being redeemed against: pro, max or team.'
-          type: string
-        seats:
-          description: 'Seats is the Team seat count; 0 means 1. Seats beyond the promo''s
-
-            teamSeatCap bill at list.'
-          type: integer
       type: object
     RedeemResult:
       properties:
         alreadyRedeemed:
-          description: "AlreadyRedeemed is true when this org had already taken the promo and the\ncall was an idempotent\
-            \ replay \u2014 nothing was credited a second time."
+          description: 'AlreadyRedeemed is true when this org had already taken the promo and the
+
+            call was an idempotent replay.'
           type: boolean
         chargeCents:
-          description: 'ChargeCents is what month one costs after the discount, DiscountCents the
-
-            credit that produced it.'
+          description: "ChargeCents is what month one costs after the discount, DiscountCents the\ndiscount that produced\
+            \ it. Both are quoted figures against the org's\nderived plan \u2014 NOTHING WAS CREDITED and no wallet moved."
           type: integer
         discountCents:
           type: integer
@@ -4455,21 +4462,376 @@ components:
         code:
           description: Code is the promo redeemed.
           type: string
-        creditCents:
-          description: "CreditCents is the discount value credited to the org's wallet \u2014 the promo\nis realized as a\
-            \ NON-CASH credit, not a subscription coupon."
+        discountCents:
+          description: 'DiscountCents is the month-one discount this redemption CLAIMS, in USD
+
+            cents. It is a recorded figure, NOT a balance: nothing was credited and no
+
+            wallet moved. An admin granting against this claim is what would make it
+
+            money, and that decision happens on the admin surface, not here.'
           type: integer
-        creditEntryId:
-          description: CreditEntryID is the finance ledger entry that credit landed in.
-          type: string
         plan:
-          description: Plan and Seats are what was redeemed against.
+          description: "Plan and Seats are what was redeemed against. Both are DERIVED server-side\n\u2014 Plan from the org's\
+            \ live paid subscription, Seats from claimSeats \u2014 and\nneither is ever read from the request."
           type: string
         redeemedAt:
           description: RedeemedAt is unix seconds.
           type: integer
         seats:
           type: integer
+      type: object
+    ReferenceAnswer:
+      properties:
+        age:
+          description: Age is how old that is, as a duration.
+          type: string
+        asOf:
+          description: AsOf is when the oldest contributing publisher was current, RFC 3339.
+          type: string
+        from:
+          description: "From is override or baseline \u2014 which plane answered."
+          type: string
+        hit:
+          description: 'Hit is whether the key is a member. It is meaningful ONLY when Refusal is
+
+            empty: false with a refusal means the set could not be consulted, which is
+
+            not the same as the key being clean.'
+          type: boolean
+        key:
+          description: Key is the key as asked.
+          type: string
+        matched:
+          description: 'Matched is the member that covered the key, which for a domain or a network
+
+            is the enclosing entry rather than the key itself.'
+          type: string
+        refusal:
+          description: 'Refusal is why the set could not be consulted, when it could not: never
+
+            loaded, held elsewhere, or a source we hold no licence for. Non-empty means
+
+            Hit must not be read as an answer.'
+          type: string
+        score:
+          description: Score is the published risk weight where the source expresses one.
+          type: number
+        set:
+          description: Set is the set consulted.
+          type: string
+        stale:
+          description: "Stale is whether the set is past its freshness bound. A stale set still\nanswers \u2014 yesterday's\
+            \ list beats none \u2014 and this is how a decision knows it\nleaned on one."
+          type: boolean
+        value:
+          additionalProperties:
+            type: string
+          description: "Value is what the publisher says about the member \u2014 class, operator,\nscheme, region."
+          type: object
+        verdict:
+          description: 'Verdict is the tenant''s own allow or deny, present only for an override.
+
+            The baseline never carries one: it states facts and leaves the decision to
+
+            the caller''s policy.'
+          type: string
+        version:
+          description: 'Version is the exact baseline version consulted, composed of each
+
+            contributing publisher and its content digest. It is what makes a decision
+
+            reproducible: an auditor takes this string and knows precisely what was
+
+            consulted.'
+          type: string
+      type: object
+    ReferenceOut:
+      properties:
+        next:
+          description: Next is the key to page from, empty when this is the last page.
+          type: string
+        overrides:
+          description: 'Overrides is YOUR org''s entries over that baseline, in key order. They are
+
+            held in your organisation''s own store and are not visible to any other.'
+          items:
+            $ref: '#/components/schemas/ReferenceOverride'
+          type: array
+        set:
+          $ref: '#/components/schemas/ReferenceSet'
+          description: 'Set is the published set: its version, its freshness and its sources.'
+      type: object
+    ReferenceOverride:
+      properties:
+        at:
+          description: At is when it was written, RFC 3339.
+          type: string
+        by:
+          description: By is who wrote it.
+          type: string
+        key:
+          description: Key is the member this organisation is speaking about.
+          type: string
+        note:
+          description: Note is why, in the operator's own words. Optional, and bounded.
+          type: string
+        verdict:
+          description: Verdict is allow or deny.
+          type: string
+      type: object
+    ReferenceOverrideIn:
+      properties:
+        key:
+          description: 'Key is the member: a domain, a CIDR or address, an issuer prefix, a
+
+            device digest. It is matched the same way the baseline is, so a deny on
+
+            tempbox.example also covers mail.tempbox.example.'
+          type: string
+        note:
+          description: Note is why, in your own words. Optional, bounded to 512 bytes.
+          type: string
+        verdict:
+          description: "Verdict is allow or deny, and nothing else. An override is a decision \u2014\nunlike a baseline entry,\
+            \ which states facts and leaves the decision to your\npolicy \u2014 because your organisation is the only party\
+            \ entitled to say \"for\nus, this one is fine\"."
+          type: string
+      type: object
+    ReferenceReceipt:
+      properties:
+        asOf:
+          description: 'AsOf is when the load happened, RFC 3339. Absent is dated on arrival, which
+
+            can only make the list look older than it is.'
+          type: string
+        keys:
+          description: 'Keys is how many designations that load carried. Zero from a publisher who
+
+            designates somebody is a failed load wearing a successful one''s clothes,
+
+            and belongs in Refusal instead.'
+          type: integer
+        refusal:
+          description: Refusal is why the load failed, when it did.
+          type: string
+        source:
+          description: Source is the publisher this receipt is for.
+          type: string
+        version:
+          description: 'Version is the digest of what that publisher supplied, so a refresh that
+
+            changed nothing can be told from a refresh that did not run.'
+          type: string
+      type: object
+    ReferenceSet:
+      properties:
+        age:
+          description: Age is how long ago that was.
+          type: string
+        asOf:
+          description: 'AsOf is when the OLDEST contributing publisher was current, RFC 3339. The
+
+            oldest and not the newest: a set is exactly as fresh as its weakest source.'
+          type: string
+        keys:
+          description: Keys is how many members the baseline carries.
+          type: integer
+        kind:
+          description: 'Kind is how the baseline comes to exist: fetch (downloaded from a
+
+            publisher), local (computed here), attest (held by the component that
+
+            screens against it, freshness reported), or seam (declared and NOT held,
+
+            because the source needs a licence we do not have).'
+          type: string
+        match:
+          description: 'Match is how a key is tested: exact, domain, net, digits, pattern or range.'
+          type: string
+        maxAge:
+          description: MaxAge is how old this set may be before it is stale.
+          type: string
+        overrides:
+          description: Overrides is how many entries YOUR org has laid over this baseline.
+          type: integer
+        refusal:
+          description: 'Refusal names why the set cannot be relied on, when it cannot: never
+
+            loaded, held elsewhere, or a licence we do not hold. Non-empty means a
+
+            lookup against this set will not answer, rather than answering clean.'
+          type: string
+        set:
+          description: Set is the name this set is addressed by.
+          type: string
+        sources:
+          description: Sources is each contributing publisher, its licence and its own freshness.
+          items:
+            $ref: '#/components/schemas/ReferenceSource'
+          type: array
+        stale:
+          description: 'Stale is whether it is past that bound. A stale set still answers and says
+
+            so, because yesterday''s list beats none.'
+          type: boolean
+        version:
+          description: "Version is the exact baseline consulted \u2014 every contributing publisher and\nits content digest.\
+            \ A decision records this and an auditor resolves it back."
+          type: string
+        what:
+          description: What the set holds, in one sentence.
+          type: string
+      type: object
+    ReferenceSetsOut:
+      properties:
+        refused:
+          description: 'Refused names the sets that cannot be consulted at all. A key checked
+
+            against one of these is UNKNOWN, not clean.'
+          items:
+            type: string
+          type: array
+        sets:
+          description: Sets is the whole catalog, in a stable order.
+          items:
+            $ref: '#/components/schemas/ReferenceSet'
+          type: array
+        stale:
+          description: "Stale names the sets past their freshness bound \u2014 the list to alarm on."
+          items:
+            type: string
+          type: array
+      type: object
+    ReferenceSource:
+      properties:
+        asOf:
+          description: AsOf is when this publisher was current, RFC 3339.
+          type: string
+        basis:
+          description: "Basis is the KIND of permission this publisher's data reaches you under:\nlicence (an explicit grant),\
+            \ registry (the registry of record publishing for\nanyone to consult), operator (an operator's own machine-readable\
+            \ statement\nabout its own network, published for third parties to filter by \u2014 not a\nlicence, and not claimed\
+            \ as one), own (computed here), or none (nothing\nreaches you: the membership is held by the component that screens\
+            \ against\nit). It is on the wire so the licence position is an audit you can run."
+          type: string
+        keys:
+          description: Keys is how many members this publisher contributed.
+          type: integer
+        origin:
+          description: Origin is exactly where it was taken from, so it can be taken again.
+          type: string
+        refusal:
+          description: 'Refusal is why this publisher''s last take failed, if it did. The set keeps
+
+            its previous version of this source and ages out visibly rather than
+
+            silently shrinking.'
+          type: string
+        source:
+          description: Source is the publisher.
+          type: string
+        terms:
+          description: "Terms is the CITATION that basis points at \u2014 the licence identifier, the\nregistry, or the operator\
+            \ publication. A source with no stated terms is not\nin the catalog."
+          type: string
+        version:
+          description: 'Version is the content digest of what this publisher last supplied. Two
+
+            refreshes that agree on it took the same data.'
+          type: string
+      type: object
+    ReferenceTaken:
+      properties:
+        keys:
+          description: Keys is how many members it carries.
+          type: integer
+        refusal:
+          description: 'Refusal is why this publisher contributed nothing, if it did not. The set
+
+            keeps its previous version of this source rather than shrinking.'
+          type: string
+        resumed:
+          description: 'Resumed is true when this run continued a version a previous run left
+
+            half-landed.'
+          type: boolean
+        source:
+          description: Source is the publisher.
+          type: string
+        unchanged:
+          description: 'Unchanged is true when the publisher''s data was byte-for-byte the set we
+
+            already held.'
+          type: boolean
+        version:
+          description: Version is the content digest that landed.
+          type: string
+        wrote:
+          description: 'Wrote is how many rows this run actually wrote. Zero with Unchanged means
+
+            the publisher served the same set again.'
+          type: integer
+      type: object
+    ReferenceVersion:
+      properties:
+        asOf:
+          description: AsOf is when the oldest of them was current, RFC 3339.
+          type: string
+        refusal:
+          description: Refusal is why it could not be consulted, when it could not.
+          type: string
+        set:
+          description: Set is the set.
+          type: string
+        stale:
+          description: Stale is whether it is past its freshness bound.
+          type: boolean
+        version:
+          description: Version is every contributing publisher and its content digest.
+          type: string
+      type: object
+    RefreshReferenceIn:
+      properties:
+        force:
+          description: "Force accepts a take whose size moved past the change bound. A publisher\nserving a tenth or ten times\
+            \ its previous list is refused by default and the\nprevious version is left standing; this is the operator saying\
+            \ the change is\nreal. It cannot make an empty, truncated or unparseable take land \u2014 those are\nerrors, not\
+            \ magnitudes."
+          type: boolean
+        receipts:
+          description: 'Receipts are supplied by the component that holds the membership, for a set
+
+            of kind attest. They are refused on any other kind, and a set of kind attest
+
+            is refused without them: this plane never invents a freshness it did not
+
+            observe.'
+          items:
+            $ref: '#/components/schemas/ReferenceReceipt'
+          type: array
+        set:
+          description: Set is the set to refresh.
+          type: string
+      type: object
+    RefreshReferenceOut:
+      properties:
+        set:
+          description: Set is the set refreshed.
+          type: string
+        stale:
+          description: 'Stale is whether it is STILL past its freshness bound after the refresh,
+
+            which is what a publisher that has stopped answering looks like.'
+          type: boolean
+        took:
+          description: Took is what each publisher contributed.
+          items:
+            $ref: '#/components/schemas/ReferenceTaken'
+          type: array
+        version:
+          description: Version is the set's new composed version.
+          type: string
       type: object
     Registration:
       properties:
@@ -4545,6 +4907,55 @@ components:
           type: string
         projects:
           type: integer
+      type: object
+    ResolveReferenceIn:
+      properties:
+        keys:
+          description: 'Keys are the values to look up, at most 100 per call: email addresses or
+
+            domains, IP addresses, card prefixes, user-agent strings, autonomous system
+
+            numbers, device digests.'
+          items:
+            type: string
+          type: array
+        sets:
+          description: 'Sets narrows which sets to consult. Empty consults every set whose matcher
+
+            can read the keys given.'
+          items:
+            type: string
+          type: array
+      type: object
+    ResolveReferenceOut:
+      properties:
+        answers:
+          description: Answers is one entry per (set, key) consulted.
+          items:
+            $ref: '#/components/schemas/ReferenceAnswer'
+          type: array
+        consulted:
+          description: 'Consulted names the version of every set that took part, so a decision can
+
+            record precisely what it leaned on. Record this with the decision: it is
+
+            what makes the decision reproducible a year later.'
+          items:
+            $ref: '#/components/schemas/ReferenceVersion'
+          type: array
+        refused:
+          description: 'Refused names the consulted sets that could not answer at all. A key that
+
+            missed in one of these is UNKNOWN, not clean.'
+          items:
+            type: string
+          type: array
+        stale:
+          description: "Stale names the consulted sets past their freshness bound. Staleness is\nitself a risk signal \u2014\
+            \ a decision taken against a three-week-old list is a\nweaker decision, and this is how it knows."
+          items:
+            type: string
+          type: array
       type: object
     Result:
       properties:
@@ -5131,6 +5542,26 @@ components:
           type: string
         waitlistMode:
           type: boolean
+      type: object
+    SetReferenceIn:
+      properties:
+        entries:
+          description: Entries are the overrides to write, up to 1000 per call.
+          items:
+            $ref: '#/components/schemas/ReferenceOverrideIn'
+          type: array
+      type: object
+    SetReferenceOut:
+      properties:
+        overrides:
+          description: Overrides is how many your org now holds in this set.
+          type: integer
+        set:
+          description: Set is the set written in.
+          type: string
+        written:
+          description: Written is how many entries this call wrote.
+          type: integer
       type: object
     SharePolicy:
       properties:
@@ -6897,7 +7328,7 @@ components:
     adminBonusDirectory:
       properties:
         referrals:
-          description: Referrals is every referral in the ledger, both orgs exposed.
+          description: Referrals is every referral in the directory, both orgs exposed.
           items:
             $ref: '#/components/schemas/adminReferralView'
           type: array
@@ -7029,11 +7460,6 @@ components:
         createdAt:
           description: CreatedAt is when the referral was recorded, as a Unix timestamp.
           type: integer
-        creditedAt:
-          description: 'CreditedAt is when the bonuses were latched and granted, as a Unix
-
-            timestamp; 0 until they are.'
-          type: integer
         id:
           description: ID is the referral's handle.
           type: string
@@ -7042,36 +7468,14 @@ components:
 
             timestamp; 0 while still pending.'
           type: integer
-        refereeGrantCents:
-          description: 'RefereeGrantCents is what the referee was granted, in USD cents; 0 until the
-
-            referral is credited.'
-          type: integer
         refereeOrg:
           description: RefereeOrg is the org that signed up with it.
           type: string
-        refereeTxn:
-          description: 'RefereeTxn is the commerce ledger transaction that carried the referee''s
-
-            grant, omitted until one exists.'
-          type: string
-        referrerGrantCents:
-          description: 'ReferrerGrantCents is what the referrer was granted, in USD cents; 0 until
-
-            the referral is credited.'
-          type: integer
         referrerOrg:
           description: ReferrerOrg is the org whose code was used.
           type: string
-        referrerTxn:
-          description: 'ReferrerTxn is the commerce ledger transaction that carried the referrer''s
-
-            grant, omitted until one exists.'
-          type: string
         status:
-          description: 'Status is the referral''s lifecycle state: "signup", "qualified" or
-
-            "credited".'
+          description: 'Status is the referral''s lifecycle state: "signup" or "qualified".'
           type: string
       type: object
     adminReportData:
@@ -7102,21 +7506,14 @@ components:
       type: object
     adminSummary:
       properties:
-        credited:
-          description: Credited is how many have paid both bonuses.
-          type: integer
-        grantedCents:
-          description: "GrantedCents is the promo credit granted across BOTH sides of every\nreferral, in USD cents \u2014\
-            \ the program's total liability to date."
-          type: integer
         qualified:
-          description: Qualified is how many have qualified but are not yet credited.
+          description: Qualified is how many referees have made metered spend.
           type: integer
         signup:
           description: Signup is how many are recorded but not yet qualified.
           type: integer
         total:
-          description: Total is every referral in the ledger.
+          description: Total is every referral in the directory.
           type: integer
       type: object
     advanceIn:
@@ -16882,252 +17279,6 @@ components:
           description: URL is the canonical https remote, with any embedded credentials stripped.
           type: string
       type: object
-    mlDataset:
-      properties:
-        at:
-          description: At is when this version last changed state, and By who.
-          type: string
-        by:
-          type: string
-        counts:
-          $ref: '#/components/schemas/mlSplitCounts'
-          description: Counts is how the rows fall across the splits.
-        digest:
-          description: 'Digest fingerprints the SPEC and the ROWS together. Two materialisations of
-
-            one spec agree on it or the plane says they do not.'
-          type: string
-        name:
-          description: Name and Version identify the version.
-          type: string
-        refusal:
-          description: Refusal names why there are no bytes, when there are none.
-          type: string
-        running:
-          description: "Running is true while THIS process is materialising the version. A version\nthat is `materializing`\
-            \ and not running was started by a process that is\ngone \u2014 two states the register cannot tell apart, because\
-            \ a register cannot\nknow which processes are alive."
-          type: boolean
-        share:
-          description: 'Share is the fraction of the window''s subjects admitted, in thousandths.
-
-            1000 means the whole window fitted under the cap; anything less means the
-
-            version is a reproducible sample and says by how much.'
-          type: integer
-        spec:
-          $ref: '#/components/schemas/mlDatasetSpec'
-          description: Spec is the bound query this version was built from, exactly as recorded.
-        status:
-          description: 'Status is declared, materializing, ready or refused. Only `ready` has bytes,
-
-            and `ready` is terminal: a published version is never rewritten.'
-          type: string
-        truncated:
-          description: 'Truncated is true when the row cap bound before the window ran out. The
-
-            trailing subject is dropped whole when that happens, because half a subject
-
-            on one side of a split is exactly the leak the grouping prevents.'
-          type: boolean
-        version:
-          type: integer
-      type: object
-    mlDatasetList:
-      properties:
-        items:
-          description: 'Items is one entry per dataset, carrying its newest version. Never null: an
-
-            org that has declared nothing gets an empty array.'
-          items:
-            $ref: '#/components/schemas/mlDataset'
-          type: array
-      type: object
-    mlDatasetRow:
-      properties:
-        at:
-          description: At is the row's instant.
-          type: string
-        id:
-          description: 'ID names the row forever. It is DERIVED from the row''s own subject and
-
-            instant, not allocated, so two materialisations of the same fact agree on it
-
-            without coordinating.'
-          type: string
-        kind:
-          description: Kind and Subject name whose row this is.
-          type: string
-        point:
-          description: Point is the coordinates, in the order the version's spec names its dims.
-          items:
-            type: number
-          type: array
-        split:
-          description: Split is train, val or test.
-          type: string
-        subject:
-          type: string
-      type: object
-    mlDatasetRows:
-      properties:
-        dataset:
-          type: string
-        digest:
-          description: 'Digest is the version''s fingerprint. An exported page that did not carry it
-
-            would be bytes with no way to say which dataset they are.'
-          type: string
-        dims:
-          description: Dims names what each coordinate of Point means, in Point's own order.
-          items:
-            type: string
-          type: array
-        limit:
-          type: integer
-        offset:
-          description: 'Offset and Limit are the page actually served, which may be smaller than the
-
-            one asked for.'
-          type: integer
-        rows:
-          description: Rows is the page. Never null.
-          items:
-            $ref: '#/components/schemas/mlDatasetRow'
-          type: array
-        version:
-          type: integer
-      type: object
-    mlDatasetSpec:
-      properties:
-        cuts:
-          description: "Cuts are the two RFC 3339 instants dividing train | val | test. Omit them to\ntake 70% and 85% of\
-            \ the window by time. Splitting is TEMPORAL and then\ngrouped by subject \u2014 a random split puts one device\
-            \ on both sides of the\nline and the model memorises the entity instead of the behaviour."
-          items:
-            type: string
-          type: array
-        dims:
-          description: 'Dims are the coordinates to carry, by published name. Empty takes the whole
-
-            surface. They are stored in the plane''s own order, never the order given, so
-
-            two requests naming the same dims produce identical rows.'
-          items:
-            type: string
-          type: array
-        from:
-          description: 'From and To bound the event window, half-open, RFC 3339. The window may not
-
-            be longer than the source''s own retention: past that, its older half is
-
-            already gone and the dataset would silently be shorter than it says.'
-          type: string
-        horizon:
-          description: 'Horizon is how many days a row must have aged before it may be admitted. It
-
-            is what keeps a fact that was not yet knowable at scoring time out of a
-
-            training set: a chargeback lands 30 to 120 days after the transaction it
-
-            condemns, so 120 for the payment lane and 14 for signup abuse. Zero admits
-
-            the whole window and is honest only where the outcome is immediate.'
-          type: integer
-        kind:
-          description: "Kind narrows to one subject kind \u2014 person, session or account. Empty takes\nevery kind."
-          type: string
-        name:
-          description: 'Name identifies the dataset across its versions: lower-case letters, digits
-
-            and hyphens, starting with a letter.'
-          type: string
-        rows:
-          description: Rows caps the materialisation. Zero takes the plane's own bound.
-          type: integer
-        seed:
-          description: 'Seed decides WHICH subjects are admitted when the window holds more rows
-
-            than the cap allows. It is recorded on the version, so a capped dataset is
-
-            reproducible rather than being whichever rows the store returned first.
-
-            Omit it to seed from the dataset''s name.'
-          type: string
-        to:
-          type: string
-      type: object
-    mlDatasetVersions:
-      properties:
-        items:
-          items:
-            $ref: '#/components/schemas/mlDataset'
-          type: array
-        name:
-          type: string
-      type: object
-    mlDisposal:
-      properties:
-        dataset:
-          type: string
-        rows:
-          type: integer
-        versions:
-          description: 'Versions is how many versions went, and Rows how many rows they held between
-
-            them, as the register recorded them.'
-          type: integer
-      type: object
-    mlLineage:
-      properties:
-        dataset:
-          type: string
-        digest:
-          description: 'Digest is the version''s fingerprint, repeated here so a lineage answer is
-
-            self-contained.'
-          type: string
-        from:
-          description: "From and To are the window actually read \u2014 To is the window's end pulled\nback by the maturity\
-            \ horizon, which is usually earlier than the spec's."
-          type: string
-        holds:
-          description: 'Holds is what the source holds for the same window NOW. The difference
-
-            between it and Rows is the whole of the reproducibility claim.'
-          type: integer
-        refusal:
-          type: string
-        reproducible:
-          description: 'Reproducible is true when the source still holds what this version was built
-
-            from. Refusal says why not, when it is false.'
-          type: boolean
-        retention:
-          description: 'Retention is the source''s own expiry rule as the store reports it, read at
-
-            materialisation time rather than assumed. A source whose retention is
-
-            shorter than this window cannot re-derive it.'
-          type: string
-        rows:
-          description: 'Rows and Subjects are what the source held for that window at
-
-            materialisation time.'
-          type: integer
-        share:
-          description: Share is the fraction of subjects admitted, in thousandths.
-          type: integer
-        source:
-          description: Source is the plane the rows were derived from.
-          type: string
-        subjects:
-          type: integer
-        to:
-          type: string
-        version:
-          type: integer
-      type: object
     mlResource:
       properties:
         createdAt:
@@ -17146,55 +17297,15 @@ components:
         status:
           additionalProperties:
             type: object
-          description: 'Status is the live status its operator owns (kserve, trainer or katib),
+          description: 'Status is the live status kserve owns, verbatim. Absent until kserve has
 
-            verbatim. Absent until that operator has written one.'
+            written one.'
           type: object
       type: object
     mlResourceList:
       properties:
         items:
           description: Items is one entry per object, newest LAST (the Kubernetes list order).
-          items:
-            $ref: '#/components/schemas/mlResource'
-          type: array
-      type: object
-    mlSplitCounts:
-      properties:
-        judged:
-          description: 'Judged is how many rows carry a disposition. It is zero until a label plane
-
-            writes one, and reporting it plainly is what lets a model plane refuse to
-
-            rank rather than name a winner it cannot justify.'
-          type: integer
-        productive:
-          description: 'Productive and Unproductive are the two judged classes, so the imbalance is
-
-            visible before anyone trains on it.'
-          type: integer
-        rows:
-          type: integer
-        subjects:
-          description: "Subjects is how many distinct subjects the rows belong to. Every row of one\nsubject is in ONE split,\
-            \ so this is the real sample size \u2014 the row count\nflatters it whenever a subject is active."
-          type: integer
-        test:
-          type: integer
-        train:
-          type: integer
-        unproductive:
-          type: integer
-        val:
-          type: integer
-      type: object
-    mlTrials:
-      properties:
-        experiment:
-          description: Experiment is the experiment the trials belong to, echoed from the path.
-          type: string
-        items:
-          description: Items is one entry per Trial, in the list shape (no spec).
           items:
             $ref: '#/components/schemas/mlResource'
           type: array
@@ -17330,16 +17441,6 @@ components:
         createdAt:
           description: CreatedAt is when the referral was recorded, as a Unix timestamp.
           type: integer
-        creditedAt:
-          description: 'CreditedAt is when the bonuses were latched and granted, as a Unix
-
-            timestamp; 0 until they are. It is the at-most-once latch.'
-          type: integer
-        creditsCents:
-          description: 'CreditsCents is what I earned from this referral, in USD cents. It is 0
-
-            until the referee qualifies.'
-          type: integer
         id:
           description: ID is the referral's handle.
           type: string
@@ -17352,9 +17453,9 @@ components:
           description: Referee is the org that signed up with my code.
           type: string
         status:
-          description: 'Status is the referral''s lifecycle state: "signup" until the referee
+          description: 'Status is the referral''s lifecycle state: "signup" until the referee makes
 
-            makes metered spend, then "qualified", then "credited".'
+            metered spend, then "qualified".'
           type: string
       type: object
     myReferrals:
@@ -17366,27 +17467,14 @@ components:
         counts:
           $ref: '#/components/schemas/statusCounts'
           description: Counts tallies this org's referrals by status.
-        creditsEarnedCents:
-          description: 'CreditsEarnedCents is the total promo credit this org has earned as the
-
-            REFERRER, in USD cents.'
-          type: integer
         link:
           description: Link is the shareable signup link carrying the code, on the brand's own host.
           type: string
-        refereeBonusCents:
-          description: RefereeBonusCents is what a referee is granted on qualification, in USD cents.
-          type: integer
         referrals:
           description: Referrals is one row per org that signed up with this code.
           items:
             $ref: '#/components/schemas/myReferralView'
           type: array
-        referrerBonusCents:
-          description: 'ReferrerBonusCents is what the referrer is granted when a referee qualifies,
-
-            in USD cents.'
-          type: integer
       type: object
     namespaceCreateIn:
       properties:
@@ -32175,6 +32263,260 @@ components:
             \ \u2014 the counterfactual itself."
           type: number
       type: object
+    riskDataset:
+      properties:
+        at:
+          description: At is when this version last changed state, and By who.
+          type: string
+        by:
+          type: string
+        counts:
+          $ref: '#/components/schemas/riskSplitCounts'
+          description: Counts is how the rows fall across the splits.
+        digest:
+          description: 'Digest fingerprints the SPEC and the ROWS together. Two materialisations of
+
+            one spec agree on it or the plane says they do not.'
+          type: string
+        name:
+          description: Name and Version identify the version.
+          type: string
+        oversize:
+          description: "Oversize is how many of the window's subjects this version could NOT carry\nbecause their subject\
+            \ identity exceeds the plane's per-subject byte bound.\n\nIt is on the wire, not only in a log, because it is\
+            \ the one degradation a\ncaller cannot otherwise detect: the rows that are here look complete, and a\ndataset\
+            \ silently missing a population is a model silently blind to it.\nNon-zero does not make a version invalid \u2014\
+            \ it makes it a version whose\ncoverage is STATED. Zero is the normal case and omits."
+          type: integer
+        refusal:
+          description: Refusal names why there are no bytes, when there are none.
+          type: string
+        running:
+          description: "Running is true while THIS process is materialising the version. A version\nthat is `materializing`\
+            \ and not running was started by a process that is\ngone \u2014 two states the register cannot tell apart, because\
+            \ a register cannot\nknow which processes are alive."
+          type: boolean
+        share:
+          description: 'Share is the fraction of the window''s subjects admitted, in thousandths.
+
+            1000 means the whole window fitted under the cap; anything less means the
+
+            version is a reproducible sample and says by how much.'
+          type: integer
+        spec:
+          $ref: '#/components/schemas/riskDatasetSpec'
+          description: Spec is the bound query this version was built from, exactly as recorded.
+        status:
+          description: 'Status is declared, materializing, ready or refused. Only `ready` has bytes,
+
+            and `ready` is terminal: a published version is never rewritten.'
+          type: string
+        truncated:
+          description: 'Truncated is true when the row cap bound before the window ran out. The
+
+            trailing subject is dropped whole when that happens, because half a subject
+
+            on one side of a split is exactly the leak the grouping prevents.'
+          type: boolean
+        version:
+          type: integer
+      type: object
+    riskDatasetDisposal:
+      properties:
+        dataset:
+          type: string
+        rows:
+          type: integer
+        versions:
+          description: 'Versions is how many versions went, and Rows how many rows they held between
+
+            them, as the register recorded them.'
+          type: integer
+      type: object
+    riskDatasetList:
+      properties:
+        items:
+          description: 'Items is one entry per dataset, carrying its newest version. Never null: an
+
+            org that has declared nothing gets an empty array.'
+          items:
+            $ref: '#/components/schemas/riskDataset'
+          type: array
+      type: object
+    riskDatasetRow:
+      properties:
+        at:
+          description: At is the row's instant.
+          type: string
+        id:
+          description: 'ID names the row forever. It is DERIVED from the row''s own subject and
+
+            instant, not allocated, so two materialisations of the same fact agree on it
+
+            without coordinating.'
+          type: string
+        kind:
+          description: Kind and Subject name whose row this is.
+          type: string
+        point:
+          description: Point is the coordinates, in the order the version's spec names its dims.
+          items:
+            type: number
+          type: array
+        split:
+          description: Split is train, val or test.
+          type: string
+        subject:
+          type: string
+      type: object
+    riskDatasetRows:
+      properties:
+        dataset:
+          type: string
+        digest:
+          description: 'Digest is the version''s fingerprint. An exported page that did not carry it
+
+            would be bytes with no way to say which dataset they are.'
+          type: string
+        dims:
+          description: Dims names what each coordinate of Point means, in Point's own order.
+          items:
+            type: string
+          type: array
+        limit:
+          type: integer
+        offset:
+          description: 'Offset and Limit are the page actually served, which may be smaller than the
+
+            one asked for.'
+          type: integer
+        rows:
+          description: Rows is the page. Never null.
+          items:
+            $ref: '#/components/schemas/riskDatasetRow'
+          type: array
+        version:
+          type: integer
+      type: object
+    riskDatasetSpec:
+      properties:
+        cuts:
+          description: "Cuts are the two RFC 3339 instants dividing train | val | test. Omit them to\ntake 70% and 85% of\
+            \ the window by time. Splitting is TEMPORAL and then\ngrouped by subject \u2014 a random split puts one device\
+            \ on both sides of the\nline and the model memorises the entity instead of the behaviour."
+          items:
+            type: string
+          type: array
+        dims:
+          description: 'Dims are the coordinates to carry, by published name. Empty takes the whole
+
+            surface. They are stored in the plane''s own order, never the order given, so
+
+            two requests naming the same dims produce identical rows.'
+          items:
+            type: string
+          type: array
+        from:
+          description: 'From and To bound the event window, half-open, RFC 3339. The window may not
+
+            be longer than the source''s own retention: past that, its older half is
+
+            already gone and the dataset would silently be shorter than it says.'
+          type: string
+        horizon:
+          description: 'Horizon is how many days a row must have aged before it may be admitted. It
+
+            is what keeps a fact that was not yet knowable at scoring time out of a
+
+            training set: a chargeback lands 30 to 120 days after the transaction it
+
+            condemns, so 120 for the payment lane and 14 for signup abuse. Zero admits
+
+            the whole window and is honest only where the outcome is immediate.'
+          type: integer
+        kind:
+          description: "Kind narrows to one subject kind \u2014 person, session or account. Empty takes\nevery kind."
+          type: string
+        name:
+          description: 'Name identifies the dataset across its versions: lower-case letters, digits
+
+            and hyphens, starting with a letter.'
+          type: string
+        rows:
+          description: Rows caps the materialisation. Zero takes the plane's own bound.
+          type: integer
+        seed:
+          description: 'Seed decides WHICH subjects are admitted when the window holds more rows
+
+            than the cap allows. It is recorded on the version, so a capped dataset is
+
+            reproducible rather than being whichever rows the store returned first.
+
+            Omit it to seed from the dataset''s name.'
+          type: string
+        to:
+          type: string
+      type: object
+    riskDatasetVersions:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/riskDataset'
+          type: array
+        name:
+          type: string
+      type: object
+    riskDisposeIn:
+      properties:
+        before:
+          description: "Before disposes of assertions WRITTEN before this instant, RFC 3339. It is\nmeasured against the server\
+            \ clock at the write and not against the event\nor observation times, both of which the asserting caller supplies\
+            \ \u2014 a\ntenant that could back-date could delete a compliance record on demand."
+          type: string
+      type: object
+    riskDisposeOut:
+      properties:
+        before:
+          type: string
+        disposed:
+          description: 'Disposed is how many whole records were removed. Records are disposed of
+
+            whole, never redacted: a partially-erased compliance record is one nobody
+
+            can attest to.'
+          type: integer
+        held:
+          description: 'Held is how many records inside the boundary were kept under litigation
+
+            hold.'
+          type: integer
+        oldest:
+          type: string
+        remaining:
+          description: 'Remaining is how many disposable records are still older than the
+
+            boundary. A sweep is bounded per call, so a non-zero value here means call
+
+            again rather than that something failed.'
+          type: integer
+        restored:
+          description: "Restored is how many records this sweep had already removed from the derived\ncolumnar copy and then\
+            \ did NOT dispose of, because a litigation hold arrived\nbetween the identify and the delete \u2014 and which\
+            \ were therefore written back\nto the derived copy before this answered.\n\nIt is a NAMED state and not a silent\
+            \ repair. The copy is swept before the\nrecord so nothing is orphaned in the warehouse, which means a record the\n\
+            delete declines to remove is one the warehouse has already lost, with its\nseq behind the delivery cursor and\
+            \ no retry that can reach it. Non-zero here\nsays the collision happened and was repaired; a non-zero that keeps\n\
+            recurring says retention and hold are racing on the same records, which is\nworth an operator's attention rather\
+            \ than a debug line."
+          type: integer
+        total:
+          description: 'Total and Oldest describe what the tenant still holds afterwards, so a
+
+            disposal that removed nothing is distinguishable from a tenant that had
+
+            nothing.'
+          type: integer
+      type: object
     riskEvent:
       properties:
         at:
@@ -32223,6 +32565,328 @@ components:
           description: Subject is the identifier on that kind.
           type: string
       type: object
+    riskHoldIn:
+      properties:
+        hold:
+          description: "Hold is the state to put them in: true places the hold, false releases it.\nOne op both ways, because\
+            \ a hold that can be placed and not released pins a\ncompliance record past every retention boundary with nothing\
+            \ able to let it\ngo \u2014 and an operator who cannot release a hold stops placing them."
+          type: boolean
+        ids:
+          description: 'IDs are the content digests of the records, as returned by the write and
+
+            by the read. They name records in THIS tenant''s plane; an id belonging to
+
+            anybody else names nothing here, because the statement runs against this
+
+            tenant''s own file and there is no other file it could reach.'
+          items:
+            type: string
+          type: array
+      type: object
+    riskHoldOut:
+      properties:
+        changed:
+          description: 'Changed is how many records moved into that state. A record already in it
+
+            is not counted and is not an error: the op is idempotent, so a retry after
+
+            a network failure is safe.'
+          type: integer
+        held:
+          description: 'Held is how many records this tenant is now holding, at any age. Retention
+
+            never disposes of one.'
+          type: integer
+        hold:
+          description: Hold echoes the state asked for.
+          type: boolean
+        missing:
+          description: "Missing is how many of the named ids this tenant does not hold. It is\nreported rather than refused,\
+            \ so a sweep over a list that includes disposed\nrecords still places every hold it can \u2014 but it is REPORTED,\
+            \ because a hold\nthat silently did nothing is a compliance control that lies."
+          type: integer
+      type: object
+    riskLabelCoverage:
+      properties:
+        contested:
+          description: 'Contested is how many matured events have two visible assertions that
+
+            disagree. It is the number that says whether the precedence rule is
+
+            load-bearing or decorative, and it is the one to watch after wiring a new
+
+            source.'
+          type: integer
+        events:
+          type: integer
+        explore:
+          description: "Explore is the share of judged events whose winning assertion came from\nthe below-the-line sample.\
+            \ A blocked transaction never produces a\nchargeback, so a training set with no exploration in it is a description\
+            \ of\nthe incumbent block list rather than of the world \u2014 and a champion measured\non it is measured on whether\
+            \ it agrees with the incumbent."
+          type: number
+        facts:
+          description: 'Facts is how many assertions the window holds; Events is how many distinct
+
+            judged events they cover. The two differ by exactly the corroboration and
+
+            the conflict in the plane.'
+          type: integer
+        from:
+          type: string
+        horizon:
+          type: integer
+        judged:
+          description: 'Judged is how many MATURED events resolve, at their own as-of, to
+
+            something other than unjudged.'
+          type: integer
+        matured:
+          description: "Matured is how many of those events have aged past the horizon and may\ntherefore be admitted to a\
+            \ supervised set at all. It counts every matured\nevent, judged or not \u2014 it is the DENOMINATOR an operator\
+            \ divides Judged by,\nand a denominator that excluded the unjudged would read 1.0 on a plane with\none label in\
+            \ it."
+          type: integer
+        pending:
+          description: "Pending is how many of this tenant's assertions the DERIVED columnar copy is\nnot known to hold yet.\
+            \ Every count above is folded from the record, so they\nare right regardless \u2014 but a materialiser that joins\
+            \ in the warehouse while\nthis is non-zero is joining against an incomplete answer key, and a missing\nfraud label\
+            \ is indistinguishable from an honest customer. It is reported at\nthe training gate because that is where somebody\
+            \ is deciding whether the\nground truth is good enough to fit on. Counted under a cap, so it saturates\nrather\
+            \ than costing a full scan on every read."
+          type: integer
+        productive:
+          type: integer
+        sources:
+          description: 'Sources breaks the judged events down by the source that WON, so a plane
+
+            that looks labelled because one noisy source dominates is visible as such.'
+          items:
+            $ref: '#/components/schemas/riskSourceCoverage'
+          type: array
+        to:
+          type: string
+        unlabelled:
+          description: "Unlabelled is how many MATURED events had no assertion knowable by their\nown as-of \u2014 including\
+            \ every assertion that arrived after that instant. It\nis the field that says WHY judged is low: a tenant whose\
+            \ ground truth was\nfiled long after the events it judges reads matured=n, judged=0,\nunlabelled=n, which is diagnosable,\
+            \ rather than a bare zero, which is not."
+          type: integer
+        unmatured:
+          description: "Unmatured is how many events in the window have NOT aged past the horizon.\nThey are not unlabelled\
+            \ \u2014 they are not yet askable, and a supervised set\nmust exclude them rather than treat them as negatives.\
+            \ Matured + Unmatured\nis Events."
+          type: integer
+        unproductive:
+          type: integer
+      type: object
+    riskLabelEvent:
+      properties:
+        at:
+          type: string
+        kind:
+          type: string
+        subject:
+          type: string
+      type: object
+    riskLabelFact:
+      properties:
+        at:
+          description: At is when the judged event happened, RFC 3339.
+          type: string
+        confidence:
+          description: "Confidence in [0,1]. A processor chargeback is 1; an analyst's hunch is\nnot. It breaks a tie WITHIN\
+            \ a precedence rank and can never lift a weak\nsource above a strong one \u2014 otherwise every caller would send\
+            \ 1.\n\nA litigation hold is NOT a field here. It is a fact about the record and\nnot about the world, so it is\
+            \ not part of what was asserted, it is not in\nthe content digest, and it has its own op \u2014 which is also\
+            \ the only way one\ncan be released. Carried here it was silently a no-op on any record that\nalready existed:\
+            \ the digest was the same, the insert was ignored, and the\ncaller was told `duplicate` while the hold it asked\
+            \ for was never placed."
+          type: number
+        disposition:
+          description: "Disposition is productive, unproductive, or empty for an explicit\nunjudged \u2014 the AML engine's\
+            \ own vocabulary, verbatim."
+          type: string
+        evidence:
+          description: 'Evidence points at the record this conclusion came from: a dispute id, a
+
+            case id, a decision id. Required, because a label with no evidence cannot
+
+            be defended when the adverse action it fed is challenged.'
+          type: string
+        kind:
+          description: 'Kind is what the subject is: account, agent, merchant, payout, person,
+
+            session or transaction. Closed, because a typo in an open field would shard
+
+            a tenant''s labels into a partition nothing reads and nothing would say so.'
+          type: string
+        seen:
+          description: 'Seen is when this assertion became KNOWABLE, RFC 3339. It is required and
+
+            it is not At: a chargeback lands 30 to 120 days after the transaction it
+
+            judges, and a training set joined on At alone knows the future. Everything
+
+            this plane does to prevent leakage is computed from Seen.'
+          type: string
+        source:
+          description: "Source is who asserted: chargeoff, dispute, case, refund, review or\nsample. It is the primary term\
+            \ of the precedence rule, so it is closed \u2014\nan unknown source has no rank and a conflict with it could not\
+            \ be resolved."
+          type: string
+        subject:
+          description: Subject identifies the thing being judged, in the tenant's own namespace.
+          type: string
+      type: object
+    riskLabelIn:
+      properties:
+        labels:
+          description: 'Labels is the batch. Each member is judged on its own: one refusal does
+
+            not discard the rest, because a webhook redelivering five disputes must
+
+            not lose four of them to one malformed fifth.'
+          items:
+            $ref: '#/components/schemas/riskLabelFact'
+          type: array
+      type: object
+    riskLabelOut:
+      properties:
+        duplicate:
+          type: integer
+        mirror:
+          description: "Mirror names why the columnar copy did not take this batch, when it did\nnot. The record is already\
+            \ durable in the tenant's own store by then \u2014 the\nwarehouse copy exists to make a training join cheap, and\
+            \ its absence is a\ngap in that join, never a lost label."
+          type: string
+        pending:
+          description: 'Pending is how many assertions the derived copy is still to take. Every
+
+            write attempt carries the backlog forward as well as its own batch, so a
+
+            warehouse that was unreachable closes its gap on the next write rather than
+
+            leaving a hole in a training join nothing would report. It is counted under
+
+            a cap and saturates there: zero means caught up, and a large number means a
+
+            backlog to work through rather than an inventory to reconcile.'
+          type: integer
+        recorded:
+          type: integer
+        refused:
+          type: integer
+        results:
+          description: 'Results is per fact, in the order sent, so a caller can retry exactly the
+
+            members that were refused and can log the content digest of the ones that
+
+            landed.'
+          items:
+            $ref: '#/components/schemas/riskLabelResult'
+          type: array
+      type: object
+    riskLabelRecord:
+      properties:
+        at:
+          type: string
+        by:
+          description: By is the identity that asserted, stamped server-side at the write.
+          type: string
+        confidence:
+          type: number
+        disposition:
+          type: string
+        evidence:
+          type: string
+        hold:
+          type: boolean
+        id:
+          type: string
+        kind:
+          type: string
+        knowable:
+          description: "Knowable is when THIS PLANE could first have answered with the assertion:\nthe later of Seen and the\
+            \ server clock at the write, derived server-side.\nIt is the instant the leakage guard compares, so it is published\
+            \ beside the\nclaim it was derived from \u2014 an answer whose rule nobody can see is one\nnobody can check."
+          type: string
+        seen:
+          description: 'Seen is when the FILER said the assertion became knowable. It is
+
+            provenance: it is recorded and published, and it decides nothing.'
+          type: string
+        source:
+          type: string
+        subject:
+          type: string
+        wrote:
+          description: 'Wrote is the server clock at the write. It is the only time on the record
+
+            the tenant did not supply, and it is what retention measures against.'
+          type: string
+      type: object
+    riskLabelResult:
+      properties:
+        id:
+          description: "ID is the content digest of the assertion \u2014 the id a redelivery of the\nsame fact resolves to."
+          type: string
+        refusal:
+          description: Refusal states what was wrong, for the refused.
+          type: string
+        status:
+          description: Status is recorded, duplicate or refused.
+          type: string
+      type: object
+    riskLabelVocabulary:
+      properties:
+        dispositions:
+          items:
+            type: string
+          type: array
+        kinds:
+          description: 'Kinds, Dispositions and Sources are the closed vocabularies. A value
+
+            outside them is refused at the door.'
+          items:
+            type: string
+          type: array
+        precedence:
+          description: 'Precedence is the sources in the order that resolves a conflict, strongest
+
+            first. It is DERIVED from the same declaration the resolver reads, so the
+
+            published order is the enforced order and cannot drift from it.'
+          items:
+            type: string
+          type: array
+        retention:
+          description: 'Retention is the platform floor in days: no tenant may dispose of a label
+
+            younger than this, because a label can be the input to an adverse action.'
+          type: integer
+        rule:
+          description: 'Rule states the tie-breaks below rank, in order, so a caller reading a
+
+            contested resolution can reproduce it.'
+          items:
+            type: string
+          type: array
+      type: object
+    riskLabelsOut:
+      properties:
+        count:
+          description: 'Count is how many this page holds. It is not a total: a total over an
+
+            unbounded append-only log is a full scan of a single-writer file.'
+          type: integer
+        labels:
+          description: Labels is the page, newest event first.
+          items:
+            $ref: '#/components/schemas/riskLabelRecord'
+          type: array
+      type: object
     riskLearnIn:
       properties:
         events:
@@ -32236,17 +32900,67 @@ components:
     riskLearnOut:
       properties:
         learned:
-          description: 'Learned is how many events the model learned from, which is the batch, and
-
-            is also what the call is metered at: one screen per event.'
+          description: "Learned is how many of the events the model actually learned from, and is\nalso what the call is metered\
+            \ at: one screen per event learned from. It is\nthe batch minus the events already in this organisation's record,\
+            \ so a\nretried batch reports \u2014 and is charged \u2014 zero."
           type: integer
-        verdicts:
-          description: 'Verdicts is the model''s verdict on each event, in the order given, so a
+      type: object
+    riskLineage:
+      properties:
+        dataset:
+          type: string
+        digest:
+          description: 'Digest is the version''s fingerprint, repeated here so a lineage answer is
 
-            caller that is both teaching and deciding needs one round trip.'
-          items:
-            $ref: '#/components/schemas/riskScoreOut'
-          type: array
+            self-contained.'
+          type: string
+        from:
+          description: "From and To are the window actually read \u2014 To is the window's end pulled\nback by the maturity\
+            \ horizon, which is usually earlier than the spec's."
+          type: string
+        holds:
+          description: 'Holds is what the source holds for the same window NOW. The difference
+
+            between it and Rows is the whole of the reproducibility claim.'
+          type: integer
+        oversize:
+          description: 'Oversize is how many subjects the window held that were too large to
+
+            represent when this version was built. It is part of the fingerprint, so it
+
+            is part of what "reproducible" is measured over.'
+          type: integer
+        refusal:
+          type: string
+        reproducible:
+          description: 'Reproducible is true when the source still holds what this version was built
+
+            from. Refusal says why not, when it is false.'
+          type: boolean
+        retention:
+          description: 'Retention is the source''s own expiry rule as the store reports it, read at
+
+            materialisation time rather than assumed. A source whose retention is
+
+            shorter than this window cannot re-derive it.'
+          type: string
+        rows:
+          description: 'Rows and Subjects are what the source held for that window at
+
+            materialisation time.'
+          type: integer
+        share:
+          description: Share is the fraction of subjects admitted, in thousandths.
+          type: integer
+        source:
+          description: Source is the plane the rows were derived from.
+          type: string
+        subjects:
+          type: integer
+        to:
+          type: string
+        version:
+          type: integer
       type: object
     riskModelFeature:
       properties:
@@ -32307,6 +33021,22 @@ components:
 
             scores actually observed.'
           type: number
+        descends:
+          description: "Descends is the published value the working model grew out of: the newest one\nwhose mass count it\
+            \ has reached or passed. Empty when nothing has been\npublished yet.\n\nIt is DERIVED from the count and never\
+            \ stored, so an instant rollback is right\nfor free \u2014 adopting an older value moves the count backward and\
+            \ this answers\nwith that older value, where a stored pointer would be a second fact to keep\nin step. Read with\
+            \ Learned it is also the DRIFT: this model is Descends plus\nhowever many events the two counts differ by."
+          type: string
+        disposed:
+          description: 'Disposed is how many published values retention has taken. It is DERIVED from
+
+            the lowest surviving sequence, so it cannot drift from what it describes, and
+
+            it is reported because a retention that binds is a fact an operator must be
+
+            able to read rather than a silence.'
+          type: integer
         learned:
           description: Learned is how many events the model has learned from.
           type: integer
@@ -32314,6 +33044,12 @@ components:
           description: "Live is false while the model is in shadow \u2014 scoring, learning and\nrecording what it WOULD have\
             \ alerted on, and changing no outcome. Shadow is\nthe default for a new tenant."
           type: boolean
+        policy:
+          description: "Policy is the version of the decision regime this model is deciding under,\nfrom your organisation's\
+            \ own policy history (GET /v1/risk/policy). Every\nscore cites it, so it is the join between a past decision and\
+            \ the appetite\nthat produced its threshold. Zero means no regime has ever been stated and\nthe default posture\
+            \ \u2014 shadow \u2014 is in force."
+          type: integer
         realised:
           description: 'Realised is the share that actually was. Reading it beside Stated is what
 
@@ -32354,6 +33090,16 @@ components:
             \ caller and the organisation it acts for. It is\nechoed so a reader can see the answer is its own and not a parameter\
             \ it\npassed."
           type: string
+        values:
+          description: "Values is your organisation's own published model values, newest first \u2014\nevery state it deliberately\
+            \ named, each addressed by its own content and\nimmutable. This is what POST /v1/risk/state/restore names, so\
+            \ it is reported\nHERE rather than behind an address of its own: they are part of what a review\nof one model\
+            \ reads, and a list of names is a few hundred bytes.\n\nThe working model is NOT in it. Publication is a boundary\
+            \ somebody marked; the\nstate between two boundaries is in-process counters, and calling those a value\nwould\
+            \ be a claim about reproducibility that nothing could honour."
+          items:
+            $ref: '#/components/schemas/riskModelValue'
+          type: array
         warm:
           description: 'Warm is whether that is enough for the model to have an opinion at all.
 
@@ -32361,6 +33107,42 @@ components:
 
             a clean bill of health.'
           type: boolean
+      type: object
+    riskModelValue:
+      properties:
+        address:
+          description: "Address names this value by its own content: the model's shape, the geometry\nseed, its position in\
+            \ the window, its threshold, its masses as IEEE-754 bits\nand the fold watermark behind them. Nothing else \u2014\
+            \ no clock, no counter and\ndeliberately NOT the organisation, so an identical model has one name and a\nname\
+            \ is never an authority. Holding another organisation's address resolves\nnothing."
+          type: string
+        at:
+          description: 'At is when it was published, RFC 3339, on the server clock. You do not supply
+
+            it: a record whose date the audited party chose is not a record.'
+          type: string
+        learned:
+          description: Learned is how many events are behind the masses.
+          type: integer
+        sequence:
+          description: 'Sequence is this value''s place in YOUR organisation''s own history, from 1 and
+
+            contiguous until retention disposes of the oldest.'
+          type: integer
+        shape:
+          description: 'Shape is the model space the masses are only meaningful against: the feature
+
+            inventory in order and the detector''s geometry parameters.'
+          type: string
+        warmed:
+          description: 'Warmed is how far your own event surface had been folded in when this value
+
+            was published, RFC 3339. It is part of the address because two models with
+
+            identical masses reached by different routes disagree about what is left to
+
+            fold, and one of them will re-teach history the other will not.'
+          type: string
       type: object
     riskOrgFeature:
       properties:
@@ -32399,15 +33181,183 @@ components:
           description: Unit is how to read the numbers below.
           type: string
       type: object
+    riskPolicyOut:
+      properties:
+        changes:
+          description: 'Changes is how many DISTINCT regimes may be adopted per Window. A restatement
+
+            identical to the regime in force mints no version and is not counted against
+
+            it.'
+          type: integer
+        disposed:
+          description: 'Disposed is how many versions retention has taken. It is NOT a silence: a
+
+            history bounded on disk must say what it no longer holds, because a decision
+
+            citing a disposed version can no longer be reconstructed from this record.'
+          type: integer
+        history:
+          description: History is the retained versions, newest first.
+          items:
+            $ref: '#/components/schemas/riskPolicyVersion'
+          type: array
+        retained:
+          description: 'Retained is how many versions this organisation''s history holds at most,
+
+            derived from the byte budget its rows are a multiple of.'
+          type: integer
+        version:
+          description: "Version is the version in force \u2014 the one every score currently cites. Zero\nmeans no regime\
+            \ has ever been stated and the default posture, shadow, is in\nforce."
+          type: integer
+        window:
+          description: Window is the period Changes is measured over.
+          type: string
+      type: object
+    riskPolicyVersion:
+      properties:
+        at:
+          description: At is when it entered force, RFC 3339, from the server clock.
+          type: string
+        by:
+          description: 'By is the identity that stated it, stamped server-side from the validated
+
+            principal at the moment it entered force.'
+          type: string
+        live:
+          description: Live is whether the model was permitted to change an outcome under it.
+          type: boolean
+        review:
+          description: 'Review is the share of the stream the regime states may be examined. The
+
+            threshold in force is derived from it, which is why a decision is only
+
+            defensible against the version that produced it.'
+          type: number
+        sample:
+          description: Sample is the share of below-the-line events the regime retains for review.
+          type: number
+        version:
+          description: Version names this regime in this organisation's history.
+          type: integer
+      type: object
+    riskResolveIn:
+      properties:
+        horizon:
+          description: 'Horizon is how many days an event must age before it may be resolved at
+
+            all, and it is the whole of the no-leakage rule. 120 for the payment lane
+
+            (past the Visa and Mastercard dispute windows), 14 for signup abuse.
+
+            Unstated takes 120.'
+          type: integer
+        now:
+          description: 'Now moves the observation instant BACKWARDS, RFC 3339. It exists so a
+
+            BACKTEST can resolve labels as the plane stood at a past moment; without it,
+
+            every backtest would score a model against knowledge that arrived after the
+
+            decision it is being scored on. An instant after the server clock is
+
+            refused: a backtest resolves the past, and a future one would declare
+
+            unmatured events matured and hand a training set negatives for rows whose
+
+            chargeback has not had time to arrive.'
+          type: string
+        subjects:
+          description: "Subjects are the exact events being judged. Each carries its own event\ntime, because the as-of that\
+            \ keeps the future out is derived from that\ninstant plus the horizon \u2014 one as-of over a whole batch would\
+            \ give a\nJanuary row six extra months of hindsight.\n\nOne entry per DISTINCT (kind, subject, at): naming an\
+            \ event twice answers\nonce, because an event resolved twice would list its own winner as a\ncontrary claim and\
+            \ would hand a materialiser duplicate training rows."
+          items:
+            $ref: '#/components/schemas/riskLabelEvent'
+          type: array
+      type: object
+    riskResolveOut:
+      properties:
+        horizon:
+          type: integer
+        labels:
+          items:
+            $ref: '#/components/schemas/riskResolved'
+          type: array
+        now:
+          description: 'Now and Horizon echo the observation this answer was computed under. A
+
+            resolved label without them is a claim nobody can check.'
+          type: string
+        unlabelled:
+          description: 'Unlabelled is how many matured events had no assertion knowable by their
+
+            own as-of. That is the ordinary state of most traffic and it is reported
+
+            rather than answered as unproductive: manufacturing negatives is how a
+
+            fraud model comes to describe the incumbent block list.'
+          type: integer
+        unmatured:
+          description: "Unmatured is how many named events had not aged past the horizon. They are\nnot unlabelled \u2014\
+            \ they are not yet ASKABLE, and a supervised training set\nmust exclude them rather than treat them as negatives."
+          type: integer
+      type: object
+    riskResolved:
+      properties:
+        asOf:
+          description: 'AsOf is the instant this answer was true at: the event time plus the
+
+            horizon. Nothing seen after it was visible to this resolution.'
+          type: string
+        at:
+          type: string
+        by:
+          type: string
+        confidence:
+          type: number
+        conflicts:
+          description: 'Conflicts is every other visible assertion, strongest first, whole. They
+
+            are kept and returned rather than dropped, so an adverse action can show
+
+            that the plane knew of a contrary claim and say why it lost. They are
+
+            horizon-filtered exactly like the winner: an assertion that was not
+
+            knowable yet cannot even be named here, because naming it would leak its
+
+            existence into a past decision.'
+          items:
+            $ref: '#/components/schemas/riskLabelRecord'
+          type: array
+        contested:
+          description: 'Contested is true when a visible assertion claimed a DIFFERENT disposition.
+
+            Two sources agreeing is corroboration, not conflict.'
+          type: boolean
+        disposition:
+          type: string
+        evidence:
+          type: string
+        id:
+          type: string
+        kind:
+          type: string
+        source:
+          type: string
+        subject:
+          type: string
+      type: object
     riskRestoreIn:
       properties:
-        body:
-          $ref: '#/components/schemas/riskSnapshotBody'
-          description: 'Body is a snapshot this organisation took. One naming another organisation
-
-            is refused: it is that organisation''s learned behaviour, and installing it
-
-            would put one tenant''s activity inside another''s model.'
+        address:
+          description: "Address is one of YOUR organisation's own published values (GET\n/v1/risk/state reports them). An\
+            \ address your organisation has not published\nis NOT FOUND \u2014 including one another organisation published,\
+            \ because an\naddress names a value and never authorises reading it."
+          type: string
       type: object
     riskScoreIn:
       properties:
@@ -32436,6 +33386,12 @@ components:
 
             quantile of the scores actually observed rather than fixed at a number.'
           type: number
+        policy:
+          description: "Policy is the version of your organisation's decision regime this verdict\nwas reached under, from\
+            \ its own policy history (GET /v1/risk/policy). Cut is\nderived from the appetite that version states, so it is\
+            \ the record that makes\nthis decision reconstructible after the appetite is restated. Zero means no\nregime has\
+            \ ever been stated and the default posture \u2014 shadow \u2014 was in force."
+          type: integer
         refusal:
           description: Refusal names why the model declined, when it did.
           type: string
@@ -32457,6 +33413,17 @@ components:
           description: "Shadow is whether the model is testing rather than deciding \u2014 scoring,\nlearning and recording\
             \ what it WOULD have alerted on, and changing no\noutcome. It is the default for a model no one has reviewed yet."
           type: boolean
+        shape:
+          description: "Shape is the model space this verdict was reached in: your organisation's\nfeature inventory in order\
+            \ and the detector's geometry parameters. It is what\npins an adverse decision to a model \u2014 a score is only\
+            \ meaningful against the\nshape that produced it, and without this the only answer to \"which model\ndecided this\"\
+            \ was \"the one that was running\", which is not an answer.\n\nIt names the SPACE, not the learned state, and\
+            \ that is deliberate. The masses\nat the instant of a score are in-process counters somewhere between two\npublished\
+            \ values, so citing a published address here would claim that value\nproduced this score \u2014 true only for\
+            \ the score taken the instant after a\npublication. This, the policy version and the event's own time are what\
+            \ IS\ntrue, and the published history's clock (GET /v1/risk/state) brackets the\ndecision between two named values\
+            \ from there."
+          type: string
         values:
           description: 'Values is every coordinate, including the ones that contributed nothing, so
 
@@ -32522,80 +33489,64 @@ components:
           description: ID addresses the run. Read the result back with it.
           type: string
       type: object
-    riskSnapshotBody:
-      properties:
-        cur:
-          description: Cur is the open window's masses, per tree.
-          items:
-            items:
-              type: number
-            type: array
-          type: array
-        cut:
-          description: Cut is the alert threshold that was in force.
-          type: number
-        hist:
-          description: Hist is the score distribution the threshold is cut from.
-          items:
-            type: number
-          type: array
-        learned:
-          description: 'Learned is how many events are behind the masses, and Seen how far into the
-
-            open reference window they are.'
-          type: integer
-        ref:
-          description: "Ref is the reference window's masses, per tree; Cur is the open window's.\nA region's mass is the\
-            \ sum of its two halves \u2014 an array that fails that\ninvariant was not produced by this algorithm and is refused."
-          items:
-            items:
-              type: number
-            type: array
-          type: array
-        seed:
-          description: 'Seed is what the tree geometry is generated FROM. Carrying the seed rather
-
-            than the trees is what keeps the state from describing where the regions
-
-            are.'
-          type: integer
-        seen:
-          description: Seen is the position within the open window.
-          type: integer
-        shape:
-          description: 'Shape is the model identity this state is only meaningful against: the
-
-            feature inventory in order and the detector''s geometry parameters.'
-          type: string
-        tenant:
-          description: 'Tenant is the organisation the state belongs to. A restore under any other
-
-            organisation is refused.'
-          type: string
-        version:
-          description: 'Version is the layout of the state. State from another version is rejected
-
-            rather than reinterpreted.'
-          type: integer
-      type: object
     riskSnapshotOut:
       properties:
-        body:
-          $ref: '#/components/schemas/riskSnapshotBody'
-          description: "Body is the state itself: the masses and the seed, never the geometry.\nGeometry is a pure function\
-            \ of the seed, so it is regenerated on restore and\ncannot be supplied \u2014 which removes the sharpest edge\
-            \ a persisted model has,\nstate that describes WHERE the regions are rather than only how full."
-        learned:
-          description: Learned is how many events are behind it.
-          type: integer
-        shape:
-          description: Shape is the model identity the state is only meaningful against.
-          type: string
+        minted:
+          description: "Minted is false when your model was ALREADY published under this name and\nnothing was written. Publication\
+            \ is idempotent on the value itself, which is\nwhat a content address is for \u2014 publishing at every boundary\
+            \ costs nothing\nrather than being the cheapest way to fill a disk."
+          type: boolean
         tenant:
-          description: 'Tenant is whose state this is. A snapshot naming another organisation is
-
-            refused on restore.'
+          description: Tenant is whose history it entered.
           type: string
+        value:
+          $ref: '#/components/schemas/riskModelValue'
+          description: 'Value is the published value: its name and what it is, never its masses.'
+      type: object
+    riskSourceCoverage:
+      properties:
+        facts:
+          description: 'Facts is how many assertions this source filed; Won is how many judged
+
+            events it was the assertion in force for. A source with many facts and few
+
+            wins is one that is being outranked, which is worth knowing before
+
+            concluding it is wired correctly.'
+          type: integer
+        source:
+          type: string
+        won:
+          type: integer
+      type: object
+    riskSplitCounts:
+      properties:
+        judged:
+          description: 'Judged is how many rows carry a disposition. It is zero until a label plane
+
+            writes one, and reporting it plainly is what lets a model plane refuse to
+
+            rank rather than name a winner it cannot justify.'
+          type: integer
+        productive:
+          description: 'Productive and Unproductive are the two judged classes, so the imbalance is
+
+            visible before anyone trains on it.'
+          type: integer
+        rows:
+          type: integer
+        subjects:
+          description: "Subjects is how many distinct subjects the rows belong to. Every row of one\nsubject is in ONE split,\
+            \ so this is the real sample size \u2014 the row count\nflatters it whenever a subject is active."
+          type: integer
+        test:
+          type: integer
+        train:
+          type: integer
+        unproductive:
+          type: integer
+        val:
+          type: integer
       type: object
     riskSurface:
       properties:
@@ -33836,11 +34787,8 @@ components:
       type: object
     statusCounts:
       properties:
-        credited:
-          description: Credited is how many referrals have paid both bonuses.
-          type: integer
         qualified:
-          description: Qualified is how many referees have spent but are not yet credited.
+          description: Qualified is how many referees have made metered spend.
           type: integer
         signup:
           description: Signup is how many referees have signed up but not yet spent.
@@ -34389,10 +35337,8 @@ components:
       type: object
     sweepResult:
       properties:
-        credited:
-          description: 'Credited is how many of those referrals qualified on this pass and were
-
-            granted their bonuses.'
+        qualified:
+          description: Qualified is how many of those referrals qualified on this pass.
           type: integer
         swept:
           description: Swept is how many pending referrals were checked.
@@ -35642,8 +36588,8 @@ info:
   x-spec:
     repo: hanzoai/cloud
     path: openapi.yaml
-    ref: v1.801.400
-    sha256: e892eedf4cb456e547fc20e88602d3414c975cf9f884cbded313721032b4d88b
+    ref: v1.801.410
+    sha256: 1798032429783a108ddfe6785c579a782e532a03ae00b875b5f33dfa21e78de4
 openapi: 3.1.0
 paths:
   /:
@@ -37168,49 +38114,6 @@ paths:
       tags:
       - admin
       x-app: admin
-  /v1/admin/credits:
-    post:
-      description: "Mints credit for one org. It is the ONE admin mint surface, and it\ndoes NOT mint in-process: it forwards\
-        \ the request to commerce's already-mint-gated\nPOST /v1/billing/credits, authenticated by the service token and scoped\
-        \ to the\ntarget org, then writes one tamper-evident compliance record. Commerce stays the sole\ncredit ledger; this\
-        \ is a thin, audited relay so there is exactly one place credit is\ncreated.\n\nThe body is commerce's OWN CreateCreditGrant\
-        \ contract, forwarded whole \u2014 every field\nit carries reaches commerce. The only two this layer reads are the\
-        \ target org (`org`,\nor `user` as the org-pool alias), which selects the namespace commerce's EdgeAuth\ntrusts, and\
-        \ `idempotencyKey`, which makes a double-clicked grant credit once.\n\nA FAILED grant is audited too, with the request\
-        \ body attached: an attempted mint is\nexactly as interesting to a compliance auditor as a successful one."
-      operationId: adminCreateCredit
-      requestBody:
-        content:
-          application/json:
-            example:
-              amountCents: 50000
-              idempotencyKey: grant-2026-07-27-acme
-              org: acme
-              reason: design partner credit
-            schema:
-              additionalProperties:
-                type: object
-              type: object
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              example:
-                data:
-                  amountCents: 50000
-                  id: cg_01J
-                  org: acme
-                  remainingCents: 50000
-                msg: ''
-                status: ok
-              schema:
-                $ref: '#/components/schemas/rawOut'
-          description: ok
-      summary: Mints credit for one org.
-      tags:
-      - admin
-      x-app: admin
   /v1/admin/customers:
     get:
       description: 'Lists every customer org at a glance, sorted by slug: owner email, plan,
@@ -38656,10 +39559,10 @@ paths:
           description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/admin/referrals/bonuses:
     get:
-      description: "Returns every one-time referral bonus in the ledger with a fleet summary.\n\nSuperAdmin only, fail-closed.\
-        \ This is the ONE-TIME BONUS ledger \u2014 who referred\nwhom, what each side was granted and which ledger transactions\
-        \ carried it. The\ncross-tenant referral ANALYTICS board (top referrers, conversion, multi-level\naccrual liability)\
-        \ is a different surface, GET /v1/admin/referrals, owned by the\naffiliates subsystem over the shared attribution\
+      description: "Returns every referral edge in the directory with a fleet summary.\n\nSuperAdmin only, fail-closed. This\
+        \ is the ATTRIBUTION directory \u2014 who referred\nwhom and whether that referee became a customer. It carries no\
+        \ amounts because\nthis package issues none. The cross-tenant referral ANALYTICS board (top\nreferrers, conversion)\
+        \ is a different surface, GET /v1/admin/referrals, owned by\nthe affiliates subsystem over the shared attribution\
         \ spine."
       operationId: get_v1_admin_referrals_bonuses
       parameters:
@@ -38684,20 +39587,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/adminBonusesEnvelope'
           description: ok
-      summary: Returns every one-time referral bonus in the ledger with a fleet summary.
+      summary: Returns every referral edge in the directory with a fleet summary.
       tags:
       - admin
       x-app: referrals
   /v1/admin/referrals/sweep:
     post:
-      description: "Qualify-checks every pending referral and grants the ones that now qualify.\n\nSuperAdmin only, fail-closed.\
-        \ This is the cron path: a referee QUALIFIES once\nthey have made metered spend \u2014 the honest signal that they\
-        \ actually used the\nproduct rather than merely claiming a welcome grant \u2014 and qualifying grants the\nreferrer\
-        \ and the referee their bonuses in one latched step.\n\nThe grant is backed against the platform reserve fund before\
-        \ it is latched, so\nan empty fund leaves the referral honestly pending rather than minting unbacked\ncredit, and\
-        \ the latch makes it at-most-once: this sweep, a concurrent sweep and\nthe lazy check on GET /v1/referrals can never\
-        \ double-pay. One pass is bounded,\nso a large backlog drains over several runs instead of wedging one request.\n\n\
-        It reads nothing from the caller \u2014 the counters it returns are the whole result."
+      description: "Qualify-checks every pending referral and advances the ones that now qualify.\n\nSuperAdmin only, fail-closed.\
+        \ This is the cron path, and the ONLY path that\nadvances a referral: a referee QUALIFIES once they have made metered\
+        \ spend \u2014 the\nhonest signal that they actually used the product rather than merely signing up.\n\nQualifying\
+        \ moves NO money. It records that an attribution became a real customer;\nwhat is owed for that is an affiliate payable\
+        \ in commerce, settled by wire or to a\nconnected wallet. One pass is bounded, so a large backlog drains over several\
+        \ runs\ninstead of wedging one request, and the latch makes the transition at-most-once\nunder a concurrent sweep.\n\
+        \nIt reads nothing from the caller \u2014 the counters it returns are the whole result."
       operationId: post_v1_admin_referrals_sweep
       responses:
         '200':
@@ -38706,7 +39608,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/sweepEnvelope'
           description: ok
-      summary: Qualify-checks every pending referral and grants the ones that now qualify.
+      summary: Qualify-checks every pending referral and advances the ones that now qualify.
       tags:
       - admin
       x-app: referrals
@@ -46149,6 +47051,29 @@ paths:
         schema:
           type: string
       summary: Undo a pending cancellation and keep the subscription running
+      tags:
+      - billing
+      x-app: commerce
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/billing/tier:
+    get:
+      description: "Answers one subject's resolved tier \u2014 name, display name, agent ceiling and allowed models \u2014\
+        \ with the balance that admits their next metered call: prepaidAvailable, creditsRemaining, dailyRemaining and the\
+        \ effectiveAvailable those fold into. The ai router reads it per request to pick that caller's rate-limit tier. It\
+        \ sits on the org-resolving chain because a tier is org state, and the subject keys are pinned to the validated caller\
+        \ before the handler runs, so a browser read is always the caller's own; user is required, which only a service-to-service\
+        \ caller can omit and be refused 400 for. The tier is an upstream tier claim, or an explicit tier override, when either\
+        \ is present \u2014 that is the service-to-service contract \u2014 and is otherwise DERIVED from the org's active\
+        \ and trialing subscriptions, the highest one winning, its paid-ness read from the plan catalog by slug rather than\
+        \ from the subscription's own stored copy. The rule to get right is effectiveAvailable and not prepaidAvailable: granted\
+        \ credits spend too, credits first, so an account funded only by a grant reads zero prepaid while holding real spendable\
+        \ credit \u2014 and with the daily term zero on every tier there is no free allowance behind it, so a zero-balance\
+        \ account is gated. A subscription-store error answers 500 rather than downgrading to free, so a transient failure\
+        \ never reports a paid subscriber as unsubscribed."
+      operationId: get_v1_billing_tier
+      summary: The subject's plan tier and the balance a metered call is admitted on
       tags:
       - billing
       x-app: commerce
@@ -67971,18 +68896,14 @@ paths:
       x-app: marketing
   /v1/marketing/promos/{code}/redeem:
     post:
-      description: 'Redeems the promo for the caller''s org, crediting the discount
-
-        value to its wallet through the finance ledger. Three guards run under one
-
-        lock so the cap cannot be raced past: the fleet-wide redemption cap, one
-
-        redemption per org, and one per payment instrument.
-
-
-        It is IDEMPOTENT: an org that already redeemed gets its original redemption
-
-        back with alreadyRedeemed true and is not credited twice.'
+      description: "Records the caller org's claim on a promo. NOTHING IS CREDITED:\nthe redemption is a row, and credit into\
+        \ an org is an admin decision made on\nthe admin surface against an auditable ledger.\n\nThe plan is DERIVED from\
+        \ the org's live ACTIVE/TRIALING paid subscription and\ncan never be named by the caller \u2014 an org with no qualifying\
+        \ subscription is\nrefused, and so is one whose subscription cannot be read. The seat count is\nthe single-seat floor\
+        \ (claimSeats), so the recorded figure has no input that\ncan inflate it.\n\nGuards run under one lock so the cap\
+        \ cannot be raced past: the fleet-wide\nredemption cap, one redemption per org, one per payment instrument (REQUIRED),\n\
+        and the per-redemption ceiling.\n\nIt is IDEMPOTENT: an org that already redeemed gets its original redemption\nback\
+        \ with alreadyRedeemed true."
       operationId: post_v1_marketing_promos_code_redeem
       parameters:
       - description: Code is the promo code from the path.
@@ -67998,8 +68919,6 @@ paths:
             example:
               code: first1000
               instrument: pm_1QxYz2AbCdEf
-              plan: pro
-              seats: 1
             schema:
               $ref: '#/components/schemas/RedeemInput'
         required: true
@@ -68010,7 +68929,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/RedeemResult'
           description: ok
-      summary: Redeems the promo for the caller's org, crediting the discount value to its wallet through the finance ledger.
+      summary: Records the caller org's claim on a promo.
       tags:
       - marketing
       x-app: marketing
@@ -68962,249 +69881,20 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/ml/datasets:
-    get:
-      description: 'Datasets lists this org''s datasets, each with its newest version. An org that
-
-        has declared none gets an empty list; a store that cannot be reached gets a
-
-        refusal, never an empty list, because the two read identically and only one of
-
-        them is true.'
-      operationId: mlDatasets
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mlDatasetList'
-          description: ok
-      summary: List this org's datasets
-      tags:
-      - ml
-      x-app: dataset
-    post:
-      description: "Declares the next version of a dataset from a bound query over\nthis org's own feature surface.\n\nIt\
-        \ mints a VERSION and writes no rows: a version is declared, then materialised\nonce, then never rewritten. Version\
-        \ numbers are monotone and never reused, so\n\"version 3 of signups\" means one thing forever \u2014 which is the\
-        \ whole reason a\nmodel can cite one.\n\nThe window is bounded by the source's retention, the horizon by a year, the\n\
-        rows by the plane's cap, and the number of datasets and versions per org by\ntheir own limits. Every refusal names\
-        \ which bound it hit."
-      operationId: mlCreateDataset
-      requestBody:
-        content:
-          application/json:
-            example:
-              from: '2026-01-01T00:00:00Z'
-              horizon: 14
-              kind: person
-              name: signups
-              to: '2026-04-01T00:00:00Z'
-            schema:
-              $ref: '#/components/schemas/mlDatasetSpec'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mlDataset'
-          description: ok
-      summary: Declare the next version of a dataset
-      tags:
-      - ml
-      x-app: dataset
-  /v1/ml/datasets/{name}:
-    delete:
-      description: "Disposes of one dataset and every version of it: the rows are\ndropped and the register is marked with\
-        \ what went.\n\nThis is the ONLY expiry in this plane. Neither table carries a TTL, deliberately:\na table TTL is\
-        \ a fleet-wide clock no tenant can hold longer or shorten, which is\nthe opposite of a retention decision belonging\
-        \ to the tenant whose records they\nare. The drop is a partition drop on (org, dataset), so the tenant is the first\n\
-        component of the thing being dropped and a disposal cannot be spelled across one.\n\nThe BYTES are what goes. The\
-        \ register keeps one `disposed` row per version \u2014 the\nname, the number, the spec, the digest and who disposed\
-        \ of it when \u2014 for two\nreasons: a retention obligation is answered by a record of the deletion, not by\nsilence;\
-        \ and version numbers must stay monotone, so that after `orders` is\ndisposed of and declared again the next version\
-        \ is 4 and not 1. A number that\ncould be reused would make every citation of `orders v3` ambiguous forever.\n\nIt\
-        \ is not reversible and there is no soft state in between. A version a model\ncited has no rows once this returns,\
-        \ and every read of it says so."
-      operationId: mlDeleteDataset
-      parameters:
-      - description: Name is the dataset, from the path.
-        example: signups
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mlDisposal'
-          description: ok
-      summary: Dispose of one dataset and every version of it
-      tags:
-      - ml
-      x-app: dataset
-    get:
-      description: "Dataset describes every version of one dataset, newest first \u2014 the whole\nhistory, because the point\
-        \ of a version is that the older ones are still there\nand a model fitted last quarter cites one of them.\n\nA name\
-        \ this org does not own answers 404, exactly as an unknown name does, so a\nprobe learns nothing about another tenant's\
-        \ datasets."
-      operationId: mlDataset
-      parameters:
-      - description: Name is the dataset, from the path.
-        example: signups
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mlDatasetVersions'
-          description: ok
-      summary: Describe every version of one dataset
-      tags:
-      - ml
-      x-app: dataset
-  /v1/ml/datasets/{name}/export:
-    get:
-      description: "Reads a published version's rows back, one bounded page at a\ntime, in the version's own stable row order.\n\
-        \nOnly a published version can be exported. Rows written by an attempt that never\ncompleted are inert \u2014 no register\
-        \ row names them \u2014 and they are disposed of with\nthe dataset."
-      operationId: mlExportDataset
-      parameters:
-      - description: Name is the dataset, from the path.
-        example: signups
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      - description: Version is the version to read. Zero takes the newest published one.
-        example: 1
-        in: query
-        name: version
-        required: false
-        schema:
-          type: integer
-      - description: Split narrows to train, val or test. Empty reads every split.
-        example: train
-        in: query
-        name: split
-        required: false
-        schema:
-          type: string
-      - description: 'Offset is where the page starts, in the version''s own row order (by id,
-
-          which is derived from the row and therefore stable forever).'
-        in: query
-        name: offset
-        required: false
-        schema:
-          type: integer
-      - description: 'Limit is how many rows to return. Zero and anything above the plane''s bound
-
-          take the bound.'
-        example: 500
-        in: query
-        name: limit
-        required: false
-        schema:
-          type: integer
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mlDatasetRows'
-          description: ok
-      summary: Read a version's rows back, one page at a time
-      tags:
-      - ml
-      x-app: dataset
-  /v1/ml/datasets/{name}/lineage:
-    get:
-      description: "Shows where a version's rows came from and whether that can\nstill be demonstrated.\n\nThe answer is MEASURED,\
-        \ not recalled: the plane asks the source the same\nbounded question again and compares it to the fingerprint taken\
-        \ when the\nversion was built. Anything but exact agreement is reported as drift \u2014 the\nsource is fed by a rollup\
-        \ that runs behind the events, so \"it holds more now\"\nis the ordinary case and it means re-running the spec would\
-        \ not reproduce this\nversion. An admitted gap is actionable; an unfalsifiable claim is not.\n\nIT IS A PRICED, BOUNDED\
-        \ READ, because it is the same statement a\nmaterialisation is charged for: an exact distinct-count over up to 400\
-        \ days of\nthis org's feature surface. It takes the org's ONE source-scan slot, so a\ntenant looping it spends one\
-        \ scan and not a thousand; it counts against the\nplane's ceiling, so the fleet's warehouse is bounded too; and it\
-        \ runs under\nthis plane's own deadline rather than the caller's patience."
-      operationId: mlDatasetLineage
-      parameters:
-      - description: Name is the dataset, from the path.
-        example: signups
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      - description: Version is the version to trace. Zero takes the newest published one.
-        example: 1
-        in: query
-        name: version
-        required: false
-        schema:
-          type: integer
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mlLineage'
-          description: ok
-      summary: Show where a version's rows came from, and whether that can still be demonstrated
-      tags:
-      - ml
-      x-app: dataset
-  /v1/ml/datasets/{name}/materialize:
-    post:
-      description: "Builds the declared version into immutable rows and answers\n202 as soon as the attempt is on record.\n\
-        \nIt never holds the request open for the work: a materialisation is a bounded\nwarehouse scan, and letting an HTTP\
-        \ client's timeout be a data plane's timeout\nis how one tenant's retry loop becomes everyone's outage. ONE materialisation\n\
-        runs per org at a time; a second is refused rather than queued, because a queue\nadmits the same work later and the\
-        \ honest answer to \"again\" while one is\nrunning is that one is running.\n\nOnly a DECLARED version is admitted.\
-        \ A published version is immutable, and a\nversion whose earlier attempt did not complete is never re-attempted \u2014\
-        \ that\nwould union two runs' rows under one number and make the digest a lie. In both\ncases the answer is to declare\
-        \ a new version, which is what a second run over a\nmoving source honestly is."
-      operationId: mlMaterializeDataset
-      parameters:
-      - description: Name is the dataset, from the path.
-        example: signups
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      responses:
-        '202':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mlDataset'
-          description: accepted
-      summary: Materialise the declared version into immutable rows
-      tags:
-      - ml
-      x-app: dataset
   /v1/ml/health:
     get:
-      description: "Reports whether the model-serving plane is genuinely usable: that the Kubernetes API answers, and that\
-        \ the InferenceService CRD is actually served by this cluster. It is a REAL probe, not status theatre \u2014 it makes\
-        \ a live call rather than reporting a flag set at boot.\n\n200 only when everything checks out. Otherwise 503 CARRYING\
-        \ THE REPORT \u2014 which component failed, and the real error \u2014 and that body is the reason this is not a typed\
-        \ op: a typed op reaches a non-2xx by returning an error, and the envelope that produces would drop exactly the detail\
-        \ the probe exists to deliver.\n\nIt answers about the cluster, not about a tenant, so it takes no org and reveals\
-        \ no tenant data. A cluster with no kserve CRD reports degraded honestly rather than failing later at the first deploy."
+      description: "Reports whether the model-serving plane is genuinely usable: that the Kubernetes API answers, that the\
+        \ InferenceService CRD is actually served by this cluster, and that the cluster holds at least one serving runtime\
+        \ to run a model ON. It is a REAL probe, not status theatre \u2014 it makes a live call rather than reporting a flag\
+        \ set at boot.\n\n200 only when everything checks out. Otherwise 503 CARRYING THE REPORT \u2014 which component failed,\
+        \ and the real error \u2014 and that body is the reason this is not a typed op: a typed op reaches a non-2xx by returning\
+        \ an error, and the envelope that produces would drop exactly the detail the probe exists to deliver.\n\nThe runtime\
+        \ count is reported as its own field and is a SEPARATE fact from the CRD being served: a cluster with the CRD but\
+        \ no runtime accepts a deploy and then never schedules it, so reporting only the CRD would answer 200 while every\
+        \ model hangs. A runtime list this service cannot read reports the read error instead of a count, because a missing\
+        \ grant is a broken probe and not an empty cluster.\n\nIt answers about the cluster, not about a tenant, so it takes\
+        \ no org and reveals no tenant data. A cluster with no kserve CRD reports degraded honestly rather than failing later\
+        \ at the first deploy."
       operationId: get_v1_ml_health
       summary: Whether model serving can actually work right now
       tags:
@@ -69376,6 +70066,20 @@ paths:
       tags:
       - models
       x-app: ai
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/models/providers:
+    get:
+      description: "Public, secret-free list of the providers serving the models that\nGET /v1/models lists \u2014 the same\
+        \ source, projected. Safe unauthenticated: no\nkeys, URLs, or config are returned, and it reports a SET of names,\
+        \ never\nwhich provider serves which model."
+      operationId: get_v1_models_providers
+      summary: "Public, secret-free list of the providers serving the models that GET /v1/models lists \u2014 the same source,\
+        \ projected."
+      tags:
+      - models
+      x-app: github.com/hanzoai/ai
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -84607,11 +85311,11 @@ paths:
     get:
       description: "Returns the caller's referral code, share link and the referrals they have made.\n\nThe code is a stable,\
         \ deterministic function of the org, so the link in this\nresponse is the same one every time. Each row carries the\
-        \ referee, its status and\nthe credit this org earned from it; creditsEarnedCents is their sum.\n\nThe read is self-updating:\
-        \ before listing, it runs the qualify check over this\norg's still-pending referees, so a referee who has since made\
-        \ metered spend is\ncredited by the act of the referrer loading their page. That check is\nbest-effort and bounded\
-        \ \u2014 a commerce hiccup leaves the referral pending for the\nnext check rather than failing the page \u2014 and\
-        \ the grant is latched at-most-once,\nso this path and the admin sweep can never double-pay."
+        \ referee and the status\nof that attribution.\n\nIT IS A PURE READ. It advances no referral, grants nothing and deposits\
+        \ nothing\n\u2014 a GET reports state, it never changes it. Qualification is the admin sweep's\njob (POST /v1/admin/referrals/sweep).\
+        \ The one row this handler can write is the\ncaller's OWN code-directory entry (EnsureCode), which materialises a\
+        \ value\nderiveCode already computes deterministically from the org id so the code has an\nO(1) reverse lookup; it\
+        \ carries no money, no referral state and no other tenant."
       operationId: get_v1_referrals
       responses:
         '200':
@@ -84630,8 +85334,9 @@ paths:
         \ never a client field, and the referrer is\nresolved from the code \u2014 so a caller can only ever attach THEMSELVES\
         \ to someone\nelse's code. Referring yourself is 400 and an unknown code is 404.\n\nIt is idempotent and first-touch:\
         \ an org can be referred once, ever. A repeat\ncall returns the referral already on file with created=false and 200,\
-        \ where the\nfirst call answers 201.\n\nRecording a referral grants nothing. Both bonuses are granted later, when\
-        \ the\nreferee actually makes metered spend \u2014 see GET /v1/referrals and\nPOST /v1/admin/referrals/sweep."
+        \ where the\nfirst call answers 201.\n\nRecording a referral grants nothing, and neither does anything downstream\
+        \ of it:\nthe edge later advances to qualified when the referee makes metered spend\n(POST /v1/admin/referrals/sweep),\
+        \ and that is the end of it. No credit is ever\nissued from this package."
       operationId: post_v1_referrals_claim
       requestBody:
         content:
@@ -85072,6 +85777,240 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/risk/datasets:
+    get:
+      description: 'Datasets lists this org''s datasets, each with its newest version. An org that
+
+        has declared none gets an empty list; a store that cannot be reached gets a
+
+        refusal, never an empty list, because the two read identically and only one of
+
+        them is true.'
+      operationId: riskDatasets
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskDatasetList'
+          description: ok
+      summary: List this org's datasets
+      tags:
+      - risk
+      x-app: dataset
+    post:
+      description: "Declares the next version of a dataset from a bound query over\nthis org's own feature surface.\n\nIt\
+        \ mints a VERSION and writes no rows: a version is declared, then materialised\nonce, then never rewritten. Version\
+        \ numbers are monotone and never reused, so\n\"version 3 of signups\" means one thing forever \u2014 which is the\
+        \ whole reason a\nmodel can cite one.\n\nThe window is bounded by the source's retention, the horizon by a year, the\n\
+        rows by the plane's cap, and the number of datasets and versions per org by\ntheir own limits. Every refusal names\
+        \ which bound it hit."
+      operationId: riskCreateDataset
+      requestBody:
+        content:
+          application/json:
+            example:
+              from: '2026-01-01T00:00:00Z'
+              horizon: 14
+              kind: person
+              name: signups
+              to: '2026-04-01T00:00:00Z'
+            schema:
+              $ref: '#/components/schemas/riskDatasetSpec'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskDataset'
+          description: ok
+      summary: Declare the next version of a dataset
+      tags:
+      - risk
+      x-app: dataset
+  /v1/risk/datasets/{name}:
+    delete:
+      description: "Disposes of one dataset and every version of it: the rows are\ndropped and the register is marked with\
+        \ what went.\n\nThis is the ONLY expiry in this plane. Neither table carries a TTL, deliberately:\na table TTL is\
+        \ a fleet-wide clock no tenant can hold longer or shorten, which is\nthe opposite of a retention decision belonging\
+        \ to the tenant whose records they\nare. The drop is a partition drop on (org, dataset), so the tenant is the first\n\
+        component of the thing being dropped and a disposal cannot be spelled across one.\n\nThe BYTES are what goes. The\
+        \ register keeps one `disposed` row per version \u2014 the\nname, the number, the spec, the digest and who disposed\
+        \ of it when \u2014 for two\nreasons: a retention obligation is answered by a record of the deletion, not by\nsilence;\
+        \ and version numbers must stay monotone, so that after `orders` is\ndisposed of and declared again the next version\
+        \ is 4 and not 1. A number that\ncould be reused would make every citation of `orders v3` ambiguous forever.\n\nIt\
+        \ is not reversible and there is no soft state in between. A version a model\ncited has no rows once this returns,\
+        \ and every read of it says so."
+      operationId: riskDeleteDataset
+      parameters:
+      - description: Name is the dataset, from the path.
+        example: signups
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskDatasetDisposal'
+          description: ok
+      summary: Dispose of one dataset and every version of it
+      tags:
+      - risk
+      x-app: dataset
+    get:
+      description: "Dataset describes every version of one dataset, newest first \u2014 the whole\nhistory, because the point\
+        \ of a version is that the older ones are still there\nand a model fitted last quarter cites one of them.\n\nA name\
+        \ this org does not own answers 404, exactly as an unknown name does, so a\nprobe learns nothing about another tenant's\
+        \ datasets."
+      operationId: riskDataset
+      parameters:
+      - description: Name is the dataset, from the path.
+        example: signups
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskDatasetVersions'
+          description: ok
+      summary: Describe every version of one dataset
+      tags:
+      - risk
+      x-app: dataset
+  /v1/risk/datasets/{name}/export:
+    get:
+      description: "Reads a published version's rows back, one bounded page at a\ntime, in the version's own stable row order.\n\
+        \nOnly a published version can be exported. Rows written by an attempt that never\ncompleted are inert \u2014 no register\
+        \ row names them \u2014 and they are disposed of with\nthe dataset."
+      operationId: riskExportDataset
+      parameters:
+      - description: Name is the dataset, from the path.
+        example: signups
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      - description: Version is the version to read. Zero takes the newest published one.
+        example: 1
+        in: query
+        name: version
+        required: false
+        schema:
+          type: integer
+      - description: Split narrows to train, val or test. Empty reads every split.
+        example: train
+        in: query
+        name: split
+        required: false
+        schema:
+          type: string
+      - description: 'Offset is where the page starts, in the version''s own row order (by id,
+
+          which is derived from the row and therefore stable forever).'
+        in: query
+        name: offset
+        required: false
+        schema:
+          type: integer
+      - description: 'Limit is how many rows to return. Zero and anything above the plane''s bound
+
+          take the bound.'
+        example: 500
+        in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskDatasetRows'
+          description: ok
+      summary: Read a version's rows back, one page at a time
+      tags:
+      - risk
+      x-app: dataset
+  /v1/risk/datasets/{name}/lineage:
+    get:
+      description: "Shows where a version's rows came from and whether that can\nstill be demonstrated.\n\nThe answer is MEASURED,\
+        \ not recalled: the plane asks the source the same\nbounded question again and compares it to the fingerprint taken\
+        \ when the\nversion was built. Anything but exact agreement is reported as drift \u2014 the\nsource is fed by a rollup\
+        \ that runs behind the events, so \"it holds more now\"\nis the ordinary case and it means re-running the spec would\
+        \ not reproduce this\nversion. An admitted gap is actionable; an unfalsifiable claim is not.\n\nIT IS A PRICED, BOUNDED\
+        \ READ, because it is the same statement a\nmaterialisation is charged for: an exact distinct-count over up to 400\
+        \ days of\nthis org's feature surface. It takes the org's ONE source-scan slot, so a\ntenant looping it spends one\
+        \ scan and not a thousand; it counts against the\nplane's ceiling, so the fleet's warehouse is bounded too; and it\
+        \ runs under\nthis plane's own deadline rather than the caller's patience."
+      operationId: riskDatasetLineage
+      parameters:
+      - description: Name is the dataset, from the path.
+        example: signups
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      - description: Version is the version to trace. Zero takes the newest published one.
+        example: 1
+        in: query
+        name: version
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskLineage'
+          description: ok
+      summary: Show where a version's rows came from, and whether that can still be demonstrated
+      tags:
+      - risk
+      x-app: dataset
+  /v1/risk/datasets/{name}/materialize:
+    post:
+      description: "Builds the declared version into immutable rows and answers\n202 as soon as the attempt is on record.\n\
+        \nIt never holds the request open for the work: a materialisation is a bounded\nwarehouse scan, and letting an HTTP\
+        \ client's timeout be a data plane's timeout\nis how one tenant's retry loop becomes everyone's outage. ONE materialisation\n\
+        runs per org at a time; a second is refused rather than queued, because a queue\nadmits the same work later and the\
+        \ honest answer to \"again\" while one is\nrunning is that one is running.\n\nOnly a DECLARED version is admitted.\
+        \ A published version is immutable, and a\nversion whose earlier attempt did not complete is never re-attempted \u2014\
+        \ that\nwould union two runs' rows under one number and make the digest a lie. In both\ncases the answer is to declare\
+        \ a new version, which is what a second run over a\nmoving source honestly is."
+      operationId: riskMaterializeDataset
+      parameters:
+      - description: Name is the dataset, from the path.
+        example: signups
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskDataset'
+          description: accepted
+      summary: Materialise the declared version into immutable rows
+      tags:
+      - risk
+      x-app: dataset
   /v1/risk/features:
     get:
       description: "Features is the feature catalogue in its two honest lenses.\n\nThe MODEL lens is the governed inventory:\
@@ -85127,29 +86066,273 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/risk/labels:
+    get:
+      description: "Reads the assertions this tenant has recorded, newest event first.\n\nIt reads the RECORD \u2014 the tenant's\
+        \ own store \u2014 and not the columnar copy, so\nwhat it returns is what would be produced in an audit. Narrow it\
+        \ by entity, by\nasserter, or by event window."
+      operationId: riskLabels
+      parameters:
+      - description: Kind and Subject narrow to one entity.
+        in: query
+        name: kind
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: subject
+        required: false
+        schema:
+          type: string
+      - description: "Source narrows to one asserter \u2014 the read that answers \"what has commerce\ntold us\", separately\
+          \ from \"what has an analyst told us\"."
+        in: query
+        name: source
+        required: false
+        schema:
+          type: string
+      - description: From and To bound the EVENT time, half-open, RFC 3339.
+        in: query
+        name: from
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: to
+        required: false
+        schema:
+          type: string
+      - description: Limit caps the page. Out of range takes the plane's own bound.
+        in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskLabelsOut'
+          description: ok
+      summary: Read the assertions this tenant has recorded
+      tags:
+      - risk
+      x-app: label
+    post:
+      description: "Records a batch of ground truth against the entities it judges.\n\nEach assertion carries TWO times \u2014\
+        \ when the judged event happened, and when\nthe assertion became knowable \u2014 and both are required. The second\
+        \ is what\nkeeps a chargeback that landed in June out of a model that had to decide in\nFebruary.\n\nIt is idempotent\
+        \ on the CONTENT of an assertion, so a webhook that redelivers\nis safe. It never overwrites: a source that corrects\
+        \ itself later files a NEW\nassertion, which wins from the moment it became knowable and leaves every\nearlier observation\
+        \ instant seeing exactly what it saw.\n\nThe asserter is stamped from the validated credential and is not a body field."
+      operationId: riskLabel
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/riskLabelIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskLabelOut'
+          description: ok
+      summary: Assert ground truth about events
+      tags:
+      - risk
+      x-app: label
+  /v1/risk/labels/coverage:
+    get:
+      description: 'Reports how much of a window has matured and how much of that is
+
+        judged, per source.
+
+
+        It is the gate on training. A supervised fit over a window whose judged count
+
+        is near zero produces a number, and the number is meaningless; this op is what
+
+        lets that be stated before the fit rather than discovered after it.
+
+
+        It reads the RECORD plane and folds every assertion at that event''s OWN as-of,
+
+        so the counts obey exactly the leakage rule a materialisation would. It counts
+
+        only what was ASSERTED: what share of the whole event STREAM carries a label is
+
+        a question about the feature plane''s denominator and is not answerable here.'
+      operationId: riskLabelCoverage
+      parameters:
+      - description: "From and To bound the EVENT window, half-open, RFC 3339.\n\nUnstated, the window is the 90 days ENDING\
+          \ where maturity begins \u2014 `to` is\nthe horizon ago, not now. A default window running to now under a default\n\
+          horizon could not contain one matured event, so every count below it would\nbe zero however much ground truth the\
+          \ tenant held."
+        in: query
+        name: from
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: to
+        required: false
+        schema:
+          type: string
+      - description: 'Horizon is the maturity horizon in days the coverage is measured under.
+
+          Unstated takes 120. It also moves the default window, which ends where
+
+          maturity begins.'
+        in: query
+        name: horizon
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskLabelCoverage'
+          description: ok
+      summary: How much of the window has matured, and how much of that is judged
+      tags:
+      - risk
+      x-app: label
+  /v1/risk/labels/dispose:
+    post:
+      description: 'Applies this tenant''s retention, and only this tenant''s.
+
+
+        It is bounded three ways, each a compliance property rather than a
+
+        convenience. It refuses a boundary younger than the platform floor, because a
+
+        label can be the input to an adverse action and five years is what the
+
+        retention ledger holds such a record for. It never touches a record under
+
+        litigation hold. And it disposes of whole records rather than redacting
+
+        fields.
+
+
+        It removes the derived columnar copy BEFORE the record, and refuses the whole
+
+        disposal if the warehouse cannot be reached. The other order would leave rows
+
+        in the warehouse that nothing can identify any more, which is a disposal that
+
+        did not happen and says it did.'
+      operationId: riskDisposeLabels
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/riskDisposeIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskDisposeOut'
+          description: ok
+      summary: Dispose of this tenant's expired assertions, whole records only
+      tags:
+      - risk
+      x-app: label
+  /v1/risk/labels/hold:
+    post:
+      description: "Places or releases a litigation hold on named records.\n\nA hold is a fact about the RECORD, not about\
+        \ the world: it says retention may\nnot dispose of this row, and it asserts nothing about what happened. So it is\n\
+        not a field on an assertion and it is not folded into the content digest \u2014\ncarried there it was silently a no-op\
+        \ on any record that already existed, since\nre-filing the same assertion with a hold flag produced the same digest,\
+        \ the\ninsert was ignored, and the caller was answered `duplicate` while the hold it\nasked for was never placed.\
+        \ This op is the one way a hold moves, in either\ndirection, and the move is written to the audit log.\n\nEvery named\
+        \ id is this tenant's or is nothing. The statement runs against the\ntenant's own file, which holds no other tenant's\
+        \ rows and has no column that\ncould name one."
+      operationId: riskHoldLabels
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/riskHoldIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskHoldOut'
+          description: ok
+      summary: Place or release a litigation hold on named records
+      tags:
+      - risk
+      x-app: label
+  /v1/risk/labels/resolve:
+    post:
+      description: "Answers, for each named event, which assertion was in force AS OF that\nevent's own horizon \u2014 and\
+        \ what disagreed with it.\n\nThis is the join surface: the dataset materialiser calls it to attach ground\ntruth to\
+        \ training rows, and the evaluator calls it to score a past decision\nagainst what was knowable when the decision\
+        \ had to be made. One mechanism for\nboth, so a model can never be trained under one leakage rule and scored under\n\
+        another.\n\nThree answers are distinct and all three are honest: a resolved label, an\nevent that has not matured,\
+        \ and a matured event nobody has judged. The last is\nnever reported as unproductive."
+      operationId: riskResolveLabels
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/riskResolveIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskResolveOut'
+          description: ok
+      summary: Resolve the label in force for named events, as of each event's own horizon
+      tags:
+      - risk
+      x-app: label
+  /v1/risk/labels/vocabulary:
+    get:
+      description: "Publishes the closed vocabularies and the precedence rule that\nresolves a conflict between two sources.\n\
+        \nA precedence rule nobody can read is a rule nobody can audit or dispute, and\nthe whole defensibility of a contested\
+        \ label rests on being able to say why\none assertion beat another. The order returned here is derived from the same\n\
+        declaration the resolver reads \u2014 it is not a description of it."
+      operationId: riskLabelVocabulary
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskLabelVocabulary'
+          description: ok
+      summary: The closed vocabularies and the precedence rule that resolves a conflict
+      tags:
+      - risk
+      x-app: label
   /v1/risk/learn:
     post:
-      description: 'Learn records a batch of events into the caller organisation''s own aggregates
-
-        and lets its model learn from them, answering the model''s verdict on each.
-
-
-        This is the training path, and there is no job behind it: the model IS a set of
-
-        mass counters over half-space trees, so learning is an increment and the model
-
-        is current the instant the last event lands. Nothing from any other
-
-        organisation is in it, and nothing from this organisation leaves it.
-
-
-        Events are recorded FIRST and judged after, which is deliberate: the numbers an
-
-        alert quotes are then the same ones an investigator sees when they look at the
-
-        subject, and every baseline has the event removed from it arithmetically so
-
-        nothing is measured against itself.'
+      description: "Learn records a batch of events into the caller organisation's own aggregates\nand lets its model learn\
+        \ from them. It answers how many it learned from.\n\nIT DOES NOT SCORE, AND THAT IS THE POINT. An observation is a\
+        \ value you record;\nlearning is a transformation over observations; a verdict is a query against the\nresult. This\
+        \ op is the first two. [ops.score] is the third, it is pure, and it\nis the ONE door to a verdict. They were one call,\
+        \ which meant you could not\nrecord without training and could not train without being answered \u2014 and the\nmodel\
+        \ ran twice over every event to produce a verdict the response carried and\nno caller read.\n\nTO OBSERVE AND JUDGE,\
+        \ COMPOSE THE TWO, and mind the order. Score FIRST, then\nlearn: the score is then the model's opinion of an event\
+        \ it has not yet learned\nfrom, which is the question worth asking. The other order answers for a model\nthat has\
+        \ already absorbed the event it is judging.\n\nThis is the training path, and there is no job behind it: the model\
+        \ IS a set of\nmass counters over half-space trees, so learning is an increment and the model\nis current the instant\
+        \ the last event lands. Nothing from any other\norganisation is in it, and nothing from this organisation leaves it.\n\
+        \nA RETRY IS INERT. The record deduplicates on the event id you send, and an event\nalready in it moves nothing, costs\
+        \ nothing and is not counted \u2014 so a client that\ntimed out can send the same batch again and its model holds\
+        \ what it holds.\nWithout an id of your own there is nothing to converge on: two identical bodies\nare two events."
       operationId: riskLearn
       requestBody:
         content:
@@ -85174,6 +86357,269 @@ paths:
       tags:
       - risk
       x-app: risk
+  /v1/risk/policy:
+    get:
+      description: "Policy reports the caller organisation's own decision-regime history: every\ndistinct regime it has adopted,\
+        \ which version is in force, and what retention\nhas taken.\n\nWHY IT EXISTS. Every score cites the version it was\
+        \ decided under\n([riskScoreOut.Policy]), and the threshold that score was measured against is\nderived from the appetite\
+        \ that version states. Restate the appetite and, without\nthis record, every earlier decision becomes unreconstructible\
+        \ \u2014 the cut it was\njudged by no longer exists anywhere. An adverse decision that cannot be\nexplained against\
+        \ the policy in force when it was taken cannot be defended.\n\nIt covers ONE organisation. The history is on that\
+        \ organisation's own shelf, so\nanother's versions are not filtered out of the answer \u2014 they are not in the file\n\
+        the answer is read from."
+      operationId: riskPolicy
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskPolicyOut'
+          description: ok
+      summary: Your organisation's decision-regime history, and which version is in force
+      tags:
+      - risk
+      x-app: risk
+    put:
+      description: "States the decision regime the caller organisation's model decides\nunder: how much of its own stream\
+        \ may be sent for examination, how much of the\nrest is sampled to measure what was missed, and whether the model\
+        \ may change an\noutcome at all.\n\nThe appetite is the decision a model is not permitted to make for itself: its\n\
+        output is a probability, so how likely it is to MISS something is a matter of\npolicy that has to be stated, measured\
+        \ and reviewed rather than absorbed into a\nconstant. The alert threshold is derived from it as a quantile of the\
+        \ scores\nactually observed, which is what keeps its meaning as the distribution drifts.\n\nIt is DURABLE BEFORE IT\
+        \ IS IN FORCE. The regime is recorded as a new version on\nthe organisation's own shelf before anything in memory\
+        \ moves, so a policy that\ncannot be written down is refused rather than answered from state the next\nrollout would\
+        \ silently undo.\n\nA RESTATEMENT OF THE REGIME IN FORCE MINTS NOTHING and answers the version\nalready in force.\
+        \ Compare the version you receive with the version you had:\nunchanged means the numbers were the same, which is why\
+        \ there is no flag for it.\n\nLearned state survives the change. The model's identity covers its SHAPE \u2014 the\n\
+        inventory and the geometry \u2014 and not its appetite, so restating policy unlearns\nnothing. It also does not REPORT\
+        \ the learned state: what the model is is read\nfrom the model."
+      operationId: riskSetPolicy
+      requestBody:
+        content:
+          application/json:
+            example:
+              live: false
+              review: 0.01
+              sample: 0.001
+            schema:
+              $ref: '#/components/schemas/riskAppetiteIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskPolicyOut'
+          description: ok
+      summary: 'State the decision regime: the appetite, the sample, and whether the model is live'
+      tags:
+      - risk
+      x-app: risk
+  /v1/risk/reference:
+    get:
+      description: "Lists every set this plane publishes, with its version and how\nfresh it is.\n\nRead the Stale and Refused\
+        \ lists first: they are the two ways this plane can\nbe quietly wrong, and they are reported rather than inferred.\
+        \ A set in\nRefused answers nothing \u2014 it has never loaded, it is held by another\ncomponent, or it names a source\
+        \ we hold no licence for."
+      operationId: riskReferenceSets
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferenceSetsOut'
+          description: ok
+      summary: Lists every set this plane publishes, with its version and how fresh it is.
+      tags:
+      - risk
+      x-app: reference
+  /v1/risk/reference/refresh:
+    post:
+      description: 'Takes a new version of one set. SuperAdmin only.
+
+
+        It is platform work, not tenant work: it writes the shared baseline every
+
+        organisation reads, so it is gated to the platform''s own identity. Nothing
+
+        here can write an organisation''s overrides, and nothing an organisation sends
+
+        can reach this route.
+
+
+        Idempotent. A version is the content digest of what was taken, so refreshing
+
+        an unchanged publisher writes no rows and reports unchanged. Resumable: a run
+
+        that died half-way is continued from where it stopped rather than restarted.
+
+
+        A set whose source needs a licence we do not hold is refused with the reason,
+
+        rather than being quietly skipped.'
+      operationId: riskRefreshReference
+      requestBody:
+        content:
+          application/json:
+            example:
+              set: domain
+            schema:
+              $ref: '#/components/schemas/RefreshReferenceIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshReferenceOut'
+          description: ok
+      summary: Takes a new version of one set.
+      tags:
+      - risk
+      x-app: reference
+  /v1/risk/reference/resolve:
+    post:
+      description: "Looks keys up against the reference plane.\n\nYour organisation's own overrides are consulted FIRST and\
+        \ win outright; the\nshared baseline answers everything they do not cover. Every answer names the\nversion that produced\
+        \ it, when that version was current and whether it is\nstale, so a decision can record exactly what it consulted.\n\
+        \nRead Refusal before reading Hit. A set that has never loaded, one held by the\ncomponent that screens against it,\
+        \ and one whose source needs a licence we do\nnot hold all answer with a refusal \u2014 and a miss on a refusing set\
+        \ means\nnothing is known, not that the key is clean."
+      operationId: riskResolveReference
+      requestBody:
+        content:
+          application/json:
+            example:
+              keys:
+              - user@tempbox.example
+              - 3.5.140.1
+              sets:
+              - domain
+              - net
+            schema:
+              $ref: '#/components/schemas/ResolveReferenceIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolveReferenceOut'
+          description: ok
+      summary: Looks keys up against the reference plane.
+      tags:
+      - risk
+      x-app: reference
+  /v1/risk/reference/{set}:
+    delete:
+      description: 'Removes one of your organisation''s overrides.
+
+
+        It removes an entry your organisation wrote, never a baseline member: the
+
+        published set is not writable from here, so a removal can only ever restore
+
+        the baseline''s own answer.'
+      operationId: riskClearReference
+      parameters:
+      - example: domain
+        in: path
+        name: set
+        required: true
+        schema:
+          type: string
+      - example: partner.example
+        in: query
+        name: key
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClearReferenceOut'
+          description: ok
+      summary: Removes one of your organisation's overrides.
+      tags:
+      - risk
+      x-app: reference
+    get:
+      description: "Reference describes one set and lists your org's overrides in it.\n\nThe set half is public data about\
+        \ a published list \u2014 its version, its\npublishers, their licences and how current each one is. The overrides\
+        \ half is\nyours alone: it is read from your organisation's own store, and no other\norganisation's entries can appear\
+        \ in it."
+      operationId: riskReference
+      parameters:
+      - example: domain
+        in: path
+        name: set
+        required: true
+        schema:
+          type: string
+      - description: 'After pages the override listing: the last key of the previous page.'
+        in: query
+        name: after
+        required: false
+        schema:
+          type: string
+      - description: 'Limit caps the override listing: default 200, maximum 1000.'
+        example: 50
+        in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferenceOut'
+          description: ok
+      summary: Reference describes one set and lists your org's overrides in it.
+      tags:
+      - risk
+      x-app: reference
+    put:
+      description: "Writes your organisation's own allow and deny entries over a set.\n\nIdempotent on the key: writing the\
+        \ same entry twice is one entry, and writing\nit again replaces the verdict and the note. The whole batch is one\n\
+        transaction, so a batch that would cross the per-set bound writes nothing\nrather than half of itself \u2014 a half-applied\
+        \ deny list is worse than a refused\none, because nobody can tell which half applied.\n\nYour entries are held in\
+        \ your organisation's own store and are never visible\nto another organisation, and they never change what any other\
+        \ organisation\nsees. The shared baseline is not writable from here at all."
+      operationId: riskSetReference
+      parameters:
+      - example: domain
+        in: path
+        name: set
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            example:
+              entries:
+              - key: partner.example
+                note: our reseller
+                verdict: allow
+              set: domain
+            schema:
+              $ref: '#/components/schemas/SetReferenceIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetReferenceOut'
+          description: ok
+      summary: Writes your organisation's own allow and deny entries over a set.
+      tags:
+      - risk
+      x-app: reference
   /v1/risk/score:
     post:
       description: 'Score judges one event against the caller organisation''s OWN model and learns
@@ -85301,44 +86747,17 @@ paths:
       tags:
       - risk
       x-app: risk
-  /v1/risk/state/appetite:
-    put:
-      description: "Restates how much of the stream the caller organisation's model may\nsend for examination, and whether\
-        \ it is live.\n\nThe appetite is the decision a model is not permitted to make for itself: its\noutput is a probability,\
-        \ so how likely it is to MISS something is a matter of\npolicy that has to be stated, measured and reviewed rather\
-        \ than absorbed into a\nconstant. The alert threshold is then derived from it as a quantile of the\nscores actually\
-        \ observed, which is what keeps its meaning as the distribution\ndrifts.\n\nLearned state survives the change. The\
-        \ model's identity covers its SHAPE \u2014 the\ninventory and the geometry \u2014 and not its appetite, so restating\
-        \ policy unlearns\nnothing."
-      operationId: riskSetAppetite
-      requestBody:
-        content:
-          application/json:
-            example:
-              live: false
-              review: 0.01
-              sample: 0.001
-            schema:
-              $ref: '#/components/schemas/riskAppetiteIn'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/riskModelState'
-          description: ok
-      summary: Restate the risk appetite, and whether the model is live
-      tags:
-      - risk
-      x-app: risk
   /v1/risk/state/restore:
     post:
-      description: "Restore installs previously pinned state into the caller organisation's model,\nreplacing whatever it\
-        \ holds.\n\nA snapshot naming another organisation is REFUSED. The engine checks the shape,\nthe version and the mass\
-        \ invariant \u2014 an array that fails the invariant was not\nproduced by this algorithm \u2014 but it does not check\
-        \ whose state it is, because\nin its own deployment the caller IS the tenant. Here the caller is a request,\nso the\
-        \ check is made here: another organisation's learned state inside this\nmodel is that organisation's activity, disclosed."
+      description: "Restore puts one of your organisation's OWN PUBLISHED VALUES back in force, by\nname \u2014 which is what\
+        \ an instant rollback is, and what promoting a challenger is.\n\nIT TAKES AN ADDRESS AND NEVER STATE. The masses are\
+        \ read from your own store, so\nnothing about your model has to be held by whatever is making this call. That\ncloses\
+        \ the sharpest edge the previous shape had: a body of counters is something\na caller can COMPOSE, and a region filled\
+        \ until activity inside it reads as\nordinary is a model that has been shaped rather than learned. The engine's mass\n\
+        invariant was the only thing standing between a composed body and the model; with\nan address there is no body to\
+        \ compose.\n\nAn address your organisation has not published is NOT FOUND. That includes one\nanother organisation\
+        \ published, and it is not a lookup that failed: the store is\nper organisation and the address is a name, never an\
+        \ authority."
       operationId: riskRestore
       requestBody:
         content:
@@ -85359,10 +86778,15 @@ paths:
       x-app: risk
   /v1/risk/state/snapshot:
     post:
-      description: "Snapshot pins the caller organisation's learned state so a decision taken today\ncan be reproduced tomorrow.\n\
-        \nIt carries the masses and the seed and never the geometry: geometry is a pure\nfunction of the seed, so it is regenerated\
-        \ on restore and cannot be supplied.\nThat removes the sharpest edge a persisted model has \u2014 state that says\
-        \ where\nthe regions are rather than only how full they are."
+      description: "Snapshot publishes your organisation's model as a NAMED VALUE, so a decision\ntaken today can be reconstructed\
+        \ tomorrow and a change made today can be undone.\n\nIt answers with a NAME and not with the state. The masses stay\
+        \ on your\norganisation's own encrypted store and are referred to by an address computed\nfrom their own content:\
+        \ the shape, the geometry seed, the position in the window,\nthe threshold, the masses themselves as IEEE-754 bits,\
+        \ and the fold watermark\nbehind them. That is what makes the value nameable without making the caller its\ncustodian.\n\
+        \nIT IS IDEMPOTENT ON THE VALUE. A model that has not changed publishes to the name\nit already has and mints nothing,\
+        \ reporting minted=false \u2014 so publishing at every\nboundary that matters is free. Ten values are retained per\
+        \ organisation, bounded\nin BYTES rather than in rows, and the oldest is disposed of past that.\n\nA model that has\
+        \ learned nothing is refused: planted is not learned, and a value\nthat reproduces nothing is not a value."
       operationId: riskSnapshot
       responses:
         '201':
@@ -90813,227 +92237,6 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/train/experiments:
-    get:
-      description: "Lists the caller org's tuning experiments. Each entry carries\nthe experiment's name, when Kubernetes\
-        \ admitted it, and katib's live status \u2014\nthe spec is on the single-experiment read."
-      operationId: get_v1_train_experiments
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mlResourceList'
-          description: ok
-      summary: Lists the caller org's tuning experiments.
-      tags:
-      - train
-      x-app: ml
-    post:
-      description: "Starts a katib hyperparameter search in the caller's own tenant namespace and answers the created Experiment,\
-        \ 201. The spec is katib's own, relayed as given, so the whole search-algorithm surface is available without this\
-        \ layer enumerating it.\n\nOne experiment fans out into many Trials, and each trial is real compute \u2014 so the\
-        \ BALANCE GATE RUNS FIRST, before anything is created, and fails CLOSED when commerce cannot be reached. The refusal\
-        \ carries the fleet's nested error body, which is why this is not a typed op. The submission fee is debited from the\
-        \ caller org's own ledger on success, asynchronously and best-effort.\n\nThe trials the search creates are read through\
-        \ the experiment's own trials list. Tenant namespace from the validated org and project, never a field; an unvalidated\
-        \ caller is refused. DNS-1123 name, and a duplicate is a 409."
-      operationId: post_v1_train_experiments
-      summary: Start a hyperparameter-tuning experiment
-      tags:
-      - train
-      x-app: ml
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/train/experiments/{name}:
-    delete:
-      description: 'Deletes a hyperparameter-tuning experiment. Kubernetes
-
-        garbage-collects the Trials katib created under it, because they carry the
-
-        Experiment as their owner. Answers 204, or 404 for a name the caller''s org does
-
-        not own.'
-      operationId: delete_v1_train_experiments_name
-      parameters:
-      - description: 'Name is the resource to act on, taken from the path. Lower-cased and
-
-          trimmed to the DNS-1123 label a CustomResource''s metadata.name must be.'
-        example: sweep-1
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: no content
-      summary: Deletes a hyperparameter-tuning experiment.
-      tags:
-      - train
-      x-app: ml
-    get:
-      description: 'Returns one hyperparameter-tuning experiment. Its spec comes with
-
-        it, and katib''s live status, which is where the best trial found so far is
-
-        reported.'
-      operationId: get_v1_train_experiments_name
-      parameters:
-      - description: 'Name is the resource to act on, taken from the path. Lower-cased and
-
-          trimmed to the DNS-1123 label a CustomResource''s metadata.name must be.'
-        example: sweep-1
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mlResource'
-          description: ok
-      summary: Returns one hyperparameter-tuning experiment.
-      tags:
-      - train
-      x-app: ml
-  /v1/train/experiments/{name}/trials:
-    get:
-      description: 'Lists the katib Trials one experiment owns. The experiment is read
-
-        FIRST, so a name the caller''s org does not own is a clean 404 rather than an
-
-        empty list; the Trials themselves are selected by katib''s own
-
-        katib.kubeflow.org/experiment label within the caller''s tenant namespace.'
-      operationId: get_v1_train_experiments_name_trials
-      parameters:
-      - description: 'Name is the resource to act on, taken from the path. Lower-cased and
-
-          trimmed to the DNS-1123 label a CustomResource''s metadata.name must be.'
-        example: sweep-1
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mlTrials'
-          description: ok
-      summary: Lists the katib Trials one experiment owns.
-      tags:
-      - train
-      x-app: ml
-  /v1/train/health:
-    get:
-      description: "Reports whether the training plane is genuinely usable: that the Kubernetes API answers, and that BOTH\
-        \ the TrainJob and the Experiment CRDs are served by this cluster. A live check, not a flag read back.\n\n200 only\
-        \ when all of it checks out; otherwise 503 carrying the per-CRD report and the real error. That body is why this is\
-        \ not a typed op \u2014 the error envelope a typed refusal renders would drop it.\n\nIt names each CRD separately\
-        \ on purpose: a cluster can serve training but not tuning, and the difference decides whether a job submission or\
-        \ only an experiment will fail. Answers about the cluster, not a tenant, so it takes no org and reveals no tenant\
-        \ data."
-      operationId: get_v1_train_health
-      summary: Whether training and tuning can actually work right now
-      tags:
-      - train
-      x-app: ml
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/train/jobs:
-    get:
-      description: "Lists the training jobs in the caller's org. Each entry carries the\njob's name, when Kubernetes admitted\
-        \ it, and the trainer operator's live status\n\u2014 the spec is on the single-job read."
-      operationId: get_v1_train_jobs
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mlResourceList'
-          description: ok
-      summary: Lists the training jobs in the caller's org.
-      tags:
-      - train
-      x-app: ml
-    post:
-      description: "Submits a training job into the caller's own tenant namespace and answers the created resource, 201. The\
-        \ spec is the Kubeflow TrainJob spec, relayed as given, so the trainer's full surface is reachable without this layer\
-        \ modelling it.\n\nTHE BALANCE GATE RUNS FIRST, before the namespace or the job is created, and it fails CLOSED \u2014\
-        \ an unreachable commerce refuses rather than admits. That is what keeps an unfunded org from starting GPU compute.\
-        \ The refusal carries the fleet's nested error body, which is why this route is not a typed op. On success the submission\
-        \ fee is debited from the caller org's own ledger, asynchronously and best-effort.\n\nSubmitting is not finishing:\
-        \ the answer is the job as accepted, not a result \u2014 poll the job read for status. The tenant namespace comes\
-        \ from the validated org and project, never from a field; an unvalidated caller is refused. The name must be a DNS-1123\
-        \ label, and a name already in use is a 409."
-      operationId: post_v1_train_jobs
-      summary: Submit a training job
-      tags:
-      - train
-      x-app: ml
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/train/jobs/{name}:
-    delete:
-      description: "Deletes a training job. Kubernetes garbage-collects the pods the\ntrainer operator created under it, because\
-        \ they carry the TrainJob as their\nowner \u2014 so deleting the job is how a run is stopped. Answers 204, or 404\
-        \ for a\nname the caller's org does not own."
-      operationId: delete_v1_train_jobs_name
-      parameters:
-      - description: 'Name is the resource to act on, taken from the path. Lower-cased and
-
-          trimmed to the DNS-1123 label a CustomResource''s metadata.name must be.'
-        example: finetune-1
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: no content
-      summary: Deletes a training job.
-      tags:
-      - train
-      x-app: ml
-    get:
-      description: 'Returns one training job. Its spec comes with it, and the trainer
-
-        operator''s live status, which is where a run''s phase and its conditions are
-
-        reported.'
-      operationId: get_v1_train_jobs_name
-      parameters:
-      - description: 'Name is the resource to act on, taken from the path. Lower-cased and
-
-          trimmed to the DNS-1123 label a CustomResource''s metadata.name must be.'
-        example: finetune-1
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mlResource'
-          description: ok
-      summary: Returns one training job.
-      tags:
-      - train
-      x-app: ml
   /v1/translate:
     post:
       description: "Returns one translation per input string, in input order, each carrying where it sits on the review ladder\
@@ -93526,11 +94729,7 @@ tags:
 - name: agents
   description: 'Package agents is autonomous agents for your org: define them, run them, keep every run.'
 - name: ml
-  description: 'Package ml is model serving and training: deploy a model behind an endpoint, run a training job, tune it with
-    experiments.'
-- name: train
-  description: 'Package ml is model serving and training: deploy a model behind an endpoint, run a training job, tune it with
-    experiments.'
+  description: 'Package ml is model serving: deploy a model behind an endpoint and call it.'
 - name: finetune
   description: "Package ai is Hanzo AI \u2014 the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the\
     \ rest of hanzoai/ai's surface) \u2014 mounted into a cloud binary with the money, ingest and telemetry callbacks cloud\
@@ -93663,10 +94862,6 @@ tags:
   description: "Package ai is Hanzo AI \u2014 the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the\
     \ rest of hanzoai/ai's surface) \u2014 mounted into a cloud binary with the money, ingest and telemetry callbacks cloud\
     \ BUILDS but cannot INSTALL."
-- name: provider-flags
-  description: "Package ai is Hanzo AI \u2014 the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the\
-    \ rest of hanzoai/ai's surface) \u2014 mounted into a cloud binary with the money, ingest and telemetry callbacks cloud\
-    \ BUILDS but cannot INSTALL."
 - name: traffic
   description: "Package ai is Hanzo AI \u2014 the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the\
     \ rest of hanzoai/ai's surface) \u2014 mounted into a cloud binary with the money, ingest and telemetry callbacks cloud\
@@ -93794,7 +94989,8 @@ tags:
 - name: crm
   description: 'Package crm is your sales pipeline: the companies, the people, the deals in play.'
 - name: referrals
-  description: Package referrals is credit for both sides when someone you refer actually spends.
+  description: 'Package referrals is referral ATTRIBUTION: who referred whom, and whether that referee ever became a real
+    customer.'
 - name: affiliates
   description: Package affiliates is a partner program that pays commission on what your referrals spend.
 - name: authors
@@ -93967,7 +95163,6 @@ x-tagGroups:
   - agent
   - agents
   - ml
-  - train
   - finetune
   - evals
   - benchmark
@@ -94009,7 +95204,6 @@ x-tagGroups:
   - query_multiple
   - dev-bridge
   - install-patch
-  - provider-flags
   - traffic
   - wecom-bot
   - health
