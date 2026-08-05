@@ -91,6 +91,27 @@ sdks:
       packageName: hanzoai.cloud
       library: urllib3
       generateSourceCodeOnly: "true"
+    # o11y.GettableAgentCheckIn declares `integration_config` AND
+    # `integrationConfig`, `removed_at` AND `removedAt` — the snake spellings are
+    # live wire, published so older AWS agents keep working (see the schema's own
+    # "Older fields for backward compatibility" description). Python snake-cases a
+    # property to its attribute name, so each pair collapsed onto ONE attribute and
+    # the second declaration silently replaced the first: eight declared properties,
+    # six real fields, and an old agent's value read in and dropped with no error.
+    # Shipped that way as 3.2.0.
+    #
+    # Same defect the CLAUDE.md "three o11y schemas" entry records for Go, and the
+    # same correction the kotlin row makes for distinct_id: rename the ATTRIBUTE,
+    # never the wire name — the generator then carries the original key as the
+    # field's alias, so both spellings still round-trip under their own key. The
+    # value must stay a legal PUBLIC python identifier: a leading underscore would
+    # make it a pydantic PrivateAttr, which is not a field at all and would drop
+    # the data exactly as before while looking fixed.
+    #
+    # Measured against hanzo.yaml: `removed_at` and `integration_config` each occur
+    # in exactly ONE schema, so this global mapping reaches nothing else.
+    flags:
+      name-mappings: removed_at=removed_at_legacy,integration_config=integration_config_legacy
 
   # go is DELIBERATELY ABSENT, and it is the row this file cannot hold.
   #
