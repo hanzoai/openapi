@@ -70,9 +70,9 @@ stops.
 ## One command
 
 ```bash
-python3 publish.py            # re-pin to hanzoai/cloud origin/main, derive, write
+python3 publish.py            # re-pin to hanzoai/cloud's main, derive, write
 python3 publish.py --check    # re-derive at the pinned ref and diff
-python3 publish.py --current  # is the pin still cloud's origin/main?
+python3 publish.py --current  # has cloud's document moved past the pin?
 python3 publish.py --served   # THE GATE: is every published operation one api.hanzo.ai answers for?
 ```
 

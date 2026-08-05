@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Publish `hanzo.yaml` — a PROJECTION of hanzoai/cloud's emitted document.
 
-    python3 publish.py                 # re-pin to hanzoai/cloud origin/main, derive, write
+    python3 publish.py                 # re-pin to hanzoai/cloud's main, derive, write
     python3 publish.py --ref v1.801.383  # re-pin to one release
     python3 publish.py --check         # THE GATE: re-derive at the pinned ref and diff
-    python3 publish.py --current       # is the pin still cloud's origin/main?
+    python3 publish.py --current       # has cloud's document moved past the pin?
     python3 publish.py --served        # THE GATE with no checkout: does the deployment answer for every published operation?
 
 THIS REPO DOES NOT DECIDE WHAT THE API IS. It never did well, and it no longer
@@ -101,10 +101,46 @@ def lock():
     return out
 
 
+def source(repo):
+    """The remote-tracking `main` that CARRIES the document.
+
+    `origin` is not a fact about a checkout, it is the name a clone happened to
+    use. hanzoai/cloud answers on several remotes and they are NOT one lineage:
+    where `origin` is the GitHub OSS mirror, `origin/main` holds no
+    `openapi.yaml` at its root at all. So the one question this file exists to
+    ask on a clock — is the pin still current? — was being put to a repository
+    that does not carry the document, where it could only die or agree by
+    accident. It died quietly, and the pin drifted 24 releases behind while
+    nothing went red. A gate that cannot fail is not a gate.
+
+    So the remote is DISCOVERED, never named: fetch every one, keep those whose
+    `main` holds the document, and take the one that contains all the others. A
+    checkout with a `forge` remote gets no special case — forge wins here
+    because it carries the file, and stops winning the day it stops carrying it.
+    Unreachable is not fatal (a mirror nobody can read decides nothing) but
+    stale is, which is why every remote is fetched before any is read.
+    """
+    ok = lambda *a: not subprocess.run(["git", "-C", repo, *a],
+                                       capture_output=True).returncode
+    carry = []
+    for remote in git(repo, "remote").split():
+        ok("fetch", "--quiet", remote)
+        if ok("cat-file", "-e", f"{remote}/main:{SPEC_PATH}"):
+            carry.append(f"{remote}/main")
+    tip = [b for b in carry if all(ok("merge-base", "--is-ancestor", o, b) for o in carry)]
+    if not tip:
+        sys.exit(f"publish: no remote of {repo} carries {SPEC_PATH} on `main`\n"
+                 f"         This is a {SPEC_REPO} checkout or it is nothing."
+                 if not carry else
+                 f"publish: {', '.join(carry)} each carry {SPEC_PATH} and have diverged "
+                 f"— this checkout cannot say which one is {SPEC_REPO}'s main")
+    return tip[0]
+
+
 def document(repo, ref):
-    """The document at one ref, with its digest. Fetches first, so a stale
-    worktree can never be mistaken for the branch it is behind."""
-    git(repo, "fetch", "--quiet", "origin")
+    """The document at one ref, with its digest. `source` has already fetched
+    every remote, so a stale worktree cannot be mistaken for the branch it is
+    behind, and a tag that lives on one remote resolves whoever cloned this."""
     raw = git(repo, "show", f"{ref}:{SPEC_PATH}")
     return raw, hashlib.sha256(raw.encode()).hexdigest()
 
@@ -379,11 +415,12 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cloud", default=CLOUD, help=f"{SPEC_REPO} checkout (default {CLOUD})")
     ap.add_argument("--ref", help="the release to publish (default: the pinned one, "
-                                  "or origin/main when re-pinning)")
+                                  "or the main that carries the document when re-pinning)")
     ap.add_argument("--check", action="store_true",
                     help="re-derive at the PINNED ref and diff; write nothing")
     ap.add_argument("--current", action="store_true",
-                    help="report whether the pin is still cloud's origin/main")
+                    help="report whether the pin is still the tip of the remote that "
+                         "carries the document")
     ap.add_argument("--served", action="store_true",
                     help=f"THE GATE that needs no checkout: refute every published "
                          f"operation against {SERVED}")
@@ -414,23 +451,24 @@ def main():
         return 0
 
     repo = checkout(a.cloud)
+    branch = source(repo)
 
     if a.current:
-        head = git(repo, "rev-parse", "origin/main").strip()
-        at = git(repo, "rev-parse", f"{have.get('ref', 'origin/main')}^{{commit}}").strip()
-        if head == at:
-            print(f"hanzo.yaml is {SPEC_REPO}@{have.get('ref')} — cloud's origin/main")
+        tip = git(repo, "rev-parse", branch).strip()
+        at = git(repo, "rev-parse", f"{have.get('ref', branch)}^{{commit}}").strip()
+        if tip == at:
+            print(f"hanzo.yaml is {SPEC_REPO}@{have.get('ref')} — {branch}")
             return 0
-        _, sha = document(repo, "origin/main")
+        _, sha = document(repo, branch)
         if sha == have.get("sha256"):
-            print(f"hanzo.yaml is {SPEC_REPO}@{have.get('ref')} — cloud has moved "
-                  f"({head[:8]}) but the document has not")
+            print(f"hanzo.yaml is {SPEC_REPO}@{have.get('ref')} — {branch} has moved "
+                  f"({tip[:8]}) but the document has not")
             return 0
-        print(f"hanzo.yaml is {SPEC_REPO}@{have.get('ref')}; cloud's origin/main is "
-              f"{head[:8]} with a different document — run `python3 publish.py`")
+        print(f"hanzo.yaml is {SPEC_REPO}@{have.get('ref')}; {branch} is "
+              f"{tip[:8]} with a different document — run `python3 publish.py`")
         return 1
 
-    ref = a.ref or (have.get("ref") if a.check else None) or "origin/main"
+    ref = a.ref or (have.get("ref") if a.check else None) or branch
     if a.check and not have.get("ref"):
         sys.exit("publish: --check needs a .spec-lock naming the document this "
                  "artifact is a projection of; run `python3 publish.py` first")

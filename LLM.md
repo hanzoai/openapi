@@ -25,10 +25,10 @@ hanzoai/cloud  typed ops + handler doc comments
 ## The one command
 
 ```bash
-python3 publish.py                   # re-pin to hanzoai/cloud origin/main, derive, write
+python3 publish.py                   # re-pin to hanzoai/cloud's main, derive, write
 python3 publish.py --ref v1.801.383  # re-pin to one release
 python3 publish.py --check           # THE GATE: re-derive at the pinned ref and diff
-python3 publish.py --current         # is the pin still cloud's origin/main?
+python3 publish.py --current         # has cloud's document moved past the pin?
 ```
 
 It reads a hanzoai/cloud checkout (`--cloud`, `CLOUD_DIR`, default `../cloud`)
@@ -176,7 +176,7 @@ leaves the release it stops.
 | `test_flows.py` | does every operationId `flows.yaml` names still exist? | nothing | same |
 | `test_skills.py` | is the skills surface deterministic and well-formed? | nothing | same |
 | `publish.py --check` | is `hanzo.yaml` what its own pinned input projects to? | a hanzoai/cloud checkout | `spec sync`, every push and PR |
-| `publish.py --current` | is the pin still cloud's origin/main? | same | same workflow, hourly clock only |
+| `publish.py --current` | has cloud's document moved past the pin? | same | same workflow, hourly clock only |
 | `skills.py --check` | did `dist/` drift from the document? | nothing | on demand |
 | `generate.py --check` | did a committed client drift from the document? | nothing | each SDK repo's own CI |
 
@@ -210,6 +210,22 @@ and never fail on an unreachable API.
 
 `--current` is on the clock and not on pushes deliberately: a stale pin is not a
 broken artifact, and failing an unrelated PR for it trains people to ignore red.
+
+### Which remote is cloud's main — discovered, never named
+
+`--current` asked `origin/main` for two years, and `origin` is not a fact about a
+checkout, only the name a clone happened to use. hanzoai/cloud answers on several
+remotes and they are NOT one lineage: where `origin` is the GitHub OSS mirror,
+`origin/main` holds no `openapi.yaml` at its root at all, so the question went to
+a repository that does not carry the document and could only die or agree by
+accident. It died, quietly, and the pin drifted 24 releases while nothing went
+red. **A gate that cannot fail is not a gate**, and that is the whole reason
+`--current` now resolves the remote instead of assuming it: fetch every remote,
+keep those whose `main` holds the document, take the one that contains the
+others. On a normal clone that is `origin`; on this fleet's checkouts it is
+`forge`, and neither is written down anywhere. The same resolution is the default
+when re-pinning, so `python3 publish.py` with no `--ref` can no longer publish
+from the wrong lineage either.
 
 ### The known weakness of `--served`, stated rather than discovered
 
