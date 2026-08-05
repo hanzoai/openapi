@@ -75,15 +75,35 @@ MAVEN = "https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli"
 
 
 def jar(version):
-    """The pinned generator, fetched once. A version is a version everywhere."""
+    """The pinned generator, fetched once. A version is a version everywhere.
+
+    Every language downloads into its OWN temp file, because `main` maps the
+    languages over a thread pool and a cold cache therefore calls this once per
+    language at the same moment. A shared `<jar>.part` made those writes one
+    file: both threads opened it, both wrote the same 30 MB into it, the first
+    to finish renamed it away, and the second's `os.replace` died with
+    FileNotFoundError on a path it had just written. Measured on `generate.py
+    java kotlin` — java emitted 2274 files and kotlin never ran. The failure
+    needs an empty cache, so it misses every re-run and lands on CI and on the
+    first clone, which is where it costs the most.
+
+    `os.replace` is atomic on POSIX and on Windows, so the losers of the race
+    simply overwrite an identical file with an identical file.
+    """
     path = os.path.join(CACHE, f"openapi-generator-cli-{version}.jar")
     if not os.path.exists(path):
         os.makedirs(CACHE, exist_ok=True)
         url = f"{MAVEN}/{version}/openapi-generator-cli-{version}.jar"
         print(f"fetching {url}", flush=True)
-        with urllib.request.urlopen(url) as r, open(path + ".part", "wb") as f:
-            shutil.copyfileobj(r, f)
-        os.replace(path + ".part", path)
+        fd, part = tempfile.mkstemp(dir=CACHE, prefix=f"{version}.", suffix=".part")
+        try:
+            with urllib.request.urlopen(url) as r, os.fdopen(fd, "wb") as f:
+                shutil.copyfileobj(r, f)
+            os.replace(part, path)
+        except BaseException:
+            if os.path.exists(part):
+                os.unlink(part)
+            raise
     return path
 
 
