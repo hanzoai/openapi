@@ -91,6 +91,32 @@ sdks:
       packageName: hanzoai.cloud
       library: urllib3
       generateSourceCodeOnly: "true"
+    # ONE schema spells two of its fields twice, and Python loses data over it
+    # SILENTLY — which is why this is a flag and not a note somewhere.
+    #
+    # o11y.GettableAgentCheckIn declares `integration_config` AND
+    # `integrationConfig`, `removed_at` AND `removedAt`. The pair is deliberate
+    # and it is ON THE WIRE: hanzoai/o11y publishes the snake_case spellings as
+    # aliases so older AWS agents keep working. So the document is right and must
+    # keep both.
+    #
+    # Python derives an attribute name by snake_casing the property, so each pair
+    # arrives as ONE attribute declared twice and the second shadows the first:
+    # 8 declared properties become 6 pydantic fields. The survivor keeps the
+    # CAMEL alias, so an old agent's `removed_at` is read and then dropped —
+    # measured: from_dict({"removed_at": 2020, "removedAt": 2030}) yields 2030,
+    # and to_dict()["removed_at"] is None. Nothing raises. `to_dict` also writes
+    # the same value under both keys, under two different declared types.
+    #
+    # Renaming the LEGACY half language-side keeps both fields and both wire
+    # names (pydantic still carries them as aliases). Rust needs the identical
+    # mapping and fails loudly instead — 12 compile errors; Go is blocked the
+    # same way; TypeScript is unaffected because its interface keys are quoted
+    # string literals. Both mapped keys occur in exactly ONE schema each across
+    # the whole document, checked rather than assumed, so nothing else moves.
+    # These two go the day the wire drops the duplicate pair — not before.
+    flags:
+      name-mappings: integration_config=integration_config_legacy,removed_at=removed_at_legacy
 
   # go is DELIBERATELY ABSENT, and it is the row this file cannot hold.
   #
