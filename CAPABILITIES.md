@@ -2,7 +2,7 @@
 
 # Hanzo Capability Manifest
 
-Every capability the API serves, at `v1.801.452`. GENERATED from `hanzo.yaml` â€” which is itself generated from hanzoai/cloud's own emission â€” so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
+Every capability the API serves, at `v1.801.476`. GENERATED from `hanzo.yaml` â€” which is itself generated from hanzoai/cloud's own emission â€” so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
 
 ## Identity & Trust
 
@@ -100,8 +100,8 @@ Every capability the API serves, at `v1.801.452`. GENERATED from `hanzo.yaml` â€
 | `docdb` | 4 | Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store, wired straight into your app. |
 | `search` | 6 | Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store, wired straight into your app. |
 | `index` | 17 | Package index is fast full-text search over your own data, typos forgiven. |
-| `indexers` | 1 | Package graph is chain data: your block indexers and how far each has caught up, plus the on-chain price feeds. |
-| `oracles` | 1 | Package graph is chain data: your block indexers and how far each has caught up, plus the on-chain price feeds. |
+| `indexers` | 1 | Package explorer is chain data: your block indexers and how far each has caught up, plus the on-chain price feeds. |
+| `oracles` | 1 | Package explorer is chain data: your block indexers and how far each has caught up, plus the on-chain price feeds. |
 | `kb` | 9 | Package knowledge is your team's wiki and your agents' memory, searchable by meaning. |
 | `catalog` | 8 | Package catalog is one place to browse every project, app and site built here. |
 | `sync` | 6 | Package sync is data sync: link two endpoints and keep them in step, on a webhook, on a schedule, or on demand. |
@@ -136,16 +136,17 @@ Every capability the API serves, at `v1.801.452`. GENERATED from `hanzo.yaml` â€
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `o11y` | 364 | Package o11y is your logs, metrics and traces: ship them in, query them, chart them. |
+| `o11y` | 365 | Package o11y is your logs, metrics and traces: ship them in, query them, chart them. |
 | `sentry` | 23 | Package o11y is your logs, metrics and traces: ship them in, query them, chart them. |
 | `logs` | 3 |  |
 | `traces` | 4 |  |
 | `metrics` | 4 |  |
 | `errors` | 1 | Package analytics is product analytics: send an event, read back who did what. |
-| `analytics` | 4 | Package analytics is product analytics: send an event, read back who did what. |
+| `analytics` | 5 | Package analytics is product analytics: send an event, read back who did what. |
 | `insights` | 2 | Package analytics is product analytics: send an event, read back who did what. |
 | `usage` | 11 | Package usage is what your org ran and what it cost, broken down per account. |
 | `openapi` | 1 |  |
+| `commands` | 1 |  |
 
 ## Commerce
 
@@ -153,10 +154,10 @@ Every capability the API serves, at `v1.801.452`. GENERATED from `hanzo.yaml` â€
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `commerce` | 11 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
+| `commerce` | 8 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
 | `store` | 34 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
 | `marketplace` | 6 | Package marketplace is the shop for tools and agents: browse, install into your project, publish your own free or priced. |
-| `billing` | 35 | Package billing is your org's balance, what it has spent, and the cards it pays with. |
+| `billing` | 40 | Package billing is your org's balance, what it has spent, and the cards it pays with. |
 | `payments` | 2 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
 | `pricing` | 25 | Package pricing is the price list: what every model, provider, GPU tier, tool and hosting plan costs. |
 | `plans` | 20 | Package plan is the plan catalog: every tier you can buy, what it costs, and what it grants. |
