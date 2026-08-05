@@ -186,9 +186,12 @@ when it turned out it could not run, nothing did. It needs a checkout of
 hanzoai/cloud, which is PRIVATE; hanzoai is on the GitHub **Free** plan, where an
 org secret resolves to the empty string inside a private repo; and this repo's
 one repo-level secret is `SDK_DISPATCH_TOKEN`. On top of that, both callers had
-been moved to `.hanzo/workflows`, which only git.hanzo.ai collects, and
-`git.hanzo.ai/hanzoai/openapi` is a 404 — no mirror, so no forge collected
-either file and `gh workflow list` returned nothing at all.
+been moved to `.hanzo/workflows`, which only git.hanzo.ai collects, and nothing
+on git.hanzo.ai collects a push to this repo: `git.hanzo.ai/hanzoai/openapi`
+answers `ls-remote` but refuses `push` with *mirror repository is read-only* —
+it PULLS from github rather than receiving from anyone, so no forge collected
+either file and `gh workflow list` returned nothing at all. Both callers live in
+`.github/workflows` now, which is why they run.
 
 Measured on that state: the pin was **81 hanzoai/cloud commits stale**,
 `hanzo.yaml` carried a **hand edit** (a route deleted straight out of a generated
