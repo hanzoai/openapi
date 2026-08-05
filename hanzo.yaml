@@ -1123,6 +1123,34 @@ components:
         version:
           type: string
       type: object
+    CollectOut:
+      properties:
+        balanceUsedCents:
+          description: BalanceUsedCents is how much was covered by prepaid balance.
+          type: integer
+        cardChargedCents:
+          description: CardChargedCents is how much was charged to the card on file.
+          type: integer
+        creditUsedCents:
+          description: CreditUsedCents is how much was covered by credit grants.
+          type: integer
+        invoice:
+          $ref: '#/components/schemas/InvoiceOut'
+          description: "Invoice is the invoice AFTER the attempt \u2014 its status is the authority on\nwhat happened, not\
+            \ this struct's other fields."
+        paid:
+          description: 'Paid reports whether the invoice is now settled in full. A false here with
+
+            no error is a DECLINE: the invoice stays open and may be collected again.'
+          type: boolean
+        processorRef:
+          description: "ProcessorRef is the processor's reference for any card charge \u2014 the field\nthat proves money\
+            \ moved at the gateway rather than only in our ledger."
+          type: string
+        reason:
+          description: Reason explains a decline or partial collection. Empty on success.
+          type: string
+      type: object
     CommerceOverview:
       properties:
         aov:
@@ -2873,6 +2901,66 @@ components:
         reason:
           type: string
       type: object
+    InvoiceLineIn:
+      properties:
+        amount:
+          description: Amount is the line total in whole cents (250000 is $2,500.00).
+          type: integer
+        description:
+          description: "Description is the human-readable line, e.g. \"Advisory retainer \u2014 August\"."
+          type: string
+        quantity:
+          description: Quantity is the number of units, when the line is metered. Optional.
+          type: integer
+        unitPrice:
+          description: UnitPrice is the per-unit price in cents, when the line is metered. Optional.
+          type: integer
+      type: object
+    InvoiceOut:
+      properties:
+        amountDueCents:
+          description: AmountDueCents is what remains collectible.
+          type: integer
+        amountPaidCents:
+          description: AmountPaidCents is what has been collected so far.
+          type: integer
+        createdAt:
+          description: CreatedAt is when the draft was raised, RFC3339.
+          type: string
+        currency:
+          description: Currency is the ISO 4217 code.
+          type: string
+        customerEmail:
+          description: CustomerEmail is where it is sent.
+          type: string
+        id:
+          description: "ID is the invoice id \u2014 what the issue, collect and void ops address."
+          type: string
+        lines:
+          description: Lines are the charges on the invoice.
+          items:
+            $ref: '#/components/schemas/InvoiceLineIn'
+          type: array
+        number:
+          description: 'Number is the human-facing invoice number, e.g. "INV-0042". A draft has
+
+            none; issuing assigns it.'
+          type: string
+        paymentRef:
+          description: PaymentRef is the processor reference for the collection, once paid.
+          type: string
+        status:
+          description: 'Status is draft, open, paid, void or uncollectible. A draft is not
+
+            collectible; issuing moves it to open.'
+          type: string
+        subtotalCents:
+          description: SubtotalCents is the sum of the lines.
+          type: integer
+        userId:
+          description: UserID is the customer billed.
+          type: string
+      type: object
     InvoiceRow:
       properties:
         amountCents:
@@ -3920,6 +4008,96 @@ components:
         name:
           type: string
       type: object
+    PaymentIn:
+      properties:
+        amountCents:
+          description: "AmountCents is the amount to charge, in whole cents (5000 is $50.00).\nServer-side bounds apply and\
+            \ are authoritative \u2014 the default floor is $1\nand the ceiling $5,000, so a fat-fingered or hostile amount\
+            \ is refused\nbefore any money moves."
+          type: integer
+        currency:
+          description: Currency is the ISO 4217 code, lower-cased. Empty means usd.
+          type: string
+        idempotencyKey:
+          description: 'IdempotencyKey makes a retry safe: the same key never charges twice, it
+
+            replays the first result. Sending one is strongly recommended for an agent,
+
+            which retries by construction. Empty falls back to a windowed key derived
+
+            from the amount and currency, so a double-submit inside 15 minutes still
+
+            collapses onto one charge.'
+          type: string
+        sourceId:
+          description: 'SourceID is the single-use payment token that stands in for the card: a
+
+            Square Web Payments SDK nonce minted in the browser, or a Square sandbox
+
+            test nonce when the org''s credentials are sandbox ones. The card number
+
+            itself never reaches this process, which is what keeps it out of PCI scope.'
+          type: string
+      type: object
+    PaymentOut:
+      properties:
+        balanceCents:
+          description: 'BalanceCents is the org''s balance AFTER this payment, read back from the
+
+            same key just credited so it matches what the balance endpoint reports.'
+          type: integer
+        id:
+          description: 'ID is the ledger transaction id for the credit. It is what getPayment
+
+            reads back, and the customer-visible receipt for the money.'
+          type: string
+        processorRef:
+          description: "ProcessorRef is the payment processor's own reference for the charge\n(Square's payment id). It is\
+            \ the field that proves money actually moved at\nthe gateway rather than only in our ledger \u2014 the thing to\
+            \ quote when\nreconciling against a processor dashboard."
+          type: string
+        status:
+          description: 'Status is "ok" on a settled charge. A charge that did not settle is an
+
+            error with the processor''s reason, never a status field to inspect.'
+          type: string
+        test:
+          description: 'Test reports which bucket this credited: true is a SANDBOX charge crediting
+
+            the test balance, false is live money. It is always stated so a receipt can
+
+            never be mistaken for the other kind.'
+          type: boolean
+      type: object
+    PaymentRecord:
+      properties:
+        amountCents:
+          description: AmountCents is the credited amount in whole cents.
+          type: integer
+        createdAt:
+          description: CreatedAt is when the credit was written, RFC3339.
+          type: string
+        currency:
+          description: Currency is the ISO 4217 code.
+          type: string
+        id:
+          description: ID is the ledger transaction id.
+          type: string
+        notes:
+          description: Notes is the ledger memo, carrying the processor and its reference.
+          type: string
+        status:
+          description: 'Status is the payment''s state. This ledger writes a deposit only AFTER the
+
+            processor settled, so a payment that can be read is one that succeeded.'
+          type: string
+        subject:
+          description: Subject is the billing key this payment credited.
+          type: string
+        test:
+          description: Test reports whether this was a sandbox charge (test balance) or live money.
+          type: boolean
+      type: object
     PnL:
       properties:
         expense:
@@ -4348,6 +4526,26 @@ components:
           type: integer
         seats:
           type: integer
+      type: object
+    RaiseInvoiceIn:
+      properties:
+        currency:
+          description: Currency is the ISO 4217 code, lower-cased. Empty means usd.
+          type: string
+        customerEmail:
+          description: CustomerEmail is where the invoice is sent. Optional.
+          type: string
+        lines:
+          description: "Lines are the charges. The invoice subtotal and amount due are COMPUTED\nfrom these \u2014 there is\
+            \ no total field to send, because a total that\ndisagreed with its own lines would bill a number nobody could\
+            \ derive."
+          items:
+            $ref: '#/components/schemas/InvoiceLineIn'
+          type: array
+        userId:
+          description: "UserID identifies the customer being billed, within the caller's own org.\nRequired \u2014 an invoice\
+            \ with no addressee is not an invoice."
+          type: string
       type: object
     RateCard:
       properties:
@@ -11760,6 +11958,364 @@ components:
         name:
           description: Name is the database name to create.
           type: string
+      type: object
+    dataroomAddDocument:
+      properties:
+        documentId:
+          description: "DocumentId is the document to attach. Required, and it must already exist\nin the caller's own store\
+            \ \u2014 this route attaches, it never uploads."
+        id:
+          description: 'ID is the room to add to. It is the path segment: the URL is the addressing
+
+            authority, and the org it is resolved in comes from the caller''s principal,
+
+            so an id from another tenant is simply not found.'
+          type: string
+        orderIndex:
+          description: 'OrderIndex fixes the document''s place in the viewer''s list. Optional; a
+
+            number or a numeric string is accepted, and anything that is not a number
+
+            leaves the document unordered, which sorts it last.'
+      type: object
+    dataroomCreate:
+      properties:
+        description:
+          description: 'Description is the room''s description. Optional; any JSON scalar is
+
+            accepted and stored as its text, and omitting it leaves the room with none.'
+        name:
+          description: 'Name is the room''s display name. Required, and a room without one is
+
+            refused with the data room''s own validation error.'
+      type: object
+    dataroomDocument:
+      properties:
+        contentType:
+          description: ContentType is the mime type recorded at upload, null when none was sent.
+          type: string
+        createdAt:
+          description: CreatedAt is when the document was uploaded, in unix milliseconds.
+          type: integer
+        fileKey:
+          description: 'FileKey is the opaque object-storage key the bytes are stored under. It is
+
+            scoped to the tenant''s own key prefix and is not a URL.'
+          type: string
+        fileSize:
+          description: FileSize is the stored byte count, null when it was not recorded.
+          type: integer
+        id:
+          description: ID is the document id.
+          type: string
+        name:
+          description: Name is the document's display name.
+          type: string
+        numPages:
+          description: NumPages is the page count, null when it was not supplied at upload.
+          type: integer
+        type:
+          description: Type is the document's kind, null when it was not recorded.
+          type: string
+        updatedAt:
+          description: UpdatedAt is when the document row last changed, in unix milliseconds.
+          type: integer
+      type: object
+    dataroomDocumentOne:
+      properties:
+        document:
+          $ref: '#/components/schemas/dataroomDocument'
+          description: Document is the document itself.
+      type: object
+    dataroomDocuments:
+      properties:
+        documents:
+          description: Documents is every document in the caller's own store, newest first.
+          items:
+            $ref: '#/components/schemas/dataroomDocument'
+          type: array
+      type: object
+    dataroomLink:
+      properties:
+        allowDownload:
+          description: AllowDownload is whether a visitor may download, rather than only view.
+          type: boolean
+        allowList:
+          description: 'AllowList narrows which addresses pass the email gate. An entry may be a
+
+            full address, an "@domain.com" suffix, or a bare "domain.com". An EMPTY
+
+            list admits everyone.'
+          items:
+            type: string
+          type: array
+        createdAt:
+          description: CreatedAt is when the link was minted, in unix milliseconds.
+          type: integer
+        dataroomId:
+          description: DataroomId is the room the link opens, null for a single-document link.
+          type: string
+        denyList:
+          description: "DenyList rejects addresses, in the same three forms as the allow list, and\nis checked BEFORE it \u2014\
+            \ so deny always wins."
+          items:
+            type: string
+          type: array
+        documentId:
+          description: DocumentId is the document the link opens, null for a room link.
+          type: string
+        emailProtected:
+          description: EmailProtected is whether a visitor must state an address to enter.
+          type: boolean
+        expiresAt:
+          description: ExpiresAt is when the link closes, in unix milliseconds; null never expires.
+          type: integer
+        hasPassword:
+          description: 'HasPassword reports THAT a password is set. The stored form is a bcrypt
+
+            hash and no route returns it.'
+          type: boolean
+        id:
+          description: "ID is the link id \u2014 the public token a visitor opens the room with."
+          type: string
+        isArchived:
+          description: IsArchived is whether the link has been retired.
+          type: boolean
+        linkType:
+          description: LinkType is DATAROOM_LINK or DOCUMENT_LINK.
+          type: string
+        name:
+          description: Name is the link's label, null when none was given.
+          type: string
+        updatedAt:
+          description: UpdatedAt is when the link last changed, in unix milliseconds.
+          type: integer
+      type: object
+    dataroomLinkCreate:
+      properties:
+        allowDownload:
+          description: 'AllowDownload permits downloading rather than viewing only. Optional and
+
+            OFF by default; any truthy JSON value turns it on.'
+        allowList:
+          description: 'AllowList narrows which addresses pass the email gate. Optional; an entry
+
+            may be a full address ("ada@example.com"), an "@domain.com" suffix, or a
+
+            bare "domain.com". An omitted or EMPTY list admits everyone, so a link with
+
+            no list enforces the email gate alone.'
+          items: {}
+          type: array
+        dataroomId:
+          description: 'DataroomId is the room to share. One of dataroomId or documentId is
+
+            required, and the target must exist in the caller''s own store.'
+        denyList:
+          description: 'DenyList rejects addresses, in the same three forms as the allow list.
+
+            Optional. It is checked BEFORE the allow list, so deny always wins.'
+          items: {}
+          type: array
+        documentId:
+          description: 'DocumentId shares a SINGLE document instead of a room. One of dataroomId or
+
+            documentId is required.'
+        emailProtected:
+          description: "EmailProtected makes a visitor state an address before entering. Optional\nand ON by default: it is\
+            \ disabled only by the JSON literal false, so any\nother value \u2014 including the string \"false\" \u2014 leaves\
+            \ the gate on."
+        expiresAt:
+          description: 'ExpiresAt closes the link, in unix milliseconds. Optional; a number or a
+
+            numeric string is accepted, and omitting it means the link never expires.'
+        name:
+          description: Name labels the link. Optional; any JSON scalar is stored as its text.
+        password:
+          description: 'Password gates the link. Optional; it is hashed with bcrypt before storage
+
+            and is never readable back through any route.'
+      type: object
+    dataroomLinkOne:
+      properties:
+        link:
+          $ref: '#/components/schemas/dataroomLink'
+          description: Link is the link itself, including the id a visitor opens it with.
+      type: object
+    dataroomLinkStats:
+      properties:
+        linkId:
+          description: LinkId is the link these counts are for.
+          type: string
+        pages:
+          description: Pages is the per-page breakdown, in page order.
+          items:
+            $ref: '#/components/schemas/dataroomPageStat'
+          type: array
+        totalPageViews:
+          description: TotalPageViews is how many page views the link received.
+          type: integer
+        totalViews:
+          description: TotalViews is how many viewing sessions the link opened.
+          type: integer
+      type: object
+    dataroomLinks:
+      properties:
+        links:
+          description: Links is every non-archived link, newest first.
+          items:
+            $ref: '#/components/schemas/dataroomLink'
+          type: array
+      type: object
+    dataroomMember:
+      properties:
+        contentType:
+          description: ContentType is the mime type recorded at upload, null when none was sent.
+          type: string
+        createdAt:
+          description: CreatedAt is when the document was uploaded, in unix milliseconds.
+          type: integer
+        dataroomDocumentId:
+          description: "DataroomDocumentId is the membership id \u2014 this document's place in THIS\nroom, distinct from\
+            \ the document id."
+          type: string
+        fileKey:
+          description: FileKey is the opaque object-storage key the bytes are stored under.
+          type: string
+        fileSize:
+          description: FileSize is the stored byte count, null when it was not recorded.
+          type: integer
+        id:
+          description: ID is the document id.
+          type: string
+        name:
+          description: Name is the document's display name.
+          type: string
+        numPages:
+          description: NumPages is the page count, null when it was not supplied at upload.
+          type: integer
+        orderIndex:
+          description: 'OrderIndex is the document''s place in the viewer''s list, null when it was
+
+            added without one. Unordered documents sort last.'
+          type: integer
+        type:
+          description: Type is the document's kind, null when it was not recorded.
+          type: string
+        updatedAt:
+          description: UpdatedAt is when the document row last changed, in unix milliseconds.
+          type: integer
+      type: object
+    dataroomMembership:
+      properties:
+        dataroomDocumentId:
+          description: DataroomDocumentId is the new membership id.
+          type: string
+        dataroomId:
+          description: DataroomId is the room the document was added to.
+          type: string
+        documentId:
+          description: DocumentId is the document that was added.
+          type: string
+      type: object
+    dataroomPageStat:
+      properties:
+        avgDuration:
+          description: AvgDuration is totalDuration divided by views, rounded; 0 when unviewed.
+          type: integer
+        pageNumber:
+          description: PageNumber is the page these counts are for.
+          type: integer
+        totalDuration:
+          description: TotalDuration is the summed dwell measure reported for the page.
+          type: integer
+        views:
+          description: Views is how many times the page was viewed.
+          type: integer
+      type: object
+    dataroomRoom:
+      properties:
+        createdAt:
+          description: CreatedAt is when the room was created, in unix milliseconds.
+          type: integer
+        description:
+          description: Description is the room's description, null when none was given.
+          type: string
+        id:
+          description: ID is the room id, which is what other dataroom calls address it by.
+          type: string
+        name:
+          description: Name is the room's display name.
+          type: string
+        pId:
+          description: PId is the room's short public identifier, unique within the tenant.
+          type: string
+        updatedAt:
+          description: UpdatedAt is when the room last changed, in unix milliseconds.
+          type: integer
+      type: object
+    dataroomRoomDetail:
+      properties:
+        createdAt:
+          description: CreatedAt is when the room was created, in unix milliseconds.
+          type: integer
+        description:
+          description: Description is the room's description, null when none was given.
+          type: string
+        documents:
+          description: Documents is every document in the room, in the order a visitor sees them.
+          items:
+            $ref: '#/components/schemas/dataroomMember'
+          type: array
+        id:
+          description: ID is the room id.
+          type: string
+        name:
+          description: Name is the room's display name.
+          type: string
+        pId:
+          description: PId is the room's short public identifier.
+          type: string
+        updatedAt:
+          description: UpdatedAt is when the room last changed, in unix milliseconds.
+          type: integer
+      type: object
+    dataroomRoomDetailOne:
+      properties:
+        dataroom:
+          $ref: '#/components/schemas/dataroomRoomDetail'
+          description: Dataroom is the room and its contents.
+      type: object
+    dataroomRoomOne:
+      properties:
+        dataroom:
+          $ref: '#/components/schemas/dataroomRoom'
+          description: Dataroom is the room itself.
+      type: object
+    dataroomRooms:
+      properties:
+        datarooms:
+          description: Datarooms is every data room in the caller's own store, newest first.
+          items:
+            $ref: '#/components/schemas/dataroomRoom'
+          type: array
+      type: object
+    dataroomStats:
+      properties:
+        dataroomId:
+          description: DataroomId is the room these counts are for.
+          type: string
+        links:
+          description: Links is the same per-page breakdown for each link into the room.
+          items:
+            $ref: '#/components/schemas/dataroomLinkStats'
+          type: array
+        totalPageViews:
+          description: TotalPageViews is the room's page views across every link.
+          type: integer
+        totalViews:
+          description: TotalViews is the room's viewing sessions across every link.
+          type: integer
       type: object
     datastoreVolume:
       properties:
@@ -23552,6 +24108,7 @@ components:
     o11y.O11yLogRecordsOut:
       properties:
         results:
+          description: Results are the records, newest first.
           items:
             additionalProperties: {}
             type: object
@@ -23750,6 +24307,7 @@ components:
     o11y.O11yMetricList:
       properties:
         metrics:
+          description: Metrics are the metrics, with their metadata.
           items:
             $ref: '#/components/schemas/o11y.O11yMetricSummary'
           type: array
@@ -23758,7 +24316,9 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/o11y.O11yMetricList'
+          description: Data holds the metrics.
         status:
+          description: Status is "success".
           type: string
       type: object
     o11y.O11yMetricMetadata:
@@ -23967,16 +24527,22 @@ components:
     o11y.O11yMetricSummary:
       properties:
         description:
+          description: Description describes the metric.
           type: string
         isMonotonic:
+          description: IsMonotonic marks a sum that only ever increases.
           type: boolean
         metricName:
+          description: MetricName is the metric's name.
           type: string
         temporality:
+          description: Temporality is delta or cumulative.
           type: string
         type:
+          description: Type is the metric type, e.g. gauge, sum, histogram.
           type: string
         unit:
+          description: Unit is the metric's unit.
           type: string
       type: object
     o11y.O11yMetricTreemap:
@@ -29162,38 +29728,6 @@ components:
           description: TotalPages is ceil(totalItems/limit), at least 1.
           type: integer
       type: object
-    o11y.logLine:
-      properties:
-        body:
-          type: string
-        severity:
-          description: INFO | WARN | ERROR | ...
-          type: string
-        source:
-          description: '"infra" (stdout) | "request" (org request log)'
-          type: string
-        ts:
-          description: RFC3339 (UTC)
-          type: string
-        tsNano:
-          description: nanosecond cursor
-          type: integer
-      type: object
-    o11y.logsResponse:
-      properties:
-        lines:
-          items:
-            $ref: '#/components/schemas/o11y.logLine'
-          type: array
-        nextCursor:
-          description: pass back as ?sinceNs for the next tail poll
-          type: integer
-        product:
-          type: string
-        view:
-          description: '"infra" (admin) | "request" (per-org)'
-          type: string
-      type: object
     o11y.metricsResponse:
       properties:
         product:
@@ -31451,39 +31985,6 @@ components:
           description: SSHURL is the repo's scp-style SSH remote.
           type: string
       type: object
-    railList:
-      properties:
-        rails:
-          description: Rails is every (chain, token, treasury) triple this deployment accepts.
-          items:
-            $ref: '#/components/schemas/railView'
-          type: array
-      type: object
-    railView:
-      properties:
-        chain:
-          description: Chain is the human chain name, e.g. "Base".
-          type: string
-        chainId:
-          description: ChainID is the EIP-155 chain id the wallet must be on.
-          type: integer
-        decimals:
-          description: "Decimals is the token's decimal places \u2014 6 for USDC, 18 for an 18-decimal\ntoken. Cents are derived\
-            \ per-rail from it."
-          type: integer
-        id:
-          description: ID is the stable rail id to name when submitting a transfer, e.g. "base-usdc".
-          type: string
-        symbol:
-          description: Symbol is the display symbol, e.g. "USDC".
-          type: string
-        token:
-          description: Token is the ERC-20 contract address to transfer.
-          type: string
-        treasury:
-          description: Treasury is the address on this chain to send funds to.
-          type: string
-      type: object
     rawOut:
       properties:
         data:
@@ -32089,6 +32590,15 @@ components:
         type:
           description: "Type is the key class that was revoked, resolved \u2014 so a caller that named\nnothing can see it\
             \ revoked the secret key."
+          type: string
+      type: object
+    riskAdoptIn:
+      properties:
+        address:
+          description: "Address is one of YOUR organisation's own published values (GET\n/v1/risk/state reports them, and\
+            \ a search reports the one it fitted for you).\nAn address your organisation has not published is NOT FOUND \u2014\
+            \ including one\nanother organisation published, because an address names a value and never\nauthorises reading\
+            \ it."
           type: string
       type: object
     riskAggregates:
@@ -33073,11 +33583,10 @@ components:
             \ quiet."
           type: boolean
         shape:
-          description: 'Shape is the model''s identity: the inventory in order and the detector''s
-
-            geometry parameters. It is what an auditor pins an alert to, because
-
-            learned state is only meaningful against the shape that produced it.'
+          description: "Shape is the model's identity, as `<family>:<digest>`: the KIND of model, and\nthat family's own digest\
+            \ over the inventory in order and the detector's geometry\nparameters. It is what an auditor pins an alert to,\
+            \ because learned state is\nonly meaningful against the space that produced it \u2014 and the family leads it\n\
+            because two families' masses are not fitted differently, they are different\nkinds of number."
           type: string
         stated:
           description: Stated is the share of the stream this organisation said may be examined.
@@ -33092,11 +33601,14 @@ components:
           type: string
         values:
           description: "Values is your organisation's own published model values, newest first \u2014\nevery state it deliberately\
-            \ named, each addressed by its own content and\nimmutable. This is what POST /v1/risk/state/restore names, so\
-            \ it is reported\nHERE rather than behind an address of its own: they are part of what a review\nof one model\
-            \ reads, and a list of names is a few hundred bytes.\n\nThe working model is NOT in it. Publication is a boundary\
-            \ somebody marked; the\nstate between two boundaries is in-process counters, and calling those a value\nwould\
-            \ be a claim about reproducibility that nothing could honour."
+            \ named, each addressed by its own content and\nimmutable. This is what PUT /v1/risk/state/model names, so it\
+            \ is reported\nHERE rather than behind an address of its own: they are part of what a review\nof one model reads,\
+            \ and a list of names is a few hundred bytes.\n\nCompare each one's `shape` with the `shape` above: equal means\
+            \ adopting it\nrestores masses into the space this model already runs, and different means\nadopting it REPLANTS\
+            \ the model into the space that value describes \u2014 which is how\nthe shape a search found becomes the shape\
+            \ you are running.\n\nThe working model is NOT in it. Publication is a boundary somebody marked; the\nstate between\
+            \ two boundaries is in-process counters, and calling those a value\nwould be a claim about reproducibility that\
+            \ nothing could honour."
           items:
             $ref: '#/components/schemas/riskModelValue'
           type: array
@@ -33130,9 +33642,14 @@ components:
             contiguous until retention disposes of the oldest.'
           type: integer
         shape:
-          description: 'Shape is the model space the masses are only meaningful against: the feature
-
-            inventory in order and the detector''s geometry parameters.'
+          description: "Shape NAMES the model space the masses are only meaningful against, as\n`<family>:<digest>` \u2014\
+            \ the KIND of model, and that family's own digest over the\nfeature inventory in order and the detector's geometry\
+            \ parameters. Compare it\nwith the `shape` on your model state (GET /v1/risk/state): equal means adopting\nthis\
+            \ value restores masses into the space already running, and different means\nadopting it REPLANTS the model into\
+            \ the space this value describes. That is what\nmakes a searched shape installable.\n\nA DIFFERENT FAMILY IS NOT\
+            \ ADOPTABLE AT ALL, and that is the one difference the\nfamily term makes here: a different geometry in the same\
+            \ family is a replant, and\na different family is a refusal naming both \u2014 its masses do not describe your\n\
+            model in any space."
           type: string
         warmed:
           description: 'Warmed is how far your own event surface had been folded in when this value
@@ -33241,6 +33758,20 @@ components:
         version:
           description: Version names this regime in this organisation's history.
           type: integer
+      type: object
+    riskPublishOut:
+      properties:
+        minted:
+          description: "Minted is false when your model was ALREADY published under this name and\nnothing was written. Publication\
+            \ is idempotent on the value itself, which is\nwhat a content address is for \u2014 publishing at every boundary\
+            \ costs nothing\nrather than being the cheapest way to fill a disk."
+          type: boolean
+        tenant:
+          description: Tenant is whose history it entered.
+          type: string
+        value:
+          $ref: '#/components/schemas/riskModelValue'
+          description: 'Value is the published value: its name and what it is, never its masses.'
       type: object
     riskResolveIn:
       properties:
@@ -33351,14 +33882,6 @@ components:
         subject:
           type: string
       type: object
-    riskRestoreIn:
-      properties:
-        address:
-          description: "Address is one of YOUR organisation's own published values (GET\n/v1/risk/state reports them). An\
-            \ address your organisation has not published\nis NOT FOUND \u2014 including one another organisation published,\
-            \ because an\naddress names a value and never authorises reading it."
-          type: string
-      type: object
     riskScoreIn:
       properties:
         event:
@@ -33414,15 +33937,18 @@ components:
             \ what it WOULD have alerted on, and changing no\noutcome. It is the default for a model no one has reviewed yet."
           type: boolean
         shape:
-          description: "Shape is the model space this verdict was reached in: your organisation's\nfeature inventory in order\
-            \ and the detector's geometry parameters. It is what\npins an adverse decision to a model \u2014 a score is only\
-            \ meaningful against the\nshape that produced it, and without this the only answer to \"which model\ndecided this\"\
-            \ was \"the one that was running\", which is not an answer.\n\nIt names the SPACE, not the learned state, and\
-            \ that is deliberate. The masses\nat the instant of a score are in-process counters somewhere between two\npublished\
-            \ values, so citing a published address here would claim that value\nproduced this score \u2014 true only for\
-            \ the score taken the instant after a\npublication. This, the policy version and the event's own time are what\
-            \ IS\ntrue, and the published history's clock (GET /v1/risk/state) brackets the\ndecision between two named values\
-            \ from there."
+          description: "Shape is the model space this verdict was reached in, as `<family>:<digest>`:\nthe KIND of model,\
+            \ and that family's own digest over your organisation's feature\ninventory in order and the detector's geometry\
+            \ parameters. It is what pins an\nadverse decision to a model \u2014 a score is only meaningful against the space\
+            \ that\nproduced it, and without this the only answer to \"which model decided this\" was\n\"the one that was\
+            \ running\", which is not an answer.\n\nThe family leads it because everything after it is one family's arithmetic.\
+            \ Two\nspaces are the same space only if they are the same family, so comparing this\nwith the `shape` on your\
+            \ model state or on a published value is a comparison\nthat holds ACROSS families and not only inside one.\n\n\
+            It names the SPACE, not the learned state, and that is deliberate. The masses\nat the instant of a score are in-process\
+            \ counters somewhere between two\npublished values, so citing a published address here would claim that value\n\
+            produced this score \u2014 true only for the score taken the instant after a\npublication. This, the policy version\
+            \ and the event's own time are what IS\ntrue, and the published history's clock (GET /v1/risk/state) brackets\
+            \ the\ndecision between two named values from there."
           type: string
         values:
           description: 'Values is every coordinate, including the ones that contributed nothing, so
@@ -33453,6 +33979,27 @@ components:
         events:
           description: Events is how much of this organisation's history was replayed.
           type: integer
+        fitted:
+          $ref: '#/components/schemas/riskModelValue'
+          description: "Fitted is the winning shape FITTED over your own history and published as one of\nyour organisation's\
+            \ own model values. Name its address on PUT\n/v1/risk/state/model and the winning shape becomes the model you\
+            \ are running.\n\nIt is why this op answers something you can act on. A trial keeps counts and not\nthe model\
+            \ that produced them, so a report without this named a shape nobody could\ninstall \u2014 and the adoption path\
+            \ refused a shape change besides. Fitting the winner\nonce is a sixty-fifth pass over the same history; keeping\
+            \ all sixty-four fitted\nmodels resident instead would cost a measured 21 MiB per run for sixty-three\nshapes\
+            \ nobody adopts.\n\nTwo things about it are worth knowing before you adopt it. Its realised rate can\ndiffer from\
+            \ the winner's above, because the ranking measures every candidate under\none fixed reference geometry so the\
+            \ comparison is a comparison, while this is\nfitted under YOUR geometry \u2014 the one an outsider cannot predict.\
+            \ And it has\nlearned the window this search replayed and nothing older, so adopting it trades\nhistory for fit."
+        gap:
+          description: 'Gap says why the winning shape could not be fitted into an adoptable value, when
+
+            it could not. It is separate from Refusal because they are different facts: a
+
+            refusal means the ranking below proves nothing, a gap means the ranking stands and
+
+            only the value is missing.'
+          type: string
         id:
           description: ID is the run.
           type: string
@@ -33488,20 +34035,6 @@ components:
         id:
           description: ID addresses the run. Read the result back with it.
           type: string
-      type: object
-    riskSnapshotOut:
-      properties:
-        minted:
-          description: "Minted is false when your model was ALREADY published under this name and\nnothing was written. Publication\
-            \ is idempotent on the value itself, which is\nwhat a content address is for \u2014 publishing at every boundary\
-            \ costs nothing\nrather than being the cheapest way to fill a disk."
-          type: boolean
-        tenant:
-          description: Tenant is whose history it entered.
-          type: string
-        value:
-          $ref: '#/components/schemas/riskModelValue'
-          description: 'Value is the published value: its name and what it is, never its masses.'
       type: object
     riskSourceCoverage:
       properties:
@@ -33601,6 +34134,11 @@ components:
 
             partitioned, and therefore how much history it takes to fill.'
           type: integer
+        family:
+          description: "Family is the KIND of model this candidate is: `halfspace` is an ensemble of\nhalf-space trees whose\
+            \ masses are counters, and it is the family this search\ngrid ranks. The parameters below are that family's own\
+            \ \u2014 a family that does not\npartition space with trees has different ones \u2014 so read them against this."
+          type: string
         review:
           description: Review is the appetite this shape was tried at.
           type: number
@@ -36469,48 +37007,6 @@ components:
             $ref: '#/components/schemas/Wallet'
           type: array
       type: object
-    walletTopupReq:
-      properties:
-        fromAddress:
-          description: 'FromAddress is the wallet the transfer was sent from. Optional; when given it
-
-            must match the transfer''s on-chain sender.'
-          type: string
-        rail:
-          description: 'Which accepted rail the transfer was sent on, e.g. "base-usdc". The client
-
-            names it rather than the server guessing from the tx: the same address can
-
-            exist on several chains, so inferring would risk crediting against the wrong
-
-            treasury. It may be omitted only while exactly one rail is enabled.'
-          type: string
-        txHash:
-          description: 'TxHash is the hash of the ERC-20 transfer that was already sent to the rail''s
-
-            treasury. The receipt is read from that chain; nothing is credited that the
-
-            chain did not confirm.'
-          type: string
-      type: object
-    walletTopupResp:
-      properties:
-        balance:
-          description: 'Balance is the org''s new USD-ledger balance in cents. Best-effort: a read
-
-            failure reports 0, and the credit has already landed either way.'
-          type: integer
-        creditedCents:
-          description: "CreditedCents is the USD credit recorded, derived from the ON-CHAIN value\nusing the token's own decimals\
-            \ \u2014 never a client-supplied number."
-          type: integer
-        status:
-          description: Status is how commerce recorded the payment.
-          type: string
-        txHash:
-          description: TxHash is the transfer that was credited.
-          type: string
-      type: object
     workerList:
       properties:
         workers:
@@ -36588,8 +37084,8 @@ info:
   x-spec:
     repo: hanzoai/cloud
     path: openapi.yaml
-    ref: v1.801.410
-    sha256: 1798032429783a108ddfe6785c579a782e532a03ae00b875b5f33dfa21e78de4
+    ref: v1.801.452
+    sha256: c292b360d596712271bb1a16dee839a127476942da6556fda2a40953088c0501
 openapi: 3.1.0
 paths:
   /:
@@ -46848,6 +47344,128 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
+    post:
+      description: 'Raises a DRAFT invoice against a customer in the caller''s own org.
+
+
+        The invoice is not collectible yet: a draft exists so it can be read and
+
+        corrected, and issueInvoice is the separate act that turns it into a demand for
+
+        payment. The subtotal and amount due are computed from the lines, so there is
+
+        no total to send and none to get wrong.
+
+
+        The billing org is the caller''s, taken from the validated principal, so an
+
+        invoice can only ever be raised on the caller''s own books.
+
+
+        A named handler, not a closure, so zipdoc can lift this prose into the registry.'
+      operationId: raiseInvoice
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RaiseInvoiceIn'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceOut'
+          description: created
+      summary: Raise a draft invoice against a customer
+      tags:
+      - billing
+      x-app: commerce
+  /v1/billing/invoices/{id}:
+    get:
+      description: "Reads one invoice out of the caller's org.\n\nThe org scopes the read by construction \u2014 the store\
+        \ is namespaced to it \u2014 so an\nid belonging to another tenant is not found rather than found and then filtered.\n\
+        \nA named handler, not a closure, so zipdoc can lift this prose into the registry."
+      operationId: getInvoice
+      parameters:
+      - description: ID is the invoice id.
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceOut'
+          description: ok
+      summary: Read one invoice
+      tags:
+      - billing
+      x-app: commerce
+  /v1/billing/invoices/{id}/collect:
+    post:
+      description: "Collects an issued invoice: credit grants first, then prepaid balance, then the\ncard on file \u2014 the\
+        \ same waterfall the dunning workflow runs.\n\nA DECLINE IS NOT AN ERROR. It answers with paid=false, a reason, and\
+        \ the\ninvoice still open, because a declined collection is a normal business outcome\nthat must remain retryable\
+        \ \u2014 and because sealing it as a failure would wedge\ndunning behind a replayed decline. Only a successful collection\
+        \ is sealed, so a\nretry of a paid invoice replays the receipt instead of charging again.\n\nA named handler, not\
+        \ a closure, so zipdoc can lift this prose into the registry."
+      operationId: collectInvoice
+      parameters:
+      - description: ID is the invoice id.
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectOut'
+          description: ok
+      summary: Collect an issued invoice from credits, balance, then card
+      tags:
+      - billing
+      x-app: commerce
+  /v1/billing/invoices/{id}/issue:
+    post:
+      description: 'Issues a draft invoice: moves it to OPEN, assigns its number, and makes it
+
+        collectible.
+
+
+        Only a draft can be issued. An invoice already open, paid or void is refused
+
+        with the state machine''s own reason rather than being silently re-issued, which
+
+        would mint a second number for one debt.
+
+
+        A named handler, not a closure, so zipdoc can lift this prose into the registry.'
+      operationId: issueInvoice
+      parameters:
+      - description: ID is the invoice id.
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceOut'
+          description: ok
+      summary: Issue a draft invoice, making it collectible
+      tags:
+      - billing
+      x-app: commerce
   /v1/billing/invoices/{id}/pdf:
     get:
       description: "Renders the addressed invoice as a single-page PDF and answers it as an attachment named after the invoice\
@@ -46869,6 +47487,30 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/billing/invoices/{id}/void:
+    post:
+      description: "Voids a draft or issued invoice \u2014 the cancel.\n\nA paid invoice cannot be voided: money has moved,\
+        \ and the correction for that\nis a refund, not an erasure. The state machine refuses it and that refusal is\nthe\
+        \ answer.\n\nA named handler, not a closure, so zipdoc can lift this prose into the registry."
+      operationId: voidInvoice
+      parameters:
+      - description: ID is the invoice id.
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceOut'
+          description: ok
+      summary: Void a draft or issued invoice
+      tags:
+      - billing
+      x-app: commerce
   /v1/billing/methods:
     get:
       description: "Answers the org's saved payment methods as the portal holds them \u2014 brand, last four, expiry, default\
@@ -46901,6 +47543,29 @@ paths:
         \ principal."
       operationId: post_v1_billing_methods
       summary: Save a card on file for the caller's org
+      tags:
+      - billing
+      x-app: billing
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/billing/methods/{id}:
+    delete:
+      description: "Detaches a card on file: the stored reference is removed here AND withdrawn from the processor's vault,\
+        \ so nothing is left that a later charge could bill.\n\nThe id is resolved INSIDE the caller's own org, so it can\
+        \ only ever name a card this org can list. Another tenant's id does not resolve and answers 404 \u2014 not 403, because\
+        \ a status that separates 'not yours' from 'not there' turns an id into something worth guessing.\n\nRemoving the\
+        \ card an auto-recharge or a running GPU lease bills leaves that arrangement with nothing to charge; it is the customer's\
+        \ call to make, and this makes it rather than refusing on their behalf.\n\n401 without a validated principal \u2014\
+        \ the org is the validated owner claim, never a client-supplied field, so this cannot be pointed at another tenant."
+      operationId: delete_v1_billing_methods_by_id
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      summary: Remove a saved card from the caller's org
       tags:
       - billing
       x-app: billing
@@ -46947,6 +47612,49 @@ paths:
         \ what this caller has."
       operationId: get_v1_billing_plans
       summary: The public plan catalog, annotated with the active platform promotion
+      tags:
+      - billing
+      x-app: commerce
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/billing/portal/methods:
+    get:
+      description: "Answers the org's saved payment methods as masked descriptors: brand, last four, expiry and the processor's\
+        \ reusable reference. No card number and no security code exist here to return; both live at the processor and never\
+        \ enter this system.\n\nThis is the SERVICE-TOKEN face of the same list a customer reads at /v1/billing/methods, and\
+        \ it exists as its own address because the host that publishes that one cannot forward to it \u2014 the forward would\
+        \ re-enter its own handler. Both answer the same rows.\n\nThe customer filter is pinned to the VALIDATED caller before\
+        \ the handler runs, so a browser sees only its own subject's cards whatever customerId it sends; only a caller holding\
+        \ the internal service token may name the subject, and the org it may name it within is fixed by the gateway. Cross-tenant\
+        \ is closed by the org namespace for both, so an id or a subject from another org resolves to nothing. A caller who\
+        \ is neither is refused before the read."
+      operationId: get_v1_billing_portal_methods
+      summary: "Cards saved against the caller's org, masked \u2014 the portal read"
+      tags:
+      - billing
+      x-app: commerce
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/billing/portal/methods/{id}:
+    delete:
+      description: "Detaches the addressed card: the stored reference is removed here AND withdrawn from the processor's vault,\
+        \ so nothing is left that a later charge could bill.\n\nThe service-token twin of the customer's DELETE /v1/billing/methods/{id},\
+        \ at its own address for the same reason the portal list is \u2014 the host that publishes the customer address proxies\
+        \ here rather than into itself.\n\nThe id is resolved INSIDE the caller's org namespace, so another tenant's card\
+        \ is not found there and answers 404 \u2014 never 403, which would confirm the id exists. That bound holds for the\
+        \ service token too: it may act for any subject within the org the gateway pinned, and for no subject outside it.\n\
+        \nRemoving the card an auto-recharge or a running lease bills leaves that arrangement with nothing to charge; that\
+        \ is the customer's call to make."
+      operationId: delete_v1_billing_portal_methods_by_id
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      summary: "Remove a saved card \u2014 the portal detach"
       tags:
       - billing
       x-app: commerce
@@ -48719,7 +49427,7 @@ paths:
         share class is what a certificate is issued in, and every class the company
 
         has authorized appears. The response is a bare JSON array, not an envelope.'
-      operationId: get_v1_captable_classes
+      operationId: v1.captable.get_classes
       responses:
         '200':
           content:
@@ -48785,7 +49493,7 @@ paths:
         seeded when the tenant''s store first opens, so it always exists; its name and
 
         incorporation details are set with PUT /v1/captable/company.'
-      operationId: get_v1_captable_company
+      operationId: v1.captable.get_company
       responses:
         '200':
           content:
@@ -48807,7 +49515,7 @@ paths:
         The company row itself is seeded when the tenant''s store first opens, so this
 
         never creates one.'
-      operationId: put_v1_captable_company
+      operationId: v1.captable.put_company
       requestBody:
         content:
           application/json:
@@ -48832,7 +49540,7 @@ paths:
         note''s principal sits OUTSIDE issued equity until it converts, so it is not
 
         part of the share counts.'
-      operationId: get_v1_captable_convertibles
+      operationId: v1.captable.get_convertibles
       responses:
         '200':
           content:
@@ -48869,7 +49577,7 @@ paths:
         principal out of the cap table''s unconverted-instrument totals. An id this org
 
         does not hold is not found.'
-      operationId: delete_v1_captable_convertibles_id
+      operationId: v1.captable.delete_convertibles_id
       parameters:
       - description: ID is the convertible note to delete.
         in: path
@@ -48896,7 +49604,7 @@ paths:
         every round, so it is the flat ledger of cheques written into the company,
 
         each naming its investor and the round it went into.'
-      operationId: get_v1_captable_investments
+      operationId: v1.captable.get_investments
       responses:
         '200':
           content:
@@ -48915,7 +49623,7 @@ paths:
         joined to its grantee and its equity plan. Grants that are EXERCISED, EXPIRED
 
         or CANCELLED are listed here but do not dilute the cap table.'
-      operationId: get_v1_captable_options
+      operationId: v1.captable.get_options
       responses:
         '200':
           content:
@@ -48953,7 +49661,7 @@ paths:
         out of the cap table''s granted-options and fully-diluted counts. An id this org
 
         does not hold is not found.'
-      operationId: delete_v1_captable_options_id
+      operationId: v1.captable.delete_options_id
       parameters:
       - description: ID is the option grant to delete.
         in: path
@@ -48980,7 +49688,7 @@ paths:
         plan is an option pool: a reserve of shares, drawn from one share class, that
 
         option grants are written against.'
-      operationId: get_v1_captable_plans
+      operationId: v1.captable.get_plans
       responses:
         '200':
           content:
@@ -49017,7 +49725,7 @@ paths:
         groups a fundraising event; a PRICED round also carries the share class and
 
         price per share it issues at.'
-      operationId: get_v1_captable_rounds
+      operationId: v1.captable.get_rounds
       responses:
         '200':
           content:
@@ -49052,7 +49760,7 @@ paths:
       description: "Returns one of the caller org's fundraising rounds together with every\ninvestment written into it, oldest\
         \ first. A round id that does not exist in the\ncaller's org is not found \u2014 including one that exists in another\
         \ tenant, since\nthe org comes from the caller's principal and is part of the lookup."
-      operationId: get_v1_captable_rounds_id
+      operationId: v1.captable.get_rounds_id
       parameters:
       - description: 'ID is the round to read. It is the path segment: the URL is the addressing
 
@@ -49080,7 +49788,7 @@ paths:
       description: "Closes one of the caller org's fundraising rounds, recording the\nclose date and moving its status to\
         \ CLOSED. Only an OPEN round can be closed:\na round that is already closed \u2014 like an id this org does not hold\
         \ \u2014 is not\nfound. Closing a round does not change what was invested in it."
-      operationId: post_v1_captable_rounds_id_close
+      operationId: v1.captable.post_rounds_id_close
       parameters:
       - description: 'ID is the round to close. It is the path segment: the URL is the
 
@@ -49144,7 +49852,7 @@ paths:
         agreement for future equity: its capital sits OUTSIDE issued equity until it
 
         converts, so it is not part of the share counts.'
-      operationId: get_v1_captable_safes
+      operationId: v1.captable.get_safes
       responses:
         '200':
           content:
@@ -49182,7 +49890,7 @@ paths:
         cap table''s unconverted-instrument totals. An id this org does not hold is not
 
         found.'
-      operationId: delete_v1_captable_safes_id
+      operationId: v1.captable.delete_safes_id
       parameters:
       - description: ID is the SAFE to delete.
         in: path
@@ -49208,7 +49916,7 @@ paths:
         is joined to its holder and its share class, so a certificate names who holds
 
         it and what class it is in without a second call.'
-      operationId: get_v1_captable_shares
+      operationId: v1.captable.get_shares
       responses:
         '200':
           content:
@@ -49266,7 +49974,7 @@ paths:
         shares out of the cap table''s outstanding and fully-diluted counts. An id this
 
         org does not hold is not found.'
-      operationId: delete_v1_captable_shares_id
+      operationId: v1.captable.delete_shares_id
       parameters:
       - description: ID is the share certificate to delete.
         in: path
@@ -49293,7 +50001,7 @@ paths:
         response is a bare JSON array, not an envelope. Each row carries the holder''s
 
         contact and address fields alongside the company''s name.'
-      operationId: get_v1_captable_stakeholders
+      operationId: v1.captable.get_stakeholders
       responses:
         '200':
           content:
@@ -49332,7 +50040,7 @@ paths:
       description: "Removes one of the caller org's stakeholders. It REFUSES to\norphan issued equity: a holder that still\
         \ holds share certificates or option\ngrants cannot be deleted, and answers 400 saying so \u2014 release or transfer\
         \ the\nholdings first. An id this org does not hold is not found."
-      operationId: delete_v1_captable_stakeholders_id
+      operationId: v1.captable.delete_stakeholders_id
       parameters:
       - description: ID is the stakeholder to delete.
         in: path
@@ -49366,7 +50074,7 @@ paths:
         not check the email''s shape or the type and relationship vocabularies, so it
 
         can record a value that adding one would have rejected.'
-      operationId: patch_v1_captable_stakeholders_id
+      operationId: v1.captable.patch_stakeholders_id
       parameters:
       - description: 'ID is the stakeholder to update. It is the path segment: the URL is the
 
@@ -49402,7 +50110,7 @@ paths:
         and the capital sitting on SAFEs and convertible notes that have not yet\nconverted. Only non-terminal option grants\
         \ dilute \u2014 EXERCISED, EXPIRED and\nCANCELLED grants are excluded, so equity issued through an exercised option\
         \ is\nnever counted twice."
-      operationId: get_v1_captable_summary
+      operationId: v1.captable.get_summary
       responses:
         '200':
           content:
@@ -51838,58 +52546,6 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/commerce/topup/rails:
-    get:
-      description: "Lists the accepted (chain, token, treasury) triples, so a browser can\nrender \"send USDC here\" without\
-        \ the addresses being baked into its bundle.\n\nThis exists because the console previously gated its top-up UI on\n\
-        NEXT_PUBLIC_HANZO_HUSD_ADDRESS/_TREASURY \u2014 build-time constants. Enabling a rail\ntherefore meant rebuilding\
-        \ and redeploying the frontend, and with them unset the\nUI reported \"not available yet\" no matter what the server\
-        \ could actually accept.\nServing the set at runtime keeps ONE source of truth (the server's config) and\nlets a rail\
-        \ be switched on without shipping a bundle.\n\nEverything here is public on-chain data; no secret is exposed, and\
-        \ the set is\nempty on a deployment that accepts no crypto rail."
-      operationId: get_v1_commerce_topup_rails
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/railList'
-          description: ok
-      summary: Lists the accepted (chain, token, treasury) triples, so a browser can render "send USDC here" without the addresses
-        being baked into its bundle.
-      tags:
-      - commerce
-      x-app: account
-  /v1/commerce/topup/wallet:
-    post:
-      description: "Credits the caller's org for a stablecoin transfer they already sent\nto the treasury. It reads the receipt\
-        \ from that rail's chain, confirms a mined,\nsuccessful ERC-20 Transfer to the rail's treasury, derives USD cents\
-        \ from the\non-chain value using the token's own decimals, records the credit, and returns\nthe amount plus the new\
-        \ balance.\n\nThe credited amount is the ON-CHAIN value, never a number the caller sends, and\nthe credit lands on\
-        \ the caller's own validated org \u2014 there is no way to name a\nthird-party subject. Nothing is credited that the\
-        \ chain did not confirm: a\nmissing, failed or non-matching transaction is refused, and a deployment with no\npayment\
-        \ rail enabled says so rather than inventing a credit."
-      operationId: post_v1_commerce_topup_wallet
-      requestBody:
-        content:
-          application/json:
-            example:
-              rail: base-usdc
-              txHash: '0x0000000000000000000000000000000000000000000000000000000000000001'
-            schema:
-              $ref: '#/components/schemas/walletTopupReq'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/walletTopupResp'
-          description: ok
-      summary: Credits the caller's org for a stablecoin transfer they already sent to the treasury.
-      tags:
-      - commerce
-      x-app: account
   /v1/commerce/webhooks/{provider}:
     post:
       description: "Forwards the provider's event \u2014 body and original signature headers intact \u2014 to the backend\
@@ -54226,129 +54882,188 @@ paths:
       x-app: account
   /v1/dataroom/analytics/dataroom/{dataroomId}:
     get:
-      description: "Rolls up every link pointing at the room: session and page-view totals for the room, plus the same per-page\
-        \ breakdown for each link beneath it.\n\nRequires a validated principal; 403 without one, and a room id outside the\
-        \ caller's own tenant store is a 404. Only links that NAME the room are counted \u2014 a link created over a single\
-        \ document contributes nothing here, even when that document also sits in the room."
-      operationId: get_v1_dataroom_analytics_dataroom_by_dataroomid
+      description: "Rolls up every share link pointing at one data room:\nsession and page-view totals for the room, plus\
+        \ the per-page breakdown for each\nlink beneath it.\n\nA room id outside the caller's own tenant store is not found.\
+        \ Only links that\nNAME the room are counted \u2014 a link created over a single document contributes\nnothing here,\
+        \ even when that document also sits in the room."
+      operationId: v1.dataroom.get_analytics_dataroom_dataroomId
       parameters:
-      - in: path
+      - description: 'DataroomID is the room to report on. It is the path segment, resolved in
+
+          the caller''s own tenant store.'
+        in: path
         name: dataroomId
         required: true
         schema:
           type: string
-      summary: Per-page view analytics for a data room, across all its links
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dataroomStats'
+          description: ok
+      summary: 'Rolls up every share link pointing at one data room: session and page-view totals for the room, plus the per-page
+        breakdown for each link beneath it.'
       tags:
       - dataroom
       x-app: dataroom
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/dataroom/analytics/link/{linkId}:
     get:
-      description: "Returns how the link was actually read: total viewing sessions, total page views, and per page the view\
-        \ count, the summed dwell measure and its average.\n\nRequires a validated principal; 403 without one. The link is\
-        \ resolved in the caller's OWN tenant store, so another org's link id is a 404 \u2014 knowing a link id is enough\
-        \ to open the room it shares, and never enough to read who has been reading it."
-      operationId: get_v1_dataroom_analytics_link_by_linkid
+      description: "Reports how one share link was actually read: total viewing\nsessions, total page views, and per page\
+        \ the view count, the summed dwell\nmeasure and its average.\n\nThe link is resolved in the caller's OWN tenant store,\
+        \ so another org's link id\nis not found \u2014 knowing a link id is enough to OPEN the room it shares, and\nnever\
+        \ enough to read who has been reading it."
+      operationId: v1.dataroom.get_analytics_link_linkId
       parameters:
-      - in: path
+      - description: 'LinkID is the link to report on. It is the path segment, resolved in the
+
+          caller''s own tenant store.'
+        in: path
         name: linkId
         required: true
         schema:
           type: string
-      summary: Per-page view analytics for one share link
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dataroomLinkStats'
+          description: ok
+      summary: 'Reports how one share link was actually read: total viewing sessions, total page views, and per page the view
+        count, the summed dwell measure and its average.'
       tags:
       - dataroom
       x-app: dataroom
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/dataroom/datarooms:
     get:
-      description: "Returns every data room in the caller's own tenant store with its short public id, name, description and\
-        \ timestamps, newest first.\n\nRequires a validated principal; 403 without one. Documents are not included \u2014\
-        \ a room's contents come from the single-room read."
-      operationId: get_v1_dataroom_datarooms
-      summary: List the org's data rooms, newest first
+      description: "Returns every data room in the caller org's own store, newest\nfirst, with its short public id, name,\
+        \ description and timestamps.\n\nDocuments are not included \u2014 a room's contents come from reading the single\n\
+        room."
+      operationId: v1.dataroom.get_datarooms
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dataroomRooms'
+          description: ok
+      summary: Returns every data room in the caller org's own store, newest first, with its short public id, name, description
+        and timestamps.
       tags:
       - dataroom
       x-app: dataroom
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
     post:
-      description: 'Creates an empty data room from {name, description} and answers with it, including the short public id
-        it is addressed by.
-
-
-        Requires a validated principal; 403 without one. `name` is required; without it the call is 400 and the tenant store
-        is untouched, because a dispatch answering 4xx rolls its transaction back. A new room holds no documents and is reachable
-        by nobody until a share link is created over it.'
-      operationId: post_v1_dataroom_datarooms
-      summary: Create a data room
+      description: "Opens a new data room for the caller org and answers with it,\nincluding the short public id it is addressed\
+        \ by.\n\n`name` is required; without it the call is refused and the tenant store is\nuntouched, because a dispatch\
+        \ answering 4xx rolls its transaction back. A new\nroom holds no documents and is reachable by NOBODY until a share\
+        \ link is\ncreated over it \u2014 opening a room and granting access are two separate acts, so\na room cannot leak\
+        \ by existing."
+      operationId: v1.dataroom.post_datarooms
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/dataroomCreate'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dataroomRoomOne'
+          description: ok
+      summary: Opens a new data room for the caller org and answers with it, including the short public id it is addressed
+        by.
       tags:
       - dataroom
       x-app: dataroom
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/dataroom/datarooms/{id}:
     get:
-      description: "Returns the room and every document attached to it, each carrying its membership id and order index, sorted\
-        \ by that index with unordered documents last and creation time breaking ties \u2014 the same order a link's visitor\
-        \ sees.\n\nRequires a validated principal; 403 without one, and a room id outside the caller's own tenant store is\
-        \ a 404."
-      operationId: get_v1_dataroom_datarooms_by_id
+      description: "Reads one of the caller org's data rooms together with every\ndocument in it, each carrying its membership\
+        \ id and order index.\n\nThe documents are sorted by that index with unordered ones last and creation\ntime breaking\
+        \ ties \u2014 the SAME order a link's visitor sees, so this is what the\nroom looks like from the outside. A room\
+        \ id outside the caller's own tenant\nstore is not found."
+      operationId: v1.dataroom.get_datarooms_id
       parameters:
-      - in: path
+      - description: 'ID is the room to read. It is the path segment: the URL is the addressing
+
+          authority, and the org it is resolved in comes from the caller''s principal,
+
+          so an id from another tenant is simply not found.'
+        in: path
         name: id
         required: true
         schema:
           type: string
-      summary: Read one data room with its documents in display order
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dataroomRoomDetailOne'
+          description: ok
+      summary: Reads one of the caller org's data rooms together with every document in it, each carrying its membership id
+        and order index.
       tags:
       - dataroom
       x-app: dataroom
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/dataroom/datarooms/{id}/documents:
     post:
-      description: "Adds an already-uploaded document to the room by {documentId} and answers with the new membership id.\
-        \ An optional `orderIndex` fixes its place in the viewer's list.\n\nRequires a validated principal; 403 without one.\
-        \ Both the room and the document must exist in the caller's own tenant store \u2014 either missing is a 404 \u2014\
-        \ and a document already in the room is a 409 rather than a duplicate row. It attaches, it never uploads: the bytes\
-        \ must already be stored."
-      operationId: post_v1_dataroom_datarooms_by_id_documents
+      description: "Puts an already-uploaded document into one of the caller\norg's data rooms and answers with the new membership\
+        \ id.\n\nIt ATTACHES, it never uploads: the bytes must already be stored, so the usual\norder is upload the document,\
+        \ then add it to the room. Both the room and the\ndocument must exist in the caller's own store \u2014 either missing\
+        \ is not found \u2014\nand a document already in the room is refused as a conflict rather than\nduplicated."
+      operationId: v1.dataroom.post_datarooms_id_documents
       parameters:
-      - in: path
+      - description: 'ID is the room to add to. It is the path segment: the URL is the addressing
+
+          authority, and the org it is resolved in comes from the caller''s principal,
+
+          so an id from another tenant is simply not found.'
+        in: path
         name: id
         required: true
         schema:
           type: string
-      summary: Attach an existing document to a data room
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/dataroomAddDocument'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dataroomMembership'
+          description: ok
+      summary: Puts an already-uploaded document into one of the caller org's data rooms and answers with the new membership
+        id.
       tags:
       - dataroom
       x-app: dataroom
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/dataroom/documents:
     get:
-      description: "Returns every document in the caller's own tenant store \u2014 name, opaque storage key, content type,\
-        \ page count, size and timestamps \u2014 ordered newest first.\n\nRequires a validated principal; 403 without one.\
-        \ Tenant isolation is the per-org store itself: there is one SQLite file per org and the org is never a parameter,\
-        \ so no input the caller controls can address another tenant's documents. Metadata only \u2014 the bytes come from\
-        \ the file route."
-      operationId: get_v1_dataroom_documents
-      summary: List the org's documents, newest first
+      description: "Returns every document in the caller org's own store, newest\nfirst \u2014 name, opaque storage key, content\
+        \ type, page count, size and\ntimestamps.\n\nTenant isolation is the per-org store itself: there is one SQLite file\
+        \ per org\nand the org is never a parameter, so no input the caller controls can address\nanother tenant's documents.\
+        \ Metadata only \u2014 the bytes come from the file route."
+      operationId: v1.dataroom.get_documents
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dataroomDocuments'
+          description: ok
+      summary: "Returns every document in the caller org's own store, newest first \u2014 name, opaque storage key, content\
+        \ type, page count, size and timestamps."
       tags:
       - dataroom
       x-app: dataroom
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
     post:
       description: "Takes the file ITSELF as the raw request body \u2014 not a JSON envelope, not multipart \u2014 stores\
         \ it on the object-storage seam, and records the metadata row, answering with the new document. `?name=` names it\
@@ -54368,23 +55083,33 @@ paths:
           description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/dataroom/documents/{id}:
     get:
-      description: "Returns the document's name, opaque storage key, content type, page count, size and timestamps.\n\nRequires\
-        \ a validated principal; 403 without one. The lookup runs in the caller's own tenant store, so an id belonging to\
-        \ another org is a 404 exactly like one that never existed. Metadata only \u2014 the bytes are a separate read."
-      operationId: get_v1_dataroom_documents_by_id
+      description: "Reads one of the caller org's documents \u2014 its name, opaque storage\nkey, content type, page count,\
+        \ size and timestamps.\n\nThe lookup runs in the caller's own tenant store, so an id belonging to another\norg is\
+        \ not found exactly like one that never existed. Metadata only: the bytes\nare a separate read."
+      operationId: v1.dataroom.get_documents_id
       parameters:
-      - in: path
+      - description: 'ID is the document to read. It is the path segment: the URL is the
+
+          addressing authority, and the org it is resolved in comes from the caller''s
+
+          principal, so an id from another tenant is simply not found.'
+        in: path
         name: id
         required: true
         schema:
           type: string
-      summary: Read one document's metadata
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dataroomDocumentOne'
+          description: ok
+      summary: "Reads one of the caller org's documents \u2014 its name, opaque storage key, content type, page count, size\
+        \ and timestamps."
       tags:
       - dataroom
       x-app: dataroom
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/dataroom/documents/{id}/file:
     get:
       description: "Streams the stored file back under its recorded content type, falling back to application/octet-stream\
@@ -54422,36 +55147,55 @@ paths:
           description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/dataroom/links:
     get:
-      description: "Returns every non-archived link with the controls a visitor will meet: whether an address is required,\
-        \ whether a password is set, the allow and deny lists, whether download is permitted, and when the link expires.\n\
-        \nRequires a validated principal; 403 without one. Archived links are omitted entirely. A link reports only THAT a\
-        \ password is set \u2014 the stored form is a bcrypt hash and no route returns it."
-      operationId: get_v1_dataroom_links
-      summary: List the org's live share links and the gates they enforce
+      description: "Returns every live share link in the caller org's own store,\nnewest first, with the controls a visitor\
+        \ will meet: whether an address is\nrequired, whether a password is set, the allow and deny lists, whether download\n\
+        is permitted, and when the link expires.\n\nArchived links are omitted entirely. A link reports only THAT a password\
+        \ is\nset \u2014 the stored form is a bcrypt hash and no route returns it."
+      operationId: v1.dataroom.get_links
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dataroomLinks'
+          description: ok
+      summary: 'Returns every live share link in the caller org''s own store, newest first, with the controls a visitor will
+        meet: whether an address is required, whether a password is set, the allow and deny lists, whether download is permitted,
+        and when the link expires.'
       tags:
       - dataroom
       x-app: dataroom
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
     post:
-      description: "Mints a public link over one data room (`dataroomId`) or one document (`documentId`) \u2014 one of the\
-        \ two is required \u2014 and answers with it. The controls are declared here and enforced only on the viewer surface:\
-        \ `password` is hashed with bcrypt before storage and is never readable back, `emailProtected` (on by default) makes\
-        \ a visitor state an address, `allowList`/`denyList` narrow which addresses pass, `allowDownload` (off by default)\
-        \ governs downloads, and `expiresAt` closes the link.\n\nRequires a validated principal; 403 without one, and the\
-        \ target room or document must exist in the caller's own tenant store or it is a 404.\n\nCreating a link also writes\
-        \ dataroom's ONE cross-tenant row: the link id to owning org mapping an anonymous visitor is routed through. That\
-        \ write is part of the operation \u2014 if it fails the call is 500, so a link that no visitor could open is never\
-        \ handed back as usable."
-      operationId: post_v1_dataroom_links
-      summary: Create a share link with its access controls
+      description: "Grants access: it mints a public share link over one data\nroom (`dataroomId`) or one document (`documentId`)\
+        \ \u2014 one of the two is\nrequired \u2014 and answers with the link, whose `id` is the token a visitor opens\nit\
+        \ with.\n\nThis is how a party is let in. The controls are declared HERE and enforced on\nthe viewer surface: `password`\
+        \ is hashed with bcrypt before storage and is\nnever readable back, `emailProtected` (on by default) makes a visitor\
+        \ state an\naddress, `allowList`/`denyList` narrow which addresses pass, `allowDownload`\n(off by default) governs\
+        \ downloads, and `expiresAt` closes the link. The target\nroom or document must exist in the caller's own store or\
+        \ it is not found.\n\nCreating a link also writes dataroom's ONE cross-tenant row: the link id to\nowning org mapping\
+        \ an anonymous visitor is routed through. That write is part\nof the operation \u2014 if it fails the call is 500\
+        \ \u2014 so a link that no visitor\ncould open is never handed back as usable.\n\nThe address a visitor later states\
+        \ is recorded UNVERIFIED, so a link gated only\nby email is openable by anyone the link reaches. Use a password for\
+        \ a link that\nmust not travel."
+      operationId: v1.dataroom.post_links
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/dataroomLinkCreate'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dataroomLinkOne'
+          description: ok
+      summary: "Grants access: it mints a public share link over one data room (`dataroomId`) or one document (`documentId`)\
+        \ \u2014 one of the two is required \u2014 and answers with the link, whose `id` is the token a visitor opens it with."
       tags:
       - dataroom
       x-app: dataroom
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/dataroom/view/{linkId}:
     get:
       description: "Answers the pre-auth face of a link to anyone holding its id: name and type, which gates apply (whether\
@@ -56147,7 +56891,7 @@ paths:
     get:
       description: "Model reads one model's load state \u2014 loaded, unloading, or not_found, as\nthe engine itself reports\
         \ it."
-      operationId: get_v1_engine_model
+      operationId: engineModel
       parameters:
       - description: Model is the model id to inspect, exactly as the model list reports it.
         example: Qwen/Qwen3-4B
@@ -56162,7 +56906,7 @@ paths:
             application/json:
               schema: {}
           description: ok
-      summary: "Model reads one model's load state \u2014 loaded, unloading, or not_found, as the engine itself reports it."
+      summary: Read one model's load state on the serving runtime
       tags:
       - engine
       x-app: engine
@@ -56170,15 +56914,14 @@ paths:
     get:
       description: "Models lists the models the engine serves, each with its load state \u2014 the\nserver's own model table\
         \ (its standard list envelope, load status\nincluded), relayed verbatim."
-      operationId: get_v1_engine_models
+      operationId: engineModels
       responses:
         '200':
           content:
             application/json:
               schema: {}
           description: ok
-      summary: "Models lists the models the engine serves, each with its load state \u2014 the server's own model table (its\
-        \ standard list envelope, load status included), relayed verbatim."
+      summary: List the models the serving runtime holds, with each one's load state
       tags:
       - engine
       x-app: engine
@@ -56186,7 +56929,7 @@ paths:
     get:
       description: "Status reports whether the engine deployment is reachable and which build\nrevision it runs \u2014 an\
         \ honest lens for \"is the serving runtime up\", never a\nfabricated ok."
-      operationId: get_v1_engine_status
+      operationId: engineStatus
       responses:
         '200':
           content:
@@ -56194,8 +56937,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/engineStatus'
           description: ok
-      summary: "Status reports whether the engine deployment is reachable and which build revision it runs \u2014 an honest\
-        \ lens for \"is the serving runtime up\", never a fabricated ok."
+      summary: Whether the serving runtime is reachable, and which build it runs
       tags:
       - engine
       x-app: engine
@@ -56204,16 +56946,14 @@ paths:
       description: "System reads the engine host's inventory: OS, CPU, memory, every accelerator\ndevice with its VRAM and\
         \ compute capability, and the build's capabilities\n(CUDA/Metal/flash-attention) \u2014 the real hardware under the\
         \ serving runtime,\nrelayed verbatim."
-      operationId: get_v1_engine_system
+      operationId: engineSystem
       responses:
         '200':
           content:
             application/json:
               schema: {}
           description: ok
-      summary: "System reads the engine host's inventory: OS, CPU, memory, every accelerator device with its VRAM and compute\
-        \ capability, and the build's capabilities (CUDA/Metal/flash-attention) \u2014 the real hardware under the serving\
-        \ runtime, relayed verbatim."
+      summary: 'The serving host''s own inventory: devices, memory and build capabilities'
       tags:
       - engine
       x-app: engine
@@ -75345,48 +76085,30 @@ paths:
       x-app: o11y
   /v1/o11y/logs:
     get:
-      description: 'Returns a page of one product''s logs for the caller''s org. A
-
-        normal caller sees its OWN request stream, derived from org-tagged spans; a
-
-        validated platform SuperAdmin sees the product''s raw infra stdout stream
-
-        instead. Poll for a live tail by passing the previous response''s nextCursor
-
-        back as sinceNs. A well-formed product with no backing workload answers an
-
-        empty page rather than an error; a malformed slug is a 400.'
+      description: "Returns the most recent log records in the query window, newest\nfirst \u2014 each record an open object\
+        \ carrying its nanosecond timestamp and\nwhatever fields the record was ingested with.\n\nCallers need the viewer\
+        \ role; the runtime's own gate enforces it."
       operationId: get_v1_o11y_logs
       parameters:
-      - description: 'Product is the console product slug whose logs to read, e.g. "kms".
-
-          Required.'
-        example: kms
-        in: query
-        name: product
-        required: false
-        schema:
-          type: string
-      - description: 'SinceNs is the nanosecond cursor from a previous response''s nextCursor.
-
-          Absent (0) reads the last `window` seconds instead.'
-        in: query
-        name: sinceNs
-        required: false
-        schema:
-          type: integer
-      - description: 'Window is how many seconds back to read when there is no cursor.
-
-          Default 900, capped at 86400.'
-        in: query
-        name: window
-        required: false
-        schema:
-          type: integer
-      - description: Limit caps the returned lines. Default 200, capped at 1000.
-        example: 200
+      - description: Limit caps how many records come back. Zero means the default of 100.
         in: query
         name: limit
+        required: false
+        schema:
+          type: integer
+      - description: 'TimestampStart is the start of the window as a nanosecond epoch. Zero
+
+          means fifteen minutes before the end.'
+        in: query
+        name: timestampStart
+        required: false
+        schema:
+          type: integer
+      - description: 'TimestampEnd is the end of the window as a nanosecond epoch. Zero means
+
+          now.'
+        in: query
+        name: timestampEnd
         required: false
         schema:
           type: integer
@@ -75395,9 +76117,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/o11y.logsResponse'
+                $ref: '#/components/schemas/o11y.O11yLogRecordsOut'
           description: ok
-      summary: Returns a page of one product's logs for the caller's org.
+      summary: "Returns the most recent log records in the query window, newest first \u2014 each record an open object carrying\
+        \ its nanosecond timestamp and whatever fields the record was ingested with."
       tags:
       - o11y
       x-app: o11y
@@ -76193,44 +76916,50 @@ paths:
       x-app: o11y
   /v1/o11y/metrics:
     get:
-      description: "Returns one product's RED series \u2014 request rate, errors, p50\nand p95 latency \u2014 for the caller's\
-        \ org, plus that org's LLM usage rollup over\nthe same window. The series come from org-tagged request spans, so a\
-        \ tenant\nonly ever aggregates its own traffic; a validated platform SuperAdmin sees the\nwhole product's RED, while\
-        \ usage stays the caller's own org either way. A\nwell-formed product with no backing workload answers empty series;\
-        \ a malformed\nslug is a 400."
-      operationId: get_v1_o11y_metrics
+      description: 'Lists the distinct metric names seen in a time range, each with
+
+        its description, type, unit, temporality and monotonicity.'
+      operationId: ListMetrics
       parameters:
-      - description: Product is the console product slug to read, e.g. "kms". Required.
-        example: kms
+      - description: Start is the start of the window as a Unix timestamp in milliseconds.
         in: query
-        name: product
+        name: start
+        required: false
+        schema:
+          type: integer
+      - description: End is the end of the window as a Unix timestamp in milliseconds.
+        in: query
+        name: end
+        required: false
+        schema:
+          type: integer
+      - description: Limit caps how many metrics come back; unset means 100, at most 5000.
+        in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+      - description: SearchText narrows the page to metric names containing it.
+        in: query
+        name: searchText
         required: false
         schema:
           type: string
-      - description: Range is the window in seconds. Default 3600, capped at 604800 (7d).
-        example: 3600
+      - description: Source narrows the page by ingestion source.
         in: query
-        name: range
+        name: source
         required: false
         schema:
-          type: integer
-      - description: 'StepSec is the bucket width in seconds, clamped to [30, 3600]. Absent
-
-          picks ~60 buckets across the range.'
-        in: query
-        name: stepSec
-        required: false
-        schema:
-          type: integer
+          type: string
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/o11y.metricsResponse'
+                $ref: '#/components/schemas/o11y.O11yMetricListOut'
           description: ok
-      summary: "Returns one product's RED series \u2014 request rate, errors, p50 and p95 latency \u2014 for the caller's\
-        \ org, plus that org's LLM usage rollup over the same window."
+      summary: Lists the distinct metric names seen in a time range, each with its description, type, unit, temporality and
+        monotonicity.
       tags:
       - o11y
       x-app: o11y
@@ -77284,6 +78013,49 @@ paths:
       tags:
       - o11y
       x-app: o11y
+  /v1/o11y/product/metrics:
+    get:
+      description: "Returns one product's RED series \u2014 request rate, errors, p50\nand p95 latency \u2014 for the caller's\
+        \ org, plus that org's LLM usage rollup over\nthe same window. The series come from org-tagged request spans, so a\
+        \ tenant\nonly ever aggregates its own traffic; a validated platform SuperAdmin sees the\nwhole product's RED, while\
+        \ usage stays the caller's own org either way. A\nwell-formed product with no backing workload answers empty series;\
+        \ a malformed\nslug is a 400."
+      operationId: get_v1_o11y_product_metrics
+      parameters:
+      - description: Product is the console product slug to read, e.g. "kms". Required.
+        example: kms
+        in: query
+        name: product
+        required: false
+        schema:
+          type: string
+      - description: Range is the window in seconds. Default 3600, capped at 604800 (7d).
+        example: 3600
+        in: query
+        name: range
+        required: false
+        schema:
+          type: integer
+      - description: 'StepSec is the bucket width in seconds, clamped to [30, 3600]. Absent
+
+          picks ~60 buckets across the range.'
+        in: query
+        name: stepSec
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/o11y.metricsResponse'
+          description: ok
+      summary: "Returns one product's RED series \u2014 request rate, errors, p50 and p95 latency \u2014 for the caller's\
+        \ org, plus that org's LLM usage rollup over the same window."
+      tags:
+      - o11y
+      x-app: o11y
   /v1/o11y/public/dashboards/{id}:
     get:
       description: "Returns the sanitized dashboard data for public access \u2014\nthe read a shared dashboard's public page\
@@ -77559,24 +78331,6 @@ paths:
       tags:
       - o11y
       x-app: o11y
-    post:
-      description: "Runs the console's composite builder query and answers the engine's own response untouched \u2014 body,\
-        \ status and headers ride through both ways, because the shape here is the query engine's, not this layer's.\n\nThis\
-        \ flat path is the ONE canonical public address for the builder query, and pinning it server-side is the point: the\
-        \ version-less alias resolves to the engine's highest version, which rejects the v3-shaped composite payload the console\
-        \ speaks. So the engine version is resolved INSIDE the handler and the client never names one \u2014 a caller that\
-        \ spells a version into the path is coupling itself to an internal detail that is free to move.\n\nRequires a validated\
-        \ principal, and the tenant is the principal's own org, pinned server-side from the validated claim; there is no org\
-        \ selector in the payload or the query string that could widen it. Before the runtime is initialized this answers\
-        \ 503 rather than an empty result."
-      operationId: post_v1_o11y_query
-      summary: Run one builder query against the caller's telemetry
-      tags:
-      - o11y
-      x-app: o11y
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/o11y/query_filter/analyze:
     post:
       description: 'Analyzes a query and extracts the metric names it reads
@@ -81805,6 +82559,61 @@ paths:
       tags:
       - orgs
       x-app: entitlements
+  /v1/payments:
+    post:
+      description: "Takes a payment: charges a single-use card token and credits the caller's org\nbalance, exactly once.\n\
+        \nThis is the operation behind \"collect money from a customer\". It runs the SAME\ncore the console's card top-up\
+        \ runs (commerce billing.TakePayment), so the\nserver-side amount bounds, the idempotency guard and the ledger credit\
+        \ are\nshared rather than reimplemented \u2014 a second charge path would eventually\ndouble-charge somebody.\n\n\
+        The ORG is the caller's, taken from the validated principal and never from the\ninput, so a payment can only ever\
+        \ credit the account of whoever made the call.\n\nSend an idempotencyKey. An agent retries by construction, and the\
+        \ key is what\nturns a retry into a replay of the first receipt instead of a second charge.\n\nThe answer states whether\
+        \ it settled in SANDBOX or live mode (`test`), and\ncarries the processor's own reference (`processorRef`) so the\
+        \ charge can be\nreconciled against the processor rather than taken on trust.\n\nA named handler, not a closure, so\
+        \ zipdoc can lift this prose into the registry."
+      operationId: takePayment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentIn'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentOut'
+          description: created
+      summary: Take a card payment and credit the org's balance
+      tags:
+      - payments
+      x-app: commerce
+  /v1/payments/{id}:
+    get:
+      description: "Reads one settled payment out of the caller's org ledger.\n\nThe org scopes the read by construction \u2014\
+        \ the ledger is namespaced to it \u2014 so\nan id belonging to another tenant is simply not found rather than found\
+        \ and\nthen filtered. A ledger row that is not a payment is likewise not found, so\nthis cannot be used to walk the\
+        \ org's usage debits.\n\nA named handler, not a closure, so zipdoc can lift this prose into the registry."
+      operationId: getPayment
+      parameters:
+      - description: ID is the ledger transaction id a payment returned.
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRecord'
+          description: ok
+      summary: Read one settled payment by its id
+      tags:
+      - payments
+      x-app: commerce
   /v1/pipelines:
     get:
       description: "Returns one pipeline per application in the caller's org \u2014 its repo or image source, its current\
@@ -83123,16 +83932,18 @@ paths:
       x-app: projects
     post:
       description: "Attaches one or more CUSTOM public hostnames to this org's site.\n\nBinding a host you do not own would\
-        \ let you shadow it at the edge, so which\noutcome you get depends on whether ownership is already established: a\n\
-        platform admin or the platform-operator org \u2014 which manages customer DNS, so\nits bind IS the vouch \u2014 binds\
-        \ VERIFIED immediately; any other org has the host\nCLAIMED as pending and gets the DNS challenge back in `bound[].records`.\
-        \ A\npending claim HOLDS the name so nobody else can take it, but it does not route\nuntil POST .../domains/{host}/verify\
-        \ proves control.\n\nA hostname we operate is refused to a non-vouched caller (those are assigned\nby the platform,\
-        \ never claimed), a host another site already holds is a 409,\nand a reserved label is a 400. Claims and binds are\
-        \ idempotent for the same\n(org, slug), and re-claiming returns the SAME token rather than invalidating a\nrecord\
-        \ the customer has already published. The edge cache-tag is flushed\nafterwards so a newly-verified host serves the\
-        \ current build immediately.\n\nScope: a validated principal is required (403 without one) and the site is\nresolved\
-        \ within that principal's org, so another tenant's slug is a 404."
+        \ let you shadow it at the edge, so which\noutcome you get depends on whether ownership is already established: a\
+        \ caller\nvouches (a SuperAdmin, or an ADMIN of a platform-operator org \u2014 which manages\ncustomer DNS, so its\
+        \ admin's bind IS the vouch) and binds VERIFIED immediately;\nevery other caller, INCLUDING a plain member of an operator\
+        \ org, has the host\nCLAIMED as pending and gets the DNS challenge back in `bound[].records`. A\npending claim HOLDS\
+        \ the name so nobody else can take it, but it does not route\nuntil POST .../domains/{host}/verify proves control.\n\
+        \nA hostname we operate is refused to a non-vouched caller (those are assigned\nby the platform, never claimed), a\
+        \ host another site already holds is a 409,\nand a name the platform holds is a 400 for EVERY caller \u2014 a vouch\
+        \ skips the\nownership proof, never the host table's own invariant. Claims and binds are\nidempotent for the same\n\
+        (org, slug), and re-claiming returns the SAME token rather than invalidating a\nrecord the customer has already published.\
+        \ The edge cache-tag is flushed\nafterwards so a newly-verified host serves the current build immediately.\n\nScope:\
+        \ a validated principal is required (403 without one) and the site is\nresolved within that principal's org, so another\
+        \ tenant's slug is a 404."
       operationId: post_v1_platform_sites_slug_domains
       parameters:
       - description: Slug is the site the hosts attach to, from the path.
@@ -84408,16 +85219,18 @@ paths:
       x-app: projects
     post:
       description: "Attaches one or more CUSTOM public hostnames to this org's site.\n\nBinding a host you do not own would\
-        \ let you shadow it at the edge, so which\noutcome you get depends on whether ownership is already established: a\n\
-        platform admin or the platform-operator org \u2014 which manages customer DNS, so\nits bind IS the vouch \u2014 binds\
-        \ VERIFIED immediately; any other org has the host\nCLAIMED as pending and gets the DNS challenge back in `bound[].records`.\
-        \ A\npending claim HOLDS the name so nobody else can take it, but it does not route\nuntil POST .../domains/{host}/verify\
-        \ proves control.\n\nA hostname we operate is refused to a non-vouched caller (those are assigned\nby the platform,\
-        \ never claimed), a host another site already holds is a 409,\nand a reserved label is a 400. Claims and binds are\
-        \ idempotent for the same\n(org, slug), and re-claiming returns the SAME token rather than invalidating a\nrecord\
-        \ the customer has already published. The edge cache-tag is flushed\nafterwards so a newly-verified host serves the\
-        \ current build immediately.\n\nScope: a validated principal is required (403 without one) and the site is\nresolved\
-        \ within that principal's org, so another tenant's slug is a 404."
+        \ let you shadow it at the edge, so which\noutcome you get depends on whether ownership is already established: a\
+        \ caller\nvouches (a SuperAdmin, or an ADMIN of a platform-operator org \u2014 which manages\ncustomer DNS, so its\
+        \ admin's bind IS the vouch) and binds VERIFIED immediately;\nevery other caller, INCLUDING a plain member of an operator\
+        \ org, has the host\nCLAIMED as pending and gets the DNS challenge back in `bound[].records`. A\npending claim HOLDS\
+        \ the name so nobody else can take it, but it does not route\nuntil POST .../domains/{host}/verify proves control.\n\
+        \nA hostname we operate is refused to a non-vouched caller (those are assigned\nby the platform, never claimed), a\
+        \ host another site already holds is a 409,\nand a name the platform holds is a 400 for EVERY caller \u2014 a vouch\
+        \ skips the\nownership proof, never the host table's own invariant. Claims and binds are\nidempotent for the same\n\
+        (org, slug), and re-claiming returns the SAME token rather than invalidating a\nrecord the customer has already published.\
+        \ The edge cache-tag is flushed\nafterwards so a newly-verified host serves the current build immediately.\n\nScope:\
+        \ a validated principal is required (403 without one) and the site is\nresolved within that principal's org, so another\
+        \ tenant's slug is a 404."
       operationId: post_v1_projects_slug_domains
       parameters:
       - description: Slug is the site the hosts attach to, from the path.
@@ -86747,23 +87560,57 @@ paths:
       tags:
       - risk
       x-app: risk
-  /v1/risk/state/restore:
+  /v1/risk/state/model:
     post:
-      description: "Restore puts one of your organisation's OWN PUBLISHED VALUES back in force, by\nname \u2014 which is what\
-        \ an instant rollback is, and what promoting a challenger is.\n\nIT TAKES AN ADDRESS AND NEVER STATE. The masses are\
-        \ read from your own store, so\nnothing about your model has to be held by whatever is making this call. That\ncloses\
-        \ the sharpest edge the previous shape had: a body of counters is something\na caller can COMPOSE, and a region filled\
-        \ until activity inside it reads as\nordinary is a model that has been shaped rather than learned. The engine's mass\n\
-        invariant was the only thing standing between a composed body and the model; with\nan address there is no body to\
-        \ compose.\n\nAn address your organisation has not published is NOT FOUND. That includes one\nanother organisation\
+      description: "Publishes your organisation's model as a NAMED VALUE, so a decision\ntaken today can be reconstructed\
+        \ tomorrow and a change made today can be undone.\n\nIt answers with a NAME and not with the state. The masses stay\
+        \ on your\norganisation's own encrypted store and are referred to by an address computed\nfrom their own content:\
+        \ the shape, the geometry seed, the position in the window,\nthe threshold, the masses themselves as IEEE-754 bits,\
+        \ and the fold watermark\nbehind them. That is what makes the value nameable without making the caller its\ncustodian.\n\
+        \nIT IS IDEMPOTENT ON THE VALUE. A model that has not changed publishes to the name\nit already has and mints nothing,\
+        \ reporting minted=false \u2014 so publishing at every\nboundary that matters is free. Ten values are retained per\
+        \ organisation, bounded\nin BYTES rather than in rows, and the oldest is disposed of past that.\n\nA model that has\
+        \ learned nothing is refused: planted is not learned, and a value\nthat reproduces nothing is not a value.\n\nIt is\
+        \ POST and PUT on one address because they are one plane's two verbs over one\nkind of thing: POST mints a value from\
+        \ the model in force, PUT puts a value in\nforce. They were /v1/risk/state/snapshot and /v1/risk/state/restore \u2014\
+        \ two addresses\nnamed after the operation rather than after the thing, which is how a reader ends\nup asking what\
+        \ the difference between a snapshot and a value is."
+      operationId: riskPublishModel
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/riskPublishOut'
+          description: created
+      summary: Publish your organisation's model as a named, immutable value
+      tags:
+      - risk
+      x-app: risk
+    put:
+      description: "Puts one of your organisation's OWN PUBLISHED VALUES in force, by name \u2014\nwhich is what an instant\
+        \ rollback is, what promoting a challenger is, and what\ninstalling the shape a search found is.\n\nIT TAKES AN ADDRESS\
+        \ AND NEVER STATE. The masses are read from your own store, so\nnothing about your model has to be held by whatever\
+        \ is making this call. That\ncloses the sharpest edge the previous shape had: a body of counters is something\na caller\
+        \ can COMPOSE, and a region filled until activity inside it reads as\nordinary is a model that has been shaped rather\
+        \ than learned. The engine's mass\ninvariant was the only thing standing between a composed body and the model; with\n\
+        an address there is no body to compose.\n\nIT ADOPTS THE SHAPE, NOT ONLY THE MASSES. A value records the model space\
+        \ its\nmasses were taken in, and a value whose space differs from the one in force\nREPLANTS your model into that\
+        \ space before restoring them. That is what makes\nPOST /v1/risk/search actionable: a search answers with the shape\
+        \ that fits your own\nhistory best and publishes it fitted, and its address is what you name here. Before\nthis, a\
+        \ winning shape was advice nobody could take \u2014 the adoption path refused every\nshape change, and a winner is\
+        \ a different shape by definition.\n\nWHAT ADOPTING A SEARCHED SHAPE COSTS, SAID PLAINLY: the value a search fits\
+        \ has\nlearned the window the search replayed and nothing older, so installing it trades\nhistory for fit. Your appetite\
+        \ is untouched \u2014 that is your policy record's, with its\nown versions \u2014 and so is the geometry, which stays\
+        \ your own.\n\nAn address your organisation has not published is NOT FOUND. That includes one\nanother organisation\
         \ published, and it is not a lookup that failed: the store is\nper organisation and the address is a name, never an\
         \ authority."
-      operationId: riskRestore
+      operationId: riskAdoptModel
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/riskRestoreIn'
+              $ref: '#/components/schemas/riskAdoptIn'
         required: true
       responses:
         '200':
@@ -86772,30 +87619,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/riskModelState'
           description: ok
-      summary: Install previously pinned state into your organisation's model
-      tags:
-      - risk
-      x-app: risk
-  /v1/risk/state/snapshot:
-    post:
-      description: "Snapshot publishes your organisation's model as a NAMED VALUE, so a decision\ntaken today can be reconstructed\
-        \ tomorrow and a change made today can be undone.\n\nIt answers with a NAME and not with the state. The masses stay\
-        \ on your\norganisation's own encrypted store and are referred to by an address computed\nfrom their own content:\
-        \ the shape, the geometry seed, the position in the window,\nthe threshold, the masses themselves as IEEE-754 bits,\
-        \ and the fold watermark\nbehind them. That is what makes the value nameable without making the caller its\ncustodian.\n\
-        \nIT IS IDEMPOTENT ON THE VALUE. A model that has not changed publishes to the name\nit already has and mints nothing,\
-        \ reporting minted=false \u2014 so publishing at every\nboundary that matters is free. Ten values are retained per\
-        \ organisation, bounded\nin BYTES rather than in rows, and the oldest is disposed of past that.\n\nA model that has\
-        \ learned nothing is refused: planted is not learned, and a value\nthat reproduces nothing is not a value."
-      operationId: riskSnapshot
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/riskSnapshotOut'
-          description: created
-      summary: Pin your organisation's learned state so a decision can be reproduced
+      summary: Put one of your organisation's own published model values in force
       tags:
       - risk
       x-app: risk
@@ -87609,9 +88433,12 @@ paths:
         \ build token. A plain member is refused.\n\nBoth paths are bounded the same way: the output must push to a registry\
         \ the fabric owns, and on the IAM path the image's registry namespace must MATCH the caller's own validated org \u2014\
         \ so an org admin can only publish into their own brand and can never overwrite another's through the shared push\
-        \ credential. The same confinement applies to the artifact lane's repo owner. Cutting a release is IAM's decision\
-        \ alone: the build token may enqueue a build but may not cut one.\n\nThe output image is parsed and validated as a\
-        \ single well-formed OCI ref before any authorization decision reads it, so a crafted ref cannot smuggle a build-exporter\
+        \ credential. The same confinement applies to the artifact lane's repo owner.\n\n`release: true` is the exception,\
+        \ and takes SUPERADMIN. It publishes the platform's own image \u2014 the binary the whole fleet runs \u2014 so what\
+        \ it lands reaches every org at the next reconcile, and no role inside the caller's own org can authorize that. An\
+        \ org admin is refused however the registry namespace lines up, and the build token, which carries no identity at\
+        \ all, may enqueue an ordinary build but never a release.\n\nThe output image is parsed and validated as a single\
+        \ well-formed OCI ref before any authorization decision reads it, so a crafted ref cannot smuggle a build-exporter\
         \ attribute past the check."
       operationId: post_v1_runner
       summary: "Trigger a native build \u2014 an image, or the binaries a repo declares"
@@ -88126,6 +88953,16 @@ paths:
 
         unavailable.'
       operationId: get_v1_search_indexes
+      parameters:
+      - description: "Authorization carries the surface's bearer key (`Bearer <key>`); the bare\nkey is accepted too. Search\
+          \ and vector are two surfaces with two keys.\nIt is not `validate:\"required\"` on purpose: requireKey answers absence\n\
+          itself, so an unconfigured surface 503s and a missing bearer 401s \u2014 a\nvalidation refusal would rewrite both\
+          \ statuses."
+        in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           content:
@@ -88152,6 +88989,16 @@ paths:
 
         fabricated number. An unreachable Meilisearch answers 200 with all zeros.'
       operationId: get_v1_search_stats
+      parameters:
+      - description: "Authorization carries the surface's bearer key (`Bearer <key>`); the bare\nkey is accepted too. Search\
+          \ and vector are two surfaces with two keys.\nIt is not `validate:\"required\"` on purpose: requireKey answers absence\n\
+          itself, so an unconfigured surface 503s and a missing bearer 401s \u2014 a\nvalidation refusal would rewrite both\
+          \ statuses."
+        in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           content:
@@ -93246,6 +94093,16 @@ paths:
         \ (dimension 0, cosine) rather than blanking\nthe whole panel \u2014 and an unreachable Qdrant answers 200 with an\
         \ EMPTY list."
       operationId: get_v1_vector_collections
+      parameters:
+      - description: "Authorization carries the surface's bearer key (`Bearer <key>`); the bare\nkey is accepted too. Search\
+          \ and vector are two surfaces with two keys.\nIt is not `validate:\"required\"` on purpose: requireKey answers absence\n\
+          itself, so an unconfigured surface 503s and a missing bearer 401s \u2014 a\nvalidation refusal would rewrite both\
+          \ statuses."
+        in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           content:
@@ -93268,6 +94125,16 @@ paths:
 
         unreachable Qdrant answers 200 with all zeros rather than an error.'
       operationId: get_v1_vector_stats
+      parameters:
+      - description: "Authorization carries the surface's bearer key (`Bearer <key>`); the bare\nkey is accepted too. Search\
+          \ and vector are two surfaces with two keys.\nIt is not `validate:\"required\"` on purpose: requireKey answers absence\n\
+          itself, so an unconfigured surface 503s and a missing bearer 401s \u2014 a\nvalidation refusal would rewrite both\
+          \ statuses."
+        in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           content:
@@ -94687,15 +95554,15 @@ tags:
 - name: security
   description: 'Package security is secret scanning for your code: submit sources, get findings, masked never raw.'
 - name: keys
-  description: 'Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up.'
+  description: 'Package account is your own account: API keys you mint and revoke, and org onboarding.'
 - name: csrf
-  description: 'Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up.'
+  description: 'Package account is your own account: API keys you mint and revoke, and org onboarding.'
 - name: org
   description: "Package ai is Hanzo AI \u2014 the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the\
     \ rest of hanzoai/ai's surface) \u2014 mounted into a cloud binary with the money, ingest and telemetry callbacks cloud\
     \ BUILDS but cannot INSTALL."
 - name: orgs
-  description: 'Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up.'
+  description: 'Package account is your own account: API keys you mint and revoke, and org onboarding.'
 - name: team
   description: 'Package team is your org''s shared workspace: documents edited together, files, seats, and agents as teammates.'
 - name: audit
@@ -94715,7 +95582,7 @@ tags:
   description: 'Package entitlements is what your org may run: what the plan grants, and which of those products are switched
     on.'
 - name: avatar
-  description: 'Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up.'
+  description: 'Package account is your own account: API keys you mint and revoke, and org onboarding.'
 - name: ai
   description: "Package ai is Hanzo AI \u2014 the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the\
     \ rest of hanzoai/ai's surface) \u2014 mounted into a cloud binary with the money, ingest and telemetry callbacks cloud\
@@ -94976,6 +95843,9 @@ tags:
     free or priced.'
 - name: billing
   description: Package billing is your org's balance, what it has spent, and the cards it pays with.
+- name: payments
+  description: 'Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront
+    catalog.'
 - name: pricing
   description: 'Package pricing is the price list: what every model, provider, GPU tier, tool and hosting plan costs.'
 - name: plans
@@ -95131,7 +96001,7 @@ tags:
 - name: settings
   description: Package settings is how an org configures each product it uses, secret fields included.
 - name: embed
-  description: 'Package account is your own account: API keys you mint and revoke, org onboarding, and wallet top-up.'
+  description: 'Package account is your own account: API keys you mint and revoke, and org onboarding.'
 - name: functions
   description: 'Package functions is your serverless code: publish it, call it over HTTP, watch every run and what it cost.'
 - name: sbom
@@ -95261,6 +96131,7 @@ x-tagGroups:
   - store
   - marketplace
   - billing
+  - payments
   - pricing
   - plans
   - finance
