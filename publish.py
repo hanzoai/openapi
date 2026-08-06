@@ -246,7 +246,12 @@ def project(doc, groups):
 
     6. operationIds are made unique under `genid` (1 collision today,
        `deleteSession` vs `DeleteSession`). The later one by path order takes a
-       suffix, which is what a generator does for the duplicates it can see.
+       suffix, which is what a generator does for the duplicates it can see —
+       and it keeps the id cloud emitted as `x-id`, because an operationId is
+       ALSO the wire name of an MCP tool. The suffix exists for Go; the door
+       does not know it. Whoever needs the name a caller can use reads `x-id`
+       first. The collision itself belongs upstream: two operations whose ids
+       differ only in case are one name to every generator on earth.
 
     Nothing else. No operation is added, no served operation is removed, no
     prose is written — every summary and description below came out of a handler
@@ -294,6 +299,16 @@ def project(doc, groups):
             renamed += oid != base
             taken.add(genid(oid))
             op["operationId"] = oid
+            if oid != base:
+                # The id hanzoai/cloud emitted, kept because the rename above is
+                # a fact about GENERATORS and the id is also the WIRE NAME: it is
+                # what `POST /v1/mcp` answers to. Renaming it silently put
+                # `DeleteSession_2` in the MCP catalogue of three client
+                # distributions, and the door knows no such tool — a suffix
+                # invented here for Go's benefit is not a thing anything serves.
+                # Present only where the two differ, so its meaning is its
+                # presence. `tools.py` names the tool by this.
+                op["x-id"] = base
 
     used = []
     for item in paths.values():

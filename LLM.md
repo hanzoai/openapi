@@ -127,7 +127,18 @@ same, against hanzo.yaml                                       → 0 errors; api
 | 3 | two tags → the first | 23 | a generator emits one class per tag, so a two-tag operation is emitted twice under one identifier (`ApiPricingGetFullPricingRequest redeclared`). |
 | 4 | no tag → `x-app`, else the `/v1/<product>` segment | 42 | untagged is not ungrouped, it is `DefaultApi`. |
 | 5 | no `responses` → a `default` that says so | 986 | **the 1012.** A `default` with no content states exactly what is known: the route answers, and its shape is not declared at the source. Inventing a schema is the one thing this must not do. |
-| 6 | operationIds unique under `genid` | 1 | unique as STRINGS is what OpenAPI asks and it is not enough — every generator strips punctuation and camel-cases, so `deleteSession` and `DeleteSession` become one name and the client declares one request type twice. |
+| 6 | operationIds unique under `genid`, original kept as `x-id` | 1 | unique as STRINGS is what OpenAPI asks and it is not enough — every generator strips punctuation and camel-cases, so `deleteSession` and `DeleteSession` become one name and the client declares one request type twice. |
+
+Rule 6 is the one rule that CHANGES a value rather than dropping or adding one,
+and an operationId is not only a codegen identifier — it is the **wire name of an
+MCP tool**. `DELETE /v1/o11y/sessions` is published as `DeleteSession_2` and
+served as `DeleteSession`, and the suffix went out verbatim in the tool catalogue
+of three client distributions, naming a tool `POST /v1/mcp` answers to no such
+name. So the rename now records what it renamed: `x-id` is the id hanzoai/cloud
+emitted, written only where the two differ, and `tools.py`'s `wire()` is the one
+place a tool takes its name. Measured against the live door: 1299/1323 before,
+1300/1323 after. The collision itself belongs upstream — two operations whose ids
+differ only in case are one name to every generator there is.
 
 Plus one addition that is not a rule about operations: cloud's emission declares
 **no security scheme**, so a client generated from it sends no `Authorization`
