@@ -1,4 +1,4 @@
-<p align="center"><img src=".github/hero.svg" alt="openapi" width="880"></p>
+<p align="center"><img src=".hanzo/hero.svg" alt="openapi" width="880"></p>
 
 # Hanzo OpenAPI
 

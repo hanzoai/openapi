@@ -1,0 +1,68 @@
+# The only workflow GitHub is allowed to run for this repo.
+#
+# git.hanzo.ai is canonical. GitHub is a mirror of it, and a mirror has exactly
+# one job that matters: if something lands here anyway — a push from a laptop
+# pointed at the wrong remote, a merge through the GitHub UI, a bot — it must
+# reach canonical rather than sit here diverging quietly. That is this file.
+#
+# It is NOT a build, NOT a test and NOT a deploy. Those live in
+# .hanzo/workflows/ and run on the forge, on our own runners. Adding a second
+# lane here is how two pipelines come to disagree about what shipped.
+#
+# It pushes FAST-FORWARD ONLY. A non-fast-forward means the two lines actually
+# diverged, and the right answer then is a human looking at it, not a --force
+# that silently discards whichever side lost. The step fails loudly instead.
+name: sync to hanzo
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # One sync at a time; a queued run would push a ref the newer run already has.
+  group: sync-hanzo
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: a shallow clone cannot be fast-forwarded onto a remote
+          # whose tip it does not contain, and the push would be refused for a
+          # reason that has nothing to do with divergence.
+          fetch-depth: 0
+
+      - name: Push to canonical
+        env:
+          FORGE_TOKEN: ${{ secrets.FORGE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${FORGE_TOKEN:-}" ]; then
+            echo "::error::FORGE_TOKEN is not set — canonical cannot be reached, and a mirror that cannot forward is just a fork"
+            exit 1
+          fi
+          remote="https://x-access-token:${FORGE_TOKEN}@git.hanzo.ai/hanzoai/openapi.git"
+
+          # Already there? Then there is nothing to forward and this is a no-op,
+          # which is the common case when the forge pushed and the mirror echoed.
+          have=$(git ls-remote "$remote" refs/heads/main | cut -f1)
+          mine=$(git rev-parse HEAD)
+          if [ "$have" = "$mine" ]; then
+            echo "canonical already at ${mine:0:12} — nothing to forward"
+            exit 0
+          fi
+
+          # Fast-forward only. --force-with-lease is NOT enough here: it permits
+          # a rewrite as long as the remote is where we last saw it, and a
+          # rewrite is exactly what must never happen to canonical from a mirror.
+          if ! git push "$remote" "HEAD:refs/heads/main"; then
+            echo "::error::push to canonical was refused — git.hanzo.ai/hanzoai/openapi and GitHub have diverged, or the repo is still flagged as a pull-mirror (a mirror is read-only and cannot receive). Resolve on the forge; do not force from here."
+            exit 1
+          fi
+          echo "forwarded ${mine:0:12} to canonical"
