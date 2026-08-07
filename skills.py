@@ -58,12 +58,19 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 DOCUMENT = os.path.join(ROOT, "hanzo.yaml")
 
 # White-label brands. Mirrors cloud/brand.go's `brands` registry (HIP-0111): the
-# base URL is api.<domain>, the OIDC issuer is the brand's .id host. NEVER cross
-# brands — a lux surface says Lux + api.lux.network + lux.id, never Hanzo.
+# base URL is api.<domain>, and the OIDC issuer is LOOKED UP here, never derived.
+# NEVER cross brands — a lux surface says Lux + api.lux.network + lux.id, never
+# Hanzo.
+#
+# The issuer is not "the brand's .id host". That rule reads as though it holds
+# and does not: zoo's IAM stamps iss=https://zoolabs.id, and zoo.id has no DNS
+# record at all, so the derived name put a host that does not resolve into every
+# Zoo catalogue — the document an agent reads to learn where to get a token. It
+# is a value per brand, written out.
 BRANDS = {
     "hanzo": {"display": "Hanzo", "domain": "hanzo.ai", "issuer": "https://hanzo.id"},
     "lux":   {"display": "Lux",   "domain": "lux.network", "issuer": "https://lux.id"},
-    "zoo":   {"display": "Zoo",   "domain": "zoo.ngo", "issuer": "https://zoo.id"},
+    "zoo":   {"display": "Zoo",   "domain": "zoo.ngo", "issuer": "https://zoolabs.id"},
 }
 
 SCHEMA_ID = "hanzo.agent-skills/v1"
