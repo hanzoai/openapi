@@ -161,26 +161,29 @@ def lock(repo):
     return out
 
 
-def fetch(spec, dest):
-    """The document at the locked ref, from GitHub, digest-checked.
+FORGE = "https://git.hanzo.ai/v1"
 
-    hanzoai/cloud is private, so raw.githubusercontent.com answers 404 rather
-    than 403 and an anonymous miss is indistinguishable from a deleted file. The
-    contents API with a token says which case it is. Same credential names every
-    SDK call site already takes.
+
+def fetch(spec, dest):
+    """The document at the locked ref, from the forge, digest-checked.
+
+    git.hanzo.ai is where hanzoai/cloud lives. This asked api.github.com, which
+    holds a mirror thousands of commits behind and no openapi.yaml at its root at
+    all — so the fetch could only 404, and the 404 read as "your token is wrong".
+    A mirror is not a slower source; it answers a different question.
+
+    The forge serves its API at /v1/, NOT /api/v1/, and /api/v1 returns a 404 that
+    is indistinguishable from a rejected credential. Same route hanzoai/ci's
+    client lane and the CLI's Makefile take, because there is one document at one
+    address.
     """
-    token = (os.environ.get("SPEC_TOKEN") or os.environ.get("GH_TOKEN")
-             or os.environ.get("GITHUB_TOKEN")
-             or subprocess.run(["gh", "auth", "token"], capture_output=True,
-                               text=True).stdout.strip())
+    token = os.environ.get("FORGE_TOKEN", "")
     if not token:
-        sys.exit(f"generate: {spec['repo']} is private and no SPEC_TOKEN / GH_TOKEN /"
-                 f" GITHUB_TOKEN is set (nor `gh auth login`). Pass --spec instead.")
+        sys.exit(f"generate: reading {spec['repo']}@{spec['ref']} from git.hanzo.ai"
+                 f" needs FORGE_TOKEN (contents:read). Pass --spec instead.")
     req = urllib.request.Request(
-        f"https://api.github.com/repos/{spec['repo']}/contents/{spec['path']}"
-        f"?ref={spec['ref']}",
-        headers={"Authorization": f"Bearer {token}",
-                 "Accept": "application/vnd.github.raw"})
+        f"{FORGE}/repos/{spec['repo']}/raw/{spec['path']}?ref={spec['ref']}",
+        headers={"Authorization": f"token {token}"})
     with urllib.request.urlopen(req) as r, open(dest, "wb") as f:
         shutil.copyfileobj(r, f)
     got = hashlib.sha256(open(dest, "rb").read()).hexdigest()
