@@ -265,12 +265,30 @@ separate functions here (`refuted()` fetches; the caller decides).
 
 | consumer | reads | can it name an unserved route? |
 |---|---|---|
-| `hanzoai/{python,js,java,kotlin}-sdk` | `hanzo.yaml` via `generate.py` | no |
-| `hanzo-go/sdk`, `hanzo-rs/sdk` | `hanzo.yaml` via their own `scripts/generate.sh` | no |
+| `hanzoai/{python,js}-sdk` | `hanzo.yaml` via `generate.py`, unless a `.spec-lock` names a release — then cloud's own document | no |
+| `hanzo-go/sdk` | `hanzo.yaml` via its own `scripts/generate.sh` | no |
+| `hanzo-rs/sdk` | `hanzoai/cloud@ref:openapi.yaml` directly, from git.hanzo.ai — it passes `--skip-validate-spec` and `cargo build` is the real gate | no |
 | `hanzoai/cloud` agent-skills | `hanzo.yaml` via `skills.py` | no |
 | `hanzoai/console` proxy-allow test | `hanzo.yaml` | no |
 | `hanzoai/world` cloud-pulse | `hanzo.yaml` | no |
+| the doc site | `hanzoai/cloud@ref:openapi.yaml` directly, from git.hanzo.ai | no |
 | `hanzoai/cli` | `hanzoai/cloud@ref:openapi.yaml` directly — it needs raw existence, not codegen | no |
+
+**The doc site left this document, and the reason generalises.** The six rules
+make a document GENERATABLE; a doc page needs none of them, because it reads
+paths, tags, summaries and schemas, every one of which cloud emits itself. So the
+projection bought the reference nothing and cost it currency — its pin sat 19
+cloud releases back, rendering four relay-door products with twelve operations
+each where the document has one, one, one and two. A consumer belongs here only
+while it needs what `publish.py` adds. Codegen does; prose does not.
+
+**Reading the document is a forge operation now.** `generate.py`'s `fetch()`
+asked api.github.com, which mirrors hanzoai/cloud thousands of commits behind and
+does not serve openapi.yaml at all, so it could only 404 — and it reported that
+404 as a missing credential, which sent readers hunting for a token to fix a host
+with no file on it. One host, one credential: `git.hanzo.ai/v1` and `FORGE_TOKEN`.
+A fallback chain across hosts holding different documents is not a fallback, it
+is a coin flip about which document you get.
 
 **The skills plane is why "no" has to be structural.** `skills.py` emits a
 `SKILL.md` per capability and nothing downstream re-checks it: no refutation
