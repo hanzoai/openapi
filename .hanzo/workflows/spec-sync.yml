@@ -75,7 +75,12 @@ jobs:
           # The job's automatic token is scoped to THIS repository, so it reads
           # hanzoai/cloud as an anonymous caller and a private repo answers 404
           # — which reads as "repository not found", not "no credential".
-          token: ${{ secrets.GH_PAT || secrets.SDK_DISPATCH_TOKEN || github.token }}
+          #
+          # FORGE_TOKEN first, because this checkout is against the FORGE and
+          # GH_PAT is a github.com credential: handing it here spends an hour a
+          # run failing with "invalid username, password or token", which reads
+          # as an expired secret rather than the wrong one for this host.
+          token: ${{ secrets.FORGE_TOKEN || secrets.SDK_DISPATCH_TOKEN || github.token }}
 
       - name: Is hanzo.yaml what its own input projects to?
         run: |
