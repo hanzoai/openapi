@@ -2,7 +2,7 @@
 
 # Hanzo Capability Manifest
 
-Every capability the API serves, at `35543313ce291d7f7ea837191e67f42a0e79e1c8`. GENERATED from `hanzo.yaml` — which is itself generated from hanzoai/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
+Every capability the API serves, at `c3a8634a9c14b179b520a1f3f862ebef392b1dbf`. GENERATED from `hanzo.yaml` — which is itself generated from hanzoai/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
 
 ## Identity & Trust
 
@@ -10,7 +10,7 @@ Every capability the API serves, at `35543313ce291d7f7ea837191e67f42a0e79e1c8`. 
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `iam` | 173 | Package iam is Hanzo's identity provider: users, organizations, applications, and the OIDC/OAuth2 endpoints every Hanzo service authenticates against. |
+| `iam` | 174 | Package iam is Hanzo's identity provider: users, organizations, applications, and the OIDC/OAuth2 endpoints every Hanzo service authenticates against. |
 | `admin` | 86 | Package admin is the operator's view of the fleet: orgs, users, roles, spend and system health. |
 | `authz` | 3 |  |
 | `kms` | 7 | Package kms is secret custody: your org's secrets sealed at rest, plus threshold signing. |
@@ -36,7 +36,7 @@ Every capability the API serves, at `35543313ce291d7f7ea837191e67f42a0e79e1c8`. 
 |---|---:|---|
 | `ai` | 208 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `router` | 30 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
-| `agent` | 4 | Package agent is a conversation that uses your org's own tools to get an answer. |
+| `agent` | 4 | Package agents is autonomous agents for your org: define them, run them, keep every run. |
 | `agents` | 32 | Package agents is autonomous agents for your org: define them, run them, keep every run. |
 | `ml` | 7 | Package ml is model serving: deploy a model behind an endpoint and call it. |
 | `finetune` | 9 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
@@ -45,7 +45,7 @@ Every capability the API serves, at `35543313ce291d7f7ea837191e67f42a0e79e1c8`. 
 | `research` | 8 | Package research is every experiment you have ever run, kept and comparable. |
 | `prompts` | 6 | Package prompts is your prompt library, versioned, so nothing changes silently. |
 | `exec` | 2 | Package exec is the code interpreter: run a snippet in a sandbox, and move files in and out of the session that sandbox IS. |
-| `sandboxes` | 15 | Package sandbox is the ONE compute primitive: a sandbox is a gVisor pod that runs somebody else's code, and every lifetime is the same object. |
+| `sandboxes` | 16 | Package sandbox is the ONE compute primitive: a sandbox is a gVisor pod that runs somebody else's code, and every lifetime is the same object. |
 | `coding` | 1 | Package agents is autonomous agents for your org: define them, run them, keep every run. |
 | `files` | 1 | Package exec is the code interpreter: run a snippet in a sandbox, and move files in and out of the session that sandbox IS. |
 | `upload` | 1 | Package exec is the code interpreter: run a snippet in a sandbox, and move files in and out of the session that sandbox IS. |
@@ -53,7 +53,7 @@ Every capability the API serves, at `35543313ce291d7f7ea837191e67f42a0e79e1c8`. 
 | `mcp` | 3 | Package tools is everything your org can call, in one list: connector actions, functions, agents, skills and your own MCP servers. |
 | `tools` | 8 | Package tools is everything your org can call, in one list: connector actions, functions, agents, skills and your own MCP servers. |
 | `skills` | 6 | Package skills is the skill catalogue an AI client reads to learn what it can do. |
-| `ask` | 1 | Package ask is a plain-language question about your business, answered with real numbers. |
+| `ask` | 2 | Package ask is a plain-language question about your business, answered with real numbers. |
 | `code` | 12 | Package code is search and symbols across your repos, for you and your agents. |
 | `memory` | 7 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `rag` | 5 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
@@ -128,7 +128,7 @@ Every capability the API serves, at `35543313ce291d7f7ea837191e67f42a0e79e1c8`. 
 | `event` | 3 | Package analytics is product analytics: send an event, read back who did what. |
 | `channels` | 7 | Package channels is one inbox for the chat apps you connect — Discord, Slack, Teams, Telegram. |
 | `destinations` | 5 | Package destinations is your events forwarded to the ad and analytics tools you use. |
-| `tags` | 1 | Package destinations is your events forwarded to the ad and analytics tools you use. |
+| `tags` | 1 | Package projects is where your sites live: create one, deploy a build, roll back to any release. |
 | `connector` | 1 | Package integrations is how your org connects third-party accounts like Slack, and revokes them. |
 | `connectors` | 8 | Package integrations is how your org connects third-party accounts like Slack, and revokes them. |
 | `pipelines` | 1 | Package platform is Hanzo PaaS: deploy containers to your own tenant namespace — builds, releases, environments, logs, custom domains. |
@@ -158,7 +158,7 @@ Every capability the API serves, at `35543313ce291d7f7ea837191e67f42a0e79e1c8`. 
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `commerce` | 127 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
+| `commerce` | 125 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
 | `cart` | 4 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
 | `store` | 34 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
 | `marketplace` | 6 | Package marketplace is the shop for tools and agents: browse, install into your project, publish your own free or priced. |
@@ -220,14 +220,14 @@ Every capability the API serves, at `35543313ce291d7f7ea837191e67f42a0e79e1c8`. 
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `git` | 54 | Package git is Git hosting for your org: create repos, clone, push, and see what they cost. |
+| `git` | 58 | Package git is Git hosting for your org: create repos, clone, push, and see what they cost. |
 | `templates` | 5 | Package templates is a gallery of starter kits you can deploy as they come. |
 | `blueprint` | 3 | Package blueprint is what a template costs to run, worked out before you deploy. |
-| `integrations` | 33 | Package integrations is how your org connects third-party accounts like Slack, and revokes them. |
+| `integrations` | 35 | Package integrations is how your org connects third-party accounts like Slack, and revokes them. |
 | `bot` | 9 | Package bot is your own machines, connected and ready to take a command. |
 | `bots` | 3 | Package bots is a bot doing your work on a real desktop, live, while you watch. |
 | `world` | 6 | Package world is a live news feed filtered to what your project cares about. |
-| `tracker` | 19 | Package tracker is your org's issue tracker: projects, issues, and the filters to find them. |
+| `tracker` | 9 | Package tracker is your org's issue tracker: projects, issues, and the filters to find them. |
 | `framework` | 19 | Package framework is document types you define: describe a record once, then create, list, submit and cancel documents against it. |
 | `content` | 6 | Package content is marketing content from draft to published, on every channel. |
 | `guide` | 19 | Package guide is a step-by-step checklist that gets your business running on AI. |
