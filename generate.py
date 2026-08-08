@@ -204,14 +204,16 @@ ONE_DOCUMENT = threading.Lock()
 def document(repo, given, cache):
     """THE document this client is a projection of, as a path to JSON.
 
-    Three sources, one order, and the last one is safe now in a way it was not
-    before. `given` is `--spec`: the document by value, already fetched and
-    digest-checked by hanzoai/ci's lane. Otherwise the client's own `.spec-lock`
-    names it, which is how a release pins every language to one digest. With
-    neither, this checkout's `hanzo.yaml` — which `publish.py` derives from
-    cloud's emission and `publish.py --check` regenerates and diffs, so it can no
-    longer be the hand-merged second authority whose 185 unserved operations put
-    a 404 behind a type signature in four clients.
+    TWO sources, one order, and both name a hanzoai/cloud release. `given` is
+    `--spec`: the document by value, already fetched and digest-checked by
+    hanzoai/ci's lane. Otherwise the client's own `.spec-lock` names it, which is
+    how a release pins every language to one digest.
+
+    There was a third, this checkout's `hanzo.yaml`, and it had to go: that file
+    is a projection of cloud's document with codegen rules applied, so falling
+    back to it made a client the projection of a projection — a document one step
+    stale whenever the middle step had not run, and stale silently, since nothing
+    downstream can tell which of the two it read.
 
     Cached per distinct document rather than per language: `--all` projects ONE
     release into every client, which is G2 (one release, one document) and not
@@ -222,14 +224,10 @@ def document(repo, given, cache):
     else:
         spec = lock(repo)
         if not spec or not spec.get("ref"):
-            here = os.path.join(ROOT, "hanzo.yaml")
-            if not os.path.exists(here):
-                sys.exit("generate: no --spec, no .spec-lock, and no hanzo.yaml — "
-                         "run `python3 publish.py` first")
-            key, spec = ("given", here), here
-            given = here
-        else:
-            key = (spec["repo"], spec["path"], spec["ref"])
+            sys.exit(f"generate: {repo} has no .spec-lock and no --spec was given, "
+                     "so this client names no document. hanzoai/ci's client lane "
+                     "passes one by value; by hand, pass --spec.")
+        key = (spec["repo"], spec["path"], spec["ref"])
     with ONE_DOCUMENT:
         if key not in cache:
             if not given:
