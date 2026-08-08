@@ -196,6 +196,20 @@ sdks:
       apiPackage: ai.hanzo.cloud.api
       modelPackage: ai.hanzo.cloud.model
       hideGenerationTimestamp: "true"
+    # THE SAME COLLISION THE PYTHON ROW ABOVE CORRECTS, in the language that
+    # says so at compile time. O11yGettableAgentCheckIn declares
+    # `integration_config` AND `integrationConfig`, `removed_at` AND
+    # `removedAt` — the snake spellings are live wire kept for older agents.
+    # Java camel-cases a property to its field name, so each pair lands on ONE
+    # field declared twice: `variable integrationConfig is already defined`,
+    # eight errors, and hanzo-java-cloud does not compile. Python collapsed the
+    # same pairs SILENTLY and shipped a client that dropped the value.
+    #
+    # Rename the FIELD, never the wire name — the generator keeps the original
+    # key as the field's serialized name, so both spellings still round-trip.
+    # Same two names as the python row, because it is the same two schemas.
+    flags:
+      name-mappings: removed_at=removed_at_legacy,integration_config=integration_config_legacy
 
   kotlin:
     repo: kotlin-sdk
