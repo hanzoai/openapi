@@ -210,6 +210,43 @@ sdks:
     # Same two names as the python row, because it is the same two schemas.
     flags:
       name-mappings: removed_at=removed_at_legacy,integration_config=integration_config_legacy
+      # A CLASS NAME, not a field name, and the collision is with the LANGUAGE.
+      # The document has a schema called `Exception` — the error shape hanging
+      # off CaptureEvent, five properties and a list of Frame. Every model lands
+      # in `ai.hanzo.cloud.model`, and a type in your own package beats
+      # `java.lang.*`, so `catch (Exception e)` in ANY file of that package
+      # binds to the model: "incompatible types: Exception cannot be converted
+      # to Throwable", eight times in PostV1EventRequest, whose oneOf adapter is
+      # the only generated model that catches anything.
+      #
+      # `ErrorBody` is the document's own name for the sibling shapes on the
+      # same schema — CaptureEvent carries `clip: ClipBody`, `log: LogBody`,
+      # `metric: MetricBody`, `span: SpanBody` and `error: Exception`, so this
+      # puts `error` in the family the other four are already in, and the name
+      # is free across all 2260 schemas. A CLASS name is never on the wire, so
+      # this changes no payload; the schema keeps being called `Exception`
+      # everywhere the document is read.
+      #
+      # Measured against the document: five schema names collide with a builtin
+      # — Exception, File, Record, Result, Sequence. Only this one reaches
+      # generated code. `File` the java generator renames to `ModelFile` by
+      # itself; the other three are emitted as ordinary classes that nothing
+      # generated refers to by their bare builtin name.
+      #
+      # NOT MAPPED HERE, and the reason is a second generator bug: the document
+      # carries `iam.ListResponse` AND `iam.listResponse`, schemas differing
+      # only in case — the same defect publish.py's rule 6 corrects for
+      # operationIds — and both Pascal-case to `IamListResponse`. The second
+      # write wins, so this client ships ONE class carrying the SCIM shape
+      # (`Resources`, `schemas`, `startIndex`) under the name GET /v1/iam/keys
+      # resolves to, and that route deserializes into an all-null model with no
+      # error. Mapping either one is worse than the disease: the java generator
+      # applies the new name to the CLASS and not to the FILE, so it writes
+      # `public class IamKeyList` into `IamListResponse0.java` and nothing
+      # compiles at all. Measured on 7.14.0, both orders. It belongs upstream,
+      # where two schemas would stop differing only in case; the kotlin row can
+      # express it because kotlin's two natural names already differ.
+      model-name-mappings: Exception=ErrorBody
 
   kotlin:
     repo: kotlin-sdk
@@ -241,7 +278,42 @@ sdks:
       # cloud_Event.distinctId and cloud_insightsBody.distinct_id — and both
       # camel-case to `distinctId`. The rename is Kotlin-side only; the wire
       # name is still carried by @SerializedName.
-      name-mappings: distinct_id=distinctIdLegacy
+      #
+      # The last two are the collision the python and java rows already carry,
+      # and Kotlin was simply the row nobody had reached yet:
+      # O11yGettableAgentCheckIn declares `integration_config` AND
+      # `integrationConfig`, `removed_at` AND `removedAt` — the snake spellings
+      # are live wire kept for older agents. Kotlin camel-cases a property to
+      # its constructor parameter, so each pair lands on ONE name declared
+      # twice: "Conflicting declarations: value-parameter integrationConfig",
+      # eight errors, and hanzo-kotlin-cloud does not compile. Kotlin values
+      # here where python's row spells them snake, for the same reason
+      # `distinct_id` above maps to a camel one — the value is an identifier in
+      # the TARGET language.
+      name-mappings: distinct_id=distinctIdLegacy,removed_at=removedAtLegacy,integration_config=integrationConfigLegacy
+      # A CLASS NAME, and the collision is with the generator's own type map.
+      # cloud@v1.801.505 added a schema called `File` — the /v1/ai/files record,
+      # eleven properties including `store` and `storageProvider`. `file` is a
+      # mapped type, so the Kotlin generator resolves the model name straight to
+      # the imported type and writes `data class java.io.File(` into a file
+      # called `java.io.File.kt`: four syntax errors, and a name that is not an
+      # identifier in any Kotlin. The Java generator hits the same map and
+      # renames the model to `ModelFile` by itself, so this row says the name
+      # Java already chose rather than inventing a second one — one schema, one
+      # class name, across both JVM clients. A class name is never on the wire.
+      #
+      # `iam.ListResponse` decides whether this repo can be CHECKED OUT. The
+      # document carries it and `iam.listResponse`, two schemas differing only
+      # in case, and kotlin names them `IamListResponse` and `IamlistResponse` —
+      # two tracked files differing only in case, which a macOS or Windows
+      # working copy cannot hold, and which CI would commit from Linux. Renaming
+      # the one GET /v1/iam/keys returns — it is `{keys: [iam.Key]}`, so
+      # `IamKeyList` — separates them by more than case and both survive. The
+      # OTHER one is left alone deliberately: the generator applies a mapping to
+      # the class and not to the filename, so mapping the second of a colliding
+      # pair emits a class into a file that does not match it. Java hits that
+      # and therefore maps neither.
+      model-name-mappings: File=ModelFile,iam.ListResponse=IamKeyList
 
   # rust is DELIBERATELY ABSENT, for the reason above and not for lack of a
   # generator: openapi-generator emits Rust (reqwest) and hanzo-rs/sdk ships it
