@@ -2,7 +2,7 @@
 
 # Hanzo Capability Manifest
 
-Every capability the API serves, at `c3a8634a9c14b179b520a1f3f862ebef392b1dbf`. GENERATED from `hanzo.yaml` — which is itself generated from hanzoai/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
+Every capability the API serves, at `d8e2f2ff723b17baac819d93c961636ebac1b447`. GENERATED from `hanzo.yaml` — which is itself generated from hanzoai/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
 
 ## Identity & Trust
 
@@ -27,6 +27,7 @@ Every capability the API serves, at `c3a8634a9c14b179b520a1f3f862ebef392b1dbf`. 
 | `wallets` | 8 | Package wallets is blockchain key custody: create wallets, rotate their keys, and sign with them. |
 | `entitlements` | 1 | Package entitlements is what your org may run: what the plan grants, and which of those products are switched on. |
 | `avatar` | 2 | Package account is your own account: API keys you mint and revoke, and org onboarding. |
+| `appearance` | 2 | Package account is your own account: API keys you mint and revoke, and org onboarding. |
 
 ## Intelligence
 
@@ -139,7 +140,7 @@ Every capability the API serves, at `c3a8634a9c14b179b520a1f3f862ebef392b1dbf`. 
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `o11y` | 365 | Package o11y is your logs, metrics and traces: ship them in, query them, chart them. |
+| `o11y` | 366 | Package o11y is your logs, metrics and traces: ship them in, query them, chart them. |
 | `sentry` | 22 | Package o11y is your logs, metrics and traces: ship them in, query them, chart them. |
 | `logs` | 3 |  |
 | `traces` | 4 |  |
@@ -223,11 +224,11 @@ Every capability the API serves, at `c3a8634a9c14b179b520a1f3f862ebef392b1dbf`. 
 | `git` | 58 | Package git is Git hosting for your org: create repos, clone, push, and see what they cost. |
 | `templates` | 5 | Package templates is a gallery of starter kits you can deploy as they come. |
 | `blueprint` | 3 | Package blueprint is what a template costs to run, worked out before you deploy. |
-| `integrations` | 35 | Package integrations is how your org connects third-party accounts like Slack, and revokes them. |
+| `integrations` | 37 | Package integrations is how your org connects third-party accounts like Slack, and revokes them. |
 | `bot` | 9 | Package bot is your own machines, connected and ready to take a command. |
 | `bots` | 3 | Package bots is a bot doing your work on a real desktop, live, while you watch. |
 | `world` | 6 | Package world is a live news feed filtered to what your project cares about. |
-| `tracker` | 9 | Package tracker is your org's issue tracker: projects, issues, and the filters to find them. |
+| `tracker` | 21 | Package tracker is your org's issue tracker: projects, issues, and the filters to find them. |
 | `framework` | 19 | Package framework is document types you define: describe a record once, then create, list, submit and cancel documents against it. |
 | `content` | 6 | Package content is marketing content from draft to published, on every channel. |
 | `guide` | 19 | Package guide is a step-by-step checklist that gets your business running on AI. |
@@ -245,3 +246,13 @@ Every capability the API serves, at `c3a8634a9c14b179b520a1f3f862ebef392b1dbf`. 
 | `embed` | 1 | Package account is your own account: API keys you mint and revoke, and org onboarding. |
 | `functions` | 11 | Package functions is your serverless code: publish it, call it over HTTP, watch every run and what it cost. |
 | `sbom` | 3 | Package sbom is what is inside a container image: every component, resolvable by digest or image ref. |
+
+## Chain
+
+*the networks the cloud speaks to — enumerate · call · read balances*
+
+| Capability | Operations | What it is |
+|---|---:|---|
+| `chains` | 2 | Package web3 is the chain-access surface: which chains this deployment can reach, a JSON-RPC door onto each, and the two token reads every wallet UI needs. |
+| `rpc` | 1 | Package web3 is the chain-access surface: which chains this deployment can reach, a JSON-RPC door onto each, and the two token reads every wallet UI needs. |
+| `tokens` | 1 | Package web3 is the chain-access surface: which chains this deployment can reach, a JSON-RPC door onto each, and the two token reads every wallet UI needs. |
