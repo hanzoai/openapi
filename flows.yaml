@@ -51,7 +51,7 @@ flows:
     # GET /v1/iam/whoami and GET /v1/iam/account (both {"status":"error",
     # "msg":"please sign in first"}, 200) — and a `hello` built on any of them
     # prints a cheerful identity for a key that would 403 everywhere else.
-    operations: [get_v1_keys]
+    operations: [get_keys]
     notes: >-
       Verified with a nonsense-sibling control: GET /v1/keys answers 403
       {"code":"forbidden","error":"sign in to manage API keys"} with NO key and
@@ -78,7 +78,7 @@ flows:
 
   money:
     summary: Balance, then the usage that moved it.
-    operations: [get_v1_billing_balance, get_v1_billing_usage]
+    operations: [get_billing_balance, get_billing_usage]
     notes: >-
       Neither takes an org: both derive the tenant server-side from the JWT
       `owner` claim, so a key can only read its own money. Both ids are cloud's
@@ -92,7 +92,7 @@ flows:
 
   store:
     summary: KV round-trip — create a store, read it back, delete it.
-    operations: [post_v1_kv, get_v1_kv_by_name, delete_v1_kv_by_name]
+    operations: [post_kv, get_kv_by_name, delete_kv_by_name]
     notes: >-
       The delete belongs in the language's finally/defer, so a failed read still
       cleans up instead of leaving the store for the next run to collide with.
@@ -106,9 +106,9 @@ flows:
   agent:
     summary: Create an agent, run it, read the run back.
     operations:
-      - post_v1_agents
-      - post_v1_agents_by_ref_run
-      - get_v1_agents_by_ref_runs
+      - post_agents
+      - post_agents_by_ref_run
+      - get_agents_by_ref_runs
     notes: >-
       `ref` accepts the public id (agent_...) OR the org-unique name, which is
       why run and read can both use the name just created without waiting for an
@@ -118,7 +118,7 @@ flows:
 
   tools:
     summary: List the MCP tools this key can reach.
-    operations: [get_v1_tools]
+    operations: [get_tools]
     notes: >-
       GET /v1/tools is the catalogue read: every tool the caller's org and
       project can reach, from every source, each flagged with whether it is

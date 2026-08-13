@@ -102,7 +102,7 @@ move upstream into cloud's emitter; see [LLM.md](LLM.md).
 - `info.version: 8.0.0` is the generation of this PUBLICATION, and every SDK's
   package version is cut from it. The emitting cloud release is `info.x-spec.ref`;
   the API's own version is `/v1`. Three things, three places.
-- operationIds are the document's own (`get_v1_billing_balance`) — no `<svc>_`
+- operationIds are the document's own (`get_billing_balance`) — no `<svc>_`
   prefix, because a prefix invented here is a second naming authority and the
   bare id is what the MCP door already uses as a tool name.
 - No `deprecated: true`. No `/api/` prefix. No dates in filenames.
