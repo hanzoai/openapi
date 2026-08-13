@@ -1,7 +1,7 @@
 name: Regenerate SDKs
 # The ONE way: hanzo.yaml (merge.py) is the single source of truth. On every
 # change, validate it is codegen-clean, then regenerate every SDK from it —
-# openapi-generator for ALL languages, no Stainless. python/go/js own their
+# openapi-generator for ALL languages, on our own runners. python/go/js own their
 # generation (each repo has scripts/generate.sh + a generate.yml that runs on
 # the spec-update dispatch below); cpp/dart generate here as artifacts.
 on:
@@ -66,7 +66,7 @@ jobs:
     steps:
       - name: Fire spec-update to hanzoai/${{ matrix.repo }}
         # Each SDK repo's generate.yml regenerates from this hanzo.yaml with
-        # openapi-generator and opens a PR. No Stainless, no API key.
+        # openapi-generator and opens a PR. No hosted generator, no API key.
         # SDK_DISPATCH_TOKEN is a repo-level secret on hanzoai/openapi holding a
         # PAT with `repo` scope on the three SDK repos (the org-level GH_PAT does
         # not propagate to this self-hosted runner). The default GITHUB_TOKEN
