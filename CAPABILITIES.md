@@ -2,7 +2,7 @@
 
 # Hanzo Capability Manifest
 
-Every capability the API serves, at `d8e2f2ff723b17baac819d93c961636ebac1b447`. GENERATED from `hanzo.yaml` — which is itself generated from hanzoai/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
+Every capability the API serves, at `5e2b8eb189aefb2bae5f8c90f592b3c691f67092`. GENERATED from `hanzo.yaml` — which is itself generated from hanzoai/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
 
 ## Identity & Trust
 
@@ -94,7 +94,7 @@ Every capability the API serves, at `d8e2f2ff723b17baac819d93c961636ebac1b447`. 
 | Capability | Operations | What it is |
 |---|---:|---|
 | `s3` | 12 | Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store, wired straight into your app. |
-| `base` | 1 | Package base is managed Hanzo Base: a hosted backend for your app — collections, records, access rules and sign-in. |
+| `base` | 6 | Package base is managed Hanzo Base: a hosted backend for your app — collections, records, access rules and sign-in. |
 | `collections` | 10 | Package base is managed Hanzo Base: a hosted backend for your app — collections, records, access rules and sign-in. |
 | `kv` | 4 | Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store, wired straight into your app. |
 | `vector` | 6 | Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store, wired straight into your app. |
@@ -122,6 +122,7 @@ Every capability the API serves, at `d8e2f2ff723b17baac819d93c961636ebac1b447`. 
 | `pubsub` | 18 | Package pubsub is your message bus: publish, subscribe, and durable streams your apps read at their own pace. |
 | `mq` | 15 | Package mq is queue and stream admin for your org: create them, watch them drain, ack what you pulled. |
 | `notify` | 4 | Package notify is transactional email and SMS, sent through your org's own provider credential. |
+| `tel` | 10 | Package tel is the telecommunications surface: phone numbers, calls and messages, on whatever carrier the deployment is configured for. |
 | `automations` | 18 | Package automations is workflows that run themselves, on a schedule or a webhook. |
 | `auto` | 11 | Package auto is Hanzo Auto: build a flow from triggers and actions, publish it, and watch every run. |
 | `flow` | 8 | Package flow is Hanzo Flow: build an agent workflow on a visual canvas, run it, and read every run. |
