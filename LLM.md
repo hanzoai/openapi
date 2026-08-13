@@ -59,10 +59,11 @@ python3 -c "import yaml, glob; [yaml.safe_load(open(s)) for s in glob.glob('*/op
 7. Run `python3 merge.py` (regenerates `hanzo.yaml` AND `CAPABILITIES.md`) and
    commit all three.
 
-## SDK generation — the ONE way (Stainless RETIRED, 2026-07)
+## SDK generation — the ONE way
 
 The one interface is `hanzo.yaml`; the generator backend is
-**openapi-generator** for EVERY language — no Stainless, no API key. Each
+**openapi-generator** for EVERY language, run on our own CI — no hosted
+generator and no API key to hold. Each
 language repo owns its generation via a `scripts/generate.sh` that runs
 openapi-generator against this `hanzo.yaml`, plus a `generate.yml` workflow
 that regenerates + opens a PR on the `spec-update` repository_dispatch fired
