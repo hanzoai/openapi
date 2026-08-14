@@ -2,7 +2,7 @@
 
 # Hanzo Capability Manifest
 
-Every capability the API serves, at `5e2b8eb189aefb2bae5f8c90f592b3c691f67092`. GENERATED from `hanzo.yaml` — which is itself generated from hanzoai/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
+Every capability the API serves, at `forge/main`. GENERATED from `hanzo.yaml` — which is itself generated from hanzoai/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
 
 ## Identity & Trust
 
@@ -46,7 +46,7 @@ Every capability the API serves, at `5e2b8eb189aefb2bae5f8c90f592b3c691f67092`. 
 | `research` | 8 | Package research is every experiment you have ever run, kept and comparable. |
 | `prompts` | 6 | Package prompts is your prompt library, versioned, so nothing changes silently. |
 | `exec` | 2 | Package exec is the code interpreter: run a snippet in a sandbox, and move files in and out of the session that sandbox IS. |
-| `sandboxes` | 16 | Package sandbox is the ONE compute primitive: a sandbox is a gVisor pod that runs somebody else's code, and every lifetime is the same object. |
+| `sandboxes` | 19 | Package sandbox is the ONE compute primitive: a sandbox is a gVisor pod that runs somebody else's code, and every lifetime is the same object. |
 | `coding` | 1 | Package agents is autonomous agents for your org: define them, run them, keep every run. |
 | `files` | 1 | Package exec is the code interpreter: run a snippet in a sandbox, and move files in and out of the session that sandbox IS. |
 | `upload` | 1 | Package exec is the code interpreter: run a snippet in a sandbox, and move files in and out of the session that sandbox IS. |
@@ -94,8 +94,7 @@ Every capability the API serves, at `5e2b8eb189aefb2bae5f8c90f592b3c691f67092`. 
 | Capability | Operations | What it is |
 |---|---:|---|
 | `s3` | 12 | Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store, wired straight into your app. |
-| `base` | 6 | Package base is managed Hanzo Base: a hosted backend for your app — collections, records, access rules and sign-in. |
-| `collections` | 10 | Package base is managed Hanzo Base: a hosted backend for your app — collections, records, access rules and sign-in. |
+| `base` | 1 | Package base is managed Hanzo Base: a hosted backend for your app — collections, records, access rules and sign-in. |
 | `kv` | 4 | Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store, wired straight into your app. |
 | `vector` | 6 | Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store, wired straight into your app. |
 | `sql` | 4 | Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store, wired straight into your app. |
@@ -107,6 +106,7 @@ Every capability the API serves, at `5e2b8eb189aefb2bae5f8c90f592b3c691f67092`. 
 | `oracles` | 1 | Package explorer is chain data: your block indexers and how far each has caught up, plus the on-chain price feeds. |
 | `kb` | 9 | Package knowledge is your team's wiki and your agents' memory, searchable by meaning. |
 | `catalog` | 8 | Package catalog is one place to browse every project, app and site built here. |
+| `taxonomy` | 5 | Package taxonomy is the product catalogue's shape: which categories exist, what each product is called, which category it sits in, what it is tagged with, and the order the two are shown in. |
 | `sync` | 6 | Package sync is data sync: link two endpoints and keep them in step, on a webhook, on a schedule, or on demand. |
 | `crawl` | 1 | Package crawl is any web page turned into clean markdown a model can read. |
 | `scrape` | 1 | Package websearch is a web search and a page fetch your agents can call. |
@@ -127,11 +127,11 @@ Every capability the API serves, at `5e2b8eb189aefb2bae5f8c90f592b3c691f67092`. 
 | `auto` | 11 | Package auto is Hanzo Auto: build a flow from triggers and actions, publish it, and watch every run. |
 | `flow` | 8 | Package flow is Hanzo Flow: build an agent workflow on a visual canvas, run it, and read every run. |
 | `webhooks` | 8 | Package webhooks is how your app hears about events: register an endpoint, pick the events, get each one delivered and signed. |
+| `git-webhook` | 1 | Package platform is Hanzo PaaS: deploy containers to your own tenant namespace — builds, releases, environments, logs, custom domains. |
 | `event` | 3 | Package analytics is product analytics: send an event, read back who did what. |
 | `channels` | 7 | Package channels is one inbox for the chat apps you connect — Discord, Slack, Teams, Telegram. |
 | `destinations` | 5 | Package destinations is your events forwarded to the ad and analytics tools you use. |
 | `tags` | 1 | Package projects is where your sites live: create one, deploy a build, roll back to any release. |
-| `connector` | 1 | Package integrations is how your org connects third-party accounts like Slack, and revokes them. |
 | `connectors` | 8 | Package integrations is how your org connects third-party accounts like Slack, and revokes them. |
 | `pipelines` | 1 | Package platform is Hanzo PaaS: deploy containers to your own tenant namespace — builds, releases, environments, logs, custom domains. |
 
@@ -189,11 +189,11 @@ Every capability the API serves, at `5e2b8eb189aefb2bae5f8c90f592b3c691f67092`. 
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `platform` | 47 | Package platform is Hanzo PaaS: deploy containers to your own tenant namespace — builds, releases, environments, logs, custom domains. |
+| `platform` | 49 | Package platform is Hanzo PaaS: deploy containers to your own tenant namespace — builds, releases, environments, logs, custom domains. |
 | `cloud` | 5 | Package venue is bring your own cloud: link a DigitalOcean, AWS or GCP account and its clusters show up ready to run work. |
 | `deploy` | 21 | Package deploy is Hanzo CD: see what each app is running, sync it, and roll back a bad release. |
-| `projects` | 15 | Package projects is where your sites live: create one, deploy a build, roll back to any release. |
-| `sites` | 7 | Package projects is where your sites live: create one, deploy a build, roll back to any release. |
+| `projects` | 16 | Package projects is where your sites live: create one, deploy a build, roll back to any release. |
+| `sites` | 12 | Package projects is where your sites live: create one, deploy a build, roll back to any release. |
 | `builds` | 1 | Package platform is Hanzo PaaS: deploy containers to your own tenant namespace — builds, releases, environments, logs, custom domains. |
 | `releases` | 1 | Package platform is Hanzo PaaS: deploy containers to your own tenant namespace — builds, releases, environments, logs, custom domains. |
 | `environments` | 1 | Package platform is Hanzo PaaS: deploy containers to your own tenant namespace — builds, releases, environments, logs, custom domains. |
@@ -225,11 +225,11 @@ Every capability the API serves, at `5e2b8eb189aefb2bae5f8c90f592b3c691f67092`. 
 | `git` | 58 | Package git is Git hosting for your org: create repos, clone, push, and see what they cost. |
 | `templates` | 5 | Package templates is a gallery of starter kits you can deploy as they come. |
 | `blueprint` | 3 | Package blueprint is what a template costs to run, worked out before you deploy. |
-| `integrations` | 37 | Package integrations is how your org connects third-party accounts like Slack, and revokes them. |
+| `integrations` | 39 | Package integrations is how your org connects third-party accounts like Slack, and revokes them. |
 | `bot` | 9 | Package bot is your own machines, connected and ready to take a command. |
 | `bots` | 3 | Package bots is a bot doing your work on a real desktop, live, while you watch. |
 | `world` | 6 | Package world is a live news feed filtered to what your project cares about. |
-| `tracker` | 21 | Package tracker is your org's issue tracker: projects, issues, and the filters to find them. |
+| `todo` | 12 | Package todo is Hanzo Todo: boards, the work items on them, and the filters that make a board. |
 | `framework` | 19 | Package framework is document types you define: describe a record once, then create, list, submit and cancel documents against it. |
 | `content` | 6 | Package content is marketing content from draft to published, on every channel. |
 | `guide` | 19 | Package guide is a step-by-step checklist that gets your business running on AI. |

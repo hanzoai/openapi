@@ -70,9 +70,12 @@ domains:
   - id: data
     title: "Data"
     role: "the stores every capability writes to and reads from"
-    tags: [s3, base, collections, kv, vector, sql, datastore, docdb, search,
-           index, indexers, oracles, kb, catalog, sync, crawl, scrape,
-           websearch]
+    # `taxonomy` is the classification the console reads to arrange products —
+    # a stored vocabulary that other capabilities look terms up in, which is
+    # the same shape as `catalog` and `kb` and not a surface of its own.
+    tags: [s3, base, kv, vector, sql, datastore, docdb, search,
+           index, indexers, oracles, kb, catalog, taxonomy, sync, crawl,
+           scrape, websearch]
 
   - id: streams
     title: "Streams"
@@ -83,8 +86,12 @@ domains:
     # that share the carrier with it. It files here rather than under
     # Applications because a call is a message reaching a person over somebody
     # else's network, not a surface of its own.
+    # `git-webhook` is the door the forge pushes through, not a thing anybody
+    # opens: one POST that a push fires, which starts a build. Its family is
+    # `webhooks` and `event` — inbound async — rather than `git`, which is the
+    # surface a person uses.
     tags: [tasks, pubsub, mq, notify, tel, automations, auto, flow, webhooks,
-           event, channels, destinations, tags, connector, connectors, pipelines]
+           git-webhook, event, channels, destinations, tags, connectors, pipelines]
 
   - id: observability
     title: "Observability"
@@ -128,9 +135,13 @@ domains:
   - id: applications
     title: "Applications"
     role: "the user-facing surfaces built on all of the above"
-    tags: [git, templates, blueprint, integrations, bot, bots, world, tracker,
-           framework, content, guide, help, meet, share, social, links, esign,
-           dataroom, company, legal, prefs, settings, embed, functions, sbom]
+    # `todo` is a list a person keeps — a surface, which is what this domain
+    # is for. It is NOT streams' `tasks`: that one is the durable async queue
+    # work is handed to. Two words, two things, and the only thing they share
+    # is the English.
+    tags: [git, templates, blueprint, integrations, bot, bots, world, todo, framework, content, guide, help, meet, share, social, links,
+           esign, dataroom, company, legal, prefs, settings, embed, functions,
+           sbom]
 
   - id: chain
     title: "Chain"
