@@ -69,12 +69,25 @@ flows:
 
   chat:
     summary: One completion.
-    operations: [post_v1_chat_completions]
+    operations: [post_chat_completions]
     notes: >-
-      POST /v1/chat/completions, the gateway's own inference route. Non-streaming
-      on purpose — streaming is a different transport (SSE) that the generated
-      clients return as an opaque body, so demonstrating it here would teach the
-      wrong shape. Print choices[0].message.content.
+      POST /v1/chat/completions, the gateway's own inference route. The id lost
+      its `v1` when the default version left the operationId; the address did
+      not move.
+
+
+      The document states that address and NOT its shape — no requestBody and no
+      responses — so a generated method takes no prompt and hands back an opaque
+      body. No language can ship this as an example that runs, and python,
+      typescript and go each ship five. The flow keeps its place here because
+      the operation is served: the day cloud's handler declares its In and Out
+      types, the sixth example returns everywhere at once with nothing left to
+      decide.
+
+
+      Non-streaming when it does. Streaming is a different transport (SSE) that
+      the generated clients return as an opaque body, so demonstrating it here
+      would teach the wrong shape. Print choices[0].message.content.
 
   money:
     summary: Balance, then the usage that moved it.
