@@ -837,8 +837,11 @@ sdks:
     #     side returns first — but it still has to compile, and it does not: 5
     #     more errors. Guarding the body leaves the same value returned.
     #
-    # All three are no-ops on the four platforms Package.swift declares, so the
-    # Apple output is byte-identical to the jar's. Everything else comes from
+    # All three ask `canImport`, so on the four platforms Package.swift declares
+    # they leave the same code standing — macOS additionally imports
+    # MobileCoreServices, which is present there and whose symbols the pre-11
+    # branch already calls. The emitted file is not the jar's byte for byte; what
+    # is preserved is which branch Apple compiles. Everything else comes from
     # the jar: the generator reads this directory first and falls back, so the
     # override is this file and no more.
     templates: templates/swift
