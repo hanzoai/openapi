@@ -52,6 +52,15 @@ This file and sdks.yaml stay: the INVOCATION is still logic that lives once, and
 every per-language knob is still data beside it. An SDK repo carries only a call
 site, so nothing in a client repo can drift on its own — `--check` is what makes
 that a fact rather than a convention.
+
+A LANGUAGE IS A ROW, NOT A MECHANISM. Every language this repo generates is one
+entry in sdks.yaml and nothing else; adding one is adding data. That held for
+four languages and not for Go, which owned a second driver — 250 lines of bash
+re-deriving the jar, the lock, the digest check, the YAML-to-JSON conversion and
+the drift check — for one reason: `take` meant "the generator owns this
+DIRECTORY", and Go's client sits at the module root beside go.mod and .git, so
+no directory could be named. `owned()` states the rule as a set of files
+instead, which every row can say, so the second driver is gone and Go is a row.
 """
 import argparse
 import concurrent.futures as futures
@@ -252,13 +261,55 @@ def digest(path):
     return out
 
 
-def diff(src, dst):
-    """(added, removed, changed) going from the committed dst to a fresh src."""
-    a, b = digest(src), digest(dst) if os.path.exists(dst) else {}
+MANIFEST = ".generated"
+
+
+def owned(repo):
+    """Every path this driver last wrote into `repo`, repo-relative, as a set.
+
+    THE GENERATOR OWNS THE FILES IT WROTE — not a directory. That is the whole
+    of the ownership rule, and it is one rule because it holds for every row.
+
+    `take` used to mean "the generator owns this DIRECTORY", implemented as
+    rmtree-then-copy. Four languages could say that; Go could not, because
+    `package hanzoai` sits at the module root beside go.mod, LICENSE, examples/
+    and .git — `take: {.: .}` under that rule deletes the repository. So Go grew
+    a second driver, 250 lines of bash re-deriving the jar, the lock, the digest
+    check, the YAML-to-JSON conversion and the diff, and the two drifted.
+
+    Owning a SET is strictly stronger and has no such edge: a stale file is one
+    this manifest names and the fresh emission does not, so it is removed; a file
+    nothing here names is the repo's own and is never touched, whatever directory
+    it happens to sit in. For a wholly-owned directory the manifest covers
+    everything under it, so the four rows behave exactly as they did.
+
+    Written by every write run, read by the next one and by `--check`. Absent, it
+    reads as "this driver has written nothing here", which is true of a repo it
+    has never touched and makes the first run add-only.
+    """
+    path = os.path.join(repo, MANIFEST)
+    if not os.path.exists(path):
+        return set()
+    return {line.strip() for line in open(path) if line.strip()}
+
+
+def place(dst, rel):
+    """Where a file `rel` of the staged tree lands, relative to the repo."""
+    return os.path.normpath(os.path.join(dst, rel)) if rel else os.path.normpath(dst)
+
+
+def under(path, dst):
+    """Is a repo-relative path inside this take's destination?"""
+    dst = os.path.normpath(dst)
+    return dst == "." or path == dst or path.startswith(dst + os.sep)
+
+
+def diff(fresh, here):
+    """(added, removed, changed) going from what is committed to what is fresh."""
     return (
-        sorted(set(a) - set(b)),
-        sorted(set(b) - set(a)),
-        sorted(k for k in set(a) & set(b) if a[k] != b[k]),
+        sorted(set(fresh) - set(here)),
+        sorted(set(here) - set(fresh)),
+        sorted(k for k in set(fresh) & set(here) if fresh[k] != here[k]),
     )
 
 
@@ -312,6 +363,19 @@ def emit(name, cfg, spec, version, out):
     ]
     if props:
         cmd += ["--additional-properties", props]
+    # Overrides for the generator's own mustache, resolved against THIS repo.
+    # The generator reads each file from here first and falls back to the ones
+    # inside the jar, so a row overrides the templates it corrects and no more.
+    #
+    # It lives here because the INVOCATION lives here. sdks.yaml used to say a
+    # language needing a template must own its whole invocation elsewhere, on
+    # the grounds that a template is a file and has to sit beside the call — and
+    # that is right, but the call is this function, not the one-line call site
+    # in an SDK repo. Templates beside generate.py and their flags beside them
+    # in sdks.yaml are ONE home; a template in the client and its flags here
+    # would be the two that drift.
+    if cfg.get("templates"):
+        cmd += ["-t", os.path.join(ROOT, cfg["templates"])]
     # An escape hatch for where the generator itself is wrong: generator CLI
     # options that have no --additional-properties form, as data in sdks.yaml.
     # They do not describe the API — they say how one language's generator has
@@ -324,18 +388,51 @@ def emit(name, cfg, spec, version, out):
     return r.returncode == 0
 
 
+def shape(name, cfg, stage):
+    """The language's own formatter over the staged tree, where it has one.
+
+    The generator's Go output is not gofmt'd — 2655 of 2656 files at this
+    document's size — and a Go source file that is not gofmt'd reformats itself
+    in every contributor's editor, so committing it makes the client drift on
+    save. Nothing in `properties` or `flags` reaches this: it is a step AFTER the
+    generator, which is why it is its own key and why the shape of the key is a
+    command with no shell (a list, so nothing is parsed or expanded).
+
+    Absent for python, typescript, java and kotlin — their committed trees are
+    byte-for-byte what the generator emits, measured, so a formatter there would
+    only add a tool their CI does not need.
+    """
+    cmd = cfg.get("format")
+    if not cmd:
+        return True
+    r = subprocess.run([*cmd, stage], capture_output=True, text=True)
+    if r.returncode:
+        sys.stderr.write(f"[{name}] {cmd[0]} failed\n{r.stderr[-4000:]}\n")
+    return r.returncode == 0
+
+
 def sdk(name, cfg, spec, version, drops, repo, check):
     with tempfile.TemporaryDirectory(prefix=f"sdkgen-{name}-", dir=os.environ.get("TMPDIR")) as stage:
         if not emit(name, cfg, spec, version, stage):
             return False
+        if not shape(name, cfg, stage):
+            return False
         prune(stage, drops)
-        ok = True
+        was, now, ok = owned(repo), {}, True
         for src_rel, dst_rel in cfg["take"].items():
-            src, dst = os.path.join(stage, src_rel), os.path.join(repo, dst_rel)
+            src = os.path.join(stage, src_rel)
             if not os.path.exists(src):
                 sys.stderr.write(f"[{name}] generator emitted no {src_rel}\n")
                 return False
-            added, removed, changed = diff(src, dst)
+            fresh = {place(dst_rel, rel): (os.path.join(src, rel) if rel else src, sha)
+                     for rel, sha in digest(src).items()}
+            now.update(fresh)
+            # What the repo holds of what this driver owns HERE. A file the
+            # manifest does not name is the repo's own and is not compared.
+            here = {p: hashlib.sha256(open(os.path.join(repo, p), "rb").read()).hexdigest()
+                    for p in was
+                    if under(p, dst_rel) and os.path.isfile(os.path.join(repo, p))}
+            added, removed, changed = diff({k: v[1] for k, v in fresh.items()}, here)
             if check:
                 if added or removed or changed:
                     ok = False
@@ -344,16 +441,31 @@ def sdk(name, cfg, spec, version, drops, repo, check):
                     for k in (added[:5] + removed[:5] + changed[:5]):
                         print(f"          {k}")
                 continue
-            if os.path.isdir(src):
-                shutil.rmtree(dst, ignore_errors=True)
-                shutil.copytree(src, dst)
-            else:
-                os.makedirs(os.path.dirname(dst), exist_ok=True)
-                shutil.copy2(src, dst)
+            for p in removed:
+                os.remove(os.path.join(repo, p))
+            for p, (s, _) in fresh.items():
+                d = os.path.join(repo, p)
+                os.makedirs(os.path.dirname(d), exist_ok=True)
+                shutil.copy2(s, d)
+            sweep(repo, removed)
             print(f"[{name}] {dst_rel}: +{len(added)} -{len(removed)} ~{len(changed)}")
+        if not check:
+            with open(os.path.join(repo, MANIFEST), "w") as f:
+                f.write("".join(f"{p}\n" for p in sorted(now)))
         if check and ok:
             print(f"[{name}] clean")
         return ok
+
+
+def sweep(repo, removed):
+    """Drop the directories a removal emptied, never one that holds anything."""
+    for p in sorted({os.path.dirname(p) for p in removed}, key=len, reverse=True):
+        while p:
+            d = os.path.join(repo, p)
+            if not os.path.isdir(d) or os.listdir(d):
+                break
+            os.rmdir(d)
+            p = os.path.dirname(p)
 
 
 def main():
