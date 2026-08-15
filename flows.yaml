@@ -51,13 +51,26 @@ flows:
     # GET /v1/iam/whoami and GET /v1/iam/account (both {"status":"error",
     # "msg":"please sign in first"}, 200) — and a `hello` built on any of them
     # prints a cheerful identity for a key that would 403 everywhere else.
-    operations: [get_keys]
+    #
+    # get_models comes FIRST and needs no key: the document now declares a
+    # `bearer` scheme, applies it to every operation, and exempts exactly four
+    # with `security: []` — get_models, get_models_providers, get_commands,
+    # get_openapi.json. So "which routes are open" is a fact an SDK can read
+    # rather than a probe result recorded in this file, and hello can open with
+    # a call that SUCCEEDS for a reader who has no credential at all. It is a
+    # reachability line, not the identity proof; get_keys is still that.
+    operations: [get_models, get_keys]
     notes: >-
       Verified with a nonsense-sibling control: GET /v1/keys answers 403
       {"code":"forbidden","error":"sign in to manage API keys"} with NO key and
       with a bogus one, while GET /v1/keys-zzq9 answers 404 — so the 403 is this
       route refusing, not a wildcard door. With a real key it returns the
       caller's own keys. An SDK's hello must be the call that says no.
+
+
+      Both halves are what makes the flow readable: an unreachable gateway and a
+      rejected credential both end in "no", and only the open call separates
+      them.
 
 
       This replaces bot_authMe (GET /v1/bot/auth/me), which no longer resolves:
