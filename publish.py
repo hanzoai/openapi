@@ -487,6 +487,14 @@ def main():
     if a.check and not have.get("ref"):
         sys.exit("publish: --check needs a .spec-lock naming the document this "
                  "artifact is a projection of; run `python3 publish.py` first")
+
+    # Name the COMMIT from here on. `ref` arrives as whatever found the document —
+    # a tag, a sha, or (by default) a remote-tracking branch. A branch is a moving
+    # tip here and is not resolvable at all in the CI clone that later re-derives
+    # this artifact, which has no remotes. Resolving once, before anything reads
+    # it, is what keeps `x-spec.ref`, `.spec-lock`, and `--check` naming one thing.
+    ref = git(repo, "rev-parse", f"{ref}^{{commit}}").strip()
+
     raw, sha = document(repo, ref)
     if a.check and have.get("sha256") and sha != have["sha256"]:
         sys.exit(f"publish: {SPEC_REPO}@{ref}:{SPEC_PATH} hashes to {sha}, but "
@@ -512,7 +520,7 @@ def main():
     open(TARGET, "w").write(text)
     open(INDEX, "w").write(md)
     open(LOCK, "w").write(f"ref={ref}\nsha256={sha}\nrepo={SPEC_REPO}\npath={SPEC_PATH}\n")
-    print(f"hanzo.yaml <- {SPEC_REPO}@{ref}:{SPEC_PATH} ({sha[:12]})")
+    print(f"hanzo.yaml <- {SPEC_REPO}@{ref[:12]}:{SPEC_PATH} ({sha[:12]})")
     print(f"{n['paths']} paths, {n['ops']} operations, {n['tags']} capabilities "
           f"({n['described_tags']} described) in {n['groups']} domains")
     print(f"projected: {n['trace']} TRACE and {n['compat']} compat operations dropped, "

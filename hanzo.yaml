@@ -45767,8 +45767,8 @@ info:
   x-spec:
     repo: hanzoai/cloud
     path: openapi.yaml
-    ref: 613cc065e0627b0b8dd73c710229b9f2384f2ea6
-    sha256: a50fc96c4732706ca154138e3984f677747b20e9484409915a6b59e7d703bfba
+    ref: 38a803e4a90cb39047f02536b8e22bcdc34e16b8
+    sha256: eb375622d4d53653672031aeb2fb473424b26baa975be78693226a04a5005571
 openapi: 3.1.0
 paths:
   /:
@@ -52074,6 +52074,12 @@ paths:
 
         best-effort tombstones the sealed secret. Idempotent.'
       operationId: delete_ai_connections_by_provider
+      parameters:
+      - in: path
+        name: provider
+        required: true
+        schema:
+          type: string
       summary: 'Disconnects a third-party AI account: it deactivates the org''s row so completion resolution falls back to
         the global Hanzo account (no BYO), and best-effort tombstones the sealed secret.'
       tags:
@@ -52089,6 +52095,12 @@ paths:
 
         best-effort tombstones the sealed secret. Idempotent.'
       operationId: post_ai_connections_by_provider
+      parameters:
+      - in: path
+        name: provider
+        required: true
+        schema:
+          type: string
       summary: 'Disconnects a third-party AI account: it deactivates the org''s row so completion resolution falls back to
         the global Hanzo account (no BYO), and best-effort tombstones the sealed secret.'
       tags:
@@ -52111,6 +52123,12 @@ paths:
 
         only the caller''s own connection can result.'
       operationId: get_ai_connections_by_provider_authorize
+      parameters:
+      - in: path
+        name: provider
+        required: true
+        schema:
+          type: string
       summary: 'Begins an OAuth connection for the caller''s org: it binds the org into a signed state and sends the caller
         to the provider''s authorize URL.'
       tags:
@@ -52127,6 +52145,12 @@ paths:
         \ (or ?ai_connect_error=<provider> on failure). Because\nthe org comes from the state THIS server signed, an attacker\
         \ cannot land their\ntoken in a victim org \u2014 which is why this endpoint is state-authenticated rather\nthan credential-gated."
       operationId: get_ai_connections_by_provider_callback
+      parameters:
+      - in: path
+        name: provider
+        required: true
+        schema:
+          type: string
       summary: 'Completes OAuth: the org is recovered from the SIGNED state (not a header), the code is exchanged for a token,
         the token is SEALED into KMS (never the row/logs) through the same path as a BYOK key, and the org''s provider row
         is upserted to "connected".'
@@ -52143,6 +52167,12 @@ paths:
         \ never\nreturned. An unconnected account, a missing importer, or a scope-denied provider all\nreturn a 200 ProviderUsage\
         \ with connected/available flags + a human note \u2014 the UI's\nhonest-empty states \u2014 never a fabricated figure."
       operationId: get_ai_connections_by_provider_usage
+      parameters:
+      - in: path
+        name: provider
+        required: true
+        schema:
+          type: string
       summary: Imports the caller org's usage for a connected third-party account.
       tags:
       - ai
@@ -71701,6 +71731,12 @@ paths:
       description: "Handles GET /v1/documents/:file_id/context \u2014 every chunk of\na file, as LangChain Documents (used\
         \ when RAG_USE_FULL_CONTEXT is on)."
       operationId: get_documents_by_file_id_context
+      parameters:
+      - in: path
+        name: file_id
+        required: true
+        schema:
+          type: string
       summary: "Handles GET /v1/documents/:file_id/context \u2014 every chunk of a file, as LangChain Documents (used when\
         \ RAG_USE_FULL_CONTEXT is on)."
       tags:
@@ -111945,6 +111981,12 @@ paths:
         \ the\nfirst time the job is observed completed \u2014 settles the reservation with the\nactual cost and records the\
         \ billable usage event (exactly once). Returns the\nOpenAI-shaped video object."
       operationId: get_videos_by_id
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
       summary: "Implements GET /v1/videos/{id} \u2014 poll a job's status."
       tags:
       - videos
@@ -111960,6 +112002,12 @@ paths:
         \ the\nraw video bytes back inline. A successful download also bills the job once (for\nthe client that downloads\
         \ without first polling to completion) \u2014 idempotent\nwith the poll path via job.markCompleted."
       operationId: get_videos_by_id_content
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
       summary: "Implements GET /v1/videos/{id}/content \u2014 download the finished MP4."
       tags:
       - videos
@@ -112708,6 +112756,12 @@ paths:
     get:
       description: Verify WeChat work bot callback URL
       operationId: get_wecom-bot_callback_by_botid
+      parameters:
+      - in: path
+        name: botId
+        required: true
+        schema:
+          type: string
       summary: Verify WeChat work bot callback URL
       tags:
       - wecom-bot
@@ -112718,6 +112772,12 @@ paths:
     post:
       description: Process WeChat work bot messages
       operationId: post_wecom-bot_callback_by_botid
+      parameters:
+      - in: path
+        name: botId
+        required: true
+        schema:
+          type: string
       summary: Process WeChat work bot messages
       tags:
       - wecom-bot
