@@ -77,8 +77,12 @@
 #   • ship a client that never authenticates. Its root `security` requires
 #     `bearerAuth`, a scheme its own `components.securitySchemes` does not
 #     define — cloud now declares `bearer` itself, so publish.py's `setdefault`
-#     no longer fires while the requirement it writes still does. Generated:
-#     193 bearer call sites from cloud's document, 0 from the projection.
+#     no longer fires while the requirement it writes still does. Generated
+#     typescript: 2498 bearer call sites from cloud's document, 0 from the
+#     projection — which leaves 191 files importing a helper none of them calls.
+#     Go is the exception and does not soften this: its generator emits one
+#     central site from the scheme it finds DEFINED, so it authenticates from
+#     either document while every per-operation language stops.
 #   • stamp `info.version: 8.0.0` into every generated file's header — the
 #     projection's own release counter, which names no cloud release.
 #   • drop 23 operations (the `compat`-tagged legacy addresses) and move 50 more
@@ -540,8 +544,8 @@ sdks:
     # THREE PHP GENERATORS SHIP IN 7.14.0, and the choice is measured on this
     # document rather than preferred. `php-dt` cannot READ it: it reaches
     # operation.responses.keySet() unguarded and dies with a NullPointerException
-    # on the first of the 684 operations cloud emits with no `responses` — 0
-    # files, in every configuration. `php-nextgen` reads it and emits exactly
+    # on the first of the 716 operations this document states the address of and
+    # not the shape — 0 files, in every configuration. `php-nextgen` reads it and emits exactly
     # what `php` does: the same 192 API classes, the same 2461 models, the same
     # five parse failures the flags below correct. Across all 2658 files exactly
     # ONE differs in what it declares (its HeaderSelector drops two helpers);
