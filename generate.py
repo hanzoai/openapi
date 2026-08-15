@@ -22,31 +22,30 @@ more. `publish.py` DERIVES it from cloud's emission at one pinned ref, and
 serve. Existence comes from the code either way; the file is a projection now,
 not a second opinion.
 
-WHY A PROJECTION AND NOT THE EMISSION ITSELF — measured, because the obvious
-answer is wrong. Generating from cloud's raw document produces NOTHING in every
-language:
+THE EMISSION ITSELF, NOT A PROJECTION OF IT. Every row reads that document, and
+the validator is not a reason to read anything else although it reads like one:
 
     openapi-generator-cli 7.14.0 validate -i <cloud openapi.yaml>
       → [error] Spec has 1012 errors     (one per route the weave publishes
                                           with an address and no `responses`)
-    …           generate -g typescript-axios -i <same>
-      → SpecValidationException: There were issues with the specification
-      → 0 files written
 
-`hanzo.yaml` is the same document with the six codegen rules in `publish.py`
-applied — 0 errors, and typescript-axios writes `api.ts`. Pointing a client at
-the emission directly is correct about authority and produces no client, which
-is the wrong trade for a repo whose whole output is clients. The rules are all
-candidates to move UPSTREAM into cloud's emitter; the day they do, this default
-becomes cloud's document itself and `publish.py` goes.
+OpenAPI 3.1 made `responses` optional and the 7.14.0 validator still applies the
+3.0 rule, so it is refusing a document that is valid. `--skip-validate-spec` is
+`emit()`'s, for every language, and compiling the client is what actually gates a
+bad document. `hanzo.yaml` — publish.py's projection of the same bytes, with six
+codegen rules applied — is the alternative, and sdks.yaml's THE DOCUMENT section
+measures what reading it costs: go 46 methods and a header naming a release
+counter cloud does not answer to, typescript its credential outright. Those rules
+belong UPSTREAM in cloud's emitter; the day they land there, `publish.py` goes.
 
-WHICH document is still a fact about the CLIENT when the client says so. An SDK
-repo's `.spec-lock` names the ref and sha256 it is a projection of — written by
-hanzoai/ci's `client:` lane when a release dispatched to it — and `document()`
-reads it; `--spec` is the same document passed by value when the caller already
-fetched it (which the lane always does). With neither, this checkout's own
-`hanzo.yaml` is the document, which is what a maintainer regenerating by hand
-gets.
+WHICH document is a fact about the CLIENT. An SDK repo's `.spec-lock` names the
+ref and sha256 it is a projection of — written by hanzoai/ci's `client:` lane
+when a release dispatched to it — and `document()` reads it; `--spec` is the same
+document passed by value when the caller already fetched it (which the lane
+always does). With neither, `document()` exits. There is no third source: the
+one that stood there was this checkout's `hanzo.yaml`, and reading it made a
+client the projection of a projection, one step stale whenever the middle step
+had not run, and stale silently.
 
 This file and sdks.yaml stay: the INVOCATION is still logic that lives once, and
 every per-language knob is still data beside it. An SDK repo carries only a call
@@ -55,7 +54,7 @@ that a fact rather than a convention.
 
 A LANGUAGE IS A ROW, NOT A MECHANISM. Every language this repo generates is one
 entry in sdks.yaml and nothing else; adding one is adding data. That held for
-four languages and not for Go, which owned a second driver — 250 lines of bash
+four languages and not for Go, which owned a second driver — 196 lines of bash
 re-deriving the jar, the lock, the digest check, the YAML-to-JSON conversion and
 the drift check — for one reason: `take` meant "the generator owns this
 DIRECTORY", and Go's client sits at the module root beside go.mod and .git, so
@@ -274,7 +273,7 @@ def owned(repo):
     rmtree-then-copy. Four languages could say that; Go could not, because
     `package hanzoai` sits at the module root beside go.mod, LICENSE, examples/
     and .git — `take: {.: .}` under that rule deletes the repository. So Go grew
-    a second driver, 250 lines of bash re-deriving the jar, the lock, the digest
+    a second driver, 196 lines of bash re-deriving the jar, the lock, the digest
     check, the YAML-to-JSON conversion and the diff, and the two drifted.
 
     Owning a SET is strictly stronger and has no such edge: a stale file is one
