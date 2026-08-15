@@ -817,18 +817,28 @@ sdks:
     # generator that starts emitting Swift 7 stops compiling and says why in
     # neither place.
     take: { Sources/Hanzo: Sources/Hanzo, Package.swift: Package.swift }
-    # ONE FILE, FOUR LINES, and without them this client compiles on Apple
+    # ONE FILE, SIX LINES, and without them this client compiles on Apple
     # platforms and nowhere else — which on a fleet whose every runner is linux
-    # means it can never be gated at all. The generator's own transport opens
-    # `#if !os(macOS) / import MobileCoreServices`, which is true on Linux where
-    # that framework does not exist, and it names URLSession, URLRequest and
-    # URLResponse without importing FoundationNetworking, where corelibs keeps
-    # them. Both guards here are the ones every portable Swift package writes,
-    # and both are no-ops on the four platforms Package.swift declares —
-    # `canImport` is exactly the question `!os(macOS)` was trying to ask.
+    # means it can never be compiled by anything that gates it. Three
+    # corrections, all in the generator's own transport, all measured by
+    # building:
     #
-    # Everything else comes from the jar: the generator reads this directory
-    # first and falls back, so the override is this file and no more.
+    #   • `#if !os(macOS) / import MobileCoreServices` is TRUE on Linux, where
+    #     that framework does not exist. `canImport` is the question the guard
+    #     was trying to ask.
+    #   • URLSession, URLRequest and URLResponse are named without importing
+    #     FoundationNetworking, which is where corelibs keeps them off Apple
+    #     platforms — 9 errors before the compile stops.
+    #   • `mimeType(for:)`'s pre-macOS-11 branch calls four MobileCoreServices C
+    #     functions unguarded. Linux never REACHES that branch — `#available`
+    #     is true for a platform it does not name, so the UniformTypeIdentifiers
+    #     side returns first — but it still has to compile, and it does not: 5
+    #     more errors. Guarding the body leaves the same value returned.
+    #
+    # All three are no-ops on the four platforms Package.swift declares, so the
+    # Apple output is byte-identical to the jar's. Everything else comes from
+    # the jar: the generator reads this directory first and falls back, so the
+    # override is this file and no more.
     templates: templates/swift
     properties:
       # The module a caller imports. It also names the target, the product, the
