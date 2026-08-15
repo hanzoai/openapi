@@ -20,28 +20,74 @@
 # weave publishes with an address and no `responses` — and `generate` writes zero
 # files from it in every language. See generate.py's header.
 #
-# `take` maps a path in the generator's output onto a path in the SDK repo that
-# the generator OWNS ENTIRELY: generate.py replaces it wholesale and --check
-# diffs it. Anything outside a `take` path is the repo's own (build files, the
-# legacy published client) and is never touched.
+# `take` maps a path in the generator's output onto a path in the SDK repo. What
+# the generator owns there is the FILES IT WROTE — recorded in that repo's
+# `.generated`, removed when the document stops projecting them, and nothing
+# else touched. Anything this driver did not write is the repo's own (build
+# files, the hand-written seam, examples) whatever directory it sits in.
+#
+# That rule replaced "the generator owns this DIRECTORY", and replacing it is
+# what let go become a row. Under the old rule go was unsayable — `package
+# hanzoai` sits at the module root beside go.mod, LICENSE, examples/ and .git,
+# so the only take it could name was one that deleted the repository — and so go
+# owned a SECOND DRIVER: 250 lines of bash re-deriving the jar, the lock, the
+# digest check, the YAML-to-JSON conversion and the drift check, which is four
+# copies of this file's logic sitting where it could drift, and did.
 #
 # WHEN A LANGUAGE LEAVES THIS FILE — the boundary, so it is a rule and not a
 # mood: a row exists while the WHOLE invocation is expressible as data. A
-# language leaves when its invocation needs something that is not data, and both
-# departures are that, not neglect:
+# language leaves when its invocation needs something this file cannot say.
 #
-#   • go needs the client at the MODULE ROOT, beside go.mod and .git, which
-#     `take` cannot express — it rmtree's what it owns, so `{.: .}` deletes the
-#     repository.
-#   • rust needs a `reqwest/api.mustache` template override. A template is a
-#     FILE. It has to sit next to the generator call, and its flags have to sit
-#     next to it, or the pair drifts apart.
+# A TEMPLATE IS NO LONGER ONE OF THOSE, and the correction is worth stating
+# because it moved a boundary. The old rule read: rust needs a
+# `reqwest/api.mustache` override, a template is a FILE, it has to sit next to
+# the generator call and its flags next to it, so rust owns its whole invocation
+# elsewhere. Every clause is true except which call. The invocation is
+# `generate.py`'s `emit()`, in THIS repo — an SDK repo holds a one-line call
+# site that passes no flags at all. So a template belongs HERE too, under
+# `templates/<lang>/`, named by a row's `templates:` key, and the pair that
+# would have drifted is one directory apart in one commit.
 #
-# A language that leaves owns its whole invocation in its own
+# dart is the row that needed it and the proof it works: the generator's Dart
+# `fromJson` calls a static that only a GENERATED CLASS has, on `Object`, `Map`
+# and `List` — 52 compile errors no `properties`, `flags` or type mapping
+# reaches, and 15 still there on the newest generator. Two overrides, and the
+# 2479-operation client analyzes clean.
+#
+# What this does NOT do is haul rust and cpp back. rust's stated reason WAS the
+# template and is now expressible, so its return is a measured change somebody
+# makes deliberately, not a side effect of this sentence. cpp keeps a second
+# reason a row still cannot hold — it needs generator 7.24.0, and the pin below
+# is one version for everyone.
+#
+# A language that still leaves owns its whole invocation in its own
 # scripts/generate.sh — same generator, same pin, same document at the same
 # locked ref. That is the pull model, the same one interface either way.
 # What is NOT allowed is a row here AND flags there: that is two declarations of
-# one contract, and both departures had already started drifting into it.
+# one contract, and the departure had already started drifting into it.
+#
+# THE DOCUMENT, measured rather than argued, because a projection of it sits in
+# this very repo and reads like the better input. Every row reads hanzoai/cloud's
+# `openapi.yaml` at the ref its own `.spec-lock` names — one document, five
+# clients, one sha256. The alternative was `hanzo.yaml`, publish.py's projection,
+# and it is DERIVED FROM THE SAME BYTES (this repo's `.spec-lock` carries the
+# digest every SDK's does), so it settles no question of authority; what it
+# changes is shape. Measured at that ref, generating from it instead would:
+#
+#   • ship a client that never authenticates. Its root `security` requires
+#     `bearerAuth`, a scheme its own `components.securitySchemes` does not
+#     define — cloud now declares `bearer` itself, so publish.py's `setdefault`
+#     no longer fires while the requirement it writes still does. Generated:
+#     193 bearer call sites from cloud's document, 0 from the projection.
+#   • stamp `info.version: 8.0.0` into every generated file's header — the
+#     projection's own release counter, which names no cloud release.
+#   • drop 23 operations (the `compat`-tagged legacy addresses) and move 50 more
+#     off `DefaultAPI` onto the app that serves them, which is a real
+#     improvement and the only one, against the two above.
+#
+# So: the emission. The 50 untagged and the 23 double-tagged operations are the
+# document's defects and belong upstream in cloud's emitter, which is where
+# publish.py already says each of its rules is a candidate to go.
 
 generator: 7.14.0 # openapi-generator, pinned for every language
 
@@ -65,11 +111,26 @@ drop:
   - package.json
   - tsconfig.json
   - tsconfig.esm.json
-  - "*.gemspec"
+  # `*.gemspec` is deliberately NOT here, and it is the one build manifest a
+  # client keeps. The others are dropped because they carry facts the generator
+  # cannot know; the gemspec carries none — every field in it comes from the
+  # ruby row's gem* properties, and its runtime dependencies follow from that
+  # row's `library`. Measured: with all six set to a sentinel, all six appear in
+  # hanzoai.gemspec and in no file under lib/. Dropping it would make those
+  # properties inert and move the registry metadata into a hand-written second
+  # home. See the ruby row.
   - Gemfile
   - Rakefile
   - go.mod
   - go.sum
+  # composer.json is dropped for the reason the gemspec above is kept: the php
+  # generator has no property for a package DESCRIPTION, so it writes the API
+  # document's own info.description as the package's tagline — "every operation
+  # below is a route the subsystem that publishes it registered", which reads
+  # as prose about a document on a page that is not one. Every other field it
+  # writes is derivable from the php row; that one is not, so the manifest is
+  # the repo's. See the php row.
+  - composer.json
   - pom.xml
   - build.gradle
   - settings.gradle
@@ -113,26 +174,90 @@ sdks:
     flags:
       name-mappings: removed_at=removed_at_legacy,integration_config=integration_config_legacy
 
-  # go is DELIBERATELY ABSENT, and it is the row this file cannot hold.
-  #
-  # Every `take` above is a promise that the generator OWNS a directory: sdk()
-  # rmtree's the destination and copies the fresh tree in. The shipped Go client
-  # has no such directory — `package hanzoai` sits at the MODULE ROOT, beside
-  # go.mod, LICENSE, README.md, scripts/ and .git, because that is what
-  # `import "github.com/hanzoai/go-sdk"` requires. `take: { . : . }` would
-  # therefore delete the repository and replace it with generated files.
-  #
-  # The row that used to be here promised something else again: `take: {.: cloud}`
-  # with `packageName: cloud`, writing a SECOND client into a cloud/ subdir that
-  # the shipped module does not have and no consumer imports.
-  #
-  # The Go client regenerates from its own `scripts/generate.sh` — the same
-  # generator, the same pin, the same hanzoai/cloud document at the ref its own
-  # `.spec-lock` names. That is the pull model working, not
-  # a gap: `packageName=hanzoai, withGoMod=false, structPrefix=true,
-  # enumClassPrefix=true`, output at the root. Canonical repo is hanzo-go/sdk;
-  # `hanzoai/go-sdk` is a rename redirect and stays the MODULE PATH, because
-  # that is what the proxy has and what consumers require.
+  go:
+    repo: go-sdk
+    generator: go
+    # THE MODULE ROOT. `package hanzoai` sits beside go.mod, LICENSE, examples/
+    # and .git because that is what `import "github.com/hanzoai/go-sdk"`
+    # requires, and for as long as `take` meant "the generator owns this
+    # DIRECTORY" that was unsayable — naming the root would have deleted the
+    # repository. It is sayable now: the generator owns the FILES it wrote, which
+    # `.generated` records, so a root take removes stale client files and cannot
+    # touch a file this driver did not write. See generate.py's `owned()`.
+    #
+    # Canonical repo is hanzo-go/sdk; `hanzoai/go-sdk` is a rename redirect and
+    # stays the MODULE PATH, because that is what the proxy has and what
+    # consumers require.
+    take: { .: . }
+    # The generator's Go output is not gofmt'd — 2655 of 2656 files — and an
+    # unformatted Go file reformats itself in every contributor's editor, so
+    # committing it makes the client drift on save. No generator knob reaches
+    # this; it is a step after the generator, so it is its own key.
+    format: [gofmt, -w]
+    # Go is the one client that PUBLISHES its reference: README.md links
+    # docs/KeysAPI.md and pkg.go.dev has no rendered page for a generated
+    # method's parameters. The fleet default drops docs because ~4000 files of
+    # nothing is what they are in a language with a doc site; here they are the
+    # doc site.
+    global:
+      apiDocs: "true"
+      modelDocs: "true"
+    properties:
+      packageName: hanzoai
+      # The repo owns go.mod: it carries the module path, the go directive and
+      # two real dependencies, none of which a generator knows.
+      withGoMod: "false"
+      # Both prefixes are load-bearing at this surface's size. `structPrefix`
+      # names a request type after the API class that owns it, which is the only
+      # reason the two operationId pairs the document folds together —
+      # deleteSession with DeleteSession, postGitWebhook with PostGitWebhook —
+      # do not redeclare: they land on different tags, so on different prefixes.
+      structPrefix: "true"
+      enumClassPrefix: "true"
+    flags:
+      # Inert for what this row keeps (they reach README.md and git_push.sh,
+      # both dropped) and stated anyway, because they were in the invocation
+      # this row replaces and a row that regenerates go differently is a
+      # regression, not a unification.
+      git-user-id: hanzoai
+      git-repo-id: go-sdk
+      # Go emits Get<F>, Get<F>Ok, Has<F> and Set<F> beside every field, and
+      # that convention collides with the document three times.
+      #
+      #   o11y.PodOnboarding declares eight `has<Label>Name` presence flags
+      #   beside the labels themselves, so the FIELD HasClusterName and the
+      #   METHOD HasClusterName that ClusterName generates are one name. Three
+      #   of the eight collide today; all eight take the `<label>NamePresent`
+      #   spelling, because they are one family with one meaning ("the label is
+      #   present", in the document's own words) and splitting their spelling by
+      #   which sibling happens to exist leaves the next sibling to break the
+      #   build.
+      #
+      #   o11y.PostableProfile does the same once, has_existing_observability_tool
+      #   beside existing_observability_tool.
+      #
+      #   o11y.GettableAgentCheckIn carries two spellings of two fields —
+      #   integration_config with integrationConfig, removed_at with removedAt —
+      #   published together so older AWS agents keep working. Both spellings
+      #   Pascal-case to one Go field. The snake one is the legacy wire and takes
+      #   the suffix; the python, java and kotlin rows correct the same pair the
+      #   same way.
+      #
+      # Every value is spelled EXPORTED, and that is load-bearing: the Go
+      # generator takes a mapped name VERBATIM where python and kotlin re-case
+      # theirs, so a camel value lands a lowercase field — unexported, invisible
+      # to a caller, and skipped by encoding/json in both directions. It compiles
+      # and it drops the value it was written to preserve. The wire is untouched
+      # either way: the generator keeps the document's key as the json tag.
+      name-mappings: hasClusterName=ClusterNamePresent,hasCronjobName=CronjobNamePresent,hasDaemonsetName=DaemonsetNamePresent,hasDeploymentName=DeploymentNamePresent,hasJobName=JobNamePresent,hasNamespaceName=NamespaceNamePresent,hasNodeName=NodeNamePresent,hasStatefulsetName=StatefulsetNamePresent,has_existing_observability_tool=ExistingObservabilityToolPresent,integration_config=IntegrationConfigLegacy,removed_at=RemovedAtLegacy
+      # A CLASS NAME, and the collision is with the hand-written seam. The
+      # document has a schema called `Config`: the MQ stream configuration, POST
+      # /v1/mq/streams' body and Stream.config. Its constructor is NewConfig,
+      # which is already hanzo.go's — the seam that builds an authenticated
+      # Configuration. `StreamConfig` says which config it is, and is the only
+      # bare Config in a document where every other one is qualified (TLSConfig,
+      # iam.config, o11y.DiscordConfig).
+      model-name-mappings: Config=StreamConfig
 
   typescript:
     repo: js-sdk
@@ -315,6 +440,161 @@ sdks:
       # and therefore maps neither.
       model-name-mappings: File=ModelFile,Call=ModelCall,iam.ListResponse=IamKeyList
 
+  ruby:
+    repo: ruby-sdk
+    generator: ruby
+    # THE ONE ROW THAT KEEPS ITS BUILD MANIFEST, and the reason is measured
+    # rather than preferred. Every other language drops its manifest because it
+    # carries facts a generator cannot know — go.mod's module path and its two
+    # real dependencies, package.json's npm name and scripts, pom.xml's parent.
+    # The gemspec carries none: generating it with every gem* property set to a
+    # sentinel puts all six ONLY in hanzoai.gemspec and nowhere under lib/, and
+    # its runtime dependencies (faraday, faraday-multipart, marcel) follow from
+    # `library` below, which this row also chooses. So the gemspec is wholly
+    # derivable from this row, and taking it is what keeps the registry metadata
+    # in ONE home. Dropping it instead would leave the six properties inert here
+    # and the real ones hand-written there — two declarations of one contract,
+    # which is the thing this file exists to refuse.
+    #
+    # `gem build` on the result succeeds and packages lib/ + README.md + LICENSE
+    # + examples/; `.spec-lock` and `.generated` are dotfiles, and the template's
+    # `find *` never sees them.
+    take: { lib: lib, hanzoai.gemspec: hanzoai.gemspec }
+    properties:
+      gemName: hanzoai
+      moduleName: Hanzoai
+      # faraday, NOT the generator's typhoeus default. typhoeus binds libcurl
+      # through ethon, so `bundle install` needs libcurl headers present and the
+      # client stops being installable wherever they are not. faraday is pure
+      # Ruby over net/http, so the gem installs anywhere a Ruby does.
+      library: faraday
+      # This is the PUBLISHED version: it is the only gem* property that reaches
+      # lib/ (lib/hanzoai/version.rb), and the gemspec reads it back as
+      # Hanzoai::VERSION. So a release bumps this line — the same shape as every
+      # other fact about a client living where the client's projection is
+      # declared. 0.1.0 because rubygems has never served this name.
+      gemVersion: 0.1.0
+      gemSummary: The official Ruby library for the Hanzo API
+      # NO COMMA and NO APOSTROPHE in any value here, and both were measured on
+      # this line rather than guessed. `--additional-properties` is ONE
+      # comma-delimited string, so a comma inside a value ends the value and
+      # starts a bogus property — the description reached the gemspec cut at the
+      # comma, its tail parsed as a property the generator silently ignored. The
+      # apostrophe survives that and then loses to mustache, which HTML-escapes
+      # an interpolated value: the gemspec read `hanzoai/cloud&#39;s`, and
+      # rubygems renders a gem description verbatim, so that is what the registry
+      # page would have shown.
+      gemDescription: The official Ruby library for the Hanzo API — generated from the OpenAPI document that hanzoai/cloud emits.
+      gemHomepage: https://github.com/hanzo-ruby/sdk
+      gemLicense: Apache-2.0
+      gemAuthor: Hanzo
+      gemAuthorEmail: dev@hanzo.ai
+      # The floor the generated code actually needs, not the generator's `>= 2.4`
+      # default: the models use the `=>` rightward pattern nothing before 3.0
+      # parses, and every sibling client targets a live runtime.
+      gemRequiredRubyVersion: ">= 3.0"
+    flags:
+      # THE SAME COLLISION the python, go, java and kotlin rows all correct, in
+      # the language that neither fails to compile nor stays silent about it.
+      # o11y.GettableAgentCheckIn declares `integration_config` AND
+      # `integrationConfig`, `removed_at` AND `removedAt` — the snake spellings
+      # are live wire, published so older AWS agents keep working. Ruby snake-
+      # cases a property to its attribute, so each pair lands on ONE hash key
+      # declared twice, and `attribute_map` keeps only the second: measured, the
+      # client loaded fine and warned `key :integration_config is duplicated and
+      # overwritten`, then dropped an old agent's value with no error at runtime
+      # — python's defect exactly, with a compile-time warning nobody reads.
+      #
+      # Snake values, like the python row, because the value is an identifier in
+      # the TARGET language. The wire is untouched either way: the generator
+      # keeps the document's key in attribute_map, so both spellings still
+      # round-trip under their own key.
+      name-mappings: removed_at=removed_at_legacy,integration_config=integration_config_legacy
+      # A CLASS NAME, and the collision is with this generator's own api_client:
+      # `return_type == 'File'` is how it decides a response is a BINARY
+      # DOWNLOAD and streams it to a Tempfile instead of building a model. The
+      # document has a schema called `File` — the /v1/ai/files record — so an
+      # operation returning it at the top level would be silently downloaded
+      # rather than parsed. Measured at this ref that has not happened yet (0 of
+      # 2479 operations return it) but 7 responses already carry it one level
+      # down under `data`, so the top-level one is a cloud release away, and the
+      # failure it would cause is silent. `ModelFile` is the name the Java
+      # generator picks for this schema by itself and the one the kotlin row
+      # states, so all three JVM-and-Ruby clients call it one thing. A class name
+      # is never on the wire.
+      #
+      # NOT MAPPED HERE, for the reason the java row gives and this generator
+      # confirms: `iam.ListResponse` and `iam.listResponse` differ only in case
+      # and both land on `IamListResponse`, so the second write wins and GET
+      # /v1/iam/keys deserializes into the SCIM shape. Mapping either is worse
+      # than the defect — measured, `iam.ListResponse=IamKeyList` renames the
+      # class and NOT the require path, so lib/hanzoai.rb asks for
+      # `hanzoai/models/iam_list_response`, which no longer exists, and the whole
+      # client fails to load. Kotlin can express this and Ruby cannot, for the
+      # same reason Java cannot. It belongs upstream, where two schemas would
+      # stop differing only in case.
+      model-name-mappings: File=ModelFile
+
+  php:
+    repo: php-sdk
+    # THREE PHP GENERATORS SHIP IN 7.14.0, and the choice is measured on this
+    # document rather than preferred. `php-dt` cannot READ it: it reaches
+    # operation.responses.keySet() unguarded and dies with a NullPointerException
+    # on the first of the 684 operations cloud emits with no `responses` — 0
+    # files, in every configuration. `php-nextgen` reads it and emits exactly
+    # what `php` does: the same 192 API classes, the same 2461 models, the same
+    # five parse failures the flags below correct. Across all 2658 files exactly
+    # ONE differs in what it declares (its HeaderSelector drops two helpers);
+    # the rest differ in typed statics and import spelling. So the beta buys
+    # nothing here, and `php` is the only one of the three the generator does
+    # not mark beta.
+    generator: php
+    # The whole client is under src/ — Api/, Model/ and the five runtime files
+    # — so one take names it exactly and nothing else in the repo is the
+    # generator's. composer.json is on `drop` above.
+    take: { src: src }
+    properties:
+      # The PSR-4 root: Hanzo\Cloud\Api\*, Hanzo\Cloud\Model\*. The same
+      # ai.hanzo.cloud the JVM rows use, spelled as PHP spells a namespace.
+      invokerPackage: Hanzo\Cloud
+      # `src`, not the generator's default `lib`: composer autoloads Hanzo\Cloud
+      # from src/, the way every other client in this fleet lays its sources out.
+      srcBasePath: src
+    flags:
+      # Every one of these is a REDECLARATION — one class declaring one method
+      # twice, which PHP refuses at parse time, so without them the client does
+      # not even lint. Four names, five files, two causes.
+      #
+      #   `modelName` collides with the GENERATOR'S OWN interface. Every model
+      #   implements ModelInterface::getModelName(), which returns the schema's
+      #   name, and a property spelled modelName generates a second one. It
+      #   occurs in exactly three schemas — ModelRoute, o11y.O11yLLMPricingRule,
+      #   o11y.O11yLLMUpdatablePricingRule — and in all three the value is the
+      #   LLM's identifier, which this API spells `model` everywhere it is not
+      #   this field.
+      #
+      #   `distinct_id`, `integration_config` and `removed_at` are the legacy
+      #   snake spellings the document publishes BESIDE their camel twins so
+      #   older senders keep working. PHP camel-cases a property into its
+      #   accessor, so each pair lands on one method declared twice. The same
+      #   pairs the python, go, java, kotlin and ruby rows correct, snake-spelled
+      #   here because the value is an identifier in the TARGET language.
+      #
+      # The wire is untouched in both cases: the generator keeps the document's
+      # key in attributeMap, so `modelName` still serializes as `modelName` and
+      # both spellings of the legacy pairs still round-trip under their own key.
+      name-mappings: modelName=model,distinct_id=distinct_id_legacy,integration_config=integration_config_legacy,removed_at=removed_at_legacy
+      # NOT MAPPED, for the reason the java and ruby rows give and this generator
+      # confirms: `iam.ListResponse` and `iam.listResponse` differ only in case,
+      # both Pascal-case to IamListResponse, and the second write wins — so this
+      # client ships the SCIM shape under the name GET /v1/iam/keys resolves to.
+      # Mapping either one is worse than the defect. Measured in all three
+      # directions: the php generator applies the new name to the CLASS and not
+      # to the FILE, so one class always lands in IamListResponse0.php, which
+      # PSR-4 cannot load — `composer dump-autoload --strict-psr` fails there and
+      # passes on the unmapped tree. It belongs upstream, where two schemas would
+      # stop differing only in case.
+
   # rust is DELIBERATELY ABSENT, for the reason above and not for lack of a
   # generator: openapi-generator emits Rust (reqwest) and hanzo-rs/sdk ships it
   # as crates/hanzo-client. What this file cannot hold is the TEMPLATE.
@@ -370,19 +650,18 @@ sdks:
   # Canonical repo is hanzo-cpp/sdk; `hanzoai/cpp-sdk` is a rename redirect to
   # it.
 
-  # ruby is ABSENT, and not the way the three above are. Those are DEPARTURES
-  # under the rule at the top — the invocation needs something that is not data,
-  # so it lives beside that thing, and the client ships either way. There is no
-  # Ruby client to ship.
+  # ruby WAS absent, and the note here said so because the row that had been
+  # deleted named a repo to write into and a gem to ship and neither existed.
+  # Both do now — hanzo-ruby/sdk and `hanzoai` on rubygems — so the row above is
+  # the claim again. What the note got wrong is worth keeping: it read
+  # `hanzoai/ruby-sdk` on GITHUB, where it 404s, and concluded there had never
+  # been a Ruby client. There is one on the FORGE, and a mirror answering 404 is
+  # not evidence about the thing it mirrors.
   #
-  # `hanzoai/ruby-sdk` answers a hard 404 with no redirect, and every SDK repo
-  # that was really renamed answers a redirect instead (go-sdk, rust-sdk,
-  # cpp-sdk, kotlin-sdk all 301). rubygems has no gem under `hanzoai_cloud` —
-  # the name the deleted row itself declared — nor under `hanzoai` or any other
-  # candidate; the gem literally named `hanzo` there is someone else's Heroku
-  # tool. The row named a repo to write into and a gem to ship, and neither
-  # exists.
-  #
-  # README.md and LLM.md render this file as the SDK matrix, so the row WAS the
-  # claim — nothing else asserted a Ruby client. No repo, no gem, no row. A
-  # visible gap is honest; a row that generates into nothing is not.
+  # That tree is not this one and nothing moved across. It is a projection of a
+  # different document — a retired vendor's spec URL, 188 endpoints against this
+  # document's 2479 — carrying its own hand-written transport, and rubygems
+  # never served it. Keeping any of it would mean a second HTTP stack and a
+  # second set of names for one API, hand-maintained beside generated code. What
+  # transferred is the three facts it had already settled and this row now
+  # states: the gem is `hanzoai`, the module is `Hanzoai`, the floor is Ruby 3.
