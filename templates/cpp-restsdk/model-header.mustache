@@ -1,0 +1,347 @@
+{{! openapi-generator 7.24.0 cpp-rest-sdk-client/model-header.mustache, overridden.
+     Forked from the stock template at that exact version, so a bump
+     re-derives these rather than merging them. Every changed hunk carries
+     a comment saying which generator defect it fixes; the measurement is
+     in LLM.md. Nothing here says anything about the Hanzo API. }}
+{{>licenseInfo}}
+{{#models}}{{#model}}/*
+ * {{classname}}.h
+ *
+ * {{description}}
+ */
+
+#ifndef {{modelHeaderGuardPrefix}}_{{classname}}_H_
+#define {{modelHeaderGuardPrefix}}_{{classname}}_H_
+
+{{#hasEnums}}
+#include <stdexcept>
+{{/hasEnums}}
+{{#oneOf}}
+{{#-first}}
+#include <variant>
+{{! A free-form `object` alternative resolves to Object, which the generator
+     names in the variant but leaves out of the import list. Nothing else pulls
+     the header in, so the variant references an undeclared type. }}
+#include "{{packageName}}/Object.h"
+{{/-first}}
+{{/oneOf}}
+#include <boost/optional.hpp>
+{{^parent}}
+{{{defaultInclude}}}
+#include "{{packageName}}/ModelBase.h"
+{{/parent}}
+
+{{#imports}}{{{this}}}
+{{/imports}}
+
+{{#modelNamespaceDeclarations}}
+namespace {{this}} {
+{{/modelNamespaceDeclarations}}
+
+{{#vendorExtensions.x-has-forward-declarations}}
+{{#vendorExtensions.x-forward-declarations}}{{.}}
+{{/vendorExtensions.x-forward-declarations}}
+{{/vendorExtensions.x-has-forward-declarations}}
+{{#oneOf}}{{#-first}}
+
+{{! A oneOf class stands outside the ModelBase hierarchy and declares only the
+     explicit-Target templates below, so nothing resolves it when it appears as
+     a FIELD of another model — ModelBase reaches a field through the
+     non-template pair. Deriving from ModelBase and adding that pair is what
+     lets a oneOf be a member. }}
+class {{declspec}} {{classname}}
+    : public ModelBase
+{
+public:
+    {{classname}}() = default;
+    ~{{classname}}() = default;
+
+    /////////////////////////////////////////////
+
+    void validate() override;
+
+    web::json::value toJson() const override;
+
+    template<typename Target>
+    bool fromJson(const web::json::value& json) {
+        {{! An alternative is a std::shared_ptr<Model> or a primitive; neither
+             has a fromJson member, and ModelBase overloads both kinds. }}
+        Target target;
+        if (!ModelBase::fromJson(json, target)) {
+            return false;
+        }
+
+        m_variantValue = target;
+        return true;
+    }
+
+    bool fromJson(const web::json::value& json) override;
+    bool fromMultiPart(std::shared_ptr<MultipartFormData> multipart, const utility::string_t& namePrefix) override;
+
+    void toMultipart(std::shared_ptr<MultipartFormData> multipart, const utility::string_t& namePrefix) const override;
+
+    template<typename Target>
+    bool fromMultiPart(std::shared_ptr<MultipartFormData> multipart, const utility::string_t& namePrefix) {
+        Target target;
+        if (!ModelBase::fromHttpContent(multipart->getContent(namePrefix), target)) {
+            return false;
+        }
+
+        m_variantValue = target;
+        return true;
+    }
+
+    /////////////////////////////////////////////
+    /// {{classname}} members
+
+    using VariantType = std::variant<{{#oneOf}}{{^-first}}, {{/-first}}{{{.}}}{{/oneOf}}>;
+
+    const VariantType& getVariant() const;
+    void setVariant(VariantType value);
+
+protected:
+    VariantType m_variantValue;
+};
+
+{{/-first}}{{/oneOf}}
+{{^oneOf}}
+{{#isEnum}}
+class {{declspec}} {{classname}}
+    : public {{{parent}}}{{^parent}}ModelBase{{/parent}}
+{
+public:
+    {{classname}}();
+    {{classname}}(utility::string_t str);
+    operator utility::string_t() const {
+        return enumToStrMap.at(getValue());
+    }
+
+    {{! operator std::string() const {
+        return enumToStrMap.at(getValue());
+    } }}
+
+    virtual ~{{classname}}();
+
+    /////////////////////////////////////////////
+    /// ModelBase overrides
+
+    void validate() override;
+
+    web::json::value toJson() const override;
+    bool fromJson(const web::json::value& json) override;
+
+    void toMultipart(std::shared_ptr<MultipartFormData> multipart, const utility::string_t& namePrefix) const override;
+    bool fromMultiPart(std::shared_ptr<MultipartFormData> multipart, const utility::string_t& namePrefix) override;
+
+    enum class e{{classname}}
+    {
+        {{#allowableValues}}
+        {{#enumVars}}
+        {{#enumDescription}}
+        /// <summary>
+        /// {{.}}
+        /// </summary>
+        {{/enumDescription}}
+        {{{name}}}{{^last}},{{/last}}
+        {{/enumVars}}
+        {{/allowableValues}}
+    };
+
+    e{{classname}} getValue() const;
+    void setValue(e{{classname}} const value);
+
+    protected:
+        e{{classname}} m_value;
+        std::map<e{{classname}},utility::string_t> enumToStrMap = {
+        {{#allowableValues}}
+        {{#enumVars}}
+        { e{{classname}}::{{{name}}}, _XPLATSTR("{{{name}}}") }{{^-last}},{{/-last}}
+        {{/enumVars}}
+        {{/allowableValues}}
+};
+        std::map<utility::string_t,e{{classname}}> strToEnumMap = {
+        {{#allowableValues}}
+        {{#enumVars}}
+        { _XPLATSTR("{{{name}}}"), e{{classname}}::{{{name}}} }{{^-last}},{{/-last}}
+        {{/enumVars}}
+        {{/allowableValues}}
+};
+
+};
+{{/isEnum}}
+{{^isEnum}}
+
+{{#description}}
+/// <summary>
+/// {{description}}
+/// </summary>
+{{/description}}
+class {{declspec}} {{classname}}
+    : public {{{parent}}}{{^parent}}ModelBase{{/parent}}
+{
+public:
+    {{classname}}();
+    virtual ~{{classname}}();
+
+    /////////////////////////////////////////////
+    /// ModelBase overrides
+
+    void validate() override;
+
+    web::json::value toJson() const override;
+    bool fromJson(const web::json::value& json) override;
+
+    void toMultipart(std::shared_ptr<MultipartFormData> multipart, const utility::string_t& namePrefix) const override;
+    bool fromMultiPart(std::shared_ptr<MultipartFormData> multipart, const utility::string_t& namePrefix) override;
+
+
+    /////////////////////////////////////////////
+    /// {{classname}} members
+
+    {{! ENUM DEFINITIONS }}
+    {{#vars}}
+    {{^isInherited}}
+    {{#isEnum}}
+    enum class {{#isContainer}}{{{enumName}}}{{/isContainer}}{{^isContainer}}{{{datatypeWithEnum}}}{{/isContainer}}
+    {
+        {{#allowableValues}}
+        {{#enumVars}}
+        {{{name}}}{{^last}},{{/last}}
+        {{/enumVars}}
+        {{/allowableValues}}
+    };
+    {{#description}}
+    /// <summary>
+    /// {{description}}
+    /// </summary>
+    {{/description}}
+    {{/isEnum}}
+    {{/isInherited}}
+    {{/vars}}
+    {{#vars}}
+    {{^isInherited}}
+    {{#isEnum}}
+    {{#isContainer}}
+    {{! ENUM CONVERSIONS }}
+    {{{enumName}}} to{{{enumName}}}(const utility::string_t& value) const;
+    const utility::string_t from{{{enumName}}}(const {{{enumName}}} value) const;
+    {{#isArray}}
+    {{{datatypeWithEnum}}} to{{{enumName}}}(const {{{dataType}}}& value) const;
+    {{{dataType}}} from{{{enumName}}}(const {{{datatypeWithEnum}}}& value) const;
+    {{/isArray}}{{/isContainer}}{{^isContainer}}
+    {{! The definitions in model-source use the var's own dataType, so a
+         non-string enum (an integer one, say) declares these helpers over
+         utility::string_t and defines them over int32_t: no declaration
+         matches. The declaration is what is wrong. }}
+    {{{datatypeWithEnum}}} to{{{datatypeWithEnum}}}(const {{{dataType}}}& value) const;
+    const {{{dataType}}} from{{{datatypeWithEnum}}}(const {{{datatypeWithEnum}}} value) const;
+    {{/isContainer}}
+
+    {{/isEnum}}
+    {{/isInherited}}
+    {{/vars}}
+
+    {{! SETTER AND GETTERS }}
+    {{#vars}}
+    {{^isInherited}}
+    {{#description}}
+    /// <summary>
+    /// {{description}}
+    /// </summary>
+    {{/description}}
+    {{#isContainer}}
+    {{^isEnum}}
+    {{{dataType}}} {{getter}}() const;
+    {{/isEnum}}
+    {{/isContainer}}
+    {{^isContainer}}
+    {{^isEnum}}
+    {{{dataType}}} {{getter}}() const;
+    {{/isEnum}}
+    {{/isContainer}}
+    {{#isEnum}}
+    {{^isMap}}
+    {{{datatypeWithEnum}}} {{getter}}() const;
+    {{/isMap}}
+    {{#isMap}}
+    {{{dataType}}} {{getter}}() const;
+    {{/isMap}}
+    {{/isEnum}}
+    bool {{nameInCamelCase}}IsSet() const;
+    void unset{{name}}();
+    {{! isPrimitiveType and isEnum are not exclusive: an integer-backed enum is
+         both, and taking both branches declares the setter twice while
+         model-source defines it once. }}
+    {{#isPrimitiveType}}
+    {{^isEnum}}
+    void {{setter}}({{{dataType}}} value);
+    {{/isEnum}}
+    {{/isPrimitiveType}}
+    {{^isPrimitiveType}}
+    {{^isEnum}}
+    void {{setter}}(const {{{dataType}}}& value);
+    {{/isEnum}}
+    {{/isPrimitiveType}}
+    {{#isEnum}}
+    void {{setter}}(const {{^isMap}}{{{datatypeWithEnum}}}{{/isMap}}{{#isMap}}{{{dataType}}}{{/isMap}} value);
+    {{/isEnum}}
+    {{/isInherited}}
+
+    {{/vars}}
+    {{#additionalPropertiesType}}
+
+    /// <summary>
+    /// Get additional properties (properties not defined in the schema)
+    /// </summary>
+    std::map<utility::string_t, web::json::value> getAdditionalProperties() const;
+    bool additionalPropertiesIsSet() const;
+    void unsetAdditionalProperties();
+    /// <summary>
+    /// Set additional properties
+    /// </summary>
+    void setAdditionalProperties(const std::map<utility::string_t, web::json::value>& value);
+    /// <summary>
+    /// Add a single additional property
+    /// </summary>
+    void addAdditionalProperty(const utility::string_t& key, const web::json::value& value);
+    {{/additionalPropertiesType}}
+
+protected:
+    {{#vars}}
+    {{^isInherited}}
+    {{#isNullable}}
+    {{^isEnum}}
+    boost::optional<{{{dataType}}}> m_{{name}};
+    {{/isEnum}}
+    {{#isEnum}}
+    boost::optional<{{^isMap}}{{{datatypeWithEnum}}}{{/isMap}}{{#isMap}}{{{dataType}}}{{/isMap}}> m_{{name}};
+    {{/isEnum}}
+    {{/isNullable}}
+    {{^isNullable}}
+    {{^isEnum}}
+    {{{dataType}}} m_{{name}};
+    {{/isEnum}}
+    {{#isEnum}}
+    {{^isMap}}{{{datatypeWithEnum}}}{{/isMap}}{{#isMap}}{{{dataType}}}{{/isMap}} m_{{name}};
+    {{/isEnum}}
+    bool m_{{name}}IsSet;
+    {{/isNullable}}
+    {{/isInherited}}
+
+    {{/vars}}
+    {{#additionalPropertiesType}}
+    std::map<utility::string_t, web::json::value> m_AdditionalProperties;
+    bool m_AdditionalPropertiesIsSet;
+    {{/additionalPropertiesType}}
+};
+
+{{/isEnum}}
+{{/oneOf}}
+
+{{#modelNamespaceDeclarations}}
+}
+{{/modelNamespaceDeclarations}}
+
+#endif /* {{modelHeaderGuardPrefix}}_{{classname}}_H_ */
+{{/model}}
+{{/models}}

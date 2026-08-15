@@ -920,38 +920,86 @@ sdks:
       # lever that is data.
       type-mappings: FlowAction=JSONValue,o11y.FilterAttributeValueResponse=JSONValue
 
-  # cpp is DELIBERATELY ABSENT, and ONE of its two reasons is now the whole of
-  # it: templates stopped being a reason to leave, so only the generator version
-  # still keeps this language out.
+  # cpp WAS the last departure, and it gave two reasons. Templates stopped being
+  # one when `templates:` landed — the override sits at templates/cpp-restsdk/,
+  # one directory from the flags it goes with, exactly as rust's does. The
+  # GENERATOR VERSION was the other, and it is gone too, for a reason worth
+  # stating precisely: it was never a fact about cpp-restsdk.
   #
-  #   • TEMPLATES — NO LONGER A BLOCKER. Four `cpp-restsdk` mustache overrides
-  #     are required before the output compiles at all; they would sit at
-  #     templates/cpp/ beside this row, exactly as rust's do. They fix five
-  #     defect classes in the generator's own
-  #     codegen: oneOf explicit instantiations emitted HTML-escaped; oneOf
-  #     visitors calling members the alternatives do not have; a oneOf class that
-  #     stands outside ModelBase and so cannot be a FIELD of another model; a
-  #     free-form `object` held by value with no ModelBase overload; and an
-  #     API response container resolved separately from its element type.
-  #   • the GENERATOR VERSION. C++ needs 7.24.0, not the 7.14.0 pinned above. On
-  #     7.14.0 this document leaves 10 of 2370 translation units uncompilable
-  #     through two defects in the generator's Java type resolution that no
-  #     template reaches — mustache interpolates the strings resolution
-  #     produces, it cannot recompute a type. Both are fixed in 7.24.0:
-  #     `additionalProperties: {$ref: <array-typed schema>}` dropping the
-  #     aliased array's element type (9 TUs, vector_NamedVectors ->
-  #     vector_DenseVector), and an integer-backed enum declaring its conversion
-  #     helpers over utility::string_t while defining them over int32_t (1 TU,
-  #     framework_Document.docstatus).
+  # The floor said 7.24.0, because on 7.14.0 ten translation units would not
+  # compile through two defects in the generator's type resolution that no
+  # template reaches. Both defects were real. Both lived in SCHEMAS THE DOCUMENT
+  # NO LONGER CARRIES — `vector_NamedVectors`/`vector_DenseVector` under
+  # `additionalProperties` (9 TUs) and `framework_Document.docstatus`, an
+  # integer-backed enum declared over utility::string_t and defined over int32_t
+  # (1 TU). Neither schema exists at the ref this fleet reads, so neither defect
+  # is reachable, and the floor expired with the document that caused it.
   #
-  # A row here says one version for everyone, so raising the pin fleet-wide
-  # would rewrite every other client's committed output — a separate, deliberate
-  # decision, not a side effect of adding C++. The floor is therefore stated
-  # once, where the invocation is: hanzo-cpp/sdk's own scripts/generate.sh. Same
-  # document, same driver-shaped seam, same --check contract.
+  # Re-measured at that ref rather than argued: 7.14.0 and 7.24.0 emit the SAME
+  # library. Ignoring blank lines and the generator string each file's header
+  # carries, exactly one of 5327 files differs, and the difference is a doc
+  # comment on ConsoleSettings::getOidcConfig. On 7.14.0 the library builds with
+  # 0 errors (2663 sources) and the six example flows build with 0 errors. So
+  # this row needs no version of its own and does not raise the pin.
+  #
+  # What the departure cost, the same way rust's did: hanzo-cpp/sdk's own
+  # generate.sh defaulted to SPEC_REPO=hanzoai/openapi, `hanzo.yaml`, ref `main`
+  # — a document named by something that moves — while the repo's hanzo.yml
+  # already declared hanzoai/cloud's `openapi.yaml`, and there was no .spec-lock
+  # at all. Two statements of which document this client projects, disagreeing.
+  # It also re-derived the jar fetch, the YAML-to-JSON conversion,
+  # --skip-validate-spec and the drift check.
   #
   # Canonical repo is hanzo-cpp/sdk; `hanzoai/cpp-sdk` is a rename redirect to
-  # it.
+  # it, which is why `repo` reaches out of ~/work/hanzo to a sibling org dir.
+  cpp:
+    repo: ../hanzo-cpp/sdk
+    generator: cpp-restsdk
+    # The repo root owns CMakeLists.txt, cmake/, examples/ and templates/ — the
+    # hanzo::hanzo target, the export set and the examples switch are its
+    # contract with a consumer — so the generated tree is include/ and src/ and
+    # nothing else. The generator's own CMakeLists.txt, Config.cmake.in,
+    # git_push.sh and README.md sit at the output root, under neither take, so
+    # they are never copied and need no `drop` entry.
+    take: { include: include, src: src }
+    # Four overrides, each hunk commented in place. They correct five defect
+    # classes in the generator's codegen and say nothing about this API: oneOf
+    # explicit instantiations emitted HTML-escaped; oneOf visitors calling
+    # members the alternatives do not have; a oneOf class standing outside
+    # ModelBase and so unusable as a FIELD of another model; a free-form
+    # `object` held by value with no ModelBase overload; and an API response
+    # container resolved separately from its element type.
+    templates: templates/cpp-restsdk
+    # Same defect the java and kotlin rows correct: the generator skips a
+    # multipart form model and still imports it from the API class that used it,
+    # so FunctionsApi would include a header nobody emitted.
+    global:
+      skipFormModel: "false"
+    properties:
+      # The include root is `hanzo/`, and the namespaces are hanzo::api and
+      # hanzo::model — the same ai.hanzo.cloud split the JVM rows use, spelled
+      # as C++ spells a namespace.
+      packageName: hanzo
+      apiPackage: hanzo.api
+      modelPackage: hanzo.model
+      # packageVersion is deliberately absent, and it is measured rather than
+      # assumed: set to a sentinel it appears in the generator's own README and
+      # in NO file under include/ or src/. Stating it here would put the
+      # library's version in a second home that reaches nothing; CMakeLists.txt
+      # is its one home, and hanzo.yml's client lane reads it from there.
+    flags:
+      # THE SAME COLLISION the python, go, java, kotlin, ruby and php rows all
+      # correct. o11y.GettableAgentCheckIn declares `integration_config` AND
+      # `integrationConfig`, `removed_at` AND `removedAt` — the snake spellings
+      # are live wire, published so older agents keep working. C++ camel-cases a
+      # property into its accessor, so each pair lands on one method declared
+      # twice: "cannot be overloaded", 5 errors, and the library does not build.
+      #
+      # Snake values, like the python, ruby and php rows, because the generator
+      # re-cases them into the accessor either way. The wire is untouched:
+      # measured, all four keys are present in the emitted model, each still
+      # serialized under the document's own name.
+      name-mappings: removed_at=removed_at_legacy,integration_config=integration_config_legacy
 
   # ruby WAS absent, and the note here said so because the row that had been
   # deleted named a repo to write into and a gem to ship and neither existed.
