@@ -121,6 +121,14 @@ drop:
   - package.json
   - tsconfig.json
   - tsconfig.esm.json
+  # ng-packagr's manifest, and it is dropped for the reason every manifest here
+  # is: it states one fact, `lib.entryFile`, and that fact is about a layout the
+  # ROW chooses. The angular row takes the generator's whole output into src/,
+  # so the emitted one would land at src/ng-package.json naming `index.ts`
+  # beside it — and ng-packagr resolves `dest` relative to the manifest, so the
+  # build would write src/dist, inside the tree it compiles. The repo's own sits
+  # at the root, names src/index.ts, and builds to dist.
+  - ng-package.json
   # `*.gemspec` is deliberately NOT here, and it is the one build manifest a
   # client keeps. The others are dropped because they carry facts the generator
   # cannot know; the gemspec carries none — every field in it comes from the
@@ -298,6 +306,225 @@ sdks:
       modelPackage: models
       supportsES6: "true"
       useSingleRequestParameter: "true"
+
+  # A LANGUAGE CAN NEED MORE THAN ONE ROW, and this is where the rule for that
+  # lives, because without one `openapi-generator list` reads like a shopping
+  # list: it offers thirteen TypeScript and JavaScript targets, and shipping
+  # them is thirteen packages nobody installs and thirteen trees `--check` has
+  # to keep clean.
+  #
+  # A VARIANT EARNS A ROW WHEN A RUNTIME OR A FRAMEWORK CANNOT USE THE DEFAULT
+  # PROJECTION — not when it would merely read differently. `hanzoai` already
+  # ships .d.ts beside compiled CJS and ESM, so plain JavaScript, "I would
+  # rather have promises than callbacks" and every bundler flavour are the same
+  # audience it already serves, and a second package for them is a second thing
+  # to keep at the same release for no one.
+  #
+  # NAMED BY ONE WORD, and the same word in all four places: the row key, the
+  # repo (hanzo-js/sdk-<w>), the npm package (hanzoai-<w>) and the generator
+  # (typescript-<w>). The default carries the suffix nowhere — `typescript`,
+  # hanzoai/js-sdk, `hanzoai`, typescript-axios. So `hanzoai-fetch` names its
+  # repo and its row, and neither has to be looked up.
+  #
+  # REFUSED, and each for a stated audience rather than a taste:
+  #
+  #   typescript-node — MEASURED, not judged by age: 7.14.0 emits a package
+  #     whose dependencies are `request@^2.88.2` and `bluebird`, typed against
+  #     `@types/node@^12`. npm serves request with a `deprecated` field and its
+  #     last publish is 2020-02-11. Its audience would be Node without a global
+  #     fetch, and every Node that still ships is past that; the audience that
+  #     is left is served by `hanzoai`, which runs on Node 12 and up. A client
+  #     whose transport has been unmaintained for six years is a supply-chain
+  #     liability shipped to solve a problem nobody has.
+  #   typescript-rxjs — Observables without Angular. Angular is where the
+  #     Observable is the idiom and it has its own row; outside it, `from(p)`
+  #     is one line over a promise, so the package would exist to save a line.
+  #   typescript-nestjs — the closest call. Nest's DI is real, but its
+  #     HttpService is axios underneath, Nest runs on the server where
+  #     `hanzoai` is already idiomatic, and providing a configured client is a
+  #     five-line provider. Angular's case is different in kind: there the
+  #     framework owns the transport (HttpClient) and the return type
+  #     (Observable), so the axios client cannot be made idiomatic at all.
+  #   typescript (experimental) — a client with a swappable http layer, of
+  #     which fetch is one. Same audience as the row below, marked
+  #     experimental, and two ways to say fetch is one too many.
+  #   javascript — superagent, and its audience already installs `hanzoai`:
+  #     the published artifact is compiled JS with types beside it, so a
+  #     JavaScript caller needs nothing from a JavaScript generator.
+  #   typescript-{aurelia,inversify,jquery,redux-query} and
+  #   javascript-{closure-angular,flowtyped} — no audience this fleet can name.
+  #     inversify is a DI container over the same transports rather than a
+  #     transport; jquery and closure-angular address a browser era this API
+  #     has no callers from; flowtyped is a type system TypeScript replaced;
+  #     redux-query is unmaintained. None of them is a runtime that cannot run
+  #     the default, which is the only test that admits a row.
+
+  fetch:
+    repo: ../hanzo-js/sdk-fetch
+    generator: typescript-fetch
+    # THE AUDIENCE IS THE HOST, and the measurement is the dependency tree
+    # rather than a claim about where axios runs. `npm i axios@^1.7.0` — the
+    # `typescript` row's one dependency — resolves 1.19.0 and installs 27
+    # packages, 4.1 MB, because axios itself pulls follow-redirects, form-data,
+    # https-proxy-agent and proxy-from-env, and those pull twenty-two more.
+    # This client installs ZERO: `fetch` is the host's, so the generated
+    # package has no dependency to declare and nothing to resolve at all. On a
+    # Worker, a Deno isolate or a Bun process that is the whole difference
+    # between a client that bundles and one that drags a proxy-agent tree
+    # through a bundler with no node core to give it.
+    #
+    # It also reaches something the axios projection cannot hand back. Every
+    # operation has a `…Raw()` twin returning `ApiResponse<T>`, whose `raw` IS
+    # the `Response` — so `response.body` is a ReadableStream and a streaming
+    # completion is readable without leaving the client. And `fetchApi` on the
+    # Configuration takes the host's fetch by value, which is what makes this
+    # client testable with no network and no interceptor.
+    #
+    # The whole client is under src/ — apis/, models/, runtime.ts, index.ts —
+    # so one take names it. The generator also writes package.json, README.md
+    # and both tsconfigs at the root; all four are on `drop`, and the repo owns
+    # them, exactly as hanzoai/js-sdk does.
+    take: { src: src }
+    properties:
+      npmName: hanzoai-fetch
+      supportsES6: "true"
+      # THE EXTENSION IS WHAT MAKES THE ESM HALF LOADABLE, and it was measured
+      # by loading it. The generator writes relative imports bare —
+      # `from './runtime'` — which a bundler resolves and Node's ESM loader does
+      # not: importing dist/esm/index.js dies with ERR_MODULE_NOT_FOUND on
+      # .../dist/esm/runtime. hanzoai/js-sdk has the same hole and cannot close
+      # it, because typescript-axios has no such property, and its
+      # tsconfig.esm.json says so — that ESM output feeds the `module` field,
+      # which only bundlers read.
+      #
+      # This client cannot live with that: Deno, Workers and Node ESM are the
+      # audience it exists for, and all three are the loader that refuses a bare
+      # specifier. TypeScript emits the specifier verbatim, so one value serves
+      # both halves — `./runtime.js` resolves to runtime.ts at compile time
+      # under node16, is what Node ESM wants at run time, and is what
+      # `require()` wants in the CJS half. Measured after setting it: both
+      # `import` and `require` of the built client answer GET /v1/models 200.
+      importFileExtension: .js
+      # The one naming correction this row needs, and it is the document rather
+      # than the generator. `deleteSession` (POST /v1/iam/sessions/delete) and
+      # `DeleteSession` (DELETE /v1/o11y/sessions) differ only in case — the
+      # collision publish.py's rule 6 renames for hanzo.yaml, which this client
+      # does not read — and both Pascal-case to the same request interface.
+      # They land on different tags, so on different API classes, and it is the
+      # BARREL that breaks: src/apis/index.ts re-exports both files, and TS2308
+      # says the member is already exported. Prefixing names them
+      # IamApiDeleteSessionRequest and O11yApiDeleteSessionRequest, which is
+      # what the typescript-axios generator does by itself — hanzoai/js-sdk
+      # ships `IamApiDeleteSessionRequest` with no property set — so this puts
+      # the two clients on ONE spelling rather than inventing a second.
+      prefixParameterInterfaces: "true"
+    flags:
+      # THE COLLISION EVERY OTHER ROW CORRECTS, and the `typescript` row above
+      # does not — which is the whole reason it is stated here and not once for
+      # the family. o11y.GettableAgentCheckIn declares `integration_config` AND
+      # `integrationConfig`, `removed_at` AND `removedAt`; the snake spellings
+      # are live wire, published so older AWS agents keep working. The AXIOS
+      # generator declares a property under the document's own key —
+      # `'integration_config'?: O11yIntegrationConfig` — so the two never meet
+      # and hanzoai/js-sdk compiles untouched. This generator camel-cases, so
+      # each pair lands on one property declared twice: TS2300 duplicate
+      # identifier, plus TS2717, TS1117 and TS2559 — nine errors in that one
+      # model, and the client does not build.
+      #
+      # The two are not even the same shape — `integrationConfig` is
+      # O11yIntegrationConfig on the snake key and O11yProviderIntegrationConfig
+      # on the camel one — so collapsing them is a type error and not only a
+      # name clash, and renaming keeps both fields correctly typed.
+      #
+      # CAMEL values, like the kotlin, dart, go and swift rows: the value is an
+      # identifier in the TARGET language. The wire is untouched — measured, the
+      # generator keeps the document's key in both FromJSON and ToJSON, so both
+      # spellings still round-trip under their own key.
+      name-mappings: removed_at=removedAtLegacy,integration_config=integrationConfigLegacy
+
+  angular:
+    repo: ../hanzo-js/sdk-angular
+    generator: typescript-angular
+    # THE AUDIENCE IS THE FRAMEWORK, and it is the one case where the default
+    # projection cannot be made idiomatic rather than merely inconvenient.
+    # Angular owns the transport and the return type: a caller expects an
+    # injected service whose methods hand back `Observable`, so that
+    # interceptors, `HttpContext`, SSR transfer-cache, retry and the testing
+    # backend all apply. An axios client provides none of those and cannot be
+    # made to — wrapping it gives promises inside a framework whose whole
+    # surface composes Observables.
+    #
+    # 192 services, one `@Injectable({providedIn: 'root'})` each, plus both
+    # entry shapes the generator writes: `provideApi()` for a standalone
+    # application's providers, and `ApiModule.forRoot()` for an NgModule
+    # application that has not moved. Nothing here chooses between them.
+    #
+    # The whole output is the client, so one take names it; the generator's
+    # package.json, README.md, tsconfig.json, git_push.sh and ng-package.json
+    # are all on `drop` and the repo owns each.
+    take: { .: src }
+    properties:
+      npmName: hanzoai-angular
+      # `providedIn: 'root'` rather than an ApiModule that lists 192 providers:
+      # a service nobody injects is then unreachable from the graph and the
+      # bundler drops it. Under the module form every provider is referenced by
+      # the module, so importing one service pulls all 192 into the bundle.
+      providedInRoot: "true"
+      # The same call shape the `typescript` row ships, so the two clients read
+      # alike and moving between them is not a rewrite of every call site. At
+      # this operation count it is also the only readable form: the positional
+      # default puts every parameter of an operation in a row and the caller
+      # counts commas.
+      useSingleRequestParameter: "true"
+      # The identical collision the fetch row corrects, in the barrel this
+      # generator writes: api/api.ts re-exports iam and o11y, `deleteSession`
+      # and `DeleteSession` both Pascal-case to DeleteSessionRequestParams, and
+      # TS2308 names it. Prefixing gives IamApiDeleteSessionRequestParams and
+      # its o11y twin.
+      prefixParameterInterfaces: "true"
+      # `Api`, not the generator's `Service` default, and it is forced rather
+      # than preferred — 7.14.0 has --model-name-mappings and --name-mappings
+      # but NO per-tag api mapping, so the only lever that reaches a colliding
+      # API class name is this one, and it is global.
+      #
+      # TWO collisions, both structural, both fixed by the same value:
+      #
+      #   The document has a product called `base` (managed Hanzo Base). Under
+      #   the default the tag's class is `BaseService`, which is the name of the
+      #   generator's OWN transport parent in api.base.service.ts — so
+      #   base.service.ts imports BaseService and then declares
+      #   `export class BaseService extends BaseService`. TS2440, TS2395,
+      #   TS2506 and five TS2339s: nine errors, and there is nothing on the
+      #   document's side to change, because a tag is what the serving binary
+      #   calls the product.
+      #
+      #   The document also has a schema `o11y.Service`, which Pascal-cases to
+      #   `O11yService` — the o11y tag's class under the default. src/index.ts
+      #   re-exports ./api/api and then ./model/models, so TS2308 says the
+      #   member is already exported. One more error, same cause: `Service` is
+      #   a word this API uses for its own things.
+      #
+      # It also puts the three TypeScript clients on ONE class name per
+      # product — `KeysApi` in hanzoai, in hanzoai-fetch and here — so moving
+      # between them renames nothing. The file suffix follows the class rather
+      # than being left at `.service`, so keys.api.ts declares KeysApi and the
+      # two halves of a name do not disagree.
+      serviceSuffix: Api
+      serviceFileSuffix: .api
+      # ngVersion is deliberately absent, and it is MEASURED rather than
+      # assumed — the same probe the cpp row's packageVersion gets. Generated
+      # at the default 19.0.0 and again at 22.0.0, exactly ONE of 2671 files
+      # differs and it is package.json, which is on `drop`. So stating a
+      # version here would reach no file this repo keeps; the peer range is a
+      # fact about the published package and lives in the package.json the repo
+      # owns, in one home, where a consumer can read it.
+    flags:
+      # The same pair the fetch row above corrects, for the same reason and in
+      # the same spelling: this generator camel-cases a property too, so
+      # o11y.GettableAgentCheckIn's `integration_config`/`integrationConfig` and
+      # `removed_at`/`removedAt` land on one field declared twice. The wire is
+      # untouched; both spellings still round-trip under their own key.
+      name-mappings: removed_at=removedAtLegacy,integration_config=integrationConfigLegacy
 
   java:
     repo: java-sdk
