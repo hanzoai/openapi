@@ -17,7 +17,7 @@ hanzoai/cloud  typed ops + handler doc comments
      ▼  publish.py            ── six codegen rules; no new operations, no new prose
   hanzo.yaml + CAPABILITIES.md + .spec-lock   ── this repo's whole output
      │
-     ├─→ generate.py → python · typescript · java · kotlin  (+ go, rust: own call site)
+     ├─→ generate.py → python · typescript · java · kotlin · rust · go · ruby · php
      ├─→ skills.py   → /.well-known/agent-skills/  (hanzo · lux · zoo)
      └─→ the doc site, hanzoai/console's proxy-allow test, hanzoai/world
 ```
@@ -447,8 +447,8 @@ lives once, in `generate.py`.
 | TypeScript | `hanzoai/js-sdk` | `typescript-axios` | `hanzoai` on npm (`src/`) | `generate.py` |
 | Java | `hanzoai/java-sdk` | `java` (okhttp-gson) | `ai.hanzo:hanzo-java-cloud` | `generate.py` |
 | Kotlin | `hanzoai/kotlin-sdk` | `kotlin` (okhttp4+gson) | `ai.hanzo:hanzo-kotlin-cloud` | `generate.py` |
-| Rust | **`hanzo-rs/sdk`** | `rust` (reqwest) | `crates/hanzo-client` | its own `scripts/generate.sh` |
-| Go | **`hanzo-go/sdk`** | `go` | `package hanzoai` at the MODULE ROOT, imported as `github.com/hanzoai/go-sdk` | its own `scripts/generate.sh` |
+| Rust | **`hanzo-rs/sdk`** | `rust` (reqwest) | `crates/hanzo-client` | `generate.py` (+ `templates/rust/`) |
+| Go | **`hanzo-go/sdk`** | `go` | `package hanzoai` at the MODULE ROOT, imported as `github.com/hanzoai/go-sdk` | `generate.py` |
 
 Three repos were RENAMED and answer through a redirect (`hanzoai/go-sdk` →
 `hanzo-go/sdk`, `hanzoai/rust-sdk` → `hanzo-rs/sdk`, `hanzoai/cpp-sdk` →
@@ -457,11 +457,22 @@ Three repos were RENAMED and answer through a redirect (`hanzoai/go-sdk` →
 `github.com/hanzoai/go-sdk` — that is what the proxy has.
 
 **When a language leaves `sdks.yaml`**: a row exists while the WHOLE invocation is
-expressible as data. `go` needs the client at the MODULE ROOT, which `take`
-cannot express (`{.: .}` would rmtree the repository); `rust` needs a
-`reqwest/api.mustache` override for 14 operations whose binary body is OPTIONAL,
-and a template is a FILE that must sit beside its flags. What is NOT allowed is a
-row here AND flags there.
+expressible as data. What is NOT allowed is a row here AND flags there. **Both
+departures have now come back** — go when `owned()` replaced directory ownership
+with a set of files, rust when `templates:` landed — so every language this repo
+generates is a row, and only `cpp` is still out (it needs generator 7.24.0, and
+the pin is one version for everyone).
+
+**`rust` was the first to leave and the last to return.** It needs a
+`reqwest/api.mustache` override for the 16 operations whose binary body is
+OPTIONAL, and the argument was that a template is a FILE that must sit beside its
+flags — right about the risk, wrong about the address. `templates:` names a
+directory under THIS repo (`templates/rust/`), so the override and its flags land
+in one commit. The departure is what drifted: its script defaulted to
+`hanzoai/openapi` `hanzo.yaml@main` while the `.spec-lock` beside it named
+`hanzoai/cloud` `openapi.yaml` at a commit. Regenerating at the ref that lock
+named, through the driver, reports `[rust] clean` — byte-identical to what the
+250-line script produced.
 
 **`hanzoai/ruby-sdk` was a row naming a client nobody shipped** — a hard 404 with
 no redirect, while every genuinely renamed SDK answers 301, and no gem under

@@ -54,11 +54,16 @@
 # reaches, and 15 still there on the newest generator. Two overrides, and the
 # 2479-operation client analyzes clean.
 #
-# What this does NOT do is haul rust and cpp back. rust's stated reason WAS the
-# template and is now expressible, so its return is a measured change somebody
-# makes deliberately, not a side effect of this sentence. cpp keeps a second
-# reason a row still cannot hold — it needs generator 7.24.0, and the pin below
-# is one version for everyone.
+# RUST CAME BACK ON IT, and deliberately — the measured change that sentence
+# said someone would have to make, not a side effect of it. Its stated reason
+# WAS the template, `templates/rust/` now holds it, and the row below reproduces
+# the departed script exactly: regenerated at the ref that client's lock named,
+# `--check` reports clean, byte-for-byte. What the departure actually cost is
+# recorded in that row — it drifted in the direction it left to avoid.
+#
+# cpp is NOT hauled back with it. It keeps a second reason a row still cannot
+# hold — it needs generator 7.24.0, and the pin below is one version for
+# everyone.
 #
 # A language that still leaves owns its whole invocation in its own
 # scripts/generate.sh — same generator, same pin, same document at the same
@@ -599,36 +604,89 @@ sdks:
       # passes on the unmapped tree. It belongs upstream, where two schemas would
       # stop differing only in case.
 
-  # rust is DELIBERATELY ABSENT, for the reason above and not for lack of a
-  # generator: openapi-generator emits Rust (reqwest) and hanzo-rs/sdk ships it
-  # as crates/hanzo-client. What this file cannot hold is the TEMPLATE.
+  # rust WAS the first departure, and the note here said a template is a FILE
+  # that must sit beside the invocation, so the whole thing lived in
+  # hanzo-rs/sdk's own scripts/generate.sh. Right about the risk, wrong about
+  # which call: the invocation is generate.py's emit(), so `templates:` puts the
+  # override and its flags one directory apart in this repo. See templates/rust/.
   #
-  # Two things are required before the Rust output compiles at all, and only one
-  # of them is data:
+  # WHAT THE DEPARTURE COST, measured rather than predicted — the exact drift it
+  # left to prevent, in the repo that left. That script defaulted to
+  # SPEC_REPO=hanzoai/openapi, `hanzo.yaml`, ref `main`, while the `.spec-lock`
+  # beside it named hanzoai/cloud, `openapi.yaml`, at a commit. Two statements of
+  # which document this client projects, disagreeing, and only one reachable by a
+  # hand run. It also re-derived the jar fetch, the YAML-to-JSON conversion,
+  # --skip-validate-spec and the drift check — the same four copies of this
+  # driver's logic that retired go's.
   #
-  #   • `--type-mappings=file=Vec<u8>`. Without it a binary body is a PathBuf,
-  #     and reqwest::Body has no From<PathBuf>. Expressible — three lines.
-  #   • a `reqwest/api.mustache` override for 14 operations whose binary body is
-  #     OPTIONAL, where the parameter arrives as Option<Vec<u8>>. No type mapping
-  #     reaches that one, because the problem is the Option and not the type.
+  # The row reproduces it exactly: regenerated at the ref that lock named
+  # (cloud@5126939), `generate.py rust --check` reports clean — byte-for-byte the
+  # tree the 250-line script produced.
   #
-  # A template is a file that must sit beside the invocation. Keeping the
-  # mapping here and the template there splits one contract across two repos and
-  # guarantees the halves drift; a config that cannot build is worse than none.
-  # So the whole invocation lives in hanzo-rs/sdk's own scripts/generate.sh.
+  # The row that had been deleted BEFORE that would not have compiled, and none
+  # of it survives here: no type mapping, no template, `useSingleRequestParameter`
+  # (which changes every call signature), `packageVersion: 8.0.0` (the SPEC's
+  # version — the crate ships its own), and it named `crates/hanzo-cloud`, which
+  # this repo does not have.
   #
-  # The row that used to be here would not have compiled: no type mapping, no
-  # template, `useSingleRequestParameter: true` (which changes every call
-  # signature), `packageVersion: 8.0.0` (the SPEC's version — the crate shipped
-  # 0.1.0 as a first publish), and it pointed at `crates/hanzo-cloud`, which
-  # hanzo-rs/sdk does not have.
+  # Canonical repo is hanzo-rs/sdk; `hanzoai/rust-sdk` is a rename redirect to
+  # it, which is why `repo` reaches out of ~/work/hanzo to a sibling org dir.
+  rust:
+    repo: ../hanzo-rs/sdk
+    generator: rust
+    # The crate root owns Cargo.toml and README.md — they carry the version this
+    # repo publishes and a description no generator can know — so the generated
+    # tree is src/ and nothing else.
+    take: { src: crates/hanzo-client/src }
+    templates: templates/rust
+    properties:
+      packageName: hanzo-client
+      library: reqwest
+      supportAsync: "true"
+      # One enum per operation per response code, where a plain enum carries the
+      # same information; at 2479 operations the multi-response form is thousands
+      # of types nobody names.
+      supportMultipleResponses: "false"
+      # The document's integers are plain `integer`; reading them as unsigned
+      # would make a negative a parse error rather than a value.
+      preferUnsignedInt: "false"
+    flags:
+      # The rust generator maps a binary request body to std::path::PathBuf and
+      # then emits `.body(that)` — but reqwest::Body has no From<PathBuf>, so
+      # those operations do not compile. Bytes are what `.body()` takes anyway.
+      # The lowercase key `file` is the one that works; `binary` and `File` are
+      # silently ignored.
+      #
+      # This is HALF the correction: it fixes the inner type and cannot fix the
+      # Option around it. 16 operations take an OPTIONAL octet-stream body, so
+      # the parameter arrives as Option<Vec<u8>> and reqwest::Body has no
+      # From<Option<_>> either. That is what templates/rust wraps in
+      # `if let Some(..)`, and no type mapping reaches it because the problem is
+      # the Option and not the type. Measured on this document: 16 binary request
+      # bodies, all 16 optional, and the guard appears 16 times in the output.
+      type-mappings: file=Vec<u8>
+      # The collision the python, java, kotlin, go and ruby rows all carry,
+      # spelled for THIS language. ONE schema spells two of its fields twice —
+      # o11y.GettableAgentCheckIn has `integration_config` AND `integrationConfig`,
+      # `removed_at` AND `removedAt`, the snake pair being live wire kept for
+      # older agents. Rust snake_cases a property to get its field name, so each
+      # pair lands on one identifier declared twice and the struct does not
+      # compile: 12 errors, E0124 + E0062 + E0308, all in that one model.
+      #
+      # Snake-spelled here where the kotlin row spells them camel, for the reason
+      # that row gives: the value is an identifier in the TARGET language. The
+      # wire is untouched — serde still carries the document's key, so both
+      # spellings still round-trip. Delete these the day cloud drops the pair.
+      name-mappings: integration_config=integration_config_legacy,removed_at=removed_at_legacy
 
-  # cpp is DELIBERATELY ABSENT, and it is the third departure — for exactly the
-  # reason stated for rust, plus one of its own.
+  # cpp is DELIBERATELY ABSENT, and ONE of its two reasons is now the whole of
+  # it: templates stopped being a reason to leave, so only the generator version
+  # still keeps this language out.
   #
-  #   • TEMPLATES. Four `cpp-restsdk` mustache overrides are required before the
-  #     output compiles at all, and a template is a FILE that has to sit beside
-  #     the invocation. They fix five defect classes in the generator's own
+  #   • TEMPLATES — NO LONGER A BLOCKER. Four `cpp-restsdk` mustache overrides
+  #     are required before the output compiles at all; they would sit at
+  #     templates/cpp/ beside this row, exactly as rust's do. They fix five
+  #     defect classes in the generator's own
   #     codegen: oneOf explicit instantiations emitted HTML-escaped; oneOf
   #     visitors calling members the alternatives do not have; a oneOf class that
   #     stands outside ModelBase and so cannot be a FIELD of another model; a
