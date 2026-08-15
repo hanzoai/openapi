@@ -6,19 +6,19 @@
 # client lands in src/ or src/cloud/, which built an orphan second copy of all
 # 2143 files.
 #
-# Every row is one language projection of THE DOCUMENT — `hanzo.yaml`, which
-# `publish.py` derives from hanzoai/cloud's own emission at the ref `.spec-lock`
-# pins. There is still no `spec:` key: WHICH document a client is a projection of
-# is a fact about the CLIENT (its own lock, written by a release) and not about
-# this checkout, so it is not expressible as a row here — generate.py resolves it
-# per repo, falling back to this checkout's `hanzo.yaml` for a hand run.
+# Every row is one language projection of THE DOCUMENT — hanzoai/cloud's
+# `openapi.yaml` at the ref that client's own `.spec-lock` pins. There is no
+# `spec:` key and no fallback to this checkout: WHICH document a client is a
+# projection of is a fact about the CLIENT, written into its lock by a release,
+# so it is not expressible as a row here — generate.py resolves it per repo and
+# refuses a client that names none. Why that document and not this repo's
+# `hanzo.yaml`, measured: see THE DOCUMENT below.
 #
-# That fallback was removed once, correctly, when `hanzo.yaml` was a hand-merged
-# union carrying 185 operations cloud does not serve. It is back because the file
-# is not that any more, and because the alternative was measured: cloud's raw
-# emission fails `openapi-generator validate` with 1012 errors — every route the
-# weave publishes with an address and no `responses` — and `generate` writes zero
-# files from it in every language. See generate.py's header.
+# The validator is not the reason to prefer either: cloud's emission fails
+# `openapi-generator validate` with 1012 errors — every route the weave
+# publishes with an address and no `responses`, which OpenAPI 3.1 permits and
+# the 7.14.0 validator still refuses. `--skip-validate-spec` is the driver's,
+# for every language, and `go build` is what actually gates a bad document.
 #
 # `take` maps a path in the generator's output onto a path in the SDK repo. What
 # the generator owns there is the FILES IT WROTE — recorded in that repo's
