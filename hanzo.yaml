@@ -45752,11 +45752,13 @@ components:
           type: string
       type: object
   securitySchemes:
-    bearerAuth:
-      type: http
+    bearer:
+      description: 'The caller''s credential, sent as `Authorization: Bearer <token>`. It is either an access token minted
+        by Hanzo IAM or an API key (pk-/sk-). X-Authorization, and HTTP Basic carrying the token as the password, are accepted
+        spellings of the same header for clients that cannot set Authorization; a browser presents the session cookie instead.
+        Every operation requires it unless it says `security: []`.'
       scheme: bearer
-      bearerFormat: JWT
-      description: A JWT issued by Hanzo IAM (https://hanzo.id).
+      type: http
 info:
   description: "Composed from each subsystem's own projection of its router, in the fleet's mount order \u2014 every operation\
     \ below is a route the subsystem that publishes it registered. Tagged by product: the first path segment after /v1/."
@@ -45765,8 +45767,8 @@ info:
   x-spec:
     repo: hanzoai/cloud
     path: openapi.yaml
-    ref: d2389d2aeb9ed8f22ab9aba1f57c45fa4970cd4b
-    sha256: a3257d62716f92959af29676081dc92a9998595530eb7d0d92f985bdcbda081c
+    ref: 613cc065e0627b0b8dd73c710229b9f2384f2ea6
+    sha256: a50fc96c4732706ca154138e3984f677747b20e9484409915a6b59e7d703bfba
 openapi: 3.1.0
 paths:
   /:
@@ -64964,6 +64966,7 @@ paths:
         \ claim about permission that is free to be wrong.\n\nRendered once and served as bytes thereafter, under a strong\
         \ ETag."
       operationId: get_commands
+      security: []
       summary: Every operation this API answers, as a command
       tags:
       - commands
@@ -86985,6 +86988,7 @@ paths:
         \ ignores it, deliberately and visibly.\n\nRemoving that gate discloses nothing new: the catalogue was already reachable\
         \ by\nanyone willing to type three characters, so there is no confidentiality delta, only\nan honesty one."
       operationId: get_models
+      security: []
       summary: Returns the list of available models from the routing table.
       tags:
       - models
@@ -86999,6 +87003,7 @@ paths:
         \ source, projected. Safe unauthenticated: no\nkeys, URLs, or config are returned, and it reports a SET of names,\
         \ never\nwhich provider serves which model."
       operationId: get_models_providers
+      security: []
       summary: "Public, secret-free list of the providers serving the models that GET /v1/models lists \u2014 the same source,\
         \ projected."
       tags:
@@ -98434,6 +98439,7 @@ paths:
         \ once and served as bytes thereafter, so the route table's immutability is what makes a repeat request a memcpy rather\
         \ than a re-encode of a megabyte document."
       operationId: get_openapi.json
+      security: []
       summary: The API description this SDK was generated from
       x-app: openapi
       tags:
@@ -113244,6 +113250,8 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
+security:
+- bearerAuth: []
 servers:
 - url: https://api.hanzo.ai
 tags:
@@ -113954,5 +113962,3 @@ x-tagGroups:
   - chains
   - rpc
   - tokens
-security:
-- bearerAuth: []
