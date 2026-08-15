@@ -868,17 +868,26 @@ sdks:
       # CodingKeys still carry `removed_at` and `integration_config`, so both
       # spellings still round-trip under their own key.
       name-mappings: removed_at=removedAtLegacy,integration_config=integrationConfigLegacy
-      # FOUR NAMES SWIFT'S OWN MODULES OWN, each measured against this document
-      # rather than taken off a list of keywords. Two are build failures inside
-      # the client: the generated infrastructure writes `Result<URLRequest,
-      # Error>` and `Task.checkCancellation()`, and a module-level struct of
-      # either name wins lookup over Swift's own, so the specialization and the
-      # member both stop resolving. The other two build here and break the
-      # CONSUMER — after `import Hanzo`, an unqualified `Sequence` or `Stream`
-      # in their code is ambiguous against Swift's protocol and Foundation's
-      # class. `Model<Name>` is the spelling the java generator picks for itself
-      # and the kotlin, ruby and php rows state, so one schema keeps one name
-      # across the fleet; a type name is never on the wire.
+      # FOUR NAMES SWIFT'S OWN MODULES OWN, each measured — a struct of that
+      # name declared beside the code that uses Swift's, then compiled — rather
+      # than taken off a list of keywords.
+      #
+      # `Result` and `Task` are build failures INSIDE the client: the generated
+      # transport writes `Result<URLRequest, Error>` and
+      # `Task.checkCancellation()`, and a module-level struct wins lookup over
+      # Swift's own — "cannot specialize non-generic type 'Result'", "type
+      # 'Task' has no member 'checkCancellation'".
+      #
+      # `Sequence` and `Stream` build here and break the CONSUMER, and not in
+      # the same way. The client's `Sequence` wins over the STDLIB's protocol in
+      # their file, silently, so their own `T: Sequence` stops compiling —
+      # "constrained to non-protocol, non-class type 'Sequence'". `Stream` ties
+      # with Foundation's class instead, which is the honest failure:
+      # "'Stream' is ambiguous for type lookup in this context".
+      #
+      # `Model<Name>` is the spelling the java generator picks for itself and
+      # the kotlin, ruby and php rows state, so one schema keeps one name across
+      # the fleet; a type name is never on the wire.
       #
       # `File` is deliberately NOT mapped though ruby and php map it: Swift has
       # no File in its prelude or in Foundation, so nothing collides. Those two
