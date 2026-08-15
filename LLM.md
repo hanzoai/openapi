@@ -472,7 +472,7 @@ in one commit. The departure is what drifted: its script defaulted to
 `hanzoai/openapi` `hanzo.yaml@main` while the `.spec-lock` beside it named
 `hanzoai/cloud` `openapi.yaml` at a commit. Regenerating at the ref that lock
 named, through the driver, reports `[rust] clean` — byte-identical to what the
-250-line script produced.
+138-line script produced.
 
 **`hanzoai/ruby-sdk` was a row naming a client nobody shipped** — a hard 404 with
 no redirect, while every genuinely renamed SDK answers 301, and no gem under
