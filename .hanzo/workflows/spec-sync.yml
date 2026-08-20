@@ -80,7 +80,7 @@ jobs:
           HANZO_GIT_TOKEN: ${{ secrets.HANZO_GIT_TOKEN }}
         run: |
           [ -n "${HANZO_GIT_TOKEN:-}" ] || {
-            echo "::error::hanzo-inc/cloud is private and the per-job token reads only this repository. Seal HANZO_GIT_TOKEN (contents:read on hanzo-inc/cloud) for this org and re-run."
+            echo "::error::hanzo-inc/cloud is private and the per-job token reads only this repository. HANZO_GIT_TOKEN (contents:read on hanzo-inc/cloud) is the credential; hanzoai/ci's client lane takes it from KMS, and this standalone workflow can only take it as an org secret. TWO HOMES FOR ONE VALUE, which ends when --check moves into hanzo.yml's test: block, where the lane already exports it."
             exit 1
           }
 
