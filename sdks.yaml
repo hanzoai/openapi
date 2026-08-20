@@ -167,7 +167,14 @@ sdks:
     generator: python
     # Vendored into the published `hanzoai` distribution as `hanzoai.cloud`, so
     # every existing top-level export keeps working untouched.
-    take: { hanzo-inc/cloud: pkg/hanzo-inc/cloud }
+    # A PACKAGE PATH, not a repo. `packageName: hanzoai.cloud` below makes the
+    # generator emit `hanzoai/cloud/`, and python-sdk tracks it at
+    # `pkg/hanzoai/cloud`. Both halves read `hanzoai/cloud` and neither is the
+    # spec repo -- which is why the rename that pointed every DOCUMENT reference
+    # at hanzo-inc/cloud swept this line up too, and the python projection has
+    # emitted nothing since: the generator wrote hanzoai/cloud and `take` went
+    # looking for hanzo-inc/cloud.
+    take: { hanzoai/cloud: pkg/hanzoai/cloud }
     properties:
       packageName: hanzoai.cloud
       library: urllib3
