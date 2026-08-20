@@ -6,13 +6,13 @@ under pytest, like test_flows.py beside it.
 
 These are the OFFLINE half. They read the committed `hanzo.yaml` and assert the
 properties `publish.py` promises, so a hand edit that satisfies none of them is
-caught here without a network or a hanzoai/cloud checkout.
+caught here without a network or a hanzo-inc/cloud checkout.
 
 The half that reaches the world is `python3 publish.py --served`, which refutes
 every published operation against the document api.hanzo.ai actually serves. It
 is what CI runs, because it is the only one of the three online questions that
 needs no credential — see the last test in this file, which asserts it is still
-WIRED. `publish.py --check` is the sharper question and needs a hanzoai/cloud
+WIRED. `publish.py --check` is the sharper question and needs a hanzo-inc/cloud
 checkout; it runs where one exists.
 
 None of them replaces another: `--check` needs the input, `--served` needs the
@@ -23,6 +23,8 @@ import re
 import sys
 
 import yaml
+
+import publish
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 METHODS = ("get", "put", "post", "delete", "options", "head", "patch", "trace")
@@ -46,11 +48,16 @@ def lock():
 
 def test_the_artifact_names_the_release_it_came_from():
     """Without this the document cannot answer "which release am I?", and every
-    consumer pinning it is pinning a file rather than a version."""
+    consumer pinning it is pinning a file rather than a version.
+
+    Against `publish.py`'s own constants rather than a literal: the repo the
+    document comes from is one fact, and a test that restates it is a second
+    place to change. It was changed in the receipt alone once, and the artifact,
+    the receipt and this file then named three different things."""
     doc, _ = load()
     spec, have = doc["info"]["x-spec"], lock()
-    assert spec["repo"] == have["repo"] == "hanzoai/cloud"
-    assert spec["path"] == have["path"] == "openapi.yaml"
+    assert spec["repo"] == have["repo"] == publish.SPEC_REPO
+    assert spec["path"] == have["path"] == publish.SPEC_PATH
     assert spec["ref"] == have["ref"], "hanzo.yaml and .spec-lock name different refs"
     assert re.fullmatch(r"[0-9a-f]{64}", spec["sha256"])
     assert spec["sha256"] == have["sha256"], "hanzo.yaml and .spec-lock name different digests"
@@ -85,11 +92,21 @@ def test_operationids_are_unique_to_a_generator():
 
 
 def test_a_client_can_authenticate():
-    """cloud's emission declares no security scheme, so a client generated from
-    it sends no Authorization header and every call 401s."""
+    """A document-level `security` naming a scheme `securitySchemes` does not
+    define is worse than declaring none: every per-operation generator emits the
+    requirement and no credential helper, so the client compiles and never
+    authenticates. Measured on the generated typescript: 2498 bearer call sites
+    from a document that defines its scheme, 0 from one that only requires it.
+
+    Cloud declares both halves itself now. This asserts the pair agrees, whoever
+    supplies it."""
     doc, _ = load()
-    assert doc.get("security"), "no document-level security"
-    assert (doc["components"].get("securitySchemes") or {}).get("bearerAuth")
+    declared = (doc["components"].get("securitySchemes") or {})
+    required = {name for req in (doc.get("security") or []) for name in req}
+    assert required, "no document-level security"
+    assert required <= set(declared), (
+        f"required but undefined: {sorted(required - set(declared))}; "
+        f"defined: {sorted(declared)}")
 
 
 def test_every_capability_is_grouped_exactly_once():
@@ -118,7 +135,7 @@ def test_every_capability_is_grouped_exactly_once():
 #
 # MEASURED at cloud@v1.801.383: `go build ./...` on the generated client fails on
 # these three and on nothing else — renaming those keys in a scratch copy of the
-# document and regenerating gives exit 0. They are hanzoai/cloud's schemas to fix
+# document and regenerating gives exit 0. They are hanzo-inc/cloud's schemas to fix
 # and this repo must NOT rename a field, because a field name is the wire.
 #
 # A ceiling and not a zero, because holding the publish hostage to another repo's
@@ -145,7 +162,7 @@ def test_no_new_schema_becomes_ungeneratable_in_go():
     assert bad <= GO_UNSAFE, (
         f"schema(s) the Go client cannot be generated from, beyond the pinned "
         f"three: {sorted(bad - GO_UNSAFE)}. Two spellings of one field, or a "
-        f"property named for its own accessor. Fix in hanzoai/cloud — a field "
+        f"property named for its own accessor. Fix in hanzo-inc/cloud — a field "
         f"name is the wire, and renaming it here would be a lie.")
 
 
@@ -156,15 +173,15 @@ def test_no_authored_spec_survives():
     strays = sorted(d for d in os.listdir(ROOT)
                     if os.path.isfile(os.path.join(ROOT, d, "openapi.yaml")))
     assert not strays, (f"hand-authored spec dir(s) are back: {strays}. The API is "
-                        f"declared in hanzoai/cloud; this repo publishes what it emits.")
+                        f"declared in hanzo-inc/cloud; this repo publishes what it emits.")
 
 
 def test_the_drift_gate_is_wired_into_the_build():
     """A gate that cannot fail a build is not a gate, and this repo proved it.
 
     `publish.py --check` was the only thing standing between a hand edit and
-    seven SDKs, and it lived in a workflow no forge collected, needing a
-    credential no secret supplied. It exited 1 on `main` for 81 hanzoai/cloud
+    seven SDKs, and it lived in a workflow nothing collected, needing a
+    credential no secret supplied. It exited 1 on `main` for 81 hanzo-inc/cloud
     commits while every consumer regenerated happily. Nothing NOTICED, because
     nothing ran it.
 

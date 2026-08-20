@@ -6,7 +6,7 @@
 # client lands in src/ or src/cloud/, which built an orphan second copy of all
 # 2143 files.
 #
-# Every row is one language projection of THE DOCUMENT — hanzoai/cloud's
+# Every row is one language projection of THE DOCUMENT — hanzo-inc/cloud's
 # `openapi.yaml` at the ref that client's own `.spec-lock` pins. There is no
 # `spec:` key and no fallback to this checkout: WHICH document a client is a
 # projection of is a fact about the CLIENT, written into its lock by a release,
@@ -72,7 +72,7 @@
 # one contract, and the departure had already started drifting into it.
 #
 # THE DOCUMENT, measured rather than argued, because a projection of it sits in
-# this very repo and reads like the better input. Every row reads hanzoai/cloud's
+# this very repo and reads like the better input. Every row reads hanzo-inc/cloud's
 # `openapi.yaml` at the ref its own `.spec-lock` names — one document, one
 # sha256 per ref, no second authority. The alternative was `hanzo.yaml`,
 # publish.py's projection, and it is DERIVED FROM THE SAME BYTES (this repo's
@@ -80,22 +80,24 @@
 # of authority; what it changes is shape. Measured at that ref, generating from
 # it instead would:
 #
-#   • ship a client that never authenticates. Its root `security` requires
-#     `bearerAuth`, a scheme its own `components.securitySchemes` does not
-#     define — cloud now declares `bearer` itself, so publish.py's `setdefault`
-#     no longer fires while the requirement it writes still does. Generated
-#     typescript: 2498 bearer call sites from cloud's document, 0 from the
-#     projection — which leaves 191 files importing a helper none of them calls.
-#     Go is the exception and does not soften this: its generator emits one
-#     central site from the scheme it finds DEFINED, so it authenticates from
-#     either document while every per-operation language stops.
 #   • stamp `info.version: 8.0.0` into every generated file's header — the
 #     projection's own release counter, which names no cloud release.
-#   • drop 23 operations (the `compat`-tagged legacy addresses) and move 50 more
+#   • drop 23 operations (the `compat`-tagged legacy addresses) and move 51 more
 #     off `DefaultAPI` onto the app that serves them, which is a real
-#     improvement and the only one, against the two above.
+#     improvement, against the one above.
 #
-# So: the emission. The 50 untagged and the 23 double-tagged operations are the
+# A third cost stood here and no longer does, which is worth keeping because it
+# is what a projection costs when it outlives its reason: the projection used to
+# require a root `security` of `bearerAuth`, a scheme its own
+# `components.securitySchemes` did not define, because cloud began declaring
+# `bearer` itself and publish.py's `setdefault` stopped firing while the
+# requirement it wrote still did. Generated typescript: 2498 bearer call sites
+# from cloud's document, 0 from the projection, leaving 191 files importing a
+# credential helper none of them called. publish.py no longer touches security,
+# and `test_a_client_can_authenticate` refuses a document that requires a scheme
+# it does not define.
+#
+# So: the emission. The 51 untagged and the 23 double-tagged operations are the
 # document's defects and belong upstream in cloud's emitter, which is where
 # publish.py already says each of its rules is a candidate to go.
 
@@ -165,7 +167,7 @@ sdks:
     generator: python
     # Vendored into the published `hanzoai` distribution as `hanzoai.cloud`, so
     # every existing top-level export keeps working untouched.
-    take: { hanzoai/cloud: pkg/hanzoai/cloud }
+    take: { hanzo-inc/cloud: pkg/hanzo-inc/cloud }
     properties:
       packageName: hanzoai.cloud
       library: urllib3
@@ -718,10 +720,10 @@ sdks:
       # starts a bogus property — the description reached the gemspec cut at the
       # comma, its tail parsed as a property the generator silently ignored. The
       # apostrophe survives that and then loses to mustache, which HTML-escapes
-      # an interpolated value: the gemspec read `hanzoai/cloud&#39;s`, and
+      # an interpolated value: the gemspec read `hanzo-inc/cloud&#39;s`, and
       # rubygems renders a gem description verbatim, so that is what the registry
       # page would have shown.
-      gemDescription: The official Ruby library for the Hanzo API — generated from the OpenAPI document that hanzoai/cloud emits.
+      gemDescription: The official Ruby library for the Hanzo API — generated from the OpenAPI document that hanzo-inc/cloud emits.
       gemHomepage: https://github.com/hanzo-ruby/sdk
       gemLicense: Apache-2.0
       gemAuthor: Hanzo
@@ -958,7 +960,7 @@ sdks:
   # WHAT THE DEPARTURE COST, measured rather than predicted — the exact drift it
   # left to prevent, in the repo that left. That script defaulted to
   # SPEC_REPO=hanzoai/openapi, `hanzo.yaml`, ref `main`, while the `.spec-lock`
-  # beside it named hanzoai/cloud, `openapi.yaml`, at a commit. Two statements of
+  # beside it named hanzo-inc/cloud, `openapi.yaml`, at a commit. Two statements of
   # which document this client projects, disagreeing, and only one reachable by a
   # hand run. It also re-derived the jar fetch, the YAML-to-JSON conversion,
   # --skip-validate-spec and the drift check — the same four copies of this
@@ -1175,7 +1177,7 @@ sdks:
   # What the departure cost, the same way rust's did: hanzo-cpp/sdk's own
   # generate.sh defaulted to SPEC_REPO=hanzoai/openapi, `hanzo.yaml`, ref `main`
   # — a document named by something that moves — while the repo's hanzo.yml
-  # already declared hanzoai/cloud's `openapi.yaml`, and there was no .spec-lock
+  # already declared hanzo-inc/cloud's `openapi.yaml`, and there was no .spec-lock
   # at all. Two statements of which document this client projects, disagreeing.
   # It also re-derived the jar fetch, the YAML-to-JSON conversion,
   # --skip-validate-spec and the drift check.

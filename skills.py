@@ -14,7 +14,7 @@ human between the SKILL.md and the request. So a skill for an operation nothing
 serves is not a stale document, it is a working instruction to call a dead
 endpoint, and an agent obeys it.
 
-That is why this reads `hanzo.yaml`, which is a projection of hanzoai/cloud's
+That is why this reads `hanzo.yaml`, which is a projection of hanzo-inc/cloud's
 own emission, and no longer the 52 hand-authored `<svc>/openapi.yaml` specs it
 used to. Measured at cloud@v1.801.383, those specs carried 185 operations the
 router does not serve — 36 of them refuted outright, real address 404 and

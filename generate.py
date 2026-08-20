@@ -8,7 +8,7 @@
 
 THE DOCUMENT COMES FROM THE CODE, AND NOT FROM ANYONE'S OPINION.
 
-hanzoai/cloud emits `openapi.yaml` by projecting its own routers, and gates the
+hanzo-inc/cloud emits `openapi.yaml` by projecting its own routers, and gates the
 emission by regenerating from source and failing on any diff — so it cannot
 describe a route the binary does not serve and cannot miss one it does. That is
 the only description of this API with that property, and a client generated from
@@ -141,7 +141,7 @@ def as_json(path):
     growing into.
 
     Deliberately not written back to disk as a second committed artifact. There
-    is one document, it lives in hanzoai/cloud, and every copy of it anywhere
+    is one document, it lives in hanzo-inc/cloud, and every copy of it anywhere
     else is a copy that can be stale.
     """
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
@@ -169,28 +169,32 @@ def lock(repo):
     return out
 
 
-FORGE = "https://git.hanzo.ai/v1"
+GIT = "https://git.hanzo.ai/v1"
 
 
 def fetch(spec, dest):
-    """The document at the locked ref, from the forge, digest-checked.
+    """The document at the locked ref, from Hanzo Git, digest-checked.
 
-    git.hanzo.ai is where hanzoai/cloud lives. This asked api.github.com, which
+    git.hanzo.ai is where hanzo-inc/cloud lives. This asked api.github.com, which
     holds a mirror thousands of commits behind and no openapi.yaml at its root at
     all — so the fetch could only 404, and the 404 read as "your token is wrong".
     A mirror is not a slower source; it answers a different question.
 
-    The forge serves its API at /v1/, NOT /api/v1/, and /api/v1 returns a 404 that
+    Hanzo Git serves its API at /v1/, NOT /api/v1/, and /api/v1 returns a 404 that
     is indistinguishable from a rejected credential. Same route hanzoai/ci's
     client lane and the CLI's Makefile take, because there is one document at one
     address.
+
+    HANZO_GIT_TOKEN is the one name in this fleet for a credential that reads
+    git.hanzo.ai, and hanzoai/ci's client lane already hands it that name. A
+    second spelling here is a second credential to provision for one read.
     """
-    token = os.environ.get("FORGE_TOKEN", "")
+    token = os.environ.get("HANZO_GIT_TOKEN", "")
     if not token:
         sys.exit(f"generate: reading {spec['repo']}@{spec['ref']} from git.hanzo.ai"
-                 f" needs FORGE_TOKEN (contents:read). Pass --spec instead.")
+                 f" needs HANZO_GIT_TOKEN (contents:read). Pass --spec instead.")
     req = urllib.request.Request(
-        f"{FORGE}/repos/{spec['repo']}/raw/{spec['path']}?ref={spec['ref']}",
+        f"{GIT}/repos/{spec['repo']}/raw/{spec['path']}?ref={spec['ref']}",
         headers={"Authorization": f"token {token}"})
     with urllib.request.urlopen(req) as r, open(dest, "wb") as f:
         shutil.copyfileobj(r, f)
@@ -212,7 +216,7 @@ ONE_DOCUMENT = threading.Lock()
 def document(repo, given, cache):
     """THE document this client is a projection of, as a path to JSON.
 
-    TWO sources, one order, and both name a hanzoai/cloud release. `given` is
+    TWO sources, one order, and both name a hanzo-inc/cloud release. `given` is
     `--spec`: the document by value, already fetched and digest-checked by
     hanzoai/ci's lane. Otherwise the client's own `.spec-lock` names it, which is
     how a release pins every language to one digest.
@@ -341,7 +345,7 @@ def emit(name, cfg, spec, version, out):
         # The document is OpenAPI 3.1, and 3.1 made `responses` OPTIONAL on an
         # operation. The validator in generator 7.14.0 still enforces the 3.0
         # rule that it is required, so it refuses a document that is valid —
-        # measured on hanzoai/cloud's openapi.yaml, where 684 of 1636 operations
+        # measured on hanzo-inc/cloud's openapi.yaml, where 684 of 1636 operations
         # are routes the router proves exist and whose response shape no seam can
         # state. cloud emits those with no `responses` key ON PURPOSE
         # (openapi/openapi.go: "absent stays valid and absent beats invented"),
@@ -474,7 +478,7 @@ def main():
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--check", action="store_true", help="diff only; non-zero if a client drifted")
     ap.add_argument("--repo", help="SDK repo path (single language only)")
-    # THE DOCUMENT IS AN ARGUMENT, not a fact about this checkout. hanzoai/cloud's
+    # THE DOCUMENT IS AN ARGUMENT, not a fact about this checkout. hanzo-inc/cloud's
     # release hands each client repo openapi.yaml AT THE SHA IT DEPLOYED, and a
     # projection generated from anything else describes a release nobody shipped.
     # Omitted, the client's OWN `.spec-lock` names the same document — see

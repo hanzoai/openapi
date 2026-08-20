@@ -1,6 +1,6 @@
 # The gate on the artifact, in both directions.
 #
-# `hanzo.yaml` is OUTPUT — `publish.py` derives it from hanzoai/cloud's own
+# `hanzo.yaml` is OUTPUT — `publish.py` derives it from hanzo-inc/cloud's own
 # emitted `openapi.yaml` at the ref `.spec-lock` pins. Two things can be wrong
 # with an output, and they need different questions:
 #
@@ -10,30 +10,39 @@
 #                          nobody shipped — to seven SDKs, the doc site and the
 #                          agent-skills catalog at once. HARD failure on every
 #                          push and PR.
-#   • publish.py --current the pin is behind cloud's origin/main. Nothing is
-#                          wrong with the artifact; it describes an older release
-#                          than the one being deployed.
+#   • publish.py --current the pin is behind cloud's main. Nothing is wrong with
+#                          the artifact; it describes an older release.
 #
 # The second is why the trigger is also a clock. The event that makes the pin
-# stale happens in hanzoai/cloud, so no push-triggered CI here can catch it —
-# measured before this workflow existed: the copy lagged cloud's origin/main
-# twice in one afternoon, and each time every SDK, doc page and MCP tool
-# generated from it described a router that had already moved. It runs ONLY on
-# the clock, because a stale pin is not a broken artifact and must not fail a PR
-# that has nothing to do with it.
+# stale happens in hanzo-inc/cloud, so no push-triggered CI here can catch it —
+# measured before this workflow existed: the copy lagged cloud's main twice in
+# one afternoon, and each time every SDK, doc page and MCP tool generated from it
+# described a router that had already moved. It runs ONLY on the clock, because a
+# stale pin is not a broken artifact and must not fail a PR that has nothing to
+# do with it.
 #
 # --check only, and NOTHING is committed. A bot pushing a 3 MB regenerated
 # document into main is a second writer on the artifact, and the failure mode —
 # an unreviewed API change reaching every client — is worse than the staleness it
 # would fix. Red build, one command in the log, a person runs it.
 #
-# BOTH QUESTIONS NEED A hanzoai/cloud CHECKOUT, AND THAT IS THIS WORKFLOW'S
-# WEAKNESS RATHER THAN ITS STRENGTH. hanzoai/cloud is private, the hanzoai org
-# is on the FREE plan — where an org secret resolves to the empty string inside
-# a private repo — and this repo's only repo-level secret is
-# SDK_DISPATCH_TOKEN. So the checkout below is credentialed by whatever of those
-# actually reads hanzoai/cloud, and if none does, this workflow is red for a
-# reason that has nothing to do with the commit.
+# THE DOCUMENT IS IN hanzo-inc/cloud, AND THIS WORKFLOW SPENT ITS WHOLE LIFE
+# ASKING hanzoai/cloud. That is a different repository — the re-rooted OSS core,
+# a short line sharing no ancestor with the product and carrying no
+# `openapi.yaml` at all. It is public, so the checkout SUCCEEDED and the failure
+# arrived one step later, as publish.py's "no remote of .cloud carries
+# openapi.yaml on `main`". The step then threw that away and printed its own
+# guess — that hanzo.yaml had been hand-edited — which is why the gate has been
+# read as a drift alarm on an artifact that was, and is, byte-exact. A step that
+# overwrites a precise diagnosis with a canned one is worse than a step with no
+# message, so both are gone: publish.py says what is wrong, and `set -e` fails
+# the step.
+#
+# CREDENTIAL. hanzo-inc/cloud is private, and the per-job token Hanzo Git mints
+# reads the run's OWN repository and anything public — nothing else. Measured on
+# hanzoai/python-sdk run 91449, which named the right repo and still took
+# `curl: (22) ... 404` on the raw read. So this checkout needs HANZO_GIT_TOKEN,
+# the one name in this fleet for a credential that reads git.hanzo.ai.
 #
 # THE ENFORCING GATE IS NOT HERE. It is `served` in hanzo.yml, which refutes
 # every published operation against api.hanzo.ai/v1/openapi.json — public, no
@@ -62,25 +71,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # publish.py reads a hanzoai/cloud CHECKOUT rather than a release artifact,
-      # because the document it wants is the one cloud's own drift gate just
-      # proved equal to its router. fetch-depth 0: the pin is a TAG, and a
-      # shallow clone does not have it.
-      - name: Check out hanzoai/cloud
+      # Said before the checkout, because an empty token makes `actions/checkout`
+      # read a private repo anonymously and report "repository not found" — the
+      # one wording that sends a reader looking for a deleted repo instead of a
+      # missing credential.
+      - name: Is the document reachable?
+        env:
+          HANZO_GIT_TOKEN: ${{ secrets.HANZO_GIT_TOKEN }}
+        run: |
+          [ -n "${HANZO_GIT_TOKEN:-}" ] || {
+            echo "::error::hanzo-inc/cloud is private and the per-job token reads only this repository. Seal HANZO_GIT_TOKEN (contents:read on hanzo-inc/cloud) for this org and re-run."
+            exit 1
+          }
+
+      # publish.py reads a hanzo-inc/cloud CHECKOUT rather than a release
+      # artifact, because the document it wants is the one cloud's own drift gate
+      # just proved equal to its router. fetch-depth 0: the pin is a commit
+      # behind main, and a shallow clone does not have it.
+      - name: Check out hanzo-inc/cloud
         uses: actions/checkout@v4
         with:
-          repository: hanzoai/cloud
+          repository: hanzo-inc/cloud
           path: .cloud
           fetch-depth: 0
-          # The job's automatic token is scoped to THIS repository, so it reads
-          # hanzoai/cloud as an anonymous caller and a private repo answers 404
-          # — which reads as "repository not found", not "no credential".
-          #
-          # GIT_TOKEN first, because this checkout is against the GIT.HANZO.AI and
-          # GH_PAT is a github.com credential: handing it here spends an hour a
-          # run failing with "invalid username, password or token", which reads
-          # as an expired secret rather than the wrong one for this host.
-          token: ${{ github.token }}
+          token: ${{ secrets.HANZO_GIT_TOKEN }}
 
       - name: Is hanzo.yaml what its own input projects to?
         run: |
@@ -91,18 +105,16 @@ jobs:
           # "the spec is stale" when the check had not executed at all. Safe
           # here: the container is discarded after the job.
           python3 -m pip install --quiet --break-system-packages pyyaml
-          # Fail loudly and say the ONE command that fixes it. A gate whose
-          # message is "differs" sends the reader looking for a diff tool.
-          if ! python3 publish.py --check --cloud .cloud; then
-            echo "::error::hanzo.yaml is not what its pinned hanzoai/cloud release projects to. It is a GENERATED artifact, so an edit to it describes a release nobody shipped — to every SDK, the doc site and the skills catalog. Fix: change the API in hanzoai/cloud, then run 'python3 publish.py'"
-            exit 1
-          fi
+          python3 publish.py --check --cloud .cloud
 
-      - name: Is the pin still cloud's origin/main?
+      # Red here means the pin is behind, NOT that main is where it should go.
+      # Cloud's main runs ahead of what is deployed — measured at 108 commits and
+      # 60 operations api.hanzo.ai does not answer for — and publishing those
+      # would fail `served` and ship 60 dead endpoints to every SDK, doc page and
+      # agent skill. The pin belongs at the newest release the deployment fully
+      # answers for, which `--served` is the test of.
+      - name: Is the pin still cloud's main?
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
           python3 -m pip install --quiet --break-system-packages pyyaml
-          if ! python3 publish.py --current --cloud .cloud; then
-            echo "::error::hanzo.yaml describes an older cloud release than origin/main. Every SDK and doc page generated from it describes a router that moved. Fix: python3 publish.py && git commit -am 'publish: <cloud ref>'"
-            exit 1
-          fi
+          python3 publish.py --current --cloud .cloud

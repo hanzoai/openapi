@@ -8,7 +8,7 @@
 ONE source, and the source is the DOCUMENT. A tool name is an operation id:
 not derived from the path, not looked up in a table, not invented here. The
 fleet's own door already answers that way — every tool `POST /v1/mcp` lists is
-verbatim an id hanzoai/cloud emitted — so a catalogue built any other way would
+verbatim an id hanzo-inc/cloud emitted — so a catalogue built any other way would
 name tools the API cannot be told to run. Which is measurable, and was measured
 against the door: the id, not the published `operationId`. `publish.py` rule 6
 suffixes an id when two collide under a generator's identity, and that suffix is
@@ -18,7 +18,7 @@ That is the whole defect this file removes: three client distributions
 (npm `@hanzo/mcp`, PyPI `hanzo-mcp`, crates.io `hanzo-mcp`) each hand-kept
 their own idea of what the fleet exposes, and hand-kept sets do not agree.
 
-Why a client needs this at all, when hanzoai/cloud deliberately does NOT commit
+Why a client needs this at all, when hanzo-inc/cloud deliberately does NOT commit
 one: the server can ASK its subsystems at the moment it is asked (package
 fleet), so a checked-in catalogue there would be a second artifact free to go
 stale beside the first — which is exactly how plugin/<app>/mcp.json went 353
@@ -68,7 +68,7 @@ REFS = "#/components/schemas/"
 
 
 def wire(op: dict):
-    """The name a caller can actually use — the id hanzoai/cloud emitted.
+    """The name a caller can actually use — the id hanzo-inc/cloud emitted.
 
     `publish.py` rule 6 suffixes an operationId when two of them collide under
     the identity a GENERATOR uses (punctuation stripped, case folded), so that

@@ -3,7 +3,7 @@
 #
 # Publishes the agent-skills catalog (/.well-known/agent-skills, skills.py
 # --no-services) as a versioned immutable image whose rootfs is /catalog.
-# hanzoai/cloud consumes it via `FROM ... AS skills` + `COPY --from=skills
+# hanzo-inc/cloud consumes it via `FROM ... AS skills` + `COPY --from=skills
 # /catalog/`, so it never re-runs skills.py inside a cloud release. hanzoai/ci
 # pushes to `repo:` (GHCR) and auto-mirrors to registry.hanzo.ai.
 images:
@@ -23,9 +23,9 @@ test:
     # every operation generatable, operationIds unique to a GENERATOR and not
     # merely as strings, a security scheme a client can authenticate with, every
     # capability grouped exactly once, and no `<svc>/openapi.yaml` back on disk.
-    # It needs no network and no hanzoai/cloud checkout.
+    # It needs no network and no hanzo-inc/cloud checkout.
     #
-    # The half that needs a hanzoai/cloud checkout is `publish.py --check` in the
+    # The half that needs a hanzo-inc/cloud checkout is `publish.py --check` in the
     # `spec sync` workflow, which re-derives from the pinned ref and diffs. That
     # is what catches a hand edit that happens to be well-formed — the one this
     # repo exists to make impossible now that hanzo.yaml is output rather than
@@ -51,13 +51,13 @@ test:
     # Every operation this repo PUBLISHES must be one api.hanzo.ai answers for.
     #
     # The gate that was supposed to hold that line — `publish.py --check` —
-    # needs a hanzoai/cloud checkout, so it can only run where a credential for
+    # needs a hanzo-inc/cloud checkout, so it can only run where a credential for
     # a private repo exists, and this repo has exactly one secret
     # (SDK_DISPATCH_TOKEN) which is not it. So it never ran, and while it did
-    # not: the pin went 81 hanzoai/cloud commits stale, hanzo.yaml was hand-
+    # not: the pin went 81 hanzo-inc/cloud commits stale, hanzo.yaml was hand-
     # edited to delete a route (which is the one thing a generated file must
     # never receive), and it shipped 19 operations to every SDK that nothing
-    # serves — including `POST /v1/admin/credits`, a money mint hanzoai/cloud
+    # serves — including `POST /v1/admin/credits`, a money mint hanzo-inc/cloud
     # had deleted. Measured, not supposed: those 19 are what this gate printed
     # the first time it was pointed at the committed artifact.
     #

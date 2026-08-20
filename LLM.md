@@ -3,13 +3,13 @@
 **This repo does not decide what the Hanzo API is. It publishes what the API
 says about itself.**
 
-`hanzo.yaml` is OUTPUT. It is derived, by `publish.py`, from hanzoai/cloud's own
+`hanzo.yaml` is OUTPUT. It is derived, by `publish.py`, from hanzo-inc/cloud's own
 emitted `openapi.yaml` at one pinned release. To change the API you change the
-code in hanzoai/cloud; there is nothing here to edit that would make a route
+code in hanzo-inc/cloud; there is nothing here to edit that would make a route
 exist, and nothing here that can describe one that does not.
 
 ```
-hanzoai/cloud  typed ops + handler doc comments
+hanzo-inc/cloud  typed ops + handler doc comments
      │           (projected per app, woven, gated by regenerate-and-diff)
      ▼
   openapi.yaml @ a release   ── the ONE authority on what exists
@@ -25,21 +25,21 @@ hanzoai/cloud  typed ops + handler doc comments
 ## The one command
 
 ```bash
-python3 publish.py                   # re-pin to hanzoai/cloud's main, derive, write
+python3 publish.py                   # re-pin to hanzo-inc/cloud's main, derive, write
 python3 publish.py --ref v1.801.383  # re-pin to one release
 python3 publish.py --check           # THE GATE: re-derive at the pinned ref and diff
 python3 publish.py --current         # has cloud's document moved past the pin?
 ```
 
-It reads a hanzoai/cloud checkout (`--cloud`, `CLOUD_DIR`, default `../cloud`)
+It reads a hanzo-inc/cloud checkout (`--cloud`, `CLOUD_DIR`, default `../cloud`)
 and writes exactly three files: `hanzo.yaml`, `CAPABILITIES.md`, `.spec-lock`.
-Nothing is ever written back to hanzoai/cloud — the traffic is one-way by
+Nothing is ever written back to hanzo-inc/cloud — the traffic is one-way by
 construction, this repo reads a ref.
 
 ## What was here before, and what it measured out to
 
 52 hand-authored `<service>/openapi.yaml` specs, merged with cloud's document
-laid on top. Measured at `hanzoai/cloud@v1.801.383`, both documents loaded and
+laid on top. Measured at `hanzo-inc/cloud@v1.801.383`, both documents loaded and
 keyed by (METHOD, path):
 
 | | |
@@ -94,8 +94,8 @@ were verbatim copies of Meilisearch's and Qdrant's own APIs, describing an
 upstream this fleet proxies nothing to. Decided by SOURCE rather than by probe,
 they are absent too.
 
-**The 39 SERVED are the honest cost, and every one is a hanzoai/cloud defect** —
-itemised under "Handed to hanzoai/cloud". None is fixable here: authoring them
+**The 39 SERVED are the honest cost, and every one is a hanzo-inc/cloud defect** —
+itemised under "Handed to hanzo-inc/cloud". None is fixable here: authoring them
 back would restore exactly the property this change removes.
 
 ### Fourteen more that were not even the right API
@@ -134,29 +134,39 @@ and an operationId is not only a codegen identifier — it is the **wire name of
 MCP tool**. `DELETE /v1/o11y/sessions` is published as `DeleteSession_2` and
 served as `DeleteSession`, and the suffix went out verbatim in the tool catalogue
 of three client distributions, naming a tool `POST /v1/mcp` answers to no such
-name. So the rename now records what it renamed: `x-id` is the id hanzoai/cloud
+name. So the rename now records what it renamed: `x-id` is the id hanzo-inc/cloud
 emitted, written only where the two differ, and `tools.py`'s `wire()` is the one
 place a tool takes its name. Measured against the live door: 1299/1323 before,
 1300/1323 after. The collision itself belongs upstream — two operations whose ids
 differ only in case are one name to every generator there is.
 
-Plus one addition that is not a rule about operations: cloud's emission declares
-**no security scheme**, so a client generated from it sends no `Authorization`
-header and every call 401s. `publish.py` adds `bearerAuth` and a document-level
-`security`. Saying "one bearer JWT from Hanzo IAM authenticates every route" is
-not a second opinion about the API.
+There was a seventh, and it is gone, which is what the end state looks like when
+it arrives one rule at a time. Cloud's emission used to declare **no security
+scheme**, so a client generated from it sent no `Authorization` header and every
+call 401'd; `publish.py` added `bearerAuth` and a document-level `security`.
+Cloud declares both halves itself now — `bearer`, with the header spellings it
+accepts — and the addition stopped adding and started **corrupting**: the
+`setdefault` no longer fired while the requirement it wrote still did, so the
+published document required a scheme it did not define. Measured on the
+generated typescript: 2498 bearer call sites from cloud's document, 0 from the
+projection, leaving 191 files importing a credential helper none of them called.
+`test_a_client_can_authenticate` now asserts the pair agrees, whoever supplies
+it.
 
 **Every one of these belongs upstream.** The day cloud's emitter writes the
-`default`, tags its own untagged routes and declares its security scheme,
-`publish.py` shrinks to nothing and `hanzo.yaml` becomes a byte copy — or this
-repo becomes unnecessary. That is the intended end state, and rule 5 alone is
-90% of it.
+`default` and tags its own untagged routes, `publish.py` shrinks to nothing and
+`hanzo.yaml` becomes a byte copy — or this repo becomes unnecessary. That is the
+intended end state, and rule 5 alone is 90% of what is left.
 
 ### Three versions, three meanings, and they must not be collapsed
 
 - the **API's** version is `/v1`, in the path, immutable;
-- the **emitting release** is `info.x-spec.ref` (and `.spec-lock`), today
-  `v1.801.383` — the release `api.hanzo.ai` actually serves;
+- the **emitting release** is `info.x-spec.ref` (and `.spec-lock`), and the rule
+  for choosing it is not "the newest": it is the newest release `api.hanzo.ai`
+  fully answers for, which `--served` decides. Cloud's `main` runs ahead of the
+  deployment — measured at 108 commits and 60 published-but-unserved operations —
+  so pinning there would publish 60 dead endpoints to every SDK, doc page and
+  agent skill;
 - `info.version` is **8.0.0**, the generation of this PUBLICATION, and it is what
   every SDK's package version is cut from (`sdks.yaml`'s rust row pins
   `packageVersion` to it). It may only move forward: putting the cloud ref there
@@ -168,7 +178,7 @@ repo becomes unnecessary. That is the intended end state, and rule 5 alone is
 The document says which product owns an operation. It does not say which DOMAIN
 a product belongs to when a reader is shown the whole API at once, and there is
 no source in the code for that — a doc site's movements are a taste decision
-about a reader. So `capabilities.yaml` groups the document's 180 tags into 8
+about a reader. So `capabilities.yaml` groups the document's tags into nine
 domains, and `publish.py` gates it BOTH ways: a served capability it does not
 group fails the publish, and a name it groups that the document does not carry
 fails too. The list cannot describe an API other than the one served; it can only
@@ -186,7 +196,7 @@ leaves the release it stops.
 | `test_publish.py` | does the committed artifact hold the six rules, offline? | nothing | same |
 | `test_flows.py` | does every operationId `flows.yaml` names still exist? | nothing | same |
 | `test_skills.py` | is the skills surface deterministic and well-formed? | nothing | same |
-| `publish.py --check` | is `hanzo.yaml` what its own pinned input projects to? | a hanzoai/cloud checkout | `spec sync`, every push and PR |
+| `publish.py --check` | is `hanzo.yaml` what its own pinned input projects to? | a hanzo-inc/cloud checkout | `spec sync`, every push and PR |
 | `publish.py --current` | has cloud's document moved past the pin? | same | same workflow, hourly clock only |
 | `skills.py --check` | did `dist/` drift from the document? | nothing | on demand |
 | `generate.py --check` | did a committed client drift from the document? | nothing | each SDK repo's own CI |
@@ -194,7 +204,7 @@ leaves the release it stops.
 **The `needs` column is the whole lesson, and it was learned the expensive way.**
 `--check` is the better question and it was the only one gating this artifact, so
 when it turned out it could not run, nothing did. It needs a checkout of
-hanzoai/cloud, which is PRIVATE; hanzoai is on the GitHub **Free** plan, where an
+hanzo-inc/cloud, which is PRIVATE; hanzoai is on the GitHub **Free** plan, where an
 org secret resolves to the empty string inside a private repo; and this repo's
 one repo-level secret is `SDK_DISPATCH_TOKEN`. On top of that, both callers had
 been moved to `.hanzo/workflows`, which only git.hanzo.ai collects, and nothing
@@ -204,12 +214,12 @@ it PULLS from github rather than receiving from anyone, so no forge collected
 either file and `gh workflow list` returned nothing at all. Both callers live in
 `.github/workflows` now, which is why they run.
 
-Measured on that state: the pin was **81 hanzoai/cloud commits stale**,
+Measured on that state: the pin was **81 hanzo-inc/cloud commits stale**,
 `hanzo.yaml` carried a **hand edit** (a route deleted straight out of a generated
 file), `--check` exited 1, `--current` exited 1, and `test_publish.py` failed —
 three red gates on `main`, none of them running anywhere. The published document
 advertised **19 operations nothing serves**, including `POST /v1/admin/credits`,
-a money mint hanzoai/cloud had deleted.
+a money mint hanzo-inc/cloud had deleted.
 
 `--served` is deliberately the WEAKER question, because it needs nothing: cloud
 serves its own emission unauthenticated at `/v1/openapi.json`, so the running
@@ -225,7 +235,7 @@ broken artifact, and failing an unrelated PR for it trains people to ignore red.
 ### Which remote is cloud's main — discovered, never named
 
 `--current` asked `origin/main` for two years, and `origin` is not a fact about a
-checkout, only the name a clone happened to use. hanzoai/cloud answers on several
+checkout, only the name a clone happened to use. hanzo-inc/cloud answers on several
 remotes and they are NOT one lineage: where `origin` is the GitHub OSS mirror,
 `origin/main` holds no `openapi.yaml` at its root at all, so the question went to
 a repository that does not carry the document and could only die or agree by
@@ -267,12 +277,12 @@ separate functions here (`refuted()` fetches; the caller decides).
 |---|---|---|
 | `hanzoai/{python,js}-sdk` | `hanzo.yaml` via `generate.py`, unless a `.spec-lock` names a release — then cloud's own document | no |
 | `hanzo-go/sdk` | `hanzo.yaml` via its own `scripts/generate.sh` | no |
-| `hanzo-rs/sdk` | `hanzoai/cloud@ref:openapi.yaml` directly, from git.hanzo.ai — it passes `--skip-validate-spec` and `cargo build` is the real gate | no |
-| `hanzoai/cloud` agent-skills | `hanzo.yaml` via `skills.py` | no |
+| `hanzo-rs/sdk` | `hanzo-inc/cloud@ref:openapi.yaml` directly, from git.hanzo.ai — it passes `--skip-validate-spec` and `cargo build` is the real gate | no |
+| `hanzo-inc/cloud` agent-skills | `hanzo.yaml` via `skills.py` | no |
 | `hanzoai/console` proxy-allow test | `hanzo.yaml` | no |
 | `hanzoai/world` cloud-pulse | `hanzo.yaml` | no |
-| the doc site | `hanzoai/cloud@ref:openapi.yaml` directly, from git.hanzo.ai | no |
-| `hanzoai/cli` | `hanzoai/cloud@ref:openapi.yaml` directly — it needs raw existence, not codegen | no |
+| the doc site | `hanzo-inc/cloud@ref:openapi.yaml` directly, from git.hanzo.ai | no |
+| `hanzoai/cli` | `hanzo-inc/cloud@ref:openapi.yaml` directly — it needs raw existence, not codegen | no |
 
 **The doc site left this document, and the reason generalises.** The six rules
 make a document GENERATABLE; a doc page needs none of them, because it reads
@@ -283,7 +293,7 @@ each where the document has one, one, one and two. A consumer belongs here only
 while it needs what `publish.py` adds. Codegen does; prose does not.
 
 **Reading the document is a forge operation now.** `generate.py`'s `fetch()`
-asked api.github.com, which mirrors hanzoai/cloud thousands of commits behind and
+asked api.github.com, which mirrors hanzo-inc/cloud thousands of commits behind and
 does not serve openapi.yaml at all, so it could only 404 — and it reported that
 404 as a missing credential, which sent readers hunting for a token to fix a host
 with no file on it. One host, one credential: `git.hanzo.ai/v1` and `FORGE_TOKEN`.
@@ -299,7 +309,7 @@ operation's own TAG — never by path prefix, because the two disagree wherever 
 binary answers at a noun that is not its name (`/v1/chat/completions` is `chat`).
 506 skills across 159 capabilities × 3 brands.
 
-## Handed to hanzoai/cloud — the whole cost of this change, itemised
+## Handed to hanzo-inc/cloud — the whole cost of this change, itemised
 
 Nothing below is fixable in this repo, and every item is measured at
 `cloud@v1.801.383`.
@@ -443,7 +453,7 @@ lives once, in `generate.py`.
 
 | Lang | Canonical repo | Generator | Ships as | Driven by |
 |------|------|-----------|---------|---------|
-| Python | `hanzoai/python-sdk` | `python` (urllib3, pydantic v2) | `hanzoai` on PyPI (`pkg/hanzoai/cloud`) | `generate.py` |
+| Python | `hanzoai/python-sdk` | `python` (urllib3, pydantic v2) | `hanzoai` on PyPI (`pkg/hanzo-inc/cloud`) | `generate.py` |
 | TypeScript | `hanzoai/js-sdk` | `typescript-axios` | `hanzoai` on npm (`src/`) | `generate.py` |
 | Java | `hanzoai/java-sdk` | `java` (okhttp-gson) | `ai.hanzo:hanzo-java-cloud` | `generate.py` |
 | Kotlin | `hanzoai/kotlin-sdk` | `kotlin` (okhttp4+gson) | `ai.hanzo:hanzo-kotlin-cloud` | `generate.py` |
@@ -470,7 +480,7 @@ flags — right about the risk, wrong about the address. `templates:` names a
 directory under THIS repo (`templates/rust/`), so the override and its flags land
 in one commit. The departure is what drifted: its script defaulted to
 `hanzoai/openapi` `hanzo.yaml@main` while the `.spec-lock` beside it named
-`hanzoai/cloud` `openapi.yaml` at a commit. Regenerating at the ref that lock
+`hanzo-inc/cloud` `openapi.yaml` at a commit. Regenerating at the ref that lock
 named, through the driver, reports `[rust] clean` — byte-identical to what the
 155-line script produced.
 
@@ -489,9 +499,9 @@ projection now, and because the alternative was measured to produce zero files
 in every language.
 
 **Open, for the fleet**: each SDK repo's `hanzo.yml` declares
-`client.spec.repo`, defaulting to `hanzoai/cloud`. Those should name
+`client.spec.repo`, defaulting to `hanzo-inc/cloud`. Those should name
 `hanzoai/openapi` / `hanzo.yaml` — the generatable projection — until rules 1–5
-land upstream, at which point they should name `hanzoai/cloud` again and mean it.
+land upstream, at which point they should name `hanzo-inc/cloud` again and mean it.
 Not changed here: those are other repos.
 
 Every SDK also renders `flows.yaml` into its `examples/` — the same six journeys,

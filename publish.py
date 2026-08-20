@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Publish `hanzo.yaml` — a PROJECTION of hanzoai/cloud's emitted document.
+"""Publish `hanzo.yaml` — a PROJECTION of hanzo-inc/cloud's emitted document.
 
-    python3 publish.py                 # re-pin to hanzoai/cloud's main, derive, write
+    python3 publish.py                 # re-pin to hanzo-inc/cloud's main, derive, write
     python3 publish.py --ref v1.801.383  # re-pin to one release
     python3 publish.py --check         # THE GATE: re-derive at the pinned ref and diff
     python3 publish.py --current       # has cloud's document moved past the pin?
     python3 publish.py --served        # THE GATE with no checkout: does the deployment answer for every published operation?
 
 THIS REPO DOES NOT DECIDE WHAT THE API IS. It never did well, and it no longer
-claims to. hanzoai/cloud emits `openapi.yaml` by projecting its own routers, and
+claims to. hanzo-inc/cloud emits `openapi.yaml` by projecting its own routers, and
 gates the emission by regenerating from source and failing on any diff — so it
 cannot describe a route the binary does not serve, and cannot miss one it does.
 That is the only description of this API with that property. Everything here is
@@ -55,7 +55,14 @@ INDEX = os.path.join(ROOT, "CAPABILITIES.md")
 REGISTRY = os.path.join(ROOT, "capabilities.yaml")
 CLOUD = os.environ.get("CLOUD_DIR") or os.path.join(os.path.dirname(ROOT), "cloud")
 
-SPEC_REPO = "hanzoai/cloud"
+# WHERE THE DOCUMENT IS, which is not where the name suggests. hanzoai/cloud is
+# the re-rooted OSS core — a short line sharing no ancestor with the product, and
+# carrying no openapi.yaml at all. So `--check` and `--current` were being put to
+# a tree that cannot answer either question: publish.py said "no remote of .cloud
+# carries openapi.yaml on `main`", and spec-sync reported that as a hand-edited
+# artifact. The product line is hanzo-inc/cloud, where every ref this repo and
+# every SDK has ever pinned resolves and hashes to the digest its lock names.
+SPEC_REPO = "hanzo-inc/cloud"
 SPEC_PATH = "openapi.yaml"
 # Cloud SERVES its own emission, unauthenticated, from the binary that is
 # actually running. It is the only input that can refute a published operation
@@ -84,7 +91,7 @@ def checkout(path):
     if subprocess.run(["git", "-C", path, "rev-parse", "--git-dir"],
                       capture_output=True).returncode:
         sys.exit(f"publish: no {SPEC_REPO} checkout at {path}\n"
-                 f"         git clone git@github.com:{SPEC_REPO} {path}\n"
+                 f"         git clone git@git.hanzo.ai:{SPEC_REPO} {path}\n"
                  f"         (or point --cloud / CLOUD_DIR at one)")
     return path
 
@@ -105,7 +112,7 @@ def source(repo):
     """The remote-tracking `main` that CARRIES the document.
 
     `origin` is not a fact about a checkout, it is the name a clone happened to
-    use. hanzoai/cloud answers on several remotes and they are NOT one lineage:
+    use. hanzo-inc/cloud answers on several remotes and they are NOT one lineage:
     where `origin` is the GitHub OSS mirror, `origin/main` holds no
     `openapi.yaml` at its root at all. So the one question this file exists to
     ask on a clock — is the pin still current? — was being put to a repository
@@ -114,11 +121,11 @@ def source(repo):
     nothing went red. A gate that cannot fail is not a gate.
 
     So the remote is DISCOVERED, never named: fetch every one, keep those whose
-    `main` holds the document, and take the one that contains all the others. A
-    checkout with a `forge` remote gets no special case — forge wins here
-    because it carries the file, and stops winning the day it stops carrying it.
-    Unreachable is not fatal (a mirror nobody can read decides nothing) but
-    stale is, which is why every remote is fetched before any is read.
+    `main` holds the document, and take the one that contains all the others. No
+    remote name is privileged: one wins because it carries the file, and stops
+    winning the day it stops carrying it. Unreachable is not fatal (a mirror
+    nobody can read decides nothing) but stale is, which is why every remote is
+    fetched before any is read.
     """
     ok = lambda *a: not subprocess.run(["git", "-C", repo, *a],
                                        capture_output=True).returncode
@@ -157,10 +164,10 @@ def refuted(url=SERVED):
     """Which PUBLISHED operations the deployment does not answer for.
 
     `--check` proves hanzo.yaml is the projection of a git ref. That is the
-    right question and it needs a hanzoai/cloud checkout to ask, so it can only
+    right question and it needs a hanzo-inc/cloud checkout to ask, so it can only
     run where a credential for a private repo exists — and this repo has none.
     So it has never run, and while it did not, this file went 81 commits stale
-    and shipped `POST /v1/admin/credits` to every SDK for a mint hanzoai/cloud
+    and shipped `POST /v1/admin/credits` to every SDK for a mint hanzo-inc/cloud
     had deleted. A published operation for a route nothing serves is not a stale
     document: `skills.py` turns it into a SKILL.md, which is a live instruction
     to an agent to call a dead endpoint.
@@ -255,7 +262,7 @@ def project(doc, groups):
 
     Nothing else. No operation is added, no served operation is removed, no
     prose is written — every summary and description below came out of a handler
-    doc comment in hanzoai/cloud.
+    doc comment in hanzo-inc/cloud.
     """
     paths, dropped_trace, dropped_compat, defaults, retagged = {}, 0, 0, 0, 0
     for path, item in sorted((doc.get("paths") or {}).items()):
@@ -300,7 +307,7 @@ def project(doc, groups):
             taken.add(genid(oid))
             op["operationId"] = oid
             if oid != base:
-                # The id hanzoai/cloud emitted, kept because the rename above is
+                # The id hanzo-inc/cloud emitted, kept because the rename above is
                 # a fact about GENERATORS and the id is also the WIRE NAME: it is
                 # what `POST /v1/mcp` answers to. Renaming it silently put
                 # `DeleteSession_2` in the MCP catalogue of three client
@@ -335,15 +342,6 @@ def project(doc, groups):
     out["paths"] = paths
     out["tags"] = tags
     out["x-tagGroups"] = tag_groups
-    # Cloud's emission declares no security scheme, so a generated client sends
-    # no Authorization header and every call 401s. One bearer JWT from Hanzo IAM
-    # authenticates every route; saying so is not a second opinion about the API.
-    components = dict(out.get("components") or {})
-    components.setdefault("securitySchemes", {
-        "bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT",
-                       "description": "A JWT issued by Hanzo IAM (https://hanzo.id)."}})
-    out["components"] = components
-    out["security"] = [{"bearerAuth": []}]
     return out, {
         "paths": len(paths), "ops": len(taken), "tags": len(tags),
         "described_tags": sum(1 for t in tags if t.get("description")),
@@ -373,12 +371,12 @@ def index(groups, doc):
             described[t["name"]] = " ".join(t["description"].split())
 
     out = ["<!-- GENERATED by publish.py from hanzo.yaml — DO NOT EDIT. "
-           "Change the API in hanzoai/cloud; group a new capability in "
+           f"Change the API in {SPEC_REPO}; group a new capability in "
            "capabilities.yaml; run `python3 publish.py`. -->", "",
            "# Hanzo Capability Manifest", "",
            f"Every capability the API serves, at "
            f"`{doc['info'].get('x-spec', {}).get('ref', '?')}`. GENERATED from "
-           f"`hanzo.yaml` — which is itself generated from hanzoai/cloud's own "
+           f"`hanzo.yaml` — which is itself generated from {SPEC_REPO}'s own "
            f"emission — so a name is on this page if and only if a router "
            f"registered operations under it. Nothing here is authored, and there "
            f"is nothing to author: a capability appears the release it starts "
@@ -444,7 +442,7 @@ def main():
     have = lock()
 
     # First, and before `checkout`: this is the one question that needs no
-    # hanzoai/cloud on disk, which is the whole reason it is the one in
+    # hanzo-inc/cloud on disk, which is the whole reason it is the one in
     # `hanzo.yml`'s `test:` block.
     if a.served:
         answer = refuted()
@@ -510,7 +508,7 @@ def main():
             print(f"publish: {', '.join(os.path.basename(f) for f in stale)} is not "
                   f"what {SPEC_REPO}@{ref} projects to.\n"
                   f"         This artifact is GENERATED — an edit to it describes a "
-                  f"release nobody shipped. Change the API in hanzoai/cloud, then run "
+                  f"release nobody shipped. Change the API in {SPEC_REPO}, then run "
                   f"`python3 publish.py`.")
             return 1
         print(f"hanzo.yaml is the projection of {SPEC_REPO}@{ref} "
