@@ -4,12 +4,12 @@ name: CI/CD
 # in the repo-root hanzo.yml, which platform.hanzo.ai reads too.
 # Builds + pushes the agent-skills artifact; auto-mirrors to registry.hanzo.ai.
 #
-# A WORKFLOW DIRECTORY IS NOT A PREFERENCE, IT IS AN ADDRESS THE FORGE READS.
+# A WORKFLOW DIRECTORY IS NOT A PREFERENCE, IT IS AN ADDRESS GIT.HANZO.AI READS.
 # GitHub collects only `.github/workflows`; git.hanzo.ai (Gitea) collects the
 # FIRST of WORKFLOW_DIRS that exists in the pushed commit and ignores the rest
 # (modules/actions/workflows.go, listWorkflowsInDirs breaks on the first hit),
 # which today is `.hanzo/workflows`. So the caller belongs at whichever path the
-# forge this repo LIVES ON reads, and hanzoai/openapi lives on GitHub:
+# Hanzo Git this repo LIVES ON reads, and hanzoai/openapi lives on GitHub:
 # git.hanzo.ai/hanzoai/openapi is a 404, there is no mirror.
 #
 # Moving both callers to `.hanzo/workflows` on 2026-07-30 therefore did not give
@@ -20,7 +20,7 @@ name: CI/CD
 #
 # The `uses:` path is the same trap one level down: a reusable is resolved
 # against the SAME directory allowlist ("uses:" path %q must be under a
-# configured workflow directory), so it must name the path the RESOLVING forge
+# configured workflow directory), so it must name the path the RESOLVING Hanzo Git
 # reads. hanzoai/ci publishes build.yml at BOTH paths from the same tag,
 # byte-identical apart from its header, so this is the same pipeline at @v1 —
 # addressed the way GitHub can resolve it.
