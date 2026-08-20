@@ -277,6 +277,23 @@ components:
         updatedAt:
           type: integer
       type: object
+    Allowance:
+      properties:
+        limit:
+          description: calls the plan allows per period; 0 = unbounded
+          type: integer
+        plan:
+          description: the tier the limit came from
+          type: string
+        resets:
+          description: unix seconds; when the count starts again
+          type: integer
+        spent:
+          description: the subject is at the limit
+          type: boolean
+        used:
+          type: integer
+      type: object
     Analysis:
       properties:
         alpha:
@@ -1836,6 +1853,42 @@ components:
         repo:
           type: string
         symbol:
+          type: string
+      type: object
+    ClaimRow:
+      properties:
+        at:
+          description: At is when a stored row was recorded. Zero for a seed row.
+          format: date-time
+          type: string
+        benchmark:
+          description: Benchmark is the canonical test id the claim is about, from /catalog.
+          type: string
+        by:
+          description: By is who recorded it, when the caller said.
+          type: string
+        model:
+          description: Model is the system the score is claimed for.
+          type: string
+        origin:
+          description: 'Origin is "seed" for a compiled row and "stored" for one written through
+
+            this surface. It is the difference between what we shipped and what an
+
+            operator has since corrected.'
+          type: string
+        protocol:
+          description: "Protocol records HOW it was scored \u2014 provider-reported, agentic,\nthird-party-leaderboard \u2014\
+            \ so a provider card is never read as a measurement."
+          type: string
+        provider:
+          description: "Provider is who the claim belongs to \u2014 the lab or leaderboard whose number\nthis is."
+          type: string
+        score:
+          description: Score is the reported aggregate, as a percentage.
+          type: number
+        source:
+          description: Source is the citation the row was read from.
           type: string
       type: object
     ClearReferenceOut:
@@ -4538,12 +4591,38 @@ components:
       type: object
     LeaderRow:
       properties:
+        ciHigh:
+          description: "CIHigh is the upper bound of that interval. Wilson rather than the normal\napproximation because the\
+            \ normal one produces bounds past 100 exactly where\nbenchmark scores live \u2014 at 194/198 that is the top of\
+            \ the board, not a\ncorner case."
+          type: number
+        ciLow:
+          description: "CILow and CIHigh are the 95% Wilson interval on Measured, in percent. They\nare what makes the score\
+            \ comparable: at n=198 a 98% carries roughly \xB12\npoints, so most differences at the top of a board are not\
+            \ distinguishable\nand a bare number implies a precision it does not have. Absent when there\nis no measurement."
+          type: number
+        claims:
+          description: 'Claims is how many independent claims exist for this model on this
+
+            benchmark. More than one means several sources reported it.'
+          type: integer
         gap:
           description: "published \u2212 measured (the arena signal)"
+          type: number
+        mean:
+          description: 'Mean is the unweighted average of every claim, which answers a different
+
+            question from Published: what the field says on average, rather than what
+
+            the vendor says about itself. With one claim the two are equal.'
           type: number
         measured:
           description: hanzo-measured accuracy % (nil if unrun)
           type: number
+        measuredAt:
+          description: MeasuredAt is when the run behind Measured was recorded.
+          format: date-time
+          type: string
         model:
           description: the model this row scores
           type: string
@@ -4555,6 +4634,16 @@ components:
           type: string
         published:
           description: provider-claimed % (nil if none)
+          type: number
+        run:
+          description: "Run names the measurement Measured came from, and MeasuredAt is when it\nran. A score with no date\
+            \ is not a fact about a model, it is a fact about\na model on a day \u2014 and models change, so the date is what\
+            \ makes the number\ncheckable rather than merely quoted."
+          type: string
+        spread:
+          description: "Spread is the distance between the highest and lowest of them, nil when\nthere is only one. It is\
+            \ the disagreement AMONG sources, which a single\nPublished number cannot show \u2014 signal in the same way the\n\
+            published-minus-measured gap is."
           type: number
       type: object
     LeaderboardRow:
@@ -5307,6 +5396,22 @@ components:
         type:
           description: 'Type is the transform: redirectScheme, stripPrefix, addPrefix or headers.'
           type: string
+      type: object
+    ModelHistory:
+      properties:
+        model:
+          description: Model is the system these runs measured.
+          type: string
+        points:
+          description: Points is every run, oldest first.
+          items:
+            $ref: '#/components/schemas/RunPoint'
+          type: array
+        trend:
+          description: 'Trend is the change from the first run to the last, absent when there has
+
+            only been one. It answers the question a list of points makes you compute.'
+          type: number
       type: object
     ModelRoute:
       properties:
@@ -7807,6 +7912,29 @@ components:
 
             its own timeout rather than for the whole lease.'
           type: integer
+      type: object
+    RunPoint:
+      properties:
+        at:
+          description: At is when the run was recorded.
+          format: date-time
+          type: string
+        delta:
+          description: 'Delta is the change in score from the previous run for this model, absent
+
+            on the first. It is the number the whole surface exists to make visible.'
+          type: number
+        n:
+          description: 'N is how many items the run covered. Two runs are only comparable at the
+
+            same n, which is why it travels with every point rather than being assumed.'
+          type: integer
+        run:
+          description: Run is the measurement id these attempts were recorded under.
+          type: string
+        score:
+          description: Score is accuracy over the items this run covered, as a percentage.
+          type: number
       type: object
     SMS:
       properties:
@@ -14955,6 +15083,19 @@ components:
             makes metered spend, then "qualified", then "credited".'
           type: string
       type: object
+    claimsOut:
+      properties:
+        data:
+          description: "Data is one row per (benchmark, model, SOURCE) \u2014 every independent claim,\nnot one per model.\
+            \ Effective values only: the row that wins after layering\nfor each source, never the superseded readings behind\
+            \ it."
+          items:
+            $ref: '#/components/schemas/ClaimRow'
+          type: array
+        total:
+          description: Total is how many rows Data holds.
+          type: integer
+      type: object
     clickCount:
       properties:
         counted:
@@ -17337,6 +17478,45 @@ components:
           description: Yellow is how many have drifted within tolerance.
           type: integer
       type: object
+    edgeState:
+      properties:
+        configured:
+          description: 'Configured is whether the edge holds credentials to act at all. False means
+
+            every purge is a no-op.'
+          type: boolean
+        error:
+          description: Error is the blocker, so an operator reads it instead of guessing at it.
+          type: string
+        freshness:
+          description: 'Freshness says, in one phrase, how long after a publish a reader sees it.
+
+            It is the sentence an operator actually wants; the booleans above are how
+
+            a machine reads the same fact.'
+          type: string
+        policy:
+          additionalProperties:
+            type: string
+          description: 'Policy is the Cache-Control this edge serves each class of object with. It
+
+            is DERIVED from the one canonical function, never a second copy: half the
+
+            confusion when a publish looks stale is not knowing what the TTLs are, and
+
+            reading them out of the source is not something an operator should have to
+
+            do to answer "how long until this is live".'
+          type: object
+        provider:
+          description: 'Provider is the CDN behind this edge, or "none". It is the first thing an
+
+            operator wants and the only vendor name this API returns.'
+          type: string
+        status:
+          description: Status is "ok" when a publish reaches readers immediately, else "degraded".
+          type: string
+      type: object
     embedStatusResp:
       properties:
         app:
@@ -18692,6 +18872,51 @@ components:
             vocabulary means one thing to learn, and it is theirs.'
           type: string
       type: object
+    gitlabProjectView:
+      properties:
+        cloneUrl:
+          description: CloneURL is the https remote to clone.
+          type: string
+        defaultBranch:
+          description: 'DefaultBranch is the branch a clone lands on ("main" when GitLab names none,
+
+            which is what an empty project reports).'
+          type: string
+        description:
+          description: Description is the project's own, empty when it has none.
+          type: string
+        fullName:
+          description: "FullName is the namespace path (\"acme/widgets\", \"acme/team/widgets\" for a\nsubgroup) \u2014 the\
+            \ string GitLab calls path_with_namespace."
+          type: string
+        htmlUrl:
+          description: HTMLURL is the project's page.
+          type: string
+        name:
+          description: Name is the project's path segment ("widgets"), not its display name.
+          type: string
+        private:
+          description: Private is true for anything not publicly visible (private or internal).
+          type: boolean
+        pushedAt:
+          description: PushedAt is RFC3339 last activity, so a client can sort or say "2h ago".
+          type: string
+      type: object
+    gitlabProjectsOut:
+      properties:
+        account:
+          description: 'Account is the connected GitLab username, so a client can label the list
+
+            without a second call. Empty when the connection recorded none.'
+          type: string
+        projects:
+          description: 'Projects is every project the token reaches, newest activity first. Never
+
+            null; [] when the account has none.'
+          items:
+            $ref: '#/components/schemas/gitlabProjectView'
+          type: array
+      type: object
     gpuAlertList:
       properties:
         alerts:
@@ -19060,6 +19285,20 @@ components:
 
             characters is clipped rather than refused.'
           type: string
+      type: object
+    historyOut:
+      properties:
+        benchmark:
+          description: Benchmark is the catalog id these histories are about.
+          type: string
+        data:
+          description: Data is one entry per model, ordered by model name.
+          items:
+            $ref: '#/components/schemas/ModelHistory'
+          type: array
+        total:
+          description: Total is how many models Data holds.
+          type: integer
       type: object
     hit:
       properties:
@@ -19496,6 +19735,8 @@ components:
           type: array
         accountMenu:
           type: string
+        avatar:
+          type: string
         balanceCredit:
           type: number
         balanceCurrency:
@@ -19522,6 +19763,8 @@ components:
         disableSignin:
           type: boolean
         displayName:
+          type: string
+        emoji:
           type: string
         enableSoftDeletion:
           type: boolean
@@ -19927,6 +20170,13 @@ components:
           type: array
         accountMenu:
           type: string
+        avatar:
+          description: "How the organization appears across Hanzo \u2014 the square mark beside its\nname \u2014 as an image\
+            \ or as one emoji, never both. It is the pair a person\ncarries (User.Avatar) under the same names, resolved the\
+            \ same way, so a\nscreen draws a subject without asking which kind of subject it has. Both\nhalves live on the\
+            \ row: a mark that appears everywhere cannot be kept on\none device. Written through schema.MarkOf; Logo and LogoDark\
+            \ above are a\ndifferent thing, the wordmark a login screen draws."
+          type: string
         balanceCredit:
           type: number
         balanceCurrency:
@@ -19953,6 +20203,8 @@ components:
         disableSignin:
           type: boolean
         displayName:
+          type: string
+        emoji:
           type: string
         enableSoftDeletion:
           type: boolean
@@ -20420,6 +20672,15 @@ components:
             type: string
           type: array
       type: object
+    iam.SearchOrganizationsOutput:
+      properties:
+        cursor:
+          type: string
+        organizations:
+          items:
+            $ref: '#/components/schemas/iam.Organization'
+          type: array
+      type: object
     iam.Session:
       properties:
         application:
@@ -20463,6 +20724,17 @@ components:
       - owner
       - name
       - application
+      type: object
+    iam.SetAvatarInput:
+      properties:
+        avatar:
+          type: string
+        emoji:
+          type: string
+        name:
+          type: string
+        owner:
+          type: string
       type: object
     iam.SigninItem:
       properties:
@@ -20627,6 +20899,8 @@ components:
           type: array
         accountMenu:
           type: string
+        avatar:
+          type: string
         balanceCredit:
           type: number
         balanceCurrency:
@@ -20653,6 +20927,8 @@ components:
         disableSignin:
           type: boolean
         displayName:
+          type: string
+        emoji:
           type: string
         enableSoftDeletion:
           type: boolean
@@ -21244,6 +21520,12 @@ components:
           type: string
         attachment:
           type: string
+        attestationFormat:
+          description: "AttestationFormat is the statement format the authenticator attested in\n(\"packed\", \"apple\", \"\
+            none\", \u2026), which is a DIFFERENT value from the\nattestation type above. The library reads it back when resolving\
+            \ the FIDO\nAppID extension, so a row that dropped it would round-trip a credential the\nverifier no longer recognises\
+            \ as the one it stored."
+          type: string
         attestationType:
           type: string
         backupEligible:
@@ -21320,6 +21602,22 @@ components:
           type: array
         updatedAt:
           format: date-time
+          type: string
+      type: object
+    iam.accountBody:
+      properties:
+        avatar:
+          type: string
+        bio:
+          type: string
+        displayName:
+          type: string
+        homepage:
+          type: string
+      type: object
+    iam.assumeBody:
+      properties:
+        org:
           type: string
       type: object
     iam.auditlogs.Input:
@@ -38865,6 +39163,32 @@ components:
             \ own scope \u2014 there are no phantom listings."
           type: string
       type: object
+    publishedClaim:
+      properties:
+        benchmark:
+          description: Benchmark is the canonical test id the claim is about, from /catalog.
+          type: string
+        model:
+          description: Model is the system the score is claimed for.
+          type: string
+        protocol:
+          description: "Protocol records HOW it was scored \u2014 provider-reported, agentic,\nthird-party-leaderboard \u2014\
+            \ because a provider card and a third party running\nits own harness are different kinds of number and must not\
+            \ be blended."
+          type: string
+        provider:
+          description: "Provider is who the claim belongs to \u2014 the lab or leaderboard whose number\nthis is. It joins\
+            \ a claim to the attempts measured for that same model."
+          type: string
+        score:
+          description: Score is the reported aggregate, as a percentage.
+          type: number
+        source:
+          description: 'Source is the citation the row was read from. A claim without one is a
+
+            number nobody can check, so every write requires it.'
+          type: string
+      type: object
     pullList:
       properties:
         data:
@@ -39007,6 +39331,32 @@ components:
         sshUrl:
           description: SSHURL is the repo's scp-style SSH remote.
           type: string
+      type: object
+    putClaimsIn:
+      properties:
+        by:
+          description: "By is who is recording them \u2014 a person, or the importer's name."
+          type: string
+        data:
+          description: 'Data is the claims to record. One row is a correction; many is an import.
+
+            There is no separate bulk endpoint because there is no separate operation:
+
+            importing a leaderboard and fixing one number are the same write.'
+          items:
+            $ref: '#/components/schemas/publishedClaim'
+          type: array
+      type: object
+    putClaimsOut:
+      properties:
+        recorded:
+          description: Recorded is how many rows were written.
+          type: integer
+        rejected:
+          description: Rejected names the rows that were not, and why.
+          items:
+            type: string
+          type: array
       type: object
     quoteList:
       properties:
@@ -45767,8 +46117,8 @@ info:
   x-spec:
     repo: hanzo-inc/cloud
     path: openapi.yaml
-    ref: 38a803e4a90cb39047f02536b8e22bcdc34e16b8
-    sha256: eb375622d4d53653672031aeb2fb473424b26baa975be78693226a04a5005571
+    ref: cfc36010d03bd54adcab606b6c9673f7fbc39af3
+    sha256: 43e14fea63817774b8bdb08852ca73cb51286cebdf0b5407462750aa5b8cfa16
 openapi: 3.1.0
 paths:
   /:
@@ -45860,6 +46210,21 @@ paths:
       x-app: iam
       tags:
       - iam
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /.well-known/openapi.json:
+    get:
+      description: "The same document /v1/openapi.json serves, at the address RFC 8615 reserves for discovery \u2014 one handler\
+        \ over one render, so the two cannot describe different APIs.\n\nIt exists because a client that has never seen this\
+        \ API probes here first. Prefer /v1/openapi.json when you already know the API: it is canonical, and it is what the\
+        \ document's own self-description names."
+      operationId: get_.well-known_openapi.json
+      security: []
+      summary: The API description, at the conventional address
+      x-app: openapi
+      tags:
+      - openapi
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -57785,6 +58150,28 @@ paths:
       tags:
       - ai
       x-app: github.com/hanzoai/ai
+  /v1/allowance:
+    get:
+      description: "Answers what the CALLER has left of their plan's free-call allowance this period,\nand the instant the\
+        \ count starts again.\n\nThis is the number a product shows beside the composer \u2014 \"17 of 20 left today\" \u2014\
+        \nand the moment to offer a plan is when it reaches zero. It READS: asking does not\nspend, so a page that polls it\
+        \ costs the caller nothing.\n\nThe subject is the caller's own, resolved from the verified credential, and can\nnever\
+        \ be named in the request \u2014 so this is a mirror, not a lookup of someone else.\nAn unauthenticated caller is\
+        \ refused: there is no allowance without someone to\nhold it.\n\nA named handler, not a closure, so zipdoc can lift\
+        \ this prose into the registry."
+      operationId: get_allowance
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Allowance'
+          description: ok
+      summary: Answers what the CALLER has left of their plan's free-call allowance this period, and the instant the count
+        starts again.
+      tags:
+      - allowance
+      x-app: allowance
   /v1/analytics/health:
     get:
       description: "Health reports whether the event plane can take a write and the warehouse can\nanswer a read.\n\nIt reports\
@@ -58098,8 +58485,8 @@ paths:
     post:
       description: "The OpenAI-compatible TTS endpoint (POST /v1/audio/speech). It\nauthenticates the caller, resolves `model`\
         \ to its TTS provider (the SAME model-route\nresolution the chat/images/video endpoints use \u2014 so a BYO node registered\
-        \ as a TTS\nprovider works transparently), synthesizes the audio, and streams the bytes back.\nOne code path, OpenAI-shaped,\
-        \ no store/message coupling (unlike the legacy\n/v1/generate-text-to-speech-audio which is bound to a chat store)."
+        \ as a TTS\nprovider works transparently), synthesizes the audio, and streams the bytes back.\nThis is the ONE way\
+        \ to synthesize speech: OpenAI-shaped, with no store or\nmessage coupling, so a caller needs no chat to speak."
       operationId: post_audio_speech
       summary: The OpenAI-compatible TTS endpoint (POST /v1/audio/speech).
       tags:
@@ -58114,8 +58501,8 @@ paths:
       description: "The OpenAI-compatible STT endpoint\n(POST /v1/audio/transcriptions, multipart: file + model [+ language\
         \ +\nresponse_format]). It mirrors AudioSpeech exactly: authenticate the caller,\nresolve `model` to its STT provider\
         \ through the SAME model-route resolution\n(so the in-cluster speech service \u2014 or any BYO node registered as\
-        \ an STT\nprovider \u2014 works transparently), transcribe, and return the OpenAI body.\nOne code path, OpenAI-shaped,\
-        \ no store coupling (unlike the legacy\n/v1/process-speech-to-text, which is bound to a chat store)."
+        \ an STT\nprovider \u2014 works transparently), transcribe, and return the OpenAI body.\nThis is the ONE way to transcribe:\
+        \ OpenAI-shaped, with no store coupling, so a\ncaller needs no chat to be heard."
       operationId: post_audio_transcriptions
       summary: 'The OpenAI-compatible STT endpoint (POST /v1/audio/transcriptions, multipart: file + model [+ language + response_format]).'
       tags:
@@ -59396,6 +59783,88 @@ paths:
       tags:
       - benchmark
       x-app: benchmark
+  /v1/benchmark/claims:
+    get:
+      description: "Lists the effective published claims: what the leaderboard will use for\neach (benchmark, model) after\
+        \ the seed, the import and any stored correction\nare layered. It answers the operator's question \u2014 what does\
+        \ this arena\ncurrently believe someone else reported, and did we ship that or fix it.\n\nEffective values only. The\
+        \ history of a key lives in the append-only file and\nis not what this op is for; a list that returned every superseded\
+        \ row would\nmake the common question the hard one."
+      operationId: get_benchmark_claims
+      parameters:
+      - description: Benchmark filters to one benchmark id. Empty returns every benchmark.
+        in: query
+        name: Benchmark
+        required: false
+        schema:
+          type: string
+      - description: Model filters to one model. Empty returns every model.
+        in: query
+        name: Model
+        required: false
+        schema:
+          type: string
+      - description: "Provider filters to one lab or leaderboard \u2014 the way to read what a single\nsource claims across\
+          \ every model it covers."
+        in: query
+        name: Provider
+        required: false
+        schema:
+          type: string
+      - description: 'Source filters to one citation, which is the finest grain there is: a
+
+          source is what makes two claims about one model independent rather than a
+
+          restatement of each other.'
+        in: query
+        name: Source
+        required: false
+        schema:
+          type: string
+      - description: 'Protocol filters by HOW a claim was scored, so provider cards can be read
+
+          apart from third parties running their own harness.'
+        in: query
+        name: Protocol
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/claimsOut'
+          description: ok
+      summary: 'Lists the effective published claims: what the leaderboard will use for each (benchmark, model) after the
+        seed, the import and any stored correction are layered.'
+      tags:
+      - benchmark
+      x-app: benchmark
+    post:
+      description: "Records published claims: one to correct a number, many to import a\nleaderboard. Every row must carry\
+        \ a Source, because a claim without its\ncitation is a number nobody can check \u2014 and an unattributed number in\
+        \ the\npublished plane is indistinguishable from a measurement, which is the one\nconfusion this whole surface is\
+        \ built to prevent.\n\nWrites are append-only, so this never destroys the value it replaces. A\nvendor restating a\
+        \ score leaves both rows on disk, which is how the restating\nitself becomes visible."
+      operationId: post_benchmark_claims
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/putClaimsIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/putClaimsOut'
+          description: ok
+      summary: 'Records published claims: one to correct a number, many to import a leaderboard.'
+      tags:
+      - benchmark
+      x-app: benchmark
   /v1/benchmark/compare:
     get:
       description: "Is the ONLY valid arm-vs-arm test: it pairs the two models on the items\nBOTH completed, and answers rescue\
@@ -59431,6 +59900,39 @@ paths:
           description: ok
       summary: 'Is the ONLY valid arm-vs-arm test: it pairs the two models on the items BOTH completed, and answers rescue
         and damage counts with an exact-McNemar p.'
+      tags:
+      - benchmark
+      x-app: benchmark
+  /v1/benchmark/history:
+    get:
+      description: "Returns each model's measured score per run over time, oldest first,\nwith the change between runs.\n\n\
+        This is the counterweight to a leaderboard: the board shows the latest run\nbecause that is what \"how good is it\"\
+        \ means, and a single latest number cannot\ndistinguish a model that has always been strong from one that just improved,\n\
+        or from one that regressed after a provider changed something. Both matter for\nrouting, and only one of them is visible\
+        \ on a board.\n\nRuns with no id \u2014 attempts recorded before runs existed \u2014 group under the\nempty run, which\
+        \ is honestly what they are: one undated measurement."
+      operationId: get_benchmark_history
+      parameters:
+      - description: Benchmark is the catalog id to read, defaulting to gpqa_diamond.
+        in: query
+        name: Benchmark
+        required: false
+        schema:
+          type: string
+      - description: Model filters to one model. Empty returns every model measured.
+        in: query
+        name: Model
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/historyOut'
+          description: ok
+      summary: Returns each model's measured score per run over time, oldest first, with the change between runs.
       tags:
       - benchmark
       x-app: benchmark
@@ -59694,6 +60196,24 @@ paths:
         \ read /v1/billing/credits. A subject with no credit is zero, which is an answer and not an error."
       operationId: get_billing_credit-balance
       summary: What is left of your credit, as one number
+      tags:
+      - billing
+      x-app: commerce
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/billing/credit-balance/breakdown:
+    get:
+      description: 'Returns the same balance /v1/billing/credit-balance reports, split by the tag each grant carries, so a
+        reader can tell trial credit from bought credit and show the earliest expiry within each group. A console needs the
+        split to say what will lapse and when; the single number cannot.
+
+
+        The subject is pinned to the caller before the handler runs, exactly as in the sibling reads, so the userId parameter
+        can never name another tenant. A subject with no grants is an empty breakdown and a zero total, which is an answer
+        and not an error.'
+      operationId: get_billing_credit-balance_breakdown
+      summary: What is left of your credit, grouped by where it came from
       tags:
       - billing
       x-app: commerce
@@ -63214,6 +63734,17 @@ paths:
       - chat
       x-app: github.com/hanzoai/ai
       x-public: true
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/chat/public:
+    post:
+      description: Serves one completion to a caller with no account.
+      operationId: post_chat_public
+      summary: Serves one completion to a caller with no account.
+      tags:
+      - chat
+      x-app: github.com/hanzoai/ai
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
@@ -68684,10 +69215,9 @@ paths:
       x-app: compliance
   /v1/compliance/audit:
     get:
-      description: "AuditRead is the compliance-scoped read of the SHARED tamper-evident audit plane \u2014\nthe SOC 2 posture\
-        \ surface (privileged actions: who started/decided what, when). The\norg is PINNED to the caller's validated org and\
-        \ the rows are narrowed to\ncompliance.* actions. Fail-closed: no principal is a 403, no configured audit\nstore a\
-        \ 501."
+      description: "AuditRead is the compliance read of the SHARED tamper-evident audit plane \u2014\nthe SOC 2 posture surface\
+        \ (privileged actions: who started/decided what, when). The\norg is PINNED to the caller's validated org and the rows\
+        \ are narrowed to\ncompliance.* actions. Fail-closed: no principal is a 403, no configured audit\nstore a 501."
       operationId: get_compliance_audit
       parameters:
       - description: 'Result filters rows by outcome result: success, deny, or error; empty means all.'
@@ -68703,8 +69233,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/auditList'
           description: ok
-      summary: "AuditRead is the compliance-scoped read of the SHARED tamper-evident audit plane \u2014 the SOC 2 posture\
-        \ surface (privileged actions: who started/decided what, when)."
+      summary: "AuditRead is the compliance read of the SHARED tamper-evident audit plane \u2014 the SOC 2 posture surface\
+        \ (privileged actions: who started/decided what, when)."
       tags:
       - compliance
       x-app: compliance
@@ -71982,6 +72512,38 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/edge:
+    get:
+      description: 'health reports whether a publish reaches readers, rather than whether it was
+
+        accepted. Those are different questions and only the second one was ever
+
+        visible.
+
+
+        It asks the edge and nothing else. There is no live call to the provider here:
+
+        Configured is a local fact, it is the fact that was missing, and a health check
+
+        that spends a third-party API call is one an operator learns not to run.'
+      operationId: get_edge
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/edgeState'
+          description: ok
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/edgeState'
+          description: service unavailable
+      summary: health reports whether a publish reaches readers, rather than whether it was accepted.
+      tags:
+      - edge
+      x-app: projects
   /v1/embed:
     get:
       description: "Reports whether one of this brand's shared embedded apps (cms, erp,\nhelp) may be framed by the caller\
@@ -72433,13 +72995,15 @@ paths:
           description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/esign/o/{org}/sign/{token}:
     get:
-      description: "Answers the document, the recipient it identifies, the fields THAT recipient must fill, and the PDF to\
-        \ display. The first open also marks the recipient as having opened it and records that on the audit trail, so this\
-        \ read has a side effect by design.\n\nThis is the signer's door and it takes NO account: the signing token is the\
-        \ entire credential, and it names the recipient, so a signer sees only their own fields and never the other recipients'\
-        \ tokens. The `:org` segment selects which tenant's store is opened, and the token is then looked up inside it \u2014\
-        \ so a token presented under the wrong org simply does not resolve. An unknown or wrong-org token is a 401, never\
-        \ a hint that some other document exists."
+      description: 'Answers the document, the recipient it identifies, the fields THAT recipient must fill, and the PDF to
+        display. The first open also marks the recipient as having opened it and records that on the audit trail, so this
+        read has a side effect by design.
+
+
+        This is the signer''s door and it takes NO account: the signing token is the entire credential, and it names the recipient,
+        so a signer sees only their own fields and never the other recipients'' tokens. The token resolves to its owning tenant
+        FIRST, before any per-tenant store is opened, and the `:org` segment is only checked against that answer. An unknown
+        or wrong-org token is one and the same 404, never a hint that some other document exists.'
       operationId: get_esign_o_by_org_sign_by_token
       parameters:
       - in: path
@@ -72468,7 +73032,7 @@ paths:
         \ to complete a half-filled signature: a recipient with any unfilled field is a 400 naming how many remain. A document\
         \ not out for signature is a 409, as is a recipient who has already completed, and under SEQUENTIAL order a signer\
         \ out of turn is a 403. The token is the whole credential \u2014 no account, and a token that does not resolve under\
-        \ `:org` is a 401. Sealing and completion are one transaction, so a failure anywhere leaves the document exactly as\
+        \ `:org` is a 404. Sealing and completion are one transaction, so a failure anywhere leaves the document exactly as\
         \ it was."
       operationId: post_esign_o_by_org_sign_by_token_complete
       parameters:
@@ -72529,7 +73093,7 @@ paths:
         \ ends it for everyone, and there is no route back: the document cannot then be signed or completed. An optional `reason`\
         \ is stored and written onto the audit trail with the rejection, which is what the sender sees.\n\nA document not\
         \ out for signature is a 409, and so is a recipient who has already signed or already rejected \u2014 a refusal cannot\
-        \ be taken back or repeated. The token is the whole credential; one that does not resolve under `:org` is a 401."
+        \ be taken back or repeated. The token is the whole credential; one that does not resolve under `:org` is a 404."
       operationId: post_esign_o_by_org_sign_by_token_reject
       parameters:
       - in: path
@@ -75523,28 +76087,6 @@ paths:
       tags:
       - gateway
       x-app: gateway
-  /v1/generate-text-to-speech-audio:
-    post:
-      description: Convert text to speech
-      operationId: post_generate-text-to-speech-audio
-      summary: Convert text to speech
-      tags:
-      - generate-text-to-speech-audio
-      x-app: github.com/hanzoai/ai
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
-  /v1/generate-text-to-speech-audio-stream:
-    get:
-      description: Convert text to speech with streaming
-      operationId: get_generate-text-to-speech-audio-stream
-      summary: Convert text to speech with streaming
-      tags:
-      - generate-text-to-speech-audio-stream
-      x-app: github.com/hanzoai/ai
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/git-webhook:
     post:
       description: "The forge's push-to-deploy door. git.hanzo.ai runs as a separate server, so its pushes never reach this\
@@ -77566,6 +78108,48 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
+    put:
+      description: "Saves the calling person's own profile \u2014 the name they are\nshown by, their picture, a line about\
+        \ themselves and a link.\n\nOnly their own: the request names nobody, so it cannot reach another account.\nSend only\
+        \ what you are changing; a field you leave out keeps the value it had,\nand a field you send empty is cleared.\n\n\
+        A picture is an https link or an inline image up to 96 KiB, the same value an\norganization's mark is (schema.AvatarRef)\
+        \ \u2014 one rule for how a subject appears,\nwhether the subject is a person or an organization."
+      operationId: put_iam_account
+      parameters:
+      - in: header
+        name: Cookie
+        required: false
+        schema:
+          type: string
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/iam.accountBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/iam.Answer'
+          description: ok
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/iam.Answer'
+          description: bad request
+      summary: "Saves the calling person's own profile \u2014 the name they are shown by, their picture, a line about themselves\
+        \ and a link."
+      tags:
+      - iam
+      x-app: iam
   /v1/iam/add-membership:
     post:
       description: "Lets a person or an application act in an organization. It is the grant\nbehind \"add someone to the team\"\
@@ -77820,6 +78404,66 @@ paths:
           description: ok
       summary: "Changes an application's display, its sign-in methods and the redirect URIs it may return to \u2014 the call\
         \ that makes login work from a new host."
+      tags:
+      - iam
+      x-app: iam
+  /v1/iam/assume:
+    post:
+      description: "Steps a platform operator into an organization: it returns their\nown access token re-scoped to that tenant,\
+        \ so they see what the tenant sees.\n\nThe token still names the operator \u2014 stepping in is not becoming somebody\n\
+        else \u2014 and records the organization it was scoped to, so everything done with\nit is attributed to the person\
+        \ who did it. Only a platform operator may, and\nthe attempt is recorded whether or not it succeeds."
+      operationId: post_iam_assume
+      parameters:
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
+      - in: header
+        name: X-Forwarded-For
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/iam.assumeBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/iam.Answer'
+          description: ok
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/iam.Answer'
+          description: bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/iam.Answer'
+          description: unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/iam.Answer'
+          description: forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/iam.Answer'
+          description: not found
+      summary: 'Steps a platform operator into an organization: it returns their own access token re-scoped to that tenant,
+        so they see what the tenant sees.'
       tags:
       - iam
       x-app: iam
@@ -79427,6 +80071,35 @@ paths:
       tags:
       - iam
       x-app: iam
+  /v1/iam/organizations/avatar:
+    post:
+      description: "Changes how an organization appears across Hanzo: the square mark\nbeside its name, as an uploaded image\
+        \ or as a single emoji. Sending an image\nclears the emoji and sending an emoji clears the image \u2014 an organization\
+        \ has\none mark, not a preference order \u2014 and sending neither clears both, which is\nhow it goes back to being\
+        \ drawn as its initial.\n\nAn image is an https link or the bytes inline as a data URL, up to 96 KiB.\nAnyone who\
+        \ administers the organization may set this; it is not reserved to\nthe platform.\n\nIt writes the two fields onto\
+        \ the stored row and touches nothing else, which\nupdate cannot do: update replaces the whole record, and a record\
+        \ read back\nfirst arrives masked, so a read-modify-write through it would persist the mask\nover the organization's\
+        \ own credential settings."
+      operationId: setOrganizationAvatar
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/iam.SetAvatarInput'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/iam.Organization'
+          description: ok
+      summary: 'Changes how an organization appears across Hanzo: the square mark beside its name, as an uploaded image or
+        as a single emoji.'
+      tags:
+      - iam
+      x-app: iam
   /v1/iam/organizations/delete:
     post:
       description: "Removes an organization and everything named inside it. There is no\nundo, and every session issued under\
@@ -79475,6 +80148,54 @@ paths:
                 $ref: '#/components/schemas/iam.Organization'
           description: ok
       summary: 'Returns one organization: its display, its defaults and the sign-in rules everyone in it inherits.'
+      tags:
+      - iam
+      x-app: iam
+  /v1/iam/organizations/search:
+    get:
+      description: 'Returns the organizations you can act in, the ones you belong to first
+
+        and the rest after, newest first, narrowed by an optional query against the
+
+        name or the display name.
+
+
+        Platform operators see every organization; everyone else sees their own. Pass
+
+        the cursor from the previous page to continue; an empty cursor in the answer
+
+        means there is nothing more.'
+      operationId: searchOrganizations
+      parameters:
+      - in: header
+        name: X-Forwarded-For
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/iam.SearchOrganizationsOutput'
+          description: ok
+      summary: Returns the organizations you can act in, the ones you belong to first and the rest after, newest first, narrowed
+        by an optional query against the name or the display name.
       tags:
       - iam
       x-app: iam
@@ -79973,6 +80694,55 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/iam/release:
+    post:
+      description: 'Steps a platform operator back out: it returns their own access
+
+        token with no organization assumed, which is the credential they had before
+
+        they stepped in. Recorded like the step in.'
+      operationId: post_iam_release
+      parameters:
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
+      - in: header
+        name: X-Forwarded-For
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/iam.assumeBody'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/iam.Answer'
+          description: ok
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/iam.Answer'
+          description: bad request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/iam.Answer'
+          description: unauthorized
+      summary: 'Steps a platform operator back out: it returns their own access token with no organization assumed, which
+        is the credential they had before they stepped in.'
+      tags:
+      - iam
+      x-app: iam
   /v1/iam/resolve-key:
     get:
       description: "Answers which organization a PUBLISHABLE key belongs to \u2014\nwhat a service of yours calls to attribute\
@@ -81018,12 +81788,18 @@ paths:
           description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/iam/webauthn-credentials:
     get:
-      description: "Returns the passkeys and security keys registered in\nyour organization, newest first \u2014 which device\
-        \ each belongs to and when it was\nlast used."
+      description: "Returns the passkeys and security keys registered to\none person, newest first \u2014 which device each\
+        \ lives on and when it was\nregistered.\n\nYours by default. Name somebody else and you get them only if you already\n\
+        administer their account, which is the same authority that governs reading\ntheir user record \u2014 so this list\
+        \ can never show more people than the surface\nbeside it already does.\n\nThere is no organization-wide list. It used\
+        \ to scope to the ORG, which handed\nan org admin every member's credential rows in one answer, and a SuperAdmin\n\
+        every tenant's; a plain member meanwhile could not read even their own,\nbecause an unnamed target fails the Guard's\
+        \ tenant rule. One scope fixes both\nhalves: the answer is a person's, and the caller is the person unless they say\n\
+        otherwise and may."
       operationId: listWebauthnCredentials
       parameters:
       - in: query
-        name: owner
+        name: user
         required: false
         schema:
           type: string
@@ -81034,8 +81810,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/iam.listWebauthnCredentialsOut'
           description: ok
-      summary: "Returns the passkeys and security keys registered in your organization, newest first \u2014 which device each\
-        \ belongs to and when it was last used."
+      summary: "Returns the passkeys and security keys registered to one person, newest first \u2014 which device each lives\
+        \ on and when it was registered."
       tags:
       - iam
       x-app: iam
@@ -81135,6 +81911,64 @@ paths:
       tags:
       - iam
       x-app: iam
+  /v1/iam/webauthn/signin/begin:
+    get:
+      description: "Starts a passkey sign-in: it returns the challenge the person's\nauthenticator signs.\n\nThe account is\
+        \ named in the query, and the challenge is bound to it, so what may\nanswer is decided here \u2014 by the server,\
+        \ from the row \u2014 and the finish checks the\nanswer against that decision rather than recomputing it."
+      operationId: get_iam_webauthn_signin_begin
+      summary: 'Starts a passkey sign-in: it returns the challenge the person''s authenticator signs.'
+      tags:
+      - iam
+      x-app: iam
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/iam/webauthn/signin/finish:
+    post:
+      description: "Verifies the signed challenge and signs the person in.\n\nIt answers exactly as a password sign-in does\
+        \ \u2014 the same envelope, through the\nsame grant \u2014 so nothing downstream branches on how somebody arrived."
+      operationId: post_iam_webauthn_signin_finish
+      summary: Verifies the signed challenge and signs the person in.
+      tags:
+      - iam
+      x-app: iam
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/iam/webauthn/signup/begin:
+    get:
+      description: 'Starts enrolling a passkey for the signed-in person: it returns the
+
+        options their browser hands to the authenticator.
+
+
+        Passkeys already on the account are EXCLUDED, so a second enrollment on a device
+
+        that already holds one is refused by the authenticator itself rather than
+
+        silently producing a duplicate the person cannot tell apart.'
+      operationId: get_iam_webauthn_signup_begin
+      summary: 'Starts enrolling a passkey for the signed-in person: it returns the options their browser hands to the authenticator.'
+      tags:
+      - iam
+      x-app: iam
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/iam/webauthn/signup/finish:
+    post:
+      description: 'Verifies the newly created passkey and stores it, so the person
+
+        can sign in with their device from then on.'
+      operationId: post_iam_webauthn_signup_finish
+      summary: Verifies the newly created passkey and stores it, so the person can sign in with their device from then on.
+      tags:
+      - iam
+      x-app: iam
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/iam/whoami:
     get:
       description: "Tells you who the current caller is \u2014 the lightweight check a\npage makes on load to decide whether\
@@ -82810,6 +83644,33 @@ paths:
       responses:
         default:
           description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/integrations/gitlab/projects:
+    get:
+      description: "Lists the projects the org's GitLab connection can reach \u2014\nmembership projects, most recently active\
+        \ first."
+      operationId: get_integrations_gitlab_projects
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                account: acme
+                projects:
+                - cloneUrl: https://gitlab.com/acme/widgets.git
+                  defaultBranch: main
+                  fullName: acme/widgets
+                  htmlUrl: https://gitlab.com/acme/widgets
+                  name: widgets
+                  private: true
+                  pushedAt: '2026-07-01T10:00:00Z'
+              schema:
+                $ref: '#/components/schemas/gitlabProjectsOut'
+          description: ok
+      summary: "Lists the projects the org's GitLab connection can reach \u2014 membership projects, most recently active\
+        \ first."
+      tags:
+      - integrations
+      x-app: integrations
   /v1/integrations/openrouter/webhook:
     post:
       description: "OpenRouter's spend is invisible to every Hanzo money lens because those lenses read hanzo.cloud_usage\
@@ -101595,17 +102456,6 @@ paths:
       tags:
       - pricing
       x-app: pricing
-  /v1/process-speech-to-text:
-    post:
-      description: Convert speech to text
-      operationId: post_process-speech-to-text
-      summary: Convert speech to text
-      tags:
-      - process-speech-to-text
-      x-app: github.com/hanzoai/ai
-      responses:
-        default:
-          description: The route answers; its response shape is not declared at the source (not a typed op).
   /v1/projects:
     get:
       description: "Returns every project your org owns.\n\nEach row carries the slug, name, framework, visibility, status\
@@ -113484,18 +114334,6 @@ tags:
   description: "Package ai is Hanzo AI \u2014 the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the\
     \ rest of hanzoai/ai's surface) \u2014 mounted into a cloud binary with the money, ingest and telemetry callbacks cloud\
     \ BUILDS but cannot INSTALL."
-- name: generate-text-to-speech-audio
-  description: "Package ai is Hanzo AI \u2014 the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the\
-    \ rest of hanzoai/ai's surface) \u2014 mounted into a cloud binary with the money, ingest and telemetry callbacks cloud\
-    \ BUILDS but cannot INSTALL."
-- name: generate-text-to-speech-audio-stream
-  description: "Package ai is Hanzo AI \u2014 the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the\
-    \ rest of hanzoai/ai's surface) \u2014 mounted into a cloud binary with the money, ingest and telemetry callbacks cloud\
-    \ BUILDS but cannot INSTALL."
-- name: process-speech-to-text
-  description: "Package ai is Hanzo AI \u2014 the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the\
-    \ rest of hanzoai/ai's surface) \u2014 mounted into a cloud binary with the money, ingest and telemetry callbacks cloud\
-    \ BUILDS but cannot INSTALL."
 - name: query
   description: "Package ai is Hanzo AI \u2014 the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the\
     \ rest of hanzoai/ai's surface) \u2014 mounted into a cloud binary with the money, ingest and telemetry callbacks cloud\
@@ -113647,6 +114485,8 @@ tags:
   description: 'Package pricing is the price list: what every model, provider, GPU tier, tool and hosting plan costs.'
 - name: plans
   description: 'Package plan is the plan catalog: every tier you can buy, what it costs, and what it grants.'
+- name: allowance
+  description: Package allowance is how much a plan lets you do without paying, and how much of it you have left today.
 - name: finance
 - name: books
   description: 'Package books is double-entry accounting: chart of accounts, ledger, bank reconciliation, and the reports
@@ -113686,6 +114526,8 @@ tags:
 - name: projects
   description: 'Package projects is where your sites live: create one, deploy a build, roll back to any release.'
 - name: sites
+  description: 'Package projects is where your sites live: create one, deploy a build, roll back to any release.'
+- name: edge
   description: 'Package projects is where your sites live: create one, deploy a build, roll back to any release.'
 - name: builds
   description: "Package platform is Hanzo PaaS: deploy containers to your own tenant namespace \u2014 builds, releases, environments,\
@@ -113876,9 +114718,6 @@ x-tagGroups:
   - documents
   - docs
   - feedback
-  - generate-text-to-speech-audio
-  - generate-text-to-speech-audio-stream
-  - process-speech-to-text
   - query
   - query_multiple
   - dev-bridge
@@ -113948,6 +114787,7 @@ x-tagGroups:
   - payments
   - pricing
   - plans
+  - allowance
   - finance
   - books
   - captable
@@ -113969,6 +114809,7 @@ x-tagGroups:
   - deploy
   - projects
   - sites
+  - edge
   - builds
   - releases
   - environments
