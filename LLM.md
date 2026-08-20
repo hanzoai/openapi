@@ -203,18 +203,40 @@ leaves the release it stops.
 
 **The `needs` column is the whole lesson, and it was learned the expensive way.**
 `--check` is the better question and it was the only one gating this artifact, so
-when it turned out it could not run, nothing did. It needs a checkout of
-hanzo-inc/cloud, which is PRIVATE; hanzoai is on the GitHub **Free** plan, where an
-org secret resolves to the empty string inside a private repo; and this repo's
-one repo-level secret is `SDK_DISPATCH_TOKEN`. On top of that, both callers had
-been moved to `.hanzo/workflows`, which only git.hanzo.ai collects, and nothing
-on git.hanzo.ai collects a push to this repo: `git.hanzo.ai/hanzoai/openapi`
-answers `ls-remote` but refuses `push` with *mirror repository is read-only* —
-it PULLS from github rather than receiving from anyone, so no forge collected
-either file and `gh workflow list` returned nothing at all. Both callers live in
-`.github/workflows` now, which is why they run.
+when it turned out it could not run, nothing did. Twice, for two different
+reasons, and the second one wore the first one's clothes.
 
-Measured on that state: the pin was **81 hanzo-inc/cloud commits stale**,
+FIRST, NOBODY COLLECTED IT. Both callers had been moved to `.hanzo/workflows`,
+which only git.hanzo.ai collects, and at the time nothing on git.hanzo.ai
+collected a push to this repo: it answered `ls-remote` and refused `push` with
+*mirror repository is read-only*, pulling from github rather than receiving from
+anyone, so `gh workflow list` returned nothing at all. That is fixed —
+git.hanzo.ai is where this repo lives now, and `.hanzo/workflows` is where its
+callers run.
+
+SECOND, IT ASKED THE WRONG REPOSITORY. `SPEC_REPO` said `hanzoai/cloud`, and
+that name now belongs to the re-rooted OSS core: twelve commits on `main`, no
+shared ancestor with the product, no `openapi.yaml` anywhere in it. Being
+public, the checkout SUCCEEDED and the failure arrived a step later as
+publish.py's `no remote of .cloud carries openapi.yaml on 'main'` — which the
+workflow discarded and replaced with a fixed sentence saying `hanzo.yaml` had
+been hand-edited. It had not been: re-derived at its own pinned ref, the
+committed artifact was byte-for-byte what that ref projects to. **A step that
+overwrites a precise diagnosis with a canned one sends every reader hunting for
+a diff that does not exist**, and it is why neither `::error::` wrapper exists
+any more: publish.py says what is wrong, and `set -e` fails the step.
+
+THE CREDENTIAL IS STILL THE OPEN ONE. hanzo-inc/cloud is private and in another
+org, and the per-job token Hanzo Git mints reads the run's OWN repository and
+anything public — nothing else. Measured on hanzoai/python-sdk run 91449, which
+named the right repo and still took `curl: (22) ... 404` on the raw read. So
+`spec sync` takes `HANZO_GIT_TOKEN`, the one name in this fleet for a credential
+that reads git.hanzo.ai, and says which credential is missing rather than
+letting `actions/checkout` report a private repo as "repository not found". It
+is not sealed yet, and until it is, `--check` runs by hand and `served` holds
+the line.
+
+Measured while none of it ran: the pin was **81 hanzo-inc/cloud commits stale**,
 `hanzo.yaml` carried a **hand edit** (a route deleted straight out of a generated
 file), `--check` exited 1, `--current` exited 1, and `test_publish.py` failed —
 three red gates on `main`, none of them running anywhere. The published document
@@ -244,9 +266,9 @@ red. **A gate that cannot fail is not a gate**, and that is the whole reason
 `--current` now resolves the remote instead of assuming it: fetch every remote,
 keep those whose `main` holds the document, take the one that contains the
 others. On a normal clone that is `origin`; on this fleet's checkouts it is
-`forge`, and neither is written down anywhere. The same resolution is the default
-when re-pinning, so `python3 publish.py` with no `--ref` can no longer publish
-from the wrong lineage either.
+whichever remote points at git.hanzo.ai, and neither is written down anywhere.
+The same resolution is the default when re-pinning, so `python3 publish.py` with
+no `--ref` can no longer publish from the wrong lineage either.
 
 ### The known weakness of `--served`, stated rather than discovered
 
@@ -292,11 +314,13 @@ cloud releases back, rendering four relay-door products with twelve operations
 each where the document has one, one, one and two. A consumer belongs here only
 while it needs what `publish.py` adds. Codegen does; prose does not.
 
-**Reading the document is a forge operation now.** `generate.py`'s `fetch()`
-asked api.github.com, which mirrors hanzo-inc/cloud thousands of commits behind and
-does not serve openapi.yaml at all, so it could only 404 — and it reported that
-404 as a missing credential, which sent readers hunting for a token to fix a host
-with no file on it. One host, one credential: `git.hanzo.ai/v1` and `FORGE_TOKEN`.
+**Reading the document is a git.hanzo.ai operation now.** `generate.py`'s
+`fetch()` asked api.github.com, which mirrors hanzo-inc/cloud thousands of
+commits behind and does not serve openapi.yaml at all, so it could only 404 —
+and it reported that 404 as a missing credential, which sent readers hunting for
+a token to fix a host with no file on it. One host, one credential:
+`git.hanzo.ai/v1` and `HANZO_GIT_TOKEN`, the same name hanzoai/ci's client lane
+hands its own read.
 A fallback chain across hosts holding different documents is not a fallback, it
 is a coin flip about which document you get.
 
