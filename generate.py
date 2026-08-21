@@ -169,44 +169,38 @@ def lock(repo):
     return out
 
 
-GIT = "https://git.hanzo.ai/v1"
+# The one address the fleet reads its document from. publish.py already knew it
+# under this name; generate.py asked git.hanzo.ai instead, so two files in one
+# repo named two sources for one document.
+SERVED = os.environ.get("SERVED_DOCUMENT", "https://api.hanzo.ai/v1/openapi.json")
 
 
 def fetch(spec, dest):
-    """The document at the locked ref, from Hanzo Git, digest-checked.
+    """The document production is serving, digest-checked against the lock.
 
-    git.hanzo.ai is where hanzo-inc/cloud lives. This asked api.github.com, which
-    holds a mirror thousands of commits behind and no openapi.yaml at its root at
-    all — so the fetch could only 404, and the 404 read as "your token is wrong".
-    A mirror is not a slower source; it answers a different question.
+    One address, no credential. api.hanzo.ai serves cloud's own emission from
+    the process that is actually up, and hanzoai/ci's client lane reads exactly
+    this and hands it to the generator as $SPEC — so a hand run and a CI run
+    cannot disagree about what they read.
 
-    Hanzo Git serves its API at /v1/, NOT /api/v1/, and /api/v1 returns a 404 that
-    is indistinguishable from a rejected credential. Same route hanzoai/ci's
-    client lane and the CLI's Makefile take, because there is one document at one
-    address.
+    This asked hanzo-inc/cloud at the locked ref through HANZO_GIT_TOKEN. That
+    name no longer exists in the lane (the job carries its org's IAM identity
+    now), and it was a private read a contributor could not make at all, so the
+    documented way to regenerate by hand ended at a credential nobody could get.
 
-    HANZO_GIT_TOKEN is the one name in this fleet for a credential that reads
-    git.hanzo.ai, and hanzoai/ci's client lane already hands it that name. A
-    second spelling here is a second credential to provision for one read.
+    `.spec-lock` still records WHICH document this tree was generated from. A
+    digest that differs means cloud has shipped since — said, not refused, because
+    regenerating onto what production serves is the reason this function runs.
+    Pass --spec to generate against a document by value instead.
     """
-    token = os.environ.get("HANZO_GIT_TOKEN", "")
-    if not token:
-        sys.exit(f"generate: reading {spec['repo']}@{spec['ref']} from git.hanzo.ai"
-                 f" needs HANZO_GIT_TOKEN (contents:read). Pass --spec instead.")
-    req = urllib.request.Request(
-        f"{GIT}/repos/{spec['repo']}/raw/{spec['path']}?ref={spec['ref']}",
-        headers={"Authorization": f"token {token}"})
-    with urllib.request.urlopen(req) as r, open(dest, "wb") as f:
+    with urllib.request.urlopen(SERVED, timeout=120) as r, open(dest, "wb") as f:
         shutil.copyfileobj(r, f)
     got = hashlib.sha256(open(dest, "rb").read()).hexdigest()
-    # A pinned ref whose bytes moved means someone moved a tag, and no amount of
-    # regenerating makes that safe. The same refusal hanzoai/ci makes, for the
-    # same reason, so a hand run and a CI run cannot disagree about what they read.
     want = spec.get("sha256")
     if want and got != want:
-        sys.exit(f"generate: {spec['repo']}@{spec['ref']}:{spec['path']} hashes to "
-                 f"{got}, but .spec-lock says {want} — the ref moved under this "
-                 f"projection")
+        print(f"generate: {SERVED} hashes to {got}; .spec-lock records {want} — "
+              f"cloud has shipped since this projection was generated",
+              file=sys.stderr)
     return dest
 
 
