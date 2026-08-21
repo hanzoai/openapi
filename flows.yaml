@@ -118,16 +118,19 @@ flows:
 
   store:
     summary: KV round-trip — create a store, read it back, delete it.
-    operations: [post_kv, get_kv_by_name, delete_kv_by_name]
+    operations: [post_instances_kv, get_instances_kv_by_name, delete_instances_kv_by_name]
     notes: >-
       The delete belongs in the language's finally/defer, so a failed read still
       cleans up instead of leaving the store for the next run to collide with.
-      This is the provisioning plane — create a KV STORE, read it, drop it — and
-      it is here because it is the one cloud registers. The VALUE plane
-      (/v1/kv/keys/{key}) was authored in kv/openapi.yaml and mounted nowhere;
-      that spec is deleted and the addresses went with it. apps/provisioning
-      registers exactly `/v1/kv`, `/v1/kv/:name` and nothing else, which the
-      document now says without anyone having to remember it.
+      This is the provisioning plane — create a KV STORE, read it, drop it — at
+      its served address, /v1/instances/kv. The bare /v1/kv spellings are the
+      legacy dialect the binary itself tags compat, and the publication drops a
+      compat operation by that declaration — so the day this file named them it
+      would have named ids the published document does not have, which is
+      exactly what test_flows.py went red on. Probed at api.hanzo.ai:
+      GET /v1/instances/kv answers 403 while /v1/instances/kv-zzq9 answers 404,
+      which is the existence proof this file requires (auth runs before the
+      handler; only a mounted route can refuse).
 
   agent:
     summary: Create an agent, run it, read the run back.

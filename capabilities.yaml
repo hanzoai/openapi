@@ -1,6 +1,6 @@
 # capabilities.yaml — the ONE editorial decision left in this repo.
 #
-# NOT a registry of what exists. hanzo-inc/cloud decides that, by registering a
+# NOT a registry of what exists. hanzoai/cloud decides that, by registering a
 # route; `hanzo.yaml` reports it. This file answers the one question the document
 # does not: which DOMAIN a capability belongs under when a reader is shown the
 # whole API at once. That is presentation, and presentation has no source in the
@@ -21,144 +21,107 @@
 # So the list below cannot describe an API other than the one that is served. It
 # can only be a worse or better arrangement of the one that is.
 #
-# `tags:` are the tags OPERATIONS CARRY in cloud's emission — the product, which
-# is the first path segment after /v1/, or the owning Go package where a route
-# has no /v1 prefix. They are not directory names. There are no directories.
+# `tags:` are the tags OPERATIONS CARRY in cloud's public document, and a tag is
+# the CAPABILITY that serves the operation — the app, one word, the same word
+# that names its Go package, its plugin binary, its address prefix, its client
+# class, its tool, its command group, its page and its HIP (HIP-0139). An app
+# that still answers at an address not named for it is listed in cloud's
+# `openapi/misfiled.txt`, a ratchet that only shrinks; nothing about that is
+# expressible here, and nothing here should try.
 
 domains:
   - id: identity
     title: "Identity & Trust"
     role: "who you are · what you may touch · where secrets live"
-    # `avatar` is a profile photo, and a profile photo is a fact about WHO YOU
-    # ARE: the upload writes the URL into the user's IAM record, so it belongs
-    # beside iam and not under a storage or media heading.
-    # `appearance` is the same argument as `avatar` one field over: text size,
-    # density and accent are read from and written to the caller's IAM account,
-    # which is why they follow the person to every device and every Hanzo
-    # surface. A per-app setting would live with `prefs`; this one cannot,
-    # because there is one of it per identity and not one per app.
-    tags: [iam, admin, authz, kms, security, keys, csrf, org, orgs, team,
-           audit, compliance, risk, validators, wallets, entitlements, avatar,
-           appearance]
+    # `account` is the caller's own profile: keys, appearance, avatar, the
+    # org they onboard into. It sits beside iam because it is the person,
+    # read and written through their IAM record.
+    # `dataset`, `label` and `reference` are the three stores the risk engine
+    # decides from — the evidence, the verdicts people attached to it, and the
+    # published lookup data no org could derive alone. They file with risk.
+    tags: [iam, account, authz, kms, security, entitlements, audit, compliance,
+           risk, dataset, label, reference, validators, wallets, team]
 
   - id: intelligence
     title: "Intelligence"
     role: "models · agents · evaluation — the mind of the cloud"
-    # The bare-/v1 inference surface (chat, completions, embeddings, messages,
-    # rerank, models, images, audio, videos, responses) is Hanzo AI's OpenAI- and
-    # Anthropic-compatible door: there the PATH is the compatibility contract,
-    # because every vendor SDK hard-codes it. It is served by cloud like
-    # everything else — measured with nonsense-sibling controls: GET /v1/models
-    # 200 while /v1/models-zzq9 404s, POST /v1/chat/completions 401 while its
-    # sibling 404s. There is no edge exception and there never was.
-    #
-    # The long tail here (query, query_multiple, install-patch, dev-bridge,
-    # wecom-bot, traffic, docs, health, feedback, documents) is SHRAPNEL from one
-    # seam, not ten products: apps/ai relays a whole embedded router through one
-    # door and hand-declares the operations behind it, so its declarations tag
-    # themselves. Those names disappear from this file the release apps/ai
-    # projects the mounted registry instead — `provider-flags` already has.
-    tags: [ai, router, agent, agents, ml, finetune, evals, benchmark,
-           research, prompts, exec, sandboxes, coding, files, upload, download, mcp, tools, skills,
-           ask, code, memory, rag, engine, run, runner, chat, completions,
-           embeddings, messages, rerank, models, images, audio, videos,
-           responses, translate, summary, documents, docs, feedback, query,
-           query_multiple, dev-bridge, install-patch, traffic, wecom-bot,
-           health]
+    # `ai` is the inference door, including the OpenAI- and Anthropic-compatible
+    # wire (chat, completions, embeddings, messages, models, images, audio,
+    # videos, responses, rerank): those paths are fixed by the vendor SDKs that
+    # hard-code them, and they are ai's and nobody else's (HIP-0139 §3.2).
+    # `exec` runs code in a sandbox lease; `sandboxes` is the lease. `tools`
+    # is the per-tenant tool plane an agent calls through; `lsp` is code
+    # intelligence over a repository, which is why it files beside `code`.
+    tags: [ai, engine, ml, agents, evals, benchmark, research, prompts, exec,
+           sandboxes, tools, ask, code, lsp, translate]
 
   - id: data
     title: "Data"
     role: "the stores every capability writes to and reads from"
-    # `taxonomy` is the classification the console reads to arrange products —
-    # a stored vocabulary that other capabilities look terms up in, which is
-    # the same shape as `catalog` and `kb` and not a surface of its own.
-    tags: [s3, base, kv, vector, sql, datastore, docdb, search,
-           index, indexers, oracles, kb, catalog, taxonomy, sync, crawl,
-           scrape, websearch]
+    # `provisioning` hands out managed datastore instances; `storage` is the
+    # object store's bucket plane (it answers at /v1/s3 because S3 is a protocol
+    # every client already speaks). `product` is the search and vector
+    # catalogue; `knowledge` the knowledge base; `index` the in-binary index
+    # speaking the Meilisearch dialect. `taxonomy` is the classification other
+    # capabilities look terms up in, `catalog` the cross-org corpus of
+    # everything the fleet has built.
+    tags: [base, provisioning, storage, product, search, index, knowledge,
+           catalog, taxonomy, sync, crawl, websearch]
 
   - id: streams
     title: "Streams"
     role: "messaging · durable tasks · async orchestration"
-    # `tel` is the carrier leg of the delivery `notify` already names: notify is
-    # "transactional email and SMS, sent through your org's own provider
-    # credential", and tel holds the numbers that SMS leaves from and the calls
-    # that share the carrier with it. It files here rather than under
-    # Applications because a call is a message reaching a person over somebody
-    # else's network, not a surface of its own.
-    # `git-webhook` is the door Hanzo Git pushes through, not a thing anybody
-    # opens: one POST that a push fires, which starts a build. Its family is
-    # `webhooks` and `event` — inbound async — rather than `git`, which is the
-    # surface a person uses.
-    tags: [tasks, pubsub, mq, notify, tel, automations, auto, flow, webhooks,
-           git-webhook, event, channels, destinations, tags, connectors, pipelines]
+    # `tel` is the carrier leg of the delivery `notify` names: the numbers SMS
+    # leaves from and the calls that share the carrier with it. `integrations`
+    # holds a user's own credentials to outside systems (connectors) and the
+    # providers the fleet connects to; `channels` is one inbox across them.
+    tags: [tasks, pubsub, mq, notify, tel, automations, flow, webhooks,
+           channels, destinations, integrations]
 
   - id: observability
     title: "Observability"
     role: "see everything — telemetry · analytics · usage"
-    # `commands` arrived at cloud@v1.801.476 as one route, GET /v1/commands,
-    # served by the same app as /v1/openapi.json and derived from it: the same
-    # operations with the schemas dropped, small enough for a palette to load.
-    # A projection of the document sits beside the document.
-    #
-    # `replay` is session replay, and the document places it without being
-    # asked: its tag carries package analytics' own synopsis — "send an event,
-    # read back who did what". A recording is that read-back with the frames
-    # kept, so it files where the events it replays already file.
-    tags: [o11y, sentry, logs, traces, metrics, errors, analytics, insights,
-           usage, openapi, commands, replay]
+    # `openapi` is the document itself and its projections (the command palette,
+    # the agent door) — the capability that describes the others. `metrics` is
+    # the native metrics, logs and traces store; `o11y` the full observability
+    # plane over it. `leaderboard` is usage ranked across an org.
+    tags: [o11y, metrics, analytics, usage, leaderboard, openapi]
 
   - id: commerce
     title: "Commerce"
     role: "the economy — meter · price · bill · reward"
-    # `payments` arrived at cloud@v1.801.452 as two routes — /v1/payments and
-    # /v1/payments/{id}. It is the settlement leg, not a second billing: billing
-    # meters and prices what was used, payments records the money that moved for
-    # it. Same domain, so the reader sees them together.
-    #
-    # `cart` is the same story one step earlier: its tag carries package
-    # commerce's synopsis — "checkout, subscriptions, invoices, spend alerts,
-    # payment webhooks and the storefront catalog" — so it is the pre-checkout
-    # leg of the surface `commerce` already names, not a product of its own.
-    #
-    # `allowance` is what a plan lets you do before money moves — "how much of it
-    # you have left today". That is a term of the plan, so it reads beside
-    # `plans` and `pricing`. Observability's `usage` is the other half and is not
-    # the same question: usage counts what happened, allowance states what was
-    # bought.
-    tags: [commerce, cart, store, marketplace, billing, payments, pricing, plans,
-           allowance, finance, books, captable, crm, referrals, affiliates,
-           authors, licensing, x402, marketing, campaign, ads, experiments,
-           enablement]
+    # `commerce` is the ledger and the storefront; `billing` the customer's
+    # balance and invoices read over it; `treasury` the reserve behind every
+    # payout; `plan` the plan catalog; `pricing` what each unit costs.
+    tags: [commerce, billing, treasury, plan, pricing, allowance, marketplace, books,
+           captable, crm, referrals, affiliates, authors, licensing, x402,
+           marketing, campaign, ads, experiments]
 
   - id: platform
     title: "Platform"
     role: "the cloud fabric — deploy · provision · route · host"
-    # `edge` is served by the same package as `projects` and `sites`, and asks
-    # the question that follows a deploy: whether a publish reaches readers,
-    # rather than whether it was accepted. It is hosting seen from the outside,
-    # so it sits with what does the hosting.
-    tags: [platform, cloud, deploy, projects, sites, edge, builds, releases,
-           environments, registry, gateway, ingress, dns, domain, cloudflare,
-           networks, vpcs, balancers, mesh, k8s, clusters, machines, compute,
-           gpus, fleet, plugins, flags]
+    # `visor` is the compute plane — machines, GPUs, clusters, the BYO fleet.
+    # `zt` is the zero-trust overlay: networks and the mesh. `admission` is the
+    # waitlist a flag admits an org through, so it files with flags.
+    tags: [platform, deploy, projects, registry, gateway, ingress, domain,
+           cloudflare, visor, zt, flags, admission]
 
   - id: applications
     title: "Applications"
     role: "the user-facing surfaces built on all of the above"
-    # `todo` is a list a person keeps — a surface, which is what this domain
-    # is for. It is NOT streams' `tasks`: that one is the durable async queue
-    # work is handed to. Two words, two things, and the only thing they share
-    # is the English.
-    tags: [git, templates, blueprint, integrations, bot, bots, world, todo, framework, content, guide, help, meet, share, social, links,
-           esign, dataroom, company, legal, prefs, settings, embed, functions,
-           sbom]
+    # `todo` is a list a person keeps — a surface. It is NOT streams' `tasks`,
+    # the durable async queue; two words, two things. `bot` is the org's own
+    # connected machines; `bots` a bot run on a surface. `link` is short links,
+    # answering at /v1/links.
+    tags: [git, templates, blueprint, bot, bots, world, todo, framework,
+           content, guide, help, meet, share, social, link, esign, dataroom,
+           company, legal, prefs, settings, functions, sbom, seo]
 
   - id: chain
     title: "Chain"
     role: "the networks the cloud speaks to — enumerate · call · read balances"
-    # Three tags, one product: `chains` lists the networks and describes one,
-    # `rpc` is the JSON-RPC call against a named chain, and `tokens` reads a
-    # holder's balances on it. They are not Platform — that is the fabric this
-    # cloud RUNS on, and a chain is something it TALKS TO — and they are not
-    # Data, which would file the call that mutates a chain under reads.
-    tags: [chains, rpc, tokens]
+    # `web3` lists the chains, relays JSON-RPC to one, and reads a holder's
+    # balances; `explorer` indexes them and serves oracles. They are not
+    # Platform — that is the fabric this cloud RUNS on, and a chain is something
+    # it TALKS TO.
+    tags: [web3, explorer]
