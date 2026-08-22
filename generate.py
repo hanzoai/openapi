@@ -495,7 +495,17 @@ def main():
         if not os.path.isdir(repo):
             sys.stderr.write(f"[{name}] no checkout at {repo}\n")
             return False
-        return sdk(name, cfg, document(repo, a.spec, docs), version,
+        # ONE generator for the fleet, and a language may pin PAST it when the
+        # shared version cannot emit that language at all. dart is the instance:
+        # 7.14.0 dies in AbstractDartCodegen.fromProperty with
+        # `JsonSchema cannot be cast to ComposedSchema` on our polymorphic request
+        # bodies, so dart emitted nothing and sat four releases behind while every
+        # other language regenerated fine. 7.19.0 emits it cleanly (measured: 117
+        # api files). Pinning the fleet forward for one language would regenerate
+        # twelve working clients to fix one, so the pin is where the defect is.
+        # Delete `generator` from that SDK's row when the fleet moves past it.
+        return sdk(name, cfg, document(repo, a.spec, docs),
+                   str(cfg.get("generator_version", version)),
                    conf["drop"], repo, a.check)
 
     with futures.ThreadPoolExecutor(max_workers=a.j) as pool:

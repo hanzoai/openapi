@@ -854,6 +854,15 @@ sdks:
     # hanzo-dart/base already use, so the org has one HTTP stack rather than
     # dio beside http.
     generator: dart
+    # PINNED PAST THE FLEET, because 7.14.0 cannot emit this language at all:
+    # AbstractDartCodegen.fromProperty throws `JsonSchema cannot be cast to
+    # ComposedSchema` on our polymorphic request bodies, so dart emitted nothing
+    # and sat four releases behind while the other twelve regenerated fine.
+    # Measured on 7.19.0: 117 api files, no exception. Drop this line when
+    # `generator:` above moves past it — carrying two versions is a cost, and it
+    # is the smaller of the two on offer, the other being regenerating twelve
+    # working clients to repair one.
+    generator_version: 7.19.0
     # Everything the client is lands under lib/, so nothing else is taken. The
     # generator also offers pubspec.yaml, analysis_options.yaml, README.md,
     # .travis.yml and git_push.sh at the root; naming lib/ leaves them where
