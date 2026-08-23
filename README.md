@@ -104,7 +104,7 @@ move upstream into cloud's emitter; see [LLM.md](LLM.md).
   the API's own version is `/v1`. Three things, three places.
 - operationIds are the document's own (`get_billing_balance`) — no `<svc>_`
   prefix, because a prefix invented here is a second naming authority and the
-  bare id is what the MCP door already uses as a tool name.
+  bare id is what the MCP server already uses as a tool name.
 - No `deprecated: true`. No `/api/` prefix. No dates in filenames.
 - Security: every operation uses cloud's `bearer` scheme. No service has its own login.
 - Errors: 4xx client, 5xx server, JSON body with `status` and `msg`.

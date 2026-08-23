@@ -18,7 +18,7 @@ MEASURED at `hanzoai/cloud@v1.801.383`: the hand-merged master carried 2093
 operations against cloud's 2333, sharing 1908 — so it described 185 operations
 nothing serves under that name and missed 425 that are served. Of the 185, 36 are
 refuted outright (real 404, nonsense-sibling control 404), 44 are unfalsifiable
-behind a prefix auth gate, 66 sit under a `{wildcardN}` relay door, and **39 are
+behind a prefix auth gate, 66 sit under a `{wildcardN}` relay route, and **39 are
 live and undescribed** — every one a hanzoai/cloud defect, itemised in LLM.md.
 
 The projection is six codegen rules and nothing else. It exists because
@@ -250,7 +250,7 @@ cross-language method rename, not cosmetics. It fell out of the resync rather
 than being chosen, and on review it stands: a route-derived id is a total
 function of the immutable `/v1` path, while a hand-authored id is owned by a
 spec that no longer describes the route and vanishes when that spec is deleted —
-the same break again, later, silently. It is also the name the MCP door already
+the same break again, later, silently. It is also the name the MCP server already
 uses. The break is once, now, and cannot recur for these operations.
 
 ### `mcp_Request.id` is a string — a scalar `oneOf` does not survive codegen
@@ -261,21 +261,21 @@ carrier class for a scalar `oneOf` (Kotlin `class McpRequestId()` with no
 members) that serializes to `{}` — not a legal id anywhere. Java and C++ produce
 the same shape, so it blocked three languages on one declaration.
 
-Verified on the live door before changing it, because the fix is only safe if
+Verified on the live MCP server before changing it, because the fix is only safe if
 the wire agrees: `id: "1"`, `id: 1` and `id: "abc-123"` are all accepted and all
 echoed back with the TYPE they were sent; omitting `id` returns `null`. A string
 is therefore always legal, and a client generated from this document always
 reads back the string it sent.
 
 Declared `type: string` on both `Request` and `Response`, with the polymorphism
-recorded in the prose rather than in a shape — no second door, no alias, one
+recorded in the prose rather than in a shape — no second type, no alias, one
 declaration. The generated field is now `kotlin.String?`, `private String id`,
 `Id *string`; the `McpRequestId`/`McpResponseId` carriers are gone from every
 client.
 
-### Declare the MCP door — `POST /v1/mcp`, the one address an MCP client speaks
+### Declare the MCP endpoint — `POST /v1/mcp`, the one address an MCP client speaks
 
-The fleet's JSON-RPC door has been answering all along and was in no spec:
+The fleet's JSON-RPC endpoint has been answering all along and was in no spec:
 `POST /v1/mcp` returns 200 with 796 tools, unauthenticated. It read as missing
 because the probe was a GET — the route is POST-only, so GET is 404 — and
 because the document held only `/v1/mcp/servers`, the registry of external
@@ -284,14 +284,14 @@ operation (`mcp_rpc`) with the JSON-RPC 2.0 request and response typed:
 `initialize`, `tools/list`, `tools/call`, a `Tool` with its `inputSchema`, and
 both failure channels that live INSIDE a 200 — `error` (`-32601` for an unknown
 method) and `result.isError` (a tool that ran and refused). Verified against the
-live door, not guessed: `serverInfo`, `protocolVersion: 2025-06-18`, and the
+live MCP server, not guessed: `serverInfo`, `protocolVersion: 2025-06-18`, and the
 `content[]` shape are all copied from its own answers.
 
 The `tools` flow moves onto it, and the probe rule that hid it is corrected
 everywhere it was written: **probe the method the document declares, not GET.**
 A POST-only route and an absent route are indistinguishable from a GET.
 
-What the door exposes is recorded because it cannot be derived: 796 tools
+What the MCP server exposes is recorded because it cannot be derived: 796 tools
 against 2479 operations, so about two thirds of the surface is not a tool, and
 the split is the binary's decision. The naming rule is mechanical — a tool name
 is its operationId minus the leading `<service>_` — holding for 795 of 796. The
@@ -301,7 +301,7 @@ one identifier in every generator, while its tool is still `get_v1_pricing_polic
 
 A tag whose key is a service NAME now belongs to that service's domain rather
 than to whichever spec used it first: `MCP` was tagged by four specs, the
-earliest alphabetically was `automations`, and the fleet's MCP door was being
+earliest alphabetically was `automations`, and the fleet's MCP endpoint was being
 filed under Streams.
 
 ### `hanzo.yaml` is THE published document — cloud's woven spec merged, and it wins
@@ -350,7 +350,7 @@ served, so every one was re-resolved against the merged document AND probed.
 `money` and `agent` move to cloud's ids (`billing_*` and
 `cloud_AgentsController.*` no longer exist — the binary's document owns those
 routes now). `store` moves from the KV value plane to the store itself, and
-`tools` from the automations MCP door to `/v1/tools`: both of the originals
+`tools` from the automations MCP endpoint to `/v1/tools`: both of the originals
 reply 404 to GET and 405 to PUT/POST/DELETE, which is what a GET-only wildcard
 answers when nothing is routed there. `hello` and `chat` were already right —
 `ai_getAccount` returns 200 with the owner and name to print.

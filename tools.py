@@ -7,10 +7,10 @@
 
 ONE source, and the source is the DOCUMENT. A tool name is an operation id:
 not derived from the path, not looked up in a table, not invented here. The
-fleet's own door already answers that way — every tool `POST /v1/mcp` lists is
+fleet's own MCP server already answers that way — every tool `POST /v1/mcp` lists is
 verbatim an id hanzo-inc/cloud emitted — so a catalogue built any other way would
 name tools the API cannot be told to run. Which is measurable, and was measured
-against the door: the id, not the published `operationId`. `publish.py` rule 6
+against the MCP server: the id, not the published `operationId`. `publish.py` rule 6
 suffixes an id when two collide under a generator's identity, and that suffix is
 a fact about Go rather than about the API — see `wire()`, which is the only
 place a tool gets its name.
@@ -34,12 +34,12 @@ The projection is total and mechanical:
     machinery, not something an agent calls;
   • `inputSchema` is the operation's parameters and request body as one flat
     JSON Schema object, component `$ref`s carried along into `$defs` — the same
-    shape the live door serves, so a tool generated here and a tool listed
+    shape the live MCP server serves, so a tool generated here and a tool listed
     there are callable the same way.
 
 WHICH operations a given deployment will actually answer for is not a fact
 about the document — it is a fact about what that deployment mounts and what
-the caller's key reaches. The door answers that at runtime. This file answers
+the caller's key reaches. The MCP server answers that at runtime. This file answers
 the other question, the only one a static artifact can: what the contract says
 exists. Filtering here would bake one deployment's answer into every client.
 
@@ -61,7 +61,7 @@ OUT = os.path.join(ROOT, "dist", "tools.json")
 SCHEMA_ID = "hanzo.mcp-tools/v1"
 
 # The verbs an agent can be told to call. OPTIONS/TRACE are transport
-# machinery and are never tools; the live door omits them too.
+# machinery and are never tools; the live MCP server omits them too.
 VERBS = ("get", "post", "put", "patch", "delete")
 
 REFS = "#/components/schemas/"
@@ -74,7 +74,7 @@ def wire(op: dict):
     the identity a GENERATOR uses (punctuation stripped, case folded), so that
     Go does not declare one request type twice. That suffix is a fact about
     codegen: `DELETE /v1/o11y/sessions` is `DeleteSession_2` in the published
-    document and `DeleteSession` on the wire, and the door answers to exactly
+    document and `DeleteSession` on the wire, and the MCP server answers to exactly
     one of those. Publishing the other named a tool in three client
     distributions that nothing can be told to run. Where the projection had to
     change the name it records the original as `x-id`, so this is the whole

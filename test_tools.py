@@ -10,7 +10,7 @@ output (dist/ is generated, never committed):
     exception. This is the whole contract. A generator that synthesises names
     from paths is a THIRD naming rule, and a third rule is the disease this file
     exists to prevent — as is publishing `publish.py` rule 6's codegen suffix,
-    which the door does not answer to;
+    which the MCP server does not answer to;
   • one name, one tool     — a duplicate id makes the second tool unreachable;
   • callable verbs only    — OPTIONS/TRACE are transport machinery, never tools;
   • self-contained schemas — every `$ref` a tool emits resolves inside that
@@ -54,7 +54,7 @@ def test_name_is_the_operation_id():
 
 
 def test_no_codegen_suffix_becomes_a_tool_name():
-    """Rule 6's suffix is a fact about Go, and the door does not answer to it.
+    """Rule 6's suffix is a fact about Go, and the MCP server does not answer to it.
 
     `publish.py` renames an operationId when two collide under the identity a
     generator uses, so `DELETE /v1/o11y/sessions` is published as

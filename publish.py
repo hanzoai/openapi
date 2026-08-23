@@ -248,8 +248,8 @@ def project(doc, groups):
        `deleteSession` vs `DeleteSession`). The later one by path order takes a
        suffix, which is what a generator does for the duplicates it can see —
        and it keeps the id cloud emitted as `x-id`, because an operationId is
-       ALSO the wire name of an MCP tool. The suffix exists for Go; the door
-       does not know it. Whoever needs the name a caller can use reads `x-id`
+       ALSO the wire name of an MCP tool. The suffix exists for Go; the MCP
+       server does not know it. Whoever needs the name a caller can use reads `x-id`
        first. The collision itself belongs upstream: two operations whose ids
        differ only in case are one name to every generator on earth.
 
@@ -304,7 +304,7 @@ def project(doc, groups):
                 # a fact about GENERATORS and the id is also the WIRE NAME: it is
                 # what `POST /v1/mcp` answers to. Renaming it silently put
                 # `DeleteSession_2` in the MCP catalogue of three client
-                # distributions, and the door knows no such tool — a suffix
+                # distributions, and the MCP server knows no such tool — a suffix
                 # invented here for Go's benefit is not a thing anything serves.
                 # Present only where the two differ, so its meaning is its
                 # presence. `tools.py` names the tool by this.

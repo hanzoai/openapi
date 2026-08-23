@@ -60,15 +60,15 @@ Each was probed at `api.hanzo.ai` with **its own method** (a POST-only route
 answers 404 to GET, so a GET sweep cannot tell "absent" from "wrong verb"), and
 each probe carries a CONTROL: the same address with `-zzq9` appended to its last
 literal segment. 119 are addresses no live route pattern covers; 66 sit under a
-`{wildcardN}` relay door, which by construction answers identically for a real
+`{wildcardN}` relay route, which by construction answers identically for a real
 path and an invented one and therefore decides nothing.
 
 | verdict | n | reading |
 |---|---:|---|
 | **ABSENT** — real 404, control 404 | **36** | refuted. Nothing serves this. |
-| **UNFALSIFIABLE** — real ≠ 404, control identical | **44** | a gate or a door answered, not a route |
+| **UNFALSIFIABLE** — real ≠ 404, control identical | **44** | a gate or a relay answered, not a route |
 | **SERVED** — real ≠ 404, control 404 | **39** | live, and cloud's document lacks it |
-| absorbed by a `{wildcardN}` door | 66 | unfalsifiable by construction |
+| absorbed by a `{wildcardN}` relay | 66 | unfalsifiable by construction |
 
 **A 404 on both sides IS a refutation, and it is the only way absence can ever be
 shown.** The control exists to stop a 401/403/200 being read as existence — a
@@ -136,7 +136,7 @@ served as `DeleteSession`, and the suffix went out verbatim in the tool catalogu
 of three client distributions, naming a tool `POST /v1/mcp` answers to no such
 name. So the rename now records what it renamed: `x-id` is the id hanzo-inc/cloud
 emitted, written only where the two differ, and `tools.py`'s `wire()` is the one
-place a tool takes its name. Measured against the live door: 1299/1323 before,
+place a tool takes its name. Measured against the live MCP server: 1299/1323 before,
 1300/1323 after. The collision itself belongs upstream — two operations whose ids
 differ only in case are one name to every generator there is.
 
@@ -310,7 +310,7 @@ separate functions here (`refuted()` fetches; the caller decides).
 make a document GENERATABLE; a doc page needs none of them, because it reads
 paths, tags, summaries and schemas, every one of which cloud emits itself. So the
 projection bought the reference nothing and cost it currency — its pin sat 19
-cloud releases back, rendering four relay-door products with twelve operations
+cloud releases back, rendering four relay products with twelve operations
 each where the document has one, one, one and two. A consumer belongs here only
 while it needs what `publish.py` adds. Codegen does; prose does not.
 
@@ -350,7 +350,7 @@ Nothing below is fixable in this repo, and every item is measured at
   `wecom-bot`, `traffic`, `provider-flags`, `docs`, `health`, `feedback`,
   `documents`) that are that seam's hand-declared shrapnel rather than products.
 - **`POST /v1/mcp`** — 200 with the tool list, control `/v1/mcp-zzq9` 404, in no
-  document. The fleet's one MCP door is undeclared, which cost `flows.yaml` its
+  document. The fleet's one MCP endpoint is undeclared, which cost `flows.yaml` its
   `tools` example. Note it answers 404 to GET, which is why a GET-only sweep has
   twice concluded it does not exist.
 - **`GET /v1/{world,evals,referrals}/health`** — 200, controls 404, undescribed.
@@ -360,12 +360,12 @@ Nothing below is fixable in this repo, and every item is measured at
   registers `/v1/s3/{name}` (provisioning) and `/v1/s3/buckets/…` (storage);
   `manifest/apps.go:83` already notes those two owners share one prefix.
 
-### 2. Relay doors that can only ever emit `{wildcardN}` — 66 addresses
+### 2. Relay routes that can only ever emit `{wildcardN}` — 66 addresses
 
 `bot` (32), `dns` (16), `tasks` (8), `collections` (5), `kms` (2), and one each
 of `download`, `exec`, `files`. Each is a single `app.All("/v1/<x>/*")`
 registration, so there is no per-operation site and the document can only show
-the door. The fix is projecting the mounted registry, exactly as for `apps/ai`;
+the relay. The fix is projecting the mounted registry, exactly as for `apps/ai`;
 until then these addresses are unknowable from outside, and the honest document
 says so rather than guessing a list.
 
@@ -532,7 +532,7 @@ Every SDK also renders `flows.yaml` into its `examples/` — the same six journe
 from the same operationIds, in every language. An SDK does not choose its own
 examples any more than it chooses its own methods. Two of the six moved in this
 change, both because a hand-authored operationId vanished with its hand-authored
-spec: `hello` was `bot_authMe` (`/v1/bot/auth/me`, now behind a relay door) and
+spec: `hello` was `bot_authMe` (`/v1/bot/auth/me`, now behind a relay route) and
 is `get_v1_keys`; `tools` was `mcp_rpc` (`POST /v1/mcp`, undeclared) and is
 `get_v1_tools`. Both replacements were probed with controls — see `flows.yaml`.
 
@@ -542,7 +542,7 @@ The `<svc>_` prefix `merge.py` applied is gone. It existed to keep 52 authored
 specs from colliding, and with one document there is exactly **one** collision in
 2284 operations. `cloud_get_v1_billing_balance` is now `get_v1_billing_balance`;
 `gateway_createChatCompletion` is `post_v1_chat_completions`. A prefix invented
-here was a second naming authority, and the bare id is the one the MCP door
+here was a second naming authority, and the bare id is the one the MCP server
 already uses — a tool name is its operationId. Pin against the document, not
 against a remembered method name.
 

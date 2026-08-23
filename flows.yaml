@@ -26,7 +26,7 @@
 #     live handler says "not found" too.
 #   • PROBE THE METHOD THE DOCUMENT DECLARES, not GET. A POST-only route also
 #     404s on GET: POST /v1/mcp answers 200 with 796 tools while GET /v1/mcp is
-#     404, and reading that 404 as absence is how the fleet's one MCP door
+#     404, and reading that 404 as absence is how the fleet's one MCP endpoint
 #     stayed undeclared. One verb is never a liveness probe.
 #
 # And a 200 is not proof either — see `hello`: /v1/ai/account answers 200 with
@@ -64,7 +64,7 @@ flows:
       Verified with a nonsense-sibling control: GET /v1/keys answers 403
       {"code":"forbidden","error":"sign in to manage API keys"} with NO key and
       with a bogus one, while GET /v1/keys-zzq9 answers 404 — so the 403 is this
-      route refusing, not a wildcard door. With a real key it returns the
+      route refusing, not a wildcard relay. With a real key it returns the
       caller's own keys. An SDK's hello must be the call that says no.
 
 
@@ -154,8 +154,8 @@ flows:
       activated. Assert the count is greater than zero and print three names.
 
 
-      This flow named `mcp_rpc` (POST /v1/mcp, the JSON-RPC door) until the
-      document became the only authority on what exists. That door IS live —
+      This flow named `mcp_rpc` (POST /v1/mcp, the JSON-RPC endpoint) until the
+      document became the only authority on what exists. That endpoint IS live —
       POST /v1/mcp answers 200 with the tool list while POST /v1/mcp-zzq9
       answers 404, so the address is real and the control refutes nothing — but
       cloud's emission does not declare it, so it has no operationId and no
@@ -167,4 +167,4 @@ flows:
 
       Note for whoever writes that declaration: JSON-RPC reports failure INSIDE a
       200, so a client reads `error` before `result` and `result.isError` before
-      `result.content`. The same door with method=tools/call runs one.
+      `result.content`. The same endpoint with method=tools/call runs one.
