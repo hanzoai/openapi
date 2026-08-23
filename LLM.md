@@ -468,7 +468,7 @@ Anthropic SDK hard-codes those paths — there the PATH is the compatibility
 contract — not because a different server answers them. If you find prose
 anywhere claiming an edge exception, it is a bug in the prose.
 
-## SDK generation — the ONE way (Stainless RETIRED, 2026-07)
+## SDK generation — the ONE way
 
 The interface is `hanzo.yaml`; the backend is **openapi-generator 7.14.0** for
 every language. Each language repo owns its call site (`scripts/generate.sh`),
