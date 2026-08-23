@@ -66,6 +66,7 @@ import concurrent.futures as futures
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -449,9 +450,63 @@ def sdk(name, cfg, spec, version, drops, repo, check):
         if not check:
             with open(os.path.join(repo, MANIFEST), "w") as f:
                 f.write("".join(f"{p}\n" for p in sorted(now)))
+            stamp(repo, spec)
         if check and ok:
             print(f"[{name}] clean")
         return ok
+
+
+METHODS = {"get", "put", "post", "delete", "patch", "head", "options", "trace"}
+
+
+def scale(spec):
+    """(operations, paths, services) of the document a client was cut from.
+
+    PARSED, not pattern-matched. The first version counted `^      operationId:`
+    and `^  /`, which is true of cloud's YAML and of nothing else — this driver
+    hands the generator a JSON copy, so every count came out zero and stamped
+    "0 operations over 0 paths" into the README it was added to fix.
+    """
+    doc = as_json(spec) if str(spec).endswith((".yaml", ".yml")) else spec
+    with open(doc, encoding="utf-8") as f:
+        d = json.load(f)
+    paths = d.get("paths") or {}
+    ops = [op for item in paths.values() for m, op in (item or {}).items()
+           if m in METHODS and isinstance(op, dict)]
+    tags = {t for op in ops for t in (op.get("tags") or [])}
+    return len(ops), len(paths), len(tags)
+
+
+# The counts a README quotes, stamped rather than typed.
+#
+# Seven READMEs said "2479 operations over 1814 paths, grouped into 192
+# services". The document served 2259 over 1620 in 148 — every number wrong, on
+# the first paragraph of the page a developer lands on. Nobody mistyped them:
+# they were true once and the document moved, which is what a hand-written count
+# does. cloud's own notes call this out ("a count quoted in prose is stale the
+# next week") and the fix there is the same as here — say how to re-measure it,
+# or measure it for them.
+#
+# The span is delimited so the sentence around it stays the client's own voice;
+# only the numbers are ours. A README with no markers is left alone, so adopting
+# this is per-repo and never a surprise rewrite.
+COUNTS = re.compile(r"(<!--counts-->)(.*?)(<!--/counts-->)", re.S)
+
+
+def stamp(repo, spec):
+    """Rewrite the marked counts in README.md from the spec actually used."""
+    path = os.path.join(repo, "README.md")
+    if not os.path.isfile(path):
+        return
+    text = open(path, encoding="utf-8").read()
+    if not COUNTS.search(text):
+        return
+    ops, paths, svcs = scale(spec)
+    said = f"{ops:,} operations over {paths:,} paths, grouped into {svcs} services"
+    out = COUNTS.sub(lambda m: m.group(1) + said + m.group(3), text)
+    if out != text:
+        open(path, "w", encoding="utf-8").write(out)
+        print(f"[readme] {os.path.basename(repo)}: {said}")
 
 
 def sweep(repo, removed):
