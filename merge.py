@@ -87,17 +87,39 @@ def check_invariant(present, categories, internal, collapsed):
                  f"capabilities.yaml (add them): {orphans}")
 
 
+def _ns_ref(ref, svc):
+    """Namespace a local component pointer `#/components/<kind>/<name>` → `<svc>_`.
+
+    Returns the rewritten pointer, or None if `ref` is not a local schemas /
+    responses / parameters pointer (foreign, or a non-component `#/...` ref)."""
+    if isinstance(ref, str) and ref.startswith("#/components/"):
+        kind = ref.split("/")[2]  # schemas | responses | parameters | ...
+        if kind in ("schemas", "responses", "parameters"):
+            name = "/".join(ref.split("/")[3:])
+            return f"#/components/{kind}/{svc}_{name}"
+    return None
+
+
 def prefix(node, svc):
-    """Rewrite local component $refs to the namespaced `<svc>_` form."""
+    """Rewrite local component references to the namespaced `<svc>_` form.
+
+    Covers both `$ref` values AND `discriminator.mapping` values — a mapping
+    value is a schema pointer just like a `$ref`, so it must be namespaced the
+    same way, or the mapping dangles once the target is prefixed."""
     if isinstance(node, dict):
         out = {}
         for k, v in node.items():
-            if k == "$ref" and isinstance(v, str) and v.startswith("#/components/"):
-                kind = v.split("/")[2]  # schemas | responses | parameters | ...
-                if kind in ("schemas", "responses", "parameters", "requestBodies"):
-                    name = "/".join(v.split("/")[3:])
-                    out[k] = f"#/components/{kind}/{svc}_{name}"
+            if k == "$ref":
+                nsd = _ns_ref(v, svc)
+                if nsd is not None:
+                    out[k] = nsd
                     continue
+            if k == "discriminator" and isinstance(v, dict) and isinstance(v.get("mapping"), dict):
+                out[k] = dict(v, mapping={
+                    payload: (_ns_ref(target, svc) or target)
+                    for payload, target in v["mapping"].items()
+                })
+                continue
             out[k] = prefix(v, svc)
         return out
     if isinstance(node, list):
@@ -105,26 +127,25 @@ def prefix(node, svc):
     return node
 
 
-HTTP_METHODS = ("get", "put", "post", "delete", "options", "head", "patch", "trace")
+def namespace_operation_ids(item, svc):
+    """Namespace every operation's `operationId` under `<svc>_` (globally unique).
 
-
-def namespace_ops(item, svc, path):
-    """Prefix every operationId with `<svc>_` so the merged surface has globally
-    unique operationIds. OpenAPI requires operationId to be unique across the whole
-    document; common names (login, healthCheck, createTeam) collide across services
-    and break codegen otherwise. Mirrors the `<svc>_` component namespacing. When a
-    spec omits operationId, synthesize a deterministic one from method + path."""
+    OpenAPI requires operationIds to be unique across the whole document; the
+    per-service specs only guarantee local uniqueness, so two services sharing
+    e.g. `createProject` collide in the master. Prefixing by service mirrors the
+    component namespacing and makes collisions impossible by construction. An
+    operation with no operationId gets a deterministic synthesized one from its
+    method + path, so nothing is left unnamed."""
     if not isinstance(item, dict):
         return item
     for method, op in item.items():
         if method not in HTTP_METHODS or not isinstance(op, dict):
             continue
-        base = op.get("operationId")
-        if not base:
-            slug = "_".join(seg for seg in "".join(
-                c if c.isalnum() else " " for c in path).split())
-            base = f"{method}_{slug}"
-        op["operationId"] = f"{svc}_{base}"
+        oid = op.get("operationId")
+        if not isinstance(oid, str) or not oid:
+            oid = f"{method}_{_PATH_SLUG.sub('_', item.get('__path__', '')).strip('_')}"
+        op["operationId"] = f"{svc}_{oid}"
+    item.pop("__path__", None)
     return item
 
 
@@ -134,20 +155,18 @@ def build_master(present, categories, internal):
     Internal services are excluded (their dirs, if any, are skipped)."""
     included = [s for s in present if s not in internal]
 
-    paths, schemas, responses, params, reqbodies, secschemes, tags = {}, {}, {}, {}, {}, {}, []
+    paths, schemas, responses, params, secschemes, tags = {}, {}, {}, {}, {}, []
     for svc in included:
         spec = yaml.safe_load(open(os.path.join(ROOT, svc, "openapi.yaml")))
         comps = spec.get("components", {}) or {}
         for p, item in (spec.get("paths", {}) or {}).items():
-            paths[p] = namespace_ops(prefix(item, svc), svc, p)
+            paths[p] = prefix(item, svc)
         for n, x in (comps.get("schemas", {}) or {}).items():
             schemas[f"{svc}_{n}"] = prefix(x, svc)
         for n, x in (comps.get("responses", {}) or {}).items():
             responses[f"{svc}_{n}"] = prefix(x, svc)
         for n, x in (comps.get("parameters", {}) or {}).items():
             params[f"{svc}_{n}"] = prefix(x, svc)
-        for n, x in (comps.get("requestBodies", {}) or {}).items():
-            reqbodies[f"{svc}_{n}"] = prefix(x, svc)
         for n, x in (comps.get("securitySchemes", {}) or {}).items():
             secschemes.setdefault(n, x)
         tags.append({"name": svc, "description": spec.get("info", {}).get("title", svc)})
@@ -168,8 +187,6 @@ def build_master(present, categories, internal):
         components["responses"] = dict(sorted(responses.items()))
     if params:
         components["parameters"] = dict(sorted(params.items()))
-    if reqbodies:
-        components["requestBodies"] = dict(sorted(reqbodies.items()))
 
     master = {
         "openapi": "3.1.0",
