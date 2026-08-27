@@ -482,7 +482,23 @@ def main():
         return 0
 
     repo = checkout(a.cloud)
-    branch = source(repo)
+
+    # The branch is RESOLVED ONLY WHERE IT IS USED, and that is the whole fix for
+    # a gate that could not run. `source()` fetches every remote and exits when
+    # several carry the document and none contains the rest — a real ambiguity,
+    # and refusing to guess at it is right. But it was resolved here,
+    # unconditionally, and then discarded on the one path that needs nothing from
+    # it: `--check` re-derives at the ref `.spec-lock` NAMES, so which remote is
+    # main cannot change its answer. Measured on this repo's own main: `--check`
+    # exited on `forge/main, forgeinc/main, inc/main each carry openapi.yaml and
+    # have diverged` while the artifact it was asked about was byte-for-byte
+    # correct. THE GATE WAS RED FOR A REASON THAT WAS NOT ABOUT THE ARTIFACT.
+    #
+    # `--current` genuinely needs it — its whole question is "has the tip moved
+    # past the pin?" — and re-pinning needs it when no `--ref` says where to pin.
+    # Those two ask; nothing else does.
+    pinned = a.ref or (have.get("ref") if a.check else None)
+    branch = source(repo) if a.current or not pinned else None
 
     if a.current:
         tip = git(repo, "rev-parse", branch).strip()
@@ -499,7 +515,7 @@ def main():
               f"{tip[:8]} with a different document — run `python3 publish.py`")
         return 1
 
-    ref = a.ref or (have.get("ref") if a.check else None) or branch
+    ref = pinned or branch
     if a.check and not have.get("ref"):
         sys.exit("publish: --check needs a .spec-lock naming the document this "
                  "artifact is a projection of; run `python3 publish.py` first")

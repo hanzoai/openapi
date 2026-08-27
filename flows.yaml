@@ -58,13 +58,15 @@ flows:
     # get_openapi.json. So "which routes are open" is a fact an SDK can read
     # rather than a probe result recorded in this file, and hello can open with
     # a call that SUCCEEDS for a reader who has no credential at all. It is a
-    # reachability line, not the identity proof; get_keys is still that.
-    operations: [get_models, get_keys]
+    # reachability line, not the identity proof; get_account_keys is still that.
+    operations: [get_models, get_account_keys]
     notes: >-
-      Verified with a nonsense-sibling control: GET /v1/keys answers 403
-      {"code":"forbidden","error":"sign in to manage API keys"} with NO key and
-      with a bogus one, while GET /v1/keys-zzq9 answers 404 — so the 403 is this
-      route refusing, not a wildcard relay. With a real key it returns the
+      The keys route answers under the app that owns it — /v1/account/keys — and
+      the bare /v1/keys this file used to name is a 404 today. Re-probed with the
+      nonsense-sibling control the moment it moved: GET /v1/account/keys answers
+      403 {"code":"forbidden","detail":"sign in to manage API keys"} with NO key
+      and with a bogus one, while GET /v1/keys-zzq9 answers 404 — so the 403 is
+      this route refusing, not a wildcard relay. With a real key it returns the
       caller's own keys. An SDK's hello must be the call that says no.
 
 
@@ -118,19 +120,24 @@ flows:
 
   store:
     summary: KV round-trip — create a store, read it back, delete it.
-    operations: [post_instances_kv, get_instances_kv_by_name, delete_instances_kv_by_name]
+    operations: [post_provisioning_kv, get_provisioning_kv_by_name, delete_provisioning_kv_by_name]
     notes: >-
       The delete belongs in the language's finally/defer, so a failed read still
       cleans up instead of leaving the store for the next run to collide with.
       This is the provisioning plane — create a KV STORE, read it, drop it — at
-      its served address, /v1/instances/kv. The bare /v1/kv spellings are the
-      legacy dialect the binary itself tags compat, and the publication drops a
-      compat operation by that declaration — so the day this file named them it
-      would have named ids the published document does not have, which is
-      exactly what test_flows.py went red on. Probed at api.hanzo.ai:
-      GET /v1/instances/kv answers 403 while /v1/instances/kv-zzq9 answers 404,
-      which is the existence proof this file requires (auth runs before the
-      handler; only a mounted route can refuse).
+      its served address, /v1/provisioning/kv.
+      This file named /v1/instances/kv before, and that address is GONE: probed
+      at api.hanzo.ai it answers 404 and so does its /v1/instances/kv-zzq9
+      control, which is this repo's own definition of refuted. The store plane
+      answers under the app that registers it — GET /v1/provisioning/kv answers
+      403 {"code":"forbidden","detail":"a validated principal is required"} while
+      /v1/provisioning/kv-zzq9 answers 404, the existence proof this file
+      requires (auth runs before the handler, so only a mounted route can
+      refuse).
+      The bare /v1/kv spellings are a SEPARATE value plane keyed by bucket
+      (/v1/kv/{bucket}/{key}); the bare /v1/kv itself answers 200 with a package
+      descriptor to anyone, which is exactly the shape a round-trip must not be
+      built on.
 
   agent:
     summary: Create an agent, run it, read the run back.
