@@ -18516,13 +18516,16 @@ components:
           description: ID is the session to append to, from the path.
           type: string
         kind:
-          description: "Kind is what this turn IS: message, tool-call, spawn, log, status or\ncontrol. Anything else is refused\
-            \ \u2014 the vocabulary is closed so a reader\ncan branch on it."
+          description: "Kind is what this turn IS: message, tool-call, spawn, log, status, control\nor progress. Anything\
+            \ else is refused \u2014 the vocabulary is closed so a\nreader can branch on it."
           type: string
         payload:
           description: "Payload is the turn's own body, any valid JSON up to 64 KiB. It is SCANNED\nfor credentials before\
             \ it is stored, and a hit refuses the whole append with\n422 and the findings \u2014 this plane never redacts\
-            \ a secret into a transcript\nit then keeps."
+            \ a secret into a transcript\nit then keeps.\n\nIts SHAPE is the writer's business for every kind but one: a `progress`\n\
+            turn is the run reporting on itself in a shape this surface publishes \u2014\n{\"pct\":0-100 (optional), \"phase\"\
+            :\"running|blocked|done\",\n\"activity\":\"\u2264120 chars\"} \u2014 so a malformed one is refused with 400 instead\n\
+            of being stored as prose nobody reads."
       type: object
     eventList:
       properties:
@@ -48220,8 +48223,8 @@ info:
   x-spec:
     repo: hanzo-inc/cloud
     path: openapi.yaml
-    ref: 733acc2f6dc56a2ec0dd6baccc647749215c3181
-    sha256: 70d0f975d783aebae756b393e97355cfc39910867519139b3a1bc443644ec560
+    ref: 03cd1b9b10dc0ab2676fa6bd46a86dc48b2fc687
+    sha256: 18dbece85fa5da0fd05a03c3e5a6942d911541ca4f6a5f10975814d0cc7a1e1b
 openapi: 3.1.0
 paths:
   /v1:
@@ -49586,11 +49589,14 @@ paths:
       x-tool: true
   /v1/agents/sessions/{id}/events:
     post:
-      description: "Records one turn of a session's transcript and answers 201 with it.\n\nTHE TURN IS SCANNED BEFORE IT IS\
-        \ STORED. The same engine the code-security\nsurface runs reads the payload at this boundary, and a credential in\
-        \ it refuses\nthe append with 422 rather than redacting it \u2014 a redacted transcript is one\nthat still had the\
-        \ secret in it once, and this way the author learns which\nvalue to rotate. The refusal carries every finding: the\
-        \ rule, the severity, the\nline, a MASKED preview and the fingerprint. The secret is never in the answer."
+      description: "Records one turn of a session's transcript and answers 201 with it.\n\nA `progress` turn additionally\
+        \ MOVES THE SESSION'S PROGRESS, marked as the run's\nown word rather than an estimate, and pushes the updated session\
+        \ onto the live\nstream \u2014 so a board's bar follows the run without polling and without a second\nwrite path.\
+        \ See progress.go.\n\nTHE TURN IS SCANNED BEFORE IT IS STORED. The same engine the code-security\nsurface runs reads\
+        \ the payload at this boundary, and a credential in it refuses\nthe append with 422 rather than redacting it \u2014\
+        \ a redacted transcript is one\nthat still had the secret in it once, and this way the author learns which\nvalue\
+        \ to rotate. The refusal carries every finding: the rule, the severity, the\nline, a MASKED preview and the fingerprint.\
+        \ The secret is never in the answer."
       operationId: post_agents_sessions_by_id_events
       parameters:
       - description: ID is the session to append to, from the path.
