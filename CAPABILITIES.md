@@ -2,7 +2,7 @@
 
 # Hanzo Capability Manifest
 
-Every capability the API serves, at `3f82fe0da0317de62e734b2d9f1741e4f50e12b9`. GENERATED from `hanzo.yaml` — which is itself generated from hanzo-inc/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
+Every capability the API serves, at `733acc2f6dc56a2ec0dd6baccc647749215c3181`. GENERATED from `hanzo.yaml` — which is itself generated from hanzo-inc/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
 
 ## Identity & Trust
 
@@ -34,7 +34,7 @@ Every capability the API serves, at `3f82fe0da0317de62e734b2d9f1741e4f50e12b9`. 
 | Capability | Operations | What it is |
 |---|---:|---|
 | `ai` | 294 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
-| `agents` | 37 | Package agents is autonomous agents for your org: define them, run them, keep every run. |
+| `agents` | 38 | Package agents is autonomous agents for your org: define them, run them, keep every run. |
 | `ml` | 7 | Package ml is model serving: deploy a model behind an endpoint and call it. |
 | `eval` | 16 | Package eval is scoring a model on your own data, with a judge you choose. |
 | `benchmark` | 9 | Package benchmark is one honest score for any model, on the tests everyone quotes. |

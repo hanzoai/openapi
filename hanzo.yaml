@@ -44717,6 +44717,8 @@ components:
           type: string
         parentSessionId:
           type: string
+        progress:
+          $ref: '#/components/schemas/sessionProgress'
         project:
           type: string
         provider:
@@ -44773,6 +44775,41 @@ components:
           items:
             $ref: '#/components/schemas/sessionView'
           type: array
+      type: object
+    sessionProgress:
+      properties:
+        activity:
+          description: 'Activity is the one line saying what the run is doing right now ("running
+
+            the reaper''s tests"), up to 120 characters, in the model''s words. Empty
+
+            when nothing has estimated it yet.'
+          type: string
+        at:
+          description: 'At is when this was determined, RFC 3339 in UTC to the second. Read it as
+
+            the estimate''s AGE: an estimate is not refreshed while nothing has
+
+            happened, and a stale one beside a run that is still moving is itself worth
+
+            seeing. Empty when nothing has estimated it yet.'
+          type: string
+        estimated:
+          description: "Estimated says a MODEL produced this, from the run's transcript, and it may\nbe wrong. False means\
+            \ the session's own row said it: a finished run is 100%\nbecause it finished, not because anything guessed. Never\
+            \ treat a true here\nas a measurement \u2014 it is the reason to look, not the answer."
+          type: boolean
+        pct:
+          description: "Pct is how much of the run is done, 0 to 100. THE KEY IS ABSENT when\nprogress is indeterminate \u2014\
+            \ a run nobody can estimate is not a run that has\ndone nothing, and rendering the second for the first is the\
+            \ mistake this\nomission exists to make impossible. Read `phase` before reaching for it."
+          type: integer
+        phase:
+          description: "Phase is what shape the run is in: running, blocked, done, error, or\nunknown when nothing has estimated\
+            \ it yet. blocked means the transcript\nshows the run waiting on something \u2014 an approval, a credential, an\
+            \ answer \u2014\nwhich is the one state the running surface cannot report about itself.\nerror only ever comes\
+            \ from the session's own terminal status."
+          type: string
       type: object
     sessionUser:
       properties:
@@ -44881,6 +44918,12 @@ components:
             \ session is a root \u2014 a flow of its own. A parent always\nbelongs to the same org, so a tree never crosses\
             \ a tenant."
           type: string
+        progress:
+          $ref: '#/components/schemas/sessionProgress'
+          description: "Progress is how far along this run is \u2014 a share of its goal, a phase, and a\nline saying what\
+            \ it is doing. Always present, so a board never branches on\nwhether it is there; `phase` says \"unknown\" when\
+            \ nothing has estimated it.\nIt is a MODEL ESTIMATE wherever `estimated` is true, and the row's own word\nwhere\
+            \ it is false. See progress.go."
         project:
           description: 'The readable build: the product this session built and whether its story
 
@@ -48177,8 +48220,8 @@ info:
   x-spec:
     repo: hanzo-inc/cloud
     path: openapi.yaml
-    ref: 3f82fe0da0317de62e734b2d9f1741e4f50e12b9
-    sha256: 30edce7ee166dae17f685f16e385627c313126ede7e6c0a0b4ebad1c1839a199
+    ref: 733acc2f6dc56a2ec0dd6baccc647749215c3181
+    sha256: 70d0f975d783aebae756b393e97355cfc39910867519139b3a1bc443644ec560
 openapi: 3.1.0
 paths:
   /v1:
@@ -49633,6 +49676,39 @@ paths:
                 $ref: '#/components/schemas/controlResult'
           description: ok
       summary: Asks a running session to pause.
+      tags:
+      - agents
+      x-app: agents
+      x-public: true
+      x-tool: true
+  /v1/agents/sessions/{id}/progress:
+    get:
+      description: "Returns how far along one run is: the share of its goal that\nis done, whether it is running, blocked\
+        \ or finished, and a line saying what it\nis doing right now.\n\nIt is a MODEL ESTIMATE read off the run's own transcript,\
+        \ not a measurement \u2014\n`estimated` says so on every answer, and a run whose progress cannot be told\nreports\
+        \ phase \"unknown\" with no percentage rather than a zero it does not\nmean. A session that has already finished answers\
+        \ from its own status instead,\nand is marked not estimated.\n\nThe list and detail reads carry the same value; this\
+        \ address is the one that\nWAITS. Where the stored estimate has gone stale it is remade before answering,\nso a human\
+        \ deciding whether to step into a run gets a current reading rather\nthan the last poll's \u2014 which costs one small\
+        \ completion, charged to the same\nwallet the session already names, at most once every thirty seconds per run."
+      operationId: get_agents_sessions_by_id_progress
+      parameters:
+      - description: ID is the session to act on, from the path.
+        example: sess_1
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/sessionProgress'
+          description: ok
+      summary: 'Returns how far along one run is: the share of its goal that is done, whether it is running, blocked or finished,
+        and a line saying what it is doing right now.'
       tags:
       - agents
       x-app: agents
