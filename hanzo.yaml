@@ -48177,8 +48177,8 @@ info:
   x-spec:
     repo: hanzo-inc/cloud
     path: openapi.yaml
-    ref: 22aedc87cca9edca2b52c233d9a294ba583a98a9
-    sha256: bcc530927aec91f8546694728139841fa7e2cedb9458ecaace5b05efd639f73a
+    ref: 3f82fe0da0317de62e734b2d9f1741e4f50e12b9
+    sha256: 30edce7ee166dae17f685f16e385627c313126ede7e6c0a0b4ebad1c1839a199
 openapi: 3.1.0
 paths:
   /v1:
@@ -65813,7 +65813,7 @@ paths:
           application/json:
             example:
               jurisdiction: DE
-              name: Acme Inc.
+              name: AgentCo, LLC
               structure: c-corp
             schema:
               $ref: '#/components/schemas/beginIn'
@@ -66431,7 +66431,7 @@ paths:
           application/json:
             example:
               jurisdiction: DE
-              name: Acme Inc.
+              name: AgentCo, LLC
               structure: c-corp
             schema:
               $ref: '#/components/schemas/structureIn'
@@ -81903,8 +81903,10 @@ paths:
     post:
       description: "The address the GitHub App delivers events to. A push is handed to the repository sync engine, and an\
         \ issue or issue-comment event is mirrored into the native todo \u2014 idempotently, so the same issue re-syncs to\
-        \ one row however many times it is edited, closed or reopened.\n\nIt answers a benign 200 for everything it does not\
-        \ act on \u2014 the ping, other event types, an unknown installation \u2014 deliberately, so GitHub does not enter\
+        \ one row however many times it is edited, closed or reopened. A repository event that puts a repo INTO the granted\
+        \ set (created, transferred, unarchived) raises one todo offering to import it; accepting means POSTing that repo\
+        \ to /v1/integrations/github/import. It never imports on its own.\n\nIt answers a benign 200 for everything it does\
+        \ not act on \u2014 the ping, other event types, an unknown installation \u2014 deliberately, so GitHub does not enter\
         \ a retry storm over events that were never going to do anything. Only a bad signature and a genuine sync failure\
         \ are non-200, and an oversized payload is refused outright.\n\nTwo sync rules are worth stating because neither is\
         \ guessable. EVERY ref syncs, tags as well as branches, because releases are cut by tag and filtering them would stop\
@@ -83674,7 +83676,7 @@ paths:
           application/json:
             example:
               data:
-                counterparty: Acme, Inc.
+                counterparty: AgentCo, LLC
                 date: '2026-07-30'
               templateId: nda
             schema:
@@ -83956,7 +83958,7 @@ paths:
               - key: counterparty
                 label: Counterparty
               id: nda
-              title: Acme Mutual NDA
+              title: AgentCo Mutual NDA
             schema:
               $ref: '#/components/schemas/templateOverride'
         required: true

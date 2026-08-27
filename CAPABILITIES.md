@@ -2,7 +2,7 @@
 
 # Hanzo Capability Manifest
 
-Every capability the API serves, at `22aedc87cca9edca2b52c233d9a294ba583a98a9`. GENERATED from `hanzo.yaml` — which is itself generated from hanzo-inc/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
+Every capability the API serves, at `3f82fe0da0317de62e734b2d9f1741e4f50e12b9`. GENERATED from `hanzo.yaml` — which is itself generated from hanzo-inc/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
 
 ## Identity & Trust
 
