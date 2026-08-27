@@ -2,7 +2,7 @@
 
 # Hanzo Capability Manifest
 
-Every capability the API serves, at `911d913409900d9488eb4fbed7cf164f594355cb`. GENERATED from `hanzo.yaml` — which is itself generated from hanzo-inc/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
+Every capability the API serves, at `22aedc87cca9edca2b52c233d9a294ba583a98a9`. GENERATED from `hanzo.yaml` — which is itself generated from hanzo-inc/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
 
 ## Identity & Trust
 
@@ -10,22 +10,22 @@ Every capability the API serves, at `911d913409900d9488eb4fbed7cf164f594355cb`. 
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `iam` | 183 | Package iam is Hanzo's identity provider: users, organizations, applications, and the OIDC/OAuth2 endpoints every Hanzo service authenticates against. |
-| `account` | 10 | Package account is your own account: API keys you mint and revoke, and org onboarding. |
-| `authz` | 3 |  |
-| `kms` | 7 | Package kms is secret custody: your org's secrets sealed at rest, plus threshold signing. |
+| `iam` | 150 | Package iam is Hanzo's identity provider: users, organizations, applications, and the OIDC/OAuth2 endpoints every Hanzo service authenticates against. |
+| `authz` | 3 | Package serve is the access decision behind an org-scoped call: who may do what, where, answered allow or deny. |
+| `kms` | 5 | Package kms is secret custody: your org's secrets sealed at rest, plus threshold signing. |
 | `security` | 7 | Package security is secret scanning for your code: submit sources, get findings, masked never raw. |
-| `entitlements` | 3 | Package entitlements is what your org may run: what the plan grants, and which of those products are switched on. |
+| `team` | 20 | Package team is your org's shared workspace: documents edited together, files, seats, and agents as teammates. |
 | `audit` | 1 | Package auditlog is your org's tamper-evident audit trail: every security-relevant event, hash-chained and readable. |
 | `compliance` | 17 | Package compliance is your KYC/KYB onboarding, accreditation records, and the evidence trail behind them. |
-| `admin` | 56 | Package admin is the operator's view of the fleet: orgs, users, roles, spend and system health. |
 | `risk` | 11 | Package risk is HANZO RISK's model plane: the per-organisation feature surface and the per-organisation models trained on it. |
+| `validator` | 4 | Package validators is one-click validator onboarding: prove your Genesis NFT, get a node provisioned, queue its registration. |
+| `wallet` | 8 | Package wallets is blockchain key custody: create wallets, rotate their keys, and sign with them. |
+| `entitlement` | 3 | Package entitlements is what your org may run: what the plan grants, and which of those products are switched on. |
+| `account` | 10 | Package account is your own account: API keys you mint and revoke, and org onboarding. |
 | `dataset` | 7 | Package dataset is the per-org dataset plane of /v1/risk: a dataset is a VERSIONED, IMMUTABLE snapshot of one tenant's own event surface, and this is where it is declared, materialised, described, exported and disposed of. |
 | `label` | 7 | Package label is the ground-truth plane: what actually turned out to be fraud, who said so, and when they could first have said it. |
 | `reference` | 6 | Package reference is the lookup data a risk decision needs but cannot derive: which email domains hand out throwaway inboxes, which addresses belong to a datacentre or a Tor exit, which card scheme an issuer prefix belongs to, which browsers the fleet sees everywhere, and how current the designation lists the screening engine holds actually are. |
-| `validators` | 4 | Package validators is one-click validator onboarding: prove your Genesis NFT, get a node provisioned, queue its registration. |
-| `wallets` | 8 | Package wallets is blockchain key custody: create wallets, rotate their keys, and sign with them. |
-| `team` | 19 | Package team is your org's shared workspace: documents edited together, files, seats, and agents as teammates. |
+| `trust` | 17 | Package trust is your trust centre: the controls you publish, the coverage they compute to, the documents a reviewer asks for, and who you send data to. |
 
 ## Intelligence
 
@@ -33,23 +33,20 @@ Every capability the API serves, at `911d913409900d9488eb4fbed7cf164f594355cb`. 
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `ai` | 302 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
-| `engine` | 4 | Package engine is Hanzo Engine: which models the serving runtime has loaded, and the GPUs under it. |
-| `ml` | 7 | Package ml is model serving: deploy a model behind an endpoint and call it. |
+| `ai` | 294 | Package ai is Hanzo AI — the model API on /v1 (/v1/chat/completions, /v1/messages, /v1/models and the rest of hanzoai/ai's surface) — mounted into a cloud binary with the money, ingest and telemetry callbacks cloud BUILDS but cannot INSTALL. |
 | `agents` | 37 | Package agents is autonomous agents for your org: define them, run them, keep every run. |
-| `evals` | 16 | Package eval is scoring a model on your own data, with a judge you choose. |
+| `ml` | 7 | Package ml is model serving: deploy a model behind an endpoint and call it. |
+| `eval` | 16 | Package eval is scoring a model on your own data, with a judge you choose. |
 | `benchmark` | 9 | Package benchmark is one honest score for any model, on the tests everyone quotes. |
-| `research` | 8 | Package research is every experiment you have ever run, kept and comparable. |
-| `prompts` | 6 | Package prompts is your prompt library, versioned, so nothing changes silently. |
-| `exec` | 5 | Package exec is the code interpreter: run a snippet in a sandbox, and move files in and out of the session that sandbox IS. |
-| `sandboxes` | 19 | Package sandbox is the ONE compute primitive: a sandbox is a gVisor pod that runs somebody else's code, and every lifetime is the same object. |
+| `prompt` | 6 | Package prompts is your prompt library, versioned, so nothing changes silently. |
+| `exec` | 4 | Package exec is the code interpreter: run a snippet in a sandbox, and move files in and out of the session that sandbox IS. |
+| `sandbox` | 19 | Package sandbox is the ONE compute primitive: a sandbox is a gVisor pod that runs somebody else's code, and every lifetime is the same object. |
 | `tools` | 19 | Package tools is everything your org can call, in one list: connector actions, functions, agents, skills and your own MCP servers. |
-| `plugins` | 4 | Package plugin is what each host is running, and how to change it: enable, disable, reload, or pin a service to a version. |
-| `skills` | 2 | Package skills is the skill catalogue an AI client reads to learn what it can do. |
 | `ask` | 2 | Package ask is a plain-language question about your business, answered with real numbers. |
 | `code` | 7 | Package code is search and symbols across your repos, for you and your agents. |
-| `lsp` | 5 | Package lsp is live semantic code intelligence — definitions, references, types, hover, outline and diagnostics — over a repository AND its resolved dependencies, with no toolchain on the caller's machine. |
+| `engine` | 4 | Package engine is Hanzo Engine: which models the serving runtime has loaded, and the GPUs under it. |
 | `translate` | 3 | Package translate is text in, the same text out in the language you asked for. |
+| `lsp` | 5 | Package lsp is live semantic code intelligence — definitions, references, types, hover, outline and diagnostics — over a repository AND its resolved dependencies, with no toolchain on the caller's machine. |
 
 ## Data
 
@@ -57,18 +54,19 @@ Every capability the API serves, at `911d913409900d9488eb4fbed7cf164f594355cb`. 
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `base` | 1 | Package base is managed Hanzo Base: a hosted backend for your app — collections, records, access rules and sign-in. |
-| `provisioning` | 28 | Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store, wired straight into your app. |
-| `storage` | 8 | Package storage is object storage: your buckets and the files in them, with signed URLs for upload and download. |
-| `product` | 4 | Package product is the read-only inventory of the search and vector backends: /v1/search/{indexes,stats} read from Meilisearch and /v1/vector/{collections,stats} from Qdrant, reshaped into the rows the console renders. |
+| `s3` | 6 | Package s3 is object storage: your buckets and the files in them, with signed URLs for upload and download. |
+| `base` | 3 | Package base is managed Hanzo Base: a hosted backend for your app — collections, records, access rules and sign-in. |
+| `kv` | 6 | Package kv is your key-value store: buckets of versioned values your apps read and write by key. |
 | `search` | 1 | Package search is one ranked result set over everything your org has stored. |
 | `index` | 17 | Package index is fast full-text search over your own data, typos forgiven. |
-| `knowledge` | 9 | Package knowledge is your team's wiki and your agents' memory, searchable by meaning. |
 | `catalog` | 1 | Package catalog is one place to browse every project, app and site built here. |
 | `taxonomy` | 5 | Package taxonomy is the product catalogue's shape: which categories exist, what each product is called, which category it sits in, what it is tagged with, and the order the two are shown in. |
 | `sync` | 6 | Package sync is data sync: link two endpoints and keep them in step, on a webhook, on a schedule, or on demand. |
 | `crawl` | 1 | Package crawl is any web page turned into clean markdown a model can read. |
 | `websearch` | 7 | Package websearch is a web search and a page fetch your agents can call. |
+| `provisioning` | 28 | Package provisioning is one-click data add-ons: a SQL, key-value, document, vector, search or object store, wired straight into your app. |
+| `knowledge` | 9 | Package knowledge is your team's wiki and your agents' memory, searchable by meaning. |
+| `graph` | 7 | Package graph is one organization's entities and the relations between them, held as assertions: somebody, at some moment, from some evidence, asserted that this thing stands in that relation to that other thing. |
 
 ## Streams
 
@@ -76,16 +74,17 @@ Every capability the API serves, at `911d913409900d9488eb4fbed7cf164f594355cb`. 
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `tasks` | 20 | Package tasks is Hanzo Tasks: durable workflows that survive a crash, with every run visible and replayable. |
-| `pubsub` | 8 | Package pubsub is your message bus: publish, subscribe, and durable streams your apps read at their own pace. |
+| `tasks` | 5 | Package tasks is Hanzo Tasks: durable workflows that survive a crash, with every run visible and replayable. |
+| `pubsub` | 2 | Package pubsub is your message bus: publish, subscribe, and durable streams your apps read at their own pace. |
 | `mq` | 15 | Package mq is queue and stream admin for your org: create them, watch them drain, ack what you pulled. |
 | `notify` | 4 | Package notify is transactional email and SMS, sent through your org's own provider credential. |
 | `tel` | 10 | Package tel is the telecommunications surface: phone numbers, calls and messages, on whatever carrier the deployment is configured for. |
-| `automations` | 17 | Package automations is workflows that run themselves, on a schedule or a webhook. |
+| `auto` | 17 | Package auto is workflows that run themselves, on a schedule or a webhook. |
 | `flow` | 8 | Package flow is Hanzo Flow: build an agent workflow on a visual canvas, run it, and read every run. |
-| `webhooks` | 8 | Package webhooks is how your app hears about events: register an endpoint, pick the events, get each one delivered and signed. |
+| `webhook` | 8 | Package webhooks is how your app hears about events: register an endpoint, pick the events, get each one delivered and signed. |
+| `event` | 12 | Package analytics is product analytics: send an event, read back who did what. |
 | `channels` | 7 | Package channels is one inbox for the chat apps you connect — Discord, Slack, Teams, Telegram. |
-| `destinations` | 5 | Package destinations is your events forwarded to the ad and analytics tools you use. |
+| `destination` | 5 | Package destinations is your events forwarded to the ad and analytics tools you use. |
 | `integrations` | 48 | Package integrations is how your org connects third-party accounts like Slack, and revokes them. |
 
 ## Observability
@@ -94,12 +93,11 @@ Every capability the API serves, at `911d913409900d9488eb4fbed7cf164f594355cb`. 
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `o11y` | 387 | Package o11y is your logs, metrics and traces: ship them in, query them, chart them. |
+| `o11y` | 381 | Package o11y is your logs, metrics and traces: ship them in, query them, chart them. |
 | `metrics` | 11 |  |
-| `analytics` | 12 | Package analytics is product analytics: send an event, read back who did what. |
 | `usage` | 5 | Package usage is what your org ran and what it cost, broken down per account. |
-| `leaderboard` | 6 | Package leaderboard is the ranking of who uses AI most, in your org and globally. |
-| `openapi` | 4 |  |
+| `openapi` | 5 | The served contract: the OpenAPI document every client, tool list and command group is generated from, its command projection, the agent endpoint that offers the same operations over MCP, and the index a client follows from the API root to reach any of it. |
+| `leaderboard` | 5 | Package leaderboard is the ranking of who uses AI most, in your org and globally. |
 
 ## Commerce
 
@@ -107,25 +105,25 @@ Every capability the API serves, at `911d913409900d9488eb4fbed7cf164f594355cb`. 
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `commerce` | 219 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
-| `billing` | 9 | Package billing is your org's balance, what it has spent, and the cards it pays with. |
-| `treasury` | 8 | Package treasury is the reserve fund behind every payout: real capital, held and accounted for. |
-| `plan` | 15 | Package plan is the plan catalog: every tier you can buy, what it costs, and what it grants. |
-| `pricing` | 33 | Package pricing is the price list: what every model, provider, GPU tier, tool and hosting plan costs. |
-| `allowance` | 1 | Package allowance is how much a plan lets you do without paying, and how much of it you have left today. |
+| `commerce` | 181 | Package commerce is selling: checkout, subscriptions, invoices, spend alerts, payment webhooks and the storefront catalog. |
 | `marketplace` | 6 | Package marketplace is the shop for tools and agents: browse, install into your project, publish your own free or priced. |
+| `billing` | 45 | Package billing is your org's balance, what it has spent, and the cards it pays with. |
+| `pricing` | 28 | Package pricing is the price list: what every model, provider, GPU tier, tool and hosting plan costs. |
 | `books` | 25 | Package books is double-entry accounting: chart of accounts, ledger, bank reconciliation, and the reports that prove the books balance. |
 | `captable` | 31 | Package captable is your cap table: stakeholders, share classes, grants, SAFEs, rounds, and who owns what. |
 | `crm` | 20 | Package crm is your sales pipeline: the companies, the people, the deals in play. |
-| `referrals` | 4 | Package referrals is referral ATTRIBUTION: who referred whom, and whether that referee ever became a real customer. |
-| `affiliates` | 17 | Package affiliates is a partner program that pays commission on what your referrals spend. |
-| `authors` | 11 | Package authors is a royalty for open-source work: your repo runs, you get paid. |
-| `licensing` | 11 |  |
+| `referral` | 2 | Package referrals is referral ATTRIBUTION: who referred whom, and whether that referee ever became a real customer. |
+| `affiliate` | 10 | Package affiliates is a partner program that pays commission on what your referrals spend. |
+| `author` | 5 | Package authors is a royalty for open-source work: your repo runs, you get paid. |
+| `licensing` | 11 | Package licensing is what an org has bought and may run: signed licenses to issue, verify and revoke, and the releases they unlock. |
 | `x402` | 1 | Package x402 is pay-per-request over HTTP 402: quote a price, take the payment, serve the resource. |
 | `marketing` | 35 | Package marketing is lifecycle email: drip sequences that reach the right people. |
 | `campaign` | 11 | Package campaign is one go-to-market push across paid, organic and email at once. |
-| `ads` | 7 | Package ads is your paid ad campaigns, launched and paused from one place. |
-| `experiments` | 7 | Package experiments is A/B testing anything: a flag, an ad, a subject line, a model. |
+| `ad` | 7 | Package ads is your paid ad campaigns, launched and paused from one place. |
+| `experiment` | 7 | Package experiments is A/B testing anything: a flag, an ad, a subject line, a model. |
+| `treasury` | 2 | Package treasury is the reserve fund behind every payout: real capital, held and accounted for. |
+| `plan` | 14 | Package plan is the plan catalog: every tier you can buy, what it costs, and what it grants. |
+| `allowance` | 1 | Package allowance is how much a plan lets you do without paying, and how much of it you have left today. |
 
 ## Platform
 
@@ -134,18 +132,18 @@ Every capability the API serves, at `911d913409900d9488eb4fbed7cf164f594355cb`. 
 | Capability | Operations | What it is |
 |---|---:|---|
 | `platform` | 37 | Package platform is Hanzo PaaS: deploy containers to your own tenant namespace — builds, releases, environments, logs, custom domains. |
-| `deploy` | 21 | Package deploy is Hanzo CD: see what each app is running, sync it, and roll back a bad release. |
-| `projects` | 58 | Package projects is where your sites live: create one, deploy a build, roll back to any release. |
+| `deploy` | 20 | Package deploy is Hanzo CD: see what each app is running, sync it, and roll back a bad release. |
+| `projects` | 29 | Package projects is where your sites live: create one, deploy a build, roll back to any release. |
 | `registry` | 6 | Package registry is your container and package registry: push images, pull them back, see what you store. |
 | `gateway` | 3 | Package gateway is live control of the policy your API applies to every incoming request: CORS, rate limits, cache TTL and allowed methods, changed without a redeploy. |
-| `ingress` | 18 | Package ingress is your front door: automatic TLS certificates and hostname routing to any backend, changed live. |
+| `ingress` | 18 | Package ingress is your edge: automatic TLS certificates and hostname routing to any backend, changed live. |
+| `dns` | 12 | Package dns is your DNS records: the zones and records behind every name you point at Hanzo. |
 | `domain` | 7 | Package domain is Hanzo Domains: search a name, see the price, buy it from your prepaid wallet. |
-| `dns` | 5 | Package dns is your DNS records: the zones and records behind every name you point at Hanzo. |
-| `cloudflare` | 33 | Package cloudflare is your Cloudflare account, managed from Hanzo: zones, Pages, Workers, Workers AI, R2, KV and D1. |
-| `visor` | 34 | Package visor is the compute you rent from Hanzo: machines, GPUs and clusters — launch one, resize it, tear it down. |
-| `zt` | 4 | Package zt mounts the Hanzo Cloud NETWORKING surface: the tenant's Hanzo Zero Trust footprint — overlay networks, their routers and mesh services — served as clean, org-scoped REST off the unified cloud binary and fronting the Hanzo Zero Trust controller (hanzoai/zt, an OpenZiti-based fabric). |
+| `cloudflare` | 32 | Package cloudflare is your Cloudflare account, managed from Hanzo: zones, Pages, Workers, Workers AI, R2, KV and D1. |
+| `network` | 4 | Package network mounts the Hanzo Cloud NETWORKING surface: the tenant's Hanzo Zero Trust footprint — the overlay network, its routers and its services — served as clean, org-scoped REST off the unified cloud binary and fronting the Hanzo Zero Trust controller (hanzoai/zt, an OpenZiti-based fabric). |
 | `flags` | 8 | Package flags is feature flags: ship it dark, then turn it on for who you pick. |
-| `admission` | 1 | Package admission is the launch-control GATE for Hanzo's hosted services — the COMPLETE waitlist feature, COMPOSING the ONE flag engine (apps/flags) one-way. |
+| `visor` | 34 | Package visor is the compute you rent from Hanzo: machines, GPUs and clusters — launch one, resize it, tear it down. |
+| `node` | 4 | Package nodes is your machines: the ones you own, connected and ready to take a command. |
 
 ## Applications
 
@@ -153,30 +151,30 @@ Every capability the API serves, at `911d913409900d9488eb4fbed7cf164f594355cb`. 
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `git` | 58 | Package git is Git hosting for your org: create repos, clone, push, and see what they cost. |
-| `templates` | 5 | Package templates is a gallery of starter kits you can deploy as they come. |
+| `git` | 44 | Package git is Git hosting for your org: create repos, clone, push, and see what they cost. |
+| `template` | 5 | Package templates is a gallery of starter kits you can deploy as they come. |
 | `blueprint` | 3 | Package blueprint is what a template costs to run, worked out before you deploy. |
-| `bot` | 4 | Package bot is your own machines, connected and ready to take a command. |
-| `bots` | 8 | Package bots is a bot doing your work on a real desktop, live, while you watch. |
+| `bot` | 3 | Package bot is a bot doing your work on a real desktop, live, while you watch. |
 | `world` | 6 | Package world is a live news feed filtered to what your project cares about. |
-| `todo` | 12 | Package todo is Hanzo Todo: boards, the work items on them, and the filters that make a board. |
+| `todo` | 13 | Package todo is Hanzo Todo: boards, the work items on them, and the filters that make a board. |
 | `framework` | 19 | Package framework is document types you define: describe a record once, then create, list, submit and cancel documents against it. |
 | `content` | 6 | Package content is marketing content from draft to published, on every channel. |
-| `guide` | 19 | Package guide is a step-by-step checklist that gets your business running on AI. |
+| `guide` | 19 | Package guide is the AI that builds an agentic company with you, one measured step at a time. |
 | `help` | 4 | Package help is a support desk: customers file tickets, your team answers them. |
-| `meet` | 13 | Package meet is the virtual office: it decides who may join a room and mints the short-lived token that lets them in. |
+| `meet` | 7 | Package meet is the virtual office: it decides who may join a room and mints the short-lived token that lets them in. |
 | `share` | 2 | Package share is a public URL for a service on your own machine, and a list of what you have open. |
 | `social` | 13 | Package social is posting to every social account you own, now or on a schedule. |
-| `link` | 11 | Package link is the unified AI login manager's registry: the org+user-scoped record of WHICH provider accounts (Claude Max, ChatGPT Plus, a Hanzo API key, a raw provider key) a developer has signed into, ON WHICH MACHINES, with each account's latest usage snapshot. |
 | `esign` | 13 | Package esign is a document out for signature, signed and filed with an audit trail. |
-| `dataroom` | 17 | Package dataroom is a secure document room you share by link and watch page by page. |
-| `company` | 22 | Package company is incorporation end to end: pick a structure, add founders, pay, file, and e-sign. |
+| `dataroom` | 26 | Package dataroom is a secure document room you share by link and watch page by page. |
+| `company` | 24 | Package company is incorporation end to end: pick a structure, add founders, pay, file, and e-sign. |
 | `legal` | 11 | Package legal is the paperwork your company needs, drafted, signed and filed. |
-| `prefs` | 2 | Package prefs is your own settings — theme, density, pinned nav — following you across every Hanzo app. |
+| `pref` | 2 | Package prefs is your own settings — theme, density, pinned nav — following you across every Hanzo app. |
 | `settings` | 2 | Package settings is how an org configures each product it uses, secret fields included. |
 | `functions` | 11 | Package functions is your serverless code: publish it, call it over HTTP, watch every run and what it cost. |
-| `sbom` | 3 | Package sbom is what is inside a container image: every component, resolvable by digest or image ref. |
+| `sbom` | 2 | Package sbom is what is inside a container image: every component, resolvable by digest or image ref. |
+| `link` | 11 | Package link is the unified AI login manager's registry: the org+user-scoped record of WHICH provider accounts (Claude Max, ChatGPT Plus, a Hanzo API key, a raw provider key) a developer has signed into, ON WHICH MACHINES, with each account's latest usage snapshot. |
 | `seo` | 7 | Package seo is search visibility as data: what a phrase is worth, what a site already places for, who places beside it, who links to it, and what one page gets wrong. |
+| `standing` | 1 | Package standing prices and tracks what it costs to KEEP a company, as distinct from what it cost to form one. |
 
 ## Chain
 
@@ -184,5 +182,5 @@ Every capability the API serves, at `911d913409900d9488eb4fbed7cf164f594355cb`. 
 
 | Capability | Operations | What it is |
 |---|---:|---|
-| `web3` | 4 | Package web3 is the chain-access surface: which chains this deployment can reach, a JSON-RPC door onto each, and the two token reads every wallet UI needs. |
+| `web3` | 4 | Package web3 is the chain-access surface: which chains this deployment can reach, a JSON-RPC endpoint onto each, and the two token reads every wallet UI needs. |
 | `explorer` | 2 | Package explorer is chain data: your block indexers and how far each has caught up, plus the on-chain price feeds. |
