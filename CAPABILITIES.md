@@ -2,7 +2,7 @@
 
 # Hanzo Capability Manifest
 
-Every capability the API serves, at `a48ddfb3159d3011469f41e5412e1340f2f083e5`. GENERATED from `hanzo.yaml` — which is itself generated from hanzo-inc/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
+Every capability the API serves, at `92604dd76f731c0ef713f50d067334628c173811`. GENERATED from `hanzo.yaml` — which is itself generated from hanzo-inc/cloud's own emission — so a name is on this page if and only if a router registered operations under it. Nothing here is authored, and there is nothing to author: a capability appears the release it starts being served and leaves the release it stops.
 
 ## Identity & Trust
 
@@ -85,7 +85,7 @@ Every capability the API serves, at `a48ddfb3159d3011469f41e5412e1340f2f083e5`. 
 | `event` | 12 | Package analytics is product analytics: send an event, read back who did what. |
 | `channels` | 7 | Package channels is one inbox for the chat apps you connect — Discord, Slack, Teams, Telegram. |
 | `destination` | 5 | Package destinations is your events forwarded to the ad and analytics tools you use. |
-| `integrations` | 48 | Package integrations is how your org connects third-party accounts like Slack, and revokes them. |
+| `integrations` | 50 | Package integrations is how your org connects third-party accounts like Slack, and revokes them. |
 
 ## Observability
 

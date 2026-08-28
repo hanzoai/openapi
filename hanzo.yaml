@@ -11059,7 +11059,7 @@ components:
             group name -> channel -> entries. Absent or null leaves them alone.'
           type: object
         channel:
-          description: 'Channel is the transport to edit: discord, slack, teams or telegram.
+          description: 'Channel is the transport to edit: discord, slack, teams, telegram or whatsapp.
 
             Required; an unknown value is a 404.'
           type: string
@@ -11105,9 +11105,9 @@ components:
 
             `accessGroup:<name>` admits any sender listed under that name for THIS
 
-            channel, or under the channel `*`, which is how one set covers all four
+            channel, or under the channel `*`, which is how one set covers every
 
-            transports. Replaced wholesale by the PUT.'
+            transport at once. Replaced wholesale by the PUT.'
           type: object
         dm:
           description: "DM is the CONFIG-managed DM allow entries \u2014 the list PUT\n/v1/channels/allowlist owns and replaces\
@@ -11442,7 +11442,9 @@ components:
     approvePairingIn:
       properties:
         channel:
-          description: 'Channel is the transport the request came in on: discord, slack, teams or telegram.'
+          description: 'Channel is the transport the request came in on: discord, slack, teams,
+
+            telegram or whatsapp.'
           type: string
         code:
           description: 'Code is the pairing code from GET /v1/channels/pairing. It is a capability:
@@ -13463,36 +13465,36 @@ components:
             \ rendered as a button that\n\t           invokes it.\n\turl      \u2014 an external link (`url`), rendered as\
             \ a link button.\n\tselect   \u2014 a menu (`options`, each a label and the value choosing it\n\t           returns),\
             \ rendered as a picker.\n\tapproval \u2014 a reference to an approval request (`approval.id`), rendered as\n\t\
-            \           approve/deny controls bound to that id.\n\nFalse on all four transports this pass, and nothing refuses\
-            \ a send for it:\nactions are accepted, validated per kind, and flattened by renderText to one\nline each after\
-            \ the text \u2014 `[label] command`, `[label] url`,\n`[label] opt | opt`, `[label] approval requested: <id>`.\
-            \ So a caller that\nneeds a real control must read this flag and degrade itself; a caller that\nonly needs the\
-            \ choice communicated can send actions and take the text form."
+            \           approve/deny controls bound to that id.\n\nFalse on every transport, and nothing refuses a send for\
+            \ it:\nactions are accepted, validated per kind, and flattened by renderText to one\nline each after the text\
+            \ \u2014 `[label] command`, `[label] url`,\n`[label] opt | opt`, `[label] approval requested: <id>`. So a caller\
+            \ that\nneeds a real control must read this flag and degrade itself; a caller that\nonly needs the choice communicated\
+            \ can send actions and take the text form."
           type: boolean
         dm:
-          description: "DM is whether the transport carries a DIRECT message at all. True for slack,\nteams and telegram.\
-            \ False for discord, honestly: that ingress is guild-scoped\nslash commands \u2014 an interaction without a guild\
-            \ id is refused at the endpoint \u2014\nso nothing ever arrives classified as a DM, no reply route is ever learned\n\
-            for one, and a send addressed at a Discord DM is refused 409."
+          description: "DM is whether the transport carries a DIRECT message at all. True for slack,\nteams, telegram and\
+            \ whatsapp \u2014 whatsapp is nothing else, since the Cloud API\naddresses a person's number and there is no room\
+            \ a third party joins. False\nfor discord, honestly: that ingress is guild-scoped slash commands \u2014 an\ninteraction\
+            \ without a guild id is refused at the endpoint \u2014 so nothing ever\narrives classified as a DM, no reply route\
+            \ is ever learned for one, and a\nsend addressed at a Discord DM is refused 409."
           type: boolean
         group:
           description: "Group is whether the transport carries multi-person rooms \u2014 a Discord guild\nchannel, a Slack\
-            \ channel, a Teams channel or group chat, a Telegram group or\nsupergroup. True on all four."
+            \ channel, a Teams channel or group chat, a Telegram group or\nsupergroup. False on whatsapp alone, which has\
+            \ no such room to carry."
           type: boolean
         media:
-          description: 'Media is whether the transport renders an ATTACHMENT natively. False on all
-
-            four this pass, and a send is not refused for it: renderText flattens each
-
-            attachment to one `kind: url (mime)` line after the text rather than dropping
-
-            it.'
+          description: "Media is whether the transport renders an ATTACHMENT natively. False\neverywhere, and a send is not\
+            \ refused for it: renderText flattens each\nattachment to one `kind: url (mime)` line after the text rather than\
+            \ dropping\nit. A transport whose egress hands its door the raw text would drop the\nattachment instead, and an\
+            \ attachment-only send would reach the platform\nwith nothing to say \u2014 which is why the flag and the flattening\
+            \ are pinned\ntogether."
           type: boolean
         thread:
           description: "Thread is whether a reply can be threaded UNDER a specific message. True for\nslack alone: it is the\
             \ only transport whose ingress reports a thread\n(thread_ts, published as the envelope's replyTo) and whose send\
-            \ posts back\ninto it. Discord's replyTo makes an inline reply rather than a thread,\nTelegram's answers one message\
-            \ id, and Teams carries no reply target at all \u2014\na replyTo sent to it is ignored."
+            \ posts back\ninto it. Discord's replyTo makes an inline reply rather than a thread,\nTelegram's and WhatsApp's\
+            \ each quote one message, and Teams carries no reply\ntarget at all \u2014 a replyTo sent to it is ignored."
           type: boolean
       type: object
     captableClassHolding:
@@ -14825,9 +14827,9 @@ components:
             \ the policy cannot be\nread; GET /v1/channels/allowlist carries the same two with the entries they\nconsult."
           type: string
         id:
-          description: "ID is the fixed transport identifier \u2014 discord, slack, teams or telegram \u2014\nand the value\
-            \ every route on this surface names a channel by, including the\n`:channel` segment of the send path. The listing\
-            \ is always in that order."
+          description: "ID is the fixed transport identifier \u2014 discord, slack, teams, telegram or\nwhatsapp \u2014 and\
+            \ the value every route on this surface names a channel by, including the\n`:channel` segment of the send path.\
+            \ The listing is always in that order."
           type: string
         pendingPairing:
           description: "PendingPairing counts the org's UNEXPIRED pairing requests on this channel:\nexactly the rows GET\
@@ -48223,8 +48225,8 @@ info:
   x-spec:
     repo: hanzo-inc/cloud
     path: openapi.yaml
-    ref: a48ddfb3159d3011469f41e5412e1340f2f083e5
-    sha256: 7e3dbc6d34eb0bf0832ee7794496b74ceafc4906d783818592feb06b98a81662
+    ref: 92604dd76f731c0ef713f50d067334628c173811
+    sha256: 553af63847ae7c60ece8a184e09e57ae7bc9d60560b44f749a0146c5b1a19a84
 openapi: 3.1.0
 paths:
   /v1:
@@ -59989,7 +59991,7 @@ paths:
         groups. An unknown channel is a 404.'
       operationId: get_channels_allowlist
       parameters:
-      - description: 'Channel is the transport to read: discord, slack, teams or telegram.
+      - description: 'Channel is the transport to read: discord, slack, teams, telegram or whatsapp.
 
           Required; an unknown value is a 404.'
         example: slack
@@ -60151,19 +60153,20 @@ paths:
   /v1/channels/{channel}/send:
     post:
       description: "Delivers text, attachments and actions to one room on a connected chat transport \u2014 discord, slack,\
-        \ teams or telegram \u2014 and answers that transport's own receipt, the `messageId` it assigned and the Unix second\
-        \ it landed. An unknown channel is a 404.\n\nThe body is the envelope's NARROW outbound projection: `room`, `text`,\
-        \ `attachments`, `actions`, `replyTo` and `idempotency`, and nothing else. Identity is not a field \u2014 the channel\
-        \ is the path segment and the sender is the caller's validated org \u2014 so a body carrying `sender`, `account` or\
-        \ `channel` is refused with 400 rather than having it silently dropped. `room.id` is required, and so is something\
-        \ to say: text, or at least one attachment.\n\nRequires a validated principal; 403 without one. The room must already\
-        \ belong to the caller's org \u2014 each transport verifies the binding itself, so a room this org has not bound is\
-        \ 403 and a room whose route the bot has never learned is 409, meaning someone has to message the bot there first.\
-        \ A transport that fails answers 502 carrying status and shape only, never a token.\n\nSending is at-most-once only\
-        \ if you ask for it: pass an `idempotency` string and a replay answers 200 with the PRIOR receipt instead of sending\
-        \ twice, while a send that fails releases the key so the caller can re-attempt. Bodies over 1 MiB are refused. All\
-        \ four transports currently render text only, so attachments and actions are flattened deterministically to one line\
-        \ each after the text rather than dropped."
+        \ teams, telegram or whatsapp \u2014 and answers that transport's own receipt, the `messageId` it assigned and the\
+        \ Unix second it landed. An unknown channel is a 404.\n\nThe body is the envelope's NARROW outbound projection: `room`,\
+        \ `text`, `attachments`, `actions`, `replyTo` and `idempotency`, and nothing else. Identity is not a field \u2014\
+        \ the channel is the path segment and the sender is the caller's validated org \u2014 so a body carrying `sender`,\
+        \ `account` or `channel` is refused with 400 rather than having it silently dropped. `room.id` is required, and so\
+        \ is something to say: text, or at least one attachment.\n\nRequires a validated principal; 403 without one. The room\
+        \ must already belong to the caller's org \u2014 each transport verifies the binding itself, so a room this org has\
+        \ not bound is 403 and a room whose route the bot has never learned is 409, meaning someone has to message the bot\
+        \ there first. A route learned only so a pairing reply could be delivered lasts exactly as long as that pairing request\
+        \ does, so a room whose sender was never approved goes back to 409 within the hour. A transport that fails answers\
+        \ 502 carrying status and shape only, never a token.\n\nSending is at-most-once only if you ask for it: pass an `idempotency`\
+        \ string and a replay answers 200 with the PRIOR receipt instead of sending twice, while a send that fails releases\
+        \ the key so the caller can re-attempt. Bodies over 1 MiB are refused. Every transport currently renders text only,\
+        \ so attachments and actions are flattened deterministically to one line each after the text rather than dropped."
       operationId: post_channels_by_channel_send
       parameters:
       - in: path
@@ -82410,6 +82413,41 @@ paths:
         is refused as retriable, so the message is re-delivered later rather than being lost or half-processed.'
       operationId: post_integrations_telegram_webhook
       summary: Telegram Bot API webhook
+      tags:
+      - integrations
+      x-app: integrations
+      x-public: true
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+  /v1/integrations/whatsapp/webhook:
+    get:
+      description: "Meta calls this once when the webhook is subscribed, carrying the verify token this deployment was configured\
+        \ with and a challenge to echo. The token is compared in constant time before the echo \u2014 answering the challenge\
+        \ without checking it would let anyone point their own app at this address and have it confirm the subscription."
+      operationId: get_integrations_whatsapp_webhook
+      summary: WhatsApp Cloud API subscription challenge
+      tags:
+      - integrations
+      x-app: integrations
+      x-public: true
+      responses:
+        default:
+          description: The route answers; its response shape is not declared at the source (not a typed op).
+    post:
+      description: "One delivery from Meta. Authenticity is the X-Hub-Signature-256 HMAC over the raw body, and it is the\
+        \ whole of it: a message accepted here creates the reply route that authorises this org to answer, so an unsigned\
+        \ delivery would let anyone hand an org a conversation to answer under its own number.\n\nMeta batches (entry \xD7\
+        \ changes \xD7 messages) and sends status callbacks \u2014 sent/delivered/read \u2014 through this same address with\
+        \ no message at all. Those are acknowledged and dropped rather than refused, because a non-2xx is retried with backoff\
+        \ and eventually disables the subscription: the only refusals here are an unconfigured endpoint and a bad signature,\
+        \ which are ours to fix and not Meta's to retry.\n\nThe answer is acknowledged immediately and the work happens afterwards,\
+        \ because every one of these platforms times out a slow webhook. Duplicate deliveries are absorbed durably, so a platform\
+        \ retry of an event that already ran never runs it a second time or bills for it twice. When the agent pool is full\
+        \ nothing at all is recorded and the delivery is refused as retriable, so the message is re-delivered later rather\
+        \ than being lost or half-processed."
+      operationId: post_integrations_whatsapp_webhook
+      summary: WhatsApp Cloud API webhook
       tags:
       - integrations
       x-app: integrations
