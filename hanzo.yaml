@@ -755,7 +755,7 @@ components:
           type: string
         hits:
           description: "Hits is how many results this leg returned, counted BEFORE fusion, so it is\nnot the number that survived\
-            \ into Response.Hits \u2014 fusion merges what both\nlegs found and the caller's limit and offset then page it.\
+            \ into Fusion.Hits \u2014 fusion merges what both\nlegs found and the caller's limit and offset then page it.\
             \ 0 for a leg that\ndid not run."
           type: integer
         name:
@@ -3996,6 +3996,32 @@ components:
             reader knows whether 40 signups is a month or a day.'
           type: integer
       type: object
+    Fusion:
+      properties:
+        backends:
+          description: Backends is the per-leg report. Always populated.
+          items:
+            $ref: '#/components/schemas/BackendStatus'
+          type: array
+        hits:
+          description: Hits is the fused, ranked result set.
+          items:
+            $ref: '#/components/schemas/Hit'
+          type: array
+        mode:
+          description: Mode is the mode actually used after `auto` resolution.
+          type: string
+        status:
+          description: "Status is the query's overall honesty signal:\n  ok          every consulted leg answered.\n  partial\
+            \     at least one leg failed; Hits holds the survivors' results.\n  unavailable every consulted leg failed; Hits\
+            \ is empty AND that is stated."
+          type: string
+        took_ms:
+          description: "TookMS is the whole query's wall time in milliseconds \u2014 every leg it\nconsulted, plus fusion\
+            \ and paging. Each leg's own share is in\nBackends[].TookMS; the legs run in sequence, so this is at least their\
+            \ sum."
+          type: integer
+      type: object
     GLRow:
       properties:
         account:
@@ -4327,7 +4353,7 @@ components:
 
             returned hit.'
           items:
-            $ref: '#/components/schemas/Match'
+            $ref: '#/components/schemas/Provenance'
           type: array
         project:
           description: 'Project is the project scope the document was indexed under. Absent for a
@@ -5252,29 +5278,6 @@ components:
 
             registration boundary and the dialer both refuse anything else.'
           type: string
-      type: object
-    Match:
-      properties:
-        backend:
-          description: 'Backend is the leg that contributed this match: "index" (lexical), "vector"
-
-            (semantic) or "code" (the org''s repositories). It is the same name that leg
-
-            reports itself under in Response.Backends, so a hit can be traced to a
-
-            status.'
-          type: string
-        rank:
-          description: "Rank is this document's 1-based position in THAT leg's own result list,\nbefore fusion \u2014 1 is\
-            \ the leg's best hit. It is the only input to the fused\nscore: RRF adds 1/(60+rank) per leg, which is why a document\
-            \ two legs ranked\nsecond beats one a single leg ranked first."
-          type: integer
-        score:
-          description: "Score is the leg's NATIVE score, on that leg's own scale, reported for\nexplanation and never used\
-            \ in ranking \u2014 the scales are incomparable (a cosine\nsimilarity against a term-match count), which is why\
-            \ fusion works on ranks.\nThe vector leg reports Qdrant's cosine similarity; the lexical leg exposes no\nper-row\
-            \ score and reports 0, meaning \"unscored\", not \"scored zero\"."
-          type: number
       type: object
     MemoryEntry:
       properties:
@@ -6476,6 +6479,29 @@ components:
           description: string|number|boolean|object|array
           type: string
       type: object
+    Provenance:
+      properties:
+        backend:
+          description: 'Backend is the leg that contributed this match: "index" (lexical), "vector"
+
+            (semantic) or "code" (the org''s repositories). It is the same name that leg
+
+            reports itself under in Fusion.Backends, so a hit can be traced to a
+
+            status.'
+          type: string
+        rank:
+          description: "Rank is this document's 1-based position in THAT leg's own result list,\nbefore fusion \u2014 1 is\
+            \ the leg's best hit. It is the only input to the fused\nscore: RRF adds 1/(60+rank) per leg, which is why a document\
+            \ two legs ranked\nsecond beats one a single leg ranked first."
+          type: integer
+        score:
+          description: "Score is the leg's NATIVE score, on that leg's own scale, reported for\nexplanation and never used\
+            \ in ranking \u2014 the scales are incomparable (a cosine\nsimilarity against a term-match count), which is why\
+            \ fusion works on ranks.\nThe vector leg reports Qdrant's cosine similarity; the lexical leg exposes no\nper-row\
+            \ score and reports 0, meaning \"unscored\", not \"scored zero\"."
+          type: number
+      type: object
     ProviderBreakdown:
       properties:
         available:
@@ -7496,32 +7522,6 @@ components:
           items:
             type: string
           type: array
-      type: object
-    Response:
-      properties:
-        backends:
-          description: Backends is the per-leg report. Always populated.
-          items:
-            $ref: '#/components/schemas/BackendStatus'
-          type: array
-        hits:
-          description: Hits is the fused, ranked result set.
-          items:
-            $ref: '#/components/schemas/Hit'
-          type: array
-        mode:
-          description: Mode is the mode actually used after `auto` resolution.
-          type: string
-        status:
-          description: "Status is the query's overall honesty signal:\n  ok          every consulted leg answered.\n  partial\
-            \     at least one leg failed; Hits holds the survivors' results.\n  unavailable every consulted leg failed; Hits\
-            \ is empty AND that is stated."
-          type: string
-        took_ms:
-          description: "TookMS is the whole query's wall time in milliseconds \u2014 every leg it\nconsulted, plus fusion\
-            \ and paging. Each leg's own share is in\nBackends[].TookMS; the legs run in sequence, so this is at least their\
-            \ sum."
-          type: integer
       type: object
     Responsible:
       properties:
@@ -48225,8 +48225,8 @@ info:
   x-spec:
     repo: hanzo-inc/cloud
     path: openapi.yaml
-    ref: 92604dd76f731c0ef713f50d067334628c173811
-    sha256: 553af63847ae7c60ece8a184e09e57ae7bc9d60560b44f749a0146c5b1a19a84
+    ref: 529be4ccb9a6cf1cf225477ea31b1d16260ecdb5
+    sha256: 48d08c06514c6093af98af3974feade95fa622d8897dcdc5a30a4156a483b43f
 openapi: 3.1.0
 paths:
   /v1:
@@ -105652,7 +105652,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Response'
+                $ref: '#/components/schemas/Fusion'
           description: ok
       summary: Hybrid search over the org's own corpora
       tags:
