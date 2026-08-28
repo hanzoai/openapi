@@ -7,9 +7,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 
 	hanzoai "github.com/hanzoai/go-sdk/v8"
@@ -22,24 +20,26 @@ func main() {
 	ctx := context.Background()
 	fail := 0
 
-	// 1. reaches the server and the body decodes
-	resp, err := api.AiAPI.GetModels(ctx).Execute()
-	if err != nil || resp.StatusCode != 200 {
+	// 1. reaches the server, and the answer arrives TYPED.
+	//
+	// This used to read resp.Body and hand-decode an anonymous struct, because
+	// there was nothing else to do: the document declared no response for this
+	// address, so the generator gave GetModels a bare *http.Response and the
+	// caller had to know the shape by heart. Reading through the generated type
+	// is the assertion — it only compiles if the shape crossed from ai, through
+	// cloud's relay, into the document this client was projected from.
+	models, resp, err := api.AiAPI.GetModels(ctx).Execute()
+	switch {
+	case err != nil || resp.StatusCode != 200:
 		fmt.Println("  FAIL models:", err)
 		fail++
-	} else {
-		body, _ := io.ReadAll(resp.Body)
-		var doc struct {
-			Data []struct {
-				ID string `json:"id"`
-			} `json:"data"`
-		}
-		if json.Unmarshal(body, &doc) != nil || len(doc.Data) == 0 {
-			fmt.Println("  FAIL models: body did not decode")
-			fail++
-		} else {
-			fmt.Printf("  ok  GET /v1/models  200, %d models, first=%s\n", len(doc.Data), doc.Data[0].ID)
-		}
+	case models == nil || len(models.Data) == 0:
+		fmt.Println("  FAIL models: decoded to an empty catalogue")
+		fail++
+	default:
+		first := models.Data[0]
+		fmt.Printf("  ok  GET /v1/models  200, object=%s, %d models, first=%s owned_by=%s\n",
+			models.GetObject(), len(models.Data), first.GetId(), first.GetOwnedBy())
 	}
 
 	// 2. a refusal is an ERROR, not an empty success — the trap a compile misses
