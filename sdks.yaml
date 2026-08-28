@@ -247,7 +247,13 @@ sdks:
       # this row replaces and a row that regenerates go differently is a
       # regression, not a unification.
       git-user-id: hanzoai
-      git-repo-id: go-sdk
+      # go-sdk/v8, not go-sdk: the generator composes the import path in every
+      # generated doc as github.com/<git-user-id>/<git-repo-id>, and Go's
+      # semantic import versioning makes a path without a /vN suffix publishable
+      # only at v0 and v1. The client rides the 8.5.x line, so without this the
+      # docs would tell a reader to import a path whose 8.x tags the module
+      # proxy rejects -- which is what they did while it served v1.0.5.
+      git-repo-id: go-sdk/v8
       # Go emits Get<F>, Get<F>Ok, Has<F> and Set<F> beside every field, and
       # that convention collides with the document three times.
       #
