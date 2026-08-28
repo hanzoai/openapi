@@ -13148,25 +13148,6 @@ components:
             when a worker is missing a field a newer registration reports.'
           type: string
       type: object
-    call:
-      properties:
-        name:
-          description: 'Name is the media room to join: the value POST /v1/meet/getToken takes as
-
-            roomName, and the value the media server keys participants on.'
-          type: string
-        ready:
-          description: "Ready reports that this deployment can mint a join token for this room. It\nis false on a deployment\
-            \ holding no media-server key, where Name is still\ncorrect \u2014 the name is a property of the room and the\
-            \ key is a property of\nthe deployment, so a caller learns the room's identity either way and\nlearns not to offer\
-            \ a join button."
-          type: boolean
-        ws:
-          description: "WS is where the media plane is \u2014 the address a client opens its own\nbrowser-to-server connection\
-            \ to. Empty when this deployment has not been\ntold where its media server lives, which is reported rather than\
-            \ refused:\na surface can say a call is unavailable without a second request."
-          type: string
-      type: object
     callInput:
       properties:
         agent:
@@ -47802,6 +47783,25 @@ components:
             $ref: '#/components/schemas/VendorRow'
           type: array
       type: object
+    venue:
+      properties:
+        name:
+          description: 'Name is the media room to join: the value POST /v1/meet/getToken takes as
+
+            roomName, and the value the media server keys participants on.'
+          type: string
+        ready:
+          description: "Ready reports that this deployment can mint a join token for this room. It\nis false on a deployment\
+            \ holding no media-server key, where Name is still\ncorrect \u2014 the name is a property of the room and the\
+            \ key is a property of\nthe deployment, so a caller learns the room's identity either way and\nlearns not to offer\
+            \ a join button."
+          type: boolean
+        ws:
+          description: "WS is where the media plane is \u2014 the address a client opens its own\nbrowser-to-server connection\
+            \ to. Empty when this deployment has not been\ntold where its media server lives, which is reported rather than\
+            \ refused:\na surface can say a call is unavailable without a second request."
+          type: string
+      type: object
     verdict:
       properties:
         builds:
@@ -48223,8 +48223,8 @@ info:
   x-spec:
     repo: hanzo-inc/cloud
     path: openapi.yaml
-    ref: 16e3b9cef1064a7506020e45c4a588a27ae85491
-    sha256: 0fbaebd5c4ee343c87839c29b4c4e1430c6e5742a6a21989a6a62d917eee95d7
+    ref: a48ddfb3159d3011469f41e5412e1340f2f083e5
+    sha256: 7e3dbc6d34eb0bf0832ee7794496b74ceafc4906d783818592feb06b98a81662
 openapi: 3.1.0
 paths:
   /v1:
@@ -86225,7 +86225,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/call'
+                $ref: '#/components/schemas/venue'
           description: ok
       summary: Where a room's call happens
       tags:
