@@ -1,6 +1,6 @@
 module e2ego
 
-go 1.26.0
+go 1.26.8
 
 require github.com/hanzoai/go-sdk/v8 v8.5.156
 
