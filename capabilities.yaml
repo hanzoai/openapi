@@ -36,9 +36,11 @@ domains:
     # subprocessors, and the evidence rows standing behind each control. Same
     # facts, read by a reviewer instead of an owner, so it files beside them
     # rather than under a documents or marketing heading.
+    # `principal` is the org as an economic principal — its legal entity, whom it
+    # may pay, which agents answer to it: who you are, stated for a counterparty.
     tags: [iam, authz, kms, security, team, audit, compliance, risk,
            validator, wallet, entitlement, account, dataset, label,
-           reference, trust]
+           reference, trust, principal]
 
   - id: intelligence
     title: "Intelligence"
@@ -76,13 +78,15 @@ domains:
     # that share the carrier with it. It files here rather than under
     # Applications because a call is a message reaching a person over somebody
     # else's network, not a surface of its own.
-    # `integrations` files here for the same reason and now says so plainly: it
-    # absorbed `connectors`, so one name covers the provider registry, the
-    # caller's own connections, the custody of each connector's secret and the
-    # token rotation that keeps it live. What it does is carry data between this
-    # cloud and another one, which is `destination` and `webhook`'s family.
-    tags: [tasks, pubsub, mq, notify, tel, auto, flow, webhook, event,
-           channel, destination, integration]
+    # `provider` files here for the same reason and says so plainly: it is what
+    # `integration` became, one name covering the provider registry, the caller's
+    # own connections, the custody of each connector's secret and the token
+    # rotation that keeps it live. What it does is carry data between this cloud
+    # and another one, which is `destination` and `webhook`'s family.
+    # `workflow` is durable orchestration — runs that survive a crash — which is
+    # this domain's `durable tasks`.
+    tags: [pubsub, mq, notify, tel, auto, flow, webhook, event,
+           channel, destination, provider, workflow]
 
   - id: observability
     title: "Observability"
@@ -103,24 +107,28 @@ domains:
     # fabric — the same domain as the rest of what runs work — and not
     # Intelligence's `exec` or `sandbox`, which run code on machines that are
     # OURS. Whose hardware it is decides which of the two a caller wants.
+    # `environment` is what a codebase is before anything runs it — install and
+    # start scripts and the secrets it reads — which is provisioning, not a model.
     tags: [platform, deploy, project, ci, registry, gateway, ingress, dns,
-           domain, cloudflare, network, flag, compute, node]
+           domain, cloudflare, network, flag, compute, node, environment]
 
   - id: applications
     title: "Applications"
     role: "the user-facing surfaces built on all of the above"
-    # `todo` is a list a person keeps — a surface, which is what this domain
-    # is for. It is NOT streams' `tasks`: that one is the durable async queue
-    # work is handed to. Two words, two things, and the only thing they share
-    # is the English.
+    # `task` is boards and the work items on them — a surface, which is what
+    # this domain is for. It is NOT streams' `workflow`: that one is the durable
+    # orchestration work is handed to.
     # `standing` reports what keeping an entity in good standing costs each
     # year, itemised. The subject is the entity, not the money, which is why it
     # sits beside `company` and `legal` rather than under Commerce — that
     # domain is for money this cloud moves, and this is a bill somebody else
     # sends you.
-    tags: [git, template, blueprint, bot, world, todo, framework, content,
+    # `tax` files beside `company` and `legal` for `standing`'s reason: W-9s and
+    # 1099s are about the entity. `patrol` is a watch kept over sites — a surface.
+    tags: [git, template, blueprint, bot, world, framework, content,
            guide, help, meet, share, social, esign, dataroom, company,
-           legal, pref, settings, function, sbom, link, seo, standing]
+           legal, pref, settings, function, sbom, link, seo, standing,
+           task, tax, patrol]
 
   - id: chain
     title: "Chain"
