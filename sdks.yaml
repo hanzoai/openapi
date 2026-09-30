@@ -241,6 +241,14 @@ sdks:
       # do not redeclare: they land on different tags, so on different prefixes.
       structPrefix: "true"
       enumClassPrefix: "true"
+      # A response that grows a field must still decode. The generator's default
+      # treats a schema with no `additionalProperties` as closed, which is the
+      # reverse of what OpenAPI and JSON Schema say, and for Go it emits
+      # `decoder.DisallowUnknownFields()` into the UnmarshalJSON of every model
+      # with a required property: 112 models, each of which fails the day the
+      # server adds a key to it. `false` is the spec's reading: an unlisted key
+      # decodes into the model's AdditionalProperties and round-trips.
+      disallowAdditionalPropertiesIfNotPresent: "false"
     flags:
       # Inert for what this row keeps (they reach README.md and git_push.sh,
       # both dropped) and stated anyway, because they were in the invocation
@@ -573,6 +581,16 @@ sdks:
       apiPackage: ai.hanzo.cloud.api
       modelPackage: ai.hanzo.cloud.model
       hideGenerationTimestamp: "true"
+      # A response that grows a field must still decode. okhttp-gson's
+      # validateJsonElement throws "The field `x` in the JSON string is not
+      # defined" for any key a model does not list, on 2572 of 2574 models, because
+      # the generator's default treats a schema with no `additionalProperties`
+      # as closed — the reverse of what OpenAPI and JSON Schema say. So a new
+      # field on /v1/models (`canonical_slug`) made getModels() throw. `false` is
+      # the spec's reading: an unlisted key lands in the model's
+      # additionalProperties map and round-trips. The go row sets it for the
+      # same reason; every other row already ignores an unknown key.
+      disallowAdditionalPropertiesIfNotPresent: "false"
     # THE SAME COLLISION THE PYTHON ROW ABOVE CORRECTS, in the language that
     # says so at compile time. O11yGettableAgentCheckIn declares
     # `integration_config` AND `integrationConfig`, `removed_at` AND
@@ -623,7 +641,11 @@ sdks:
       # compiles at all. Measured on 7.14.0, both orders. It belongs upstream,
       # where two schemas would stop differing only in case; the kotlin row can
       # express it because kotlin's two natural names already differ.
-      model-name-mappings: Exception=ErrorBody
+      #
+      # Number is the tel schema. Named Number, its class shadows java.lang.Number
+      # inside ai.hanzo.cloud.model, and every model's additional-properties
+      # writer calls addProperty(String, Number) and stops compiling.
+      model-name-mappings: Exception=ErrorBody,Number=TelNumber
 
   kotlin:
     repo: kotlin-sdk
