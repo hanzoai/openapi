@@ -603,8 +603,16 @@ sdks:
     # Rename the FIELD, never the wire name — the generator keeps the original
     # key as the field's serialized name, so both spellings still round-trip.
     # Same two names as the python row, because it is the same two schemas.
+    #
+    # `true` and `false` are the same correction for a different reason: they
+    # are Java LITERALS, which the generator's reserved-word list does not hold,
+    # so ai.DecisionSides (the two sides of a Kai noul question) and
+    # patrol.patrolIncident{,Act} emitted `private Boolean false;` — 46 javac
+    # errors, and no client with postDecisions compiles. `_true`/`_false` is the
+    # spelling the generator itself gives a reserved word (`_private`,
+    # `_default`), so the getters read getTrue()/getFalse() like theirs do.
     flags:
-      name-mappings: removed_at=removed_at_legacy,integration_config=integration_config_legacy
+      name-mappings: removed_at=removed_at_legacy,integration_config=integration_config_legacy,true=_true,false=_false
       # A CLASS NAME, not a field name, and the collision is with the LANGUAGE.
       # The document has a schema called `Exception` — the error shape hanging
       # off CaptureEvent, five properties and a list of Frame. Every model lands
