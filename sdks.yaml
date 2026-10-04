@@ -721,6 +721,23 @@ sdks:
       # pair emits a class into a file that does not match it. Java hits that
       # and therefore maps neither.
       model-name-mappings: File=ModelFile,Call=ModelCall,iam.ListResponse=IamKeyList
+      # A TYPE, because the Kotlin generator cannot write these shapes. With
+      # gson it has no anyOf adapter: a property that is a string, an object or
+      # an array — Kai's `state`, `instructions`, a choice's criteria, a
+      # refusal's integer-or-string `code` — becomes an EMPTY class, so the
+      # request sends `"state":{}` and the question text never leaves the
+      # client. And the oneOf `ai.DecisionsQuestion` becomes an interface that
+      # no variant implements (choice's criteria is a map, score's a list), so
+      # nothing can be put in `questions` at all. Those are the only three empty
+      # classes and the only unimplemented interface in the client. kotlin.Any
+      # is what each one is on the wire — any JSON — and gson writes a String,
+      # a Map, a List or a variant data class into it as itself.
+      #
+      # The three inline shapes are keyed by the names the generator gives
+      # them (the first property each dedupes to), the oneOf by its schema
+      # name; FlowsTest.kai serializes a decisions request and fails if any of
+      # them is an empty class again.
+      type-mappings: ai.DecisionsQuestion=kotlin.Any,AiDecisionSidesFalse=kotlin.Any,AiDecisionsChoiceCriteriaValue=kotlin.Any,AiDecisionsReasonCode=kotlin.Any
 
   ruby:
     repo: ruby-sdk
