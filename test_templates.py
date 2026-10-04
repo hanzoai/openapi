@@ -5,12 +5,18 @@ Runnable standalone (`python3 test_templates.py`) and under pytest. It needs jav
 and fetches the pinned generator like generate.py does; with no java it FAILS,
 because a template test that skips is a gate that is green over nothing.
 
-templates/python adds one thing to the generator's oneOf and anyOf wrappers: a
-model validator that reads a raw value the way from_json does. Without it,
-pydantic takes a dict handed to model_validate (or to any model holding the
-wrapper as a field) for the wrapper's own fields and leaves actual_instance None,
-so AiDecisionsRequest.model_validate({...}) serialized every question as null.
-The fixture is that shape: a oneOf of three variants told apart by `type`, one
+templates/python corrects two things the generator emits.
+
+  • Its oneOf and anyOf wrappers gain a model validator that reads a raw value the
+    way from_json does. Without it, pydantic takes a dict handed to
+    model_validate (or to any model holding the wrapper as a field) for the
+    wrapper's own fields and leaves actual_instance None, so
+    AiDecisionsRequest.model_validate({...}) serialized every question as null.
+  • ApiClient writes every header value as text. X-Max-Cost is a number in the
+    document, and urllib3 refuses a float header value with a TypeError, so no
+    Python caller could bound a routed call.
+
+The fixture is those shapes: a oneOf of three variants told apart by `type`, one
 variant whose field is an anyOf, held in a map by a request.
 """
 import json
@@ -77,6 +83,11 @@ typed = Ask(questions={"c": Choice(type="choice", criteria={"a": "first", "b": "
 assert kinds(typed) == want, kinds(typed)
 assert json.loads(typed.to_json()) == raw, typed.to_json()
 assert Noul.model_validate({"type": "noul", "level": "three"}).level.actual_instance == "three"
+
+from client.api_client import ApiClient
+_, _, sent, _, _ = ApiClient().param_serialize(method="POST", resource_path="/v1/ask",
+                                               header_params={"X-Max-Cost": 0.01, "X-Max-Latency-Ms": 800, "X-On": True})
+assert (sent["X-Max-Cost"], sent["X-Max-Latency-Ms"], sent["X-On"]) == ("0.01", "800", "true"), sent
 print("ok")
 '''
 
