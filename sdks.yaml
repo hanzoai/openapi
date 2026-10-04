@@ -198,8 +198,13 @@ sdks:
     #
     # Measured against hanzo.yaml: `removed_at` and `integration_config` each occur
     # in exactly ONE schema, so this global mapping reaches nothing else.
+    #
+    # `copy` is a method of pydantic's BaseModel, so the three upload-grant schemas
+    # that carry it (projectsUploadGrant and project.projects{UploadGrant,Complete})
+    # shadowed it and every import of the package printed a UserWarning per model.
+    # `copy_` is the attribute; `copy` stays the alias and the wire name.
     flags:
-      name-mappings: removed_at=removed_at_legacy,integration_config=integration_config_legacy
+      name-mappings: removed_at=removed_at_legacy,integration_config=integration_config_legacy,copy=copy_
 
   go:
     repo: go-sdk
