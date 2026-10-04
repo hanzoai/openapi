@@ -47,6 +47,21 @@ test:
       "$UV" run --no-project --python 3.12 --with pyyaml --with pytest \
         python -m pytest test_publish.py test_flows.py test_skills.py test_tools.py -q
 
+  - name: templates
+    # The python row's template overrides, proved on a client generated through
+    # them (test_templates.py). It needs java, which the runner image does not
+    # promise, so it provisions the JDK the client lane does rather than skip:
+    # a template test that skips is green over nothing.
+    run: |
+      set -e
+      command -v java >/dev/null 2>&1 || { sudo apt-get update -qq && sudo apt-get install -y -qq openjdk-21-jdk-headless; }
+      if command -v uv >/dev/null 2>&1; then UV=uv; else
+        curl -fsSL https://astral.sh/uv/install.sh | sh
+        UV="$HOME/.local/bin/uv"
+      fi
+      PATH="$(dirname "$UV"):$PATH" "$UV" run --no-project --python 3.12 --with pyyaml --with pytest \
+        python -m pytest test_templates.py -q
+
   - name: served
     # Every operation this repo PUBLISHES must be one api.hanzo.ai answers for.
     #
