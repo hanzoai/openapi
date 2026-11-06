@@ -606,6 +606,14 @@ sdks:
       # additionalProperties map and round-trips. The go row sets it for the
       # same reason; every other row already ignores an unknown key.
       disallowAdditionalPropertiesIfNotPresent: "false"
+      # A request carries the containers the caller set, and only those. By
+      # default every list and map field starts as an empty collection, and gson
+      # writes an empty collection, so a chat completion went out with
+      # `"tools":[]`, `"stop":[]`, `"functions":[]`, `"logit_bias":{}` and a
+      # message with `"MultiContent":[]` beside its `content` — which the gateway
+      # refuses: 400 "the model could not serve this request". Null is unset, and
+      # gson writes no null.
+      containerDefaultToNull: "true"
     # THE SAME COLLISION THE PYTHON ROW ABOVE CORRECTS, in the language that
     # says so at compile time. O11yGettableAgentCheckIn declares
     # `integration_config` AND `integrationConfig`, `removed_at` AND
