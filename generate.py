@@ -144,10 +144,20 @@ def as_json(path):
     Deliberately not written back to disk as a second committed artifact. There
     is one document, it lives in hanzo-inc/cloud, and every copy of it anywhere
     else is a copy that can be stale.
+
+    KEYS ARE SORTED, because a JSON object's member order means nothing (RFC
+    8259) and the generators emit fields in it. Cloud serializes one document
+    two ways: openapi.yaml at a ref, and /v1/openapi.json from the running
+    server, whose Go encoder sorts bytewise. They disagree on any schema mixing
+    `_` with capitals (`cloud_account_id` / `cloudIntegrationId`), so the same
+    release projected two ways — the lane moves a client from the yaml and a
+    push checks it against the served json — and five Java models "drifted"
+    against a document that had not changed. Sorted, both inputs give one
+    client, byte for byte.
     """
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
                                      dir=os.environ.get("TMPDIR")) as f:
-        json.dump(yaml.safe_load(open(path)), f)
+        json.dump(yaml.safe_load(open(path)), f, sort_keys=True)
         return f.name
 
 
