@@ -563,7 +563,10 @@ sdks:
   java:
     repo: ../hanzo-java/sdk
     generator: java
-    take: { src/main/java/ai/hanzo/cloud: hanzo-java-cloud/src/main/java/ai/hanzo/cloud }
+    # The generator owns the files it writes under ai/hanzo and nothing else, so
+    # the hand-written ai/hanzo/Hanzo.java beside them is the repo's (see
+    # generate.py's `owned()`).
+    take: { src/main/java/ai/hanzo: hanzo-java-cloud/src/main/java/ai/hanzo }
     # edge_deployFunction offers both application/octet-stream and
     # multipart/form-data. The generator skips a multipart form model by default
     # yet still imports it from the API class that used it, so FunctionsApi
@@ -588,9 +591,10 @@ sdks:
       library: okhttp-gson
       groupId: ai.hanzo
       artifactId: hanzo-java-cloud
-      invokerPackage: ai.hanzo.cloud
-      apiPackage: ai.hanzo.cloud.api
-      modelPackage: ai.hanzo.cloud.model
+      # ai.hanzo is the package; `cloud` under it named nothing a reader needed.
+      invokerPackage: ai.hanzo
+      apiPackage: ai.hanzo.api
+      modelPackage: ai.hanzo.model
       hideGenerationTimestamp: "true"
       # A response that grows a field must still decode. okhttp-gson's
       # validateJsonElement throws "The field `x` in the JSON string is not
@@ -627,7 +631,7 @@ sdks:
       # A CLASS NAME, not a field name, and the collision is with the LANGUAGE.
       # The document has a schema called `Exception` — the error shape hanging
       # off CaptureEvent, five properties and a list of Frame. Every model lands
-      # in `ai.hanzo.cloud.model`, and a type in your own package beats
+      # in `ai.hanzo.model`, and a type in your own package beats
       # `java.lang.*`, so `catch (Exception e)` in ANY file of that package
       # binds to the model: "incompatible types: Exception cannot be converted
       # to Throwable", eight times in PostV1EventRequest, whose oneOf adapter is
@@ -662,7 +666,7 @@ sdks:
       # express it because kotlin's two natural names already differ.
       #
       # Number is the tel schema. Named Number, its class shadows java.lang.Number
-      # inside ai.hanzo.cloud.model, and every model's additional-properties
+      # inside ai.hanzo.model, and every model's additional-properties
       # writer calls addProperty(String, Number) and stops compiling.
       model-name-mappings: Exception=ErrorBody,Number=TelNumber
 
@@ -934,7 +938,7 @@ sdks:
     take: { src: src }
     properties:
       # The PSR-4 root: Hanzo\Cloud\Api\*, Hanzo\Cloud\Model\*. The same
-      # ai.hanzo.cloud the JVM rows use, spelled as PHP spells a namespace.
+      # api/model split the JVM rows use (ai.hanzo.api, ai.hanzo.model), spelled as PHP spells a namespace.
       invokerPackage: Hanzo\Cloud
       # `src`, not the generator's default `lib`: composer autoloads Hanzo\Cloud
       # from src/, the way every other client in this fleet lays its sources out.
@@ -1358,7 +1362,7 @@ sdks:
       skipFormModel: "false"
     properties:
       # The include root is `hanzo/`, and the namespaces are hanzo::api and
-      # hanzo::model — the same ai.hanzo.cloud split the JVM rows use, spelled
+      # hanzo::model — the same api/model split the JVM rows use, spelled
       # as C++ spells a namespace.
       packageName: hanzo
       apiPackage: hanzo.api
