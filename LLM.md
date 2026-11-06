@@ -479,7 +479,8 @@ lives once, in `generate.py`.
 |------|------|-----------|---------|---------|
 | Python | `hanzoai/python-sdk` | `python` (urllib3, pydantic v2) | `hanzoai` on PyPI (`pkg/hanzo-inc/cloud`) | `generate.py` |
 | TypeScript | `hanzoai/js-sdk` | `typescript-axios` | `hanzoai` on npm (`src/`) | `generate.py` |
-| Java | `hanzoai/java-sdk` | `java` (okhttp-gson) | `ai.hanzo:hanzo-java-cloud` | `generate.py` |
+| Java | **`hanzo-java/sdk`** | `java` (okhttp-gson) | `ai.hanzo:hanzo-java-cloud` | `generate.py` |
+| C# | **`hanzo-csharp/sdk`** | `csharp` (httpclient) | `Hanzo` on nuget.org, namespace `Hanzo.AI` | `generate.py` (+ `templates/csharp/`) |
 | Kotlin | `hanzoai/kotlin-sdk` | `kotlin` (okhttp4+gson) | `ai.hanzo:hanzo-kotlin-cloud` | `generate.py` |
 | Rust | **`hanzo-rs/sdk`** | `rust` (reqwest) | `crates/hanzo-client` | `generate.py` (+ `templates/rust/`) |
 | Go | **`hanzo-go/sdk`** | `go` | `package hanzoai` at the MODULE ROOT, imported as `github.com/hanzoai/go-sdk` | `generate.py` |
@@ -487,7 +488,11 @@ lives once, in `generate.py`.
 Three repos were RENAMED and answer through a redirect (`hanzoai/go-sdk` →
 `hanzo-go/sdk`, `hanzoai/rust-sdk` → `hanzo-rs/sdk`, `hanzoai/cpp-sdk` →
 `hanzo-cpp/sdk`), so a stale name still resolves and hides the move;
-`gh api repos/<old> --jq .full_name` prints the new one. Go's module path stays
+`gh api repos/<old> --jq .full_name` prints the new one. Two more moved by
+transfer and left an archived POINTER repo at the old name instead of a
+redirect: `hanzoai/java-sdk` → `hanzo-java/sdk` and `hanzoai/csharp-sdk` →
+`hanzo-csharp/sdk`; each pointer's README, description and homepage name the
+real SDK. Go's module path stays
 `github.com/hanzoai/go-sdk` — that is what the proxy has.
 
 **When a language leaves `sdks.yaml`**: a row exists while the WHOLE invocation is

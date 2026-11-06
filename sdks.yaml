@@ -1,6 +1,6 @@
 # The SDK matrix — data only. The generator invocation is logic and lives once,
 # in generate.py; nothing in this file is executable and nothing in an SDK repo
-# duplicates it. `hanzoai/js-sdk` and `hanzoai/java-sdk` are the shape: their
+# duplicates it. `hanzoai/js-sdk` and `hanzo-java/sdk` are the shape: their
 # scripts/generate.sh carries NO flags, it execs this driver. js-sdk removed its
 # own copy after the two disagreed about modelPackage and about whether the
 # client lands in src/ or src/cloud/, which built an orphan second copy of all
@@ -558,8 +558,10 @@ sdks:
       # untouched; both spellings still round-trip under their own key.
       name-mappings: removed_at=removedAtLegacy,integration_config=integrationConfigLegacy
 
+  # Canonical repo is hanzo-java/sdk; hanzoai/java-sdk is an archived pointer to
+  # it, which is why `repo` reaches out of ~/work/hanzo to a sibling org dir.
   java:
-    repo: java-sdk
+    repo: ../hanzo-java/sdk
     generator: java
     take: { src/main/java/ai/hanzo/cloud: hanzo-java-cloud/src/main/java/ai/hanzo/cloud }
     # edge_deployFunction offers both application/octet-stream and
@@ -747,6 +749,73 @@ sdks:
       # name; FlowsTest.kai serializes a decisions request and fails if any of
       # them is an empty class again.
       type-mappings: ai.DecisionsQuestion=kotlin.Any,AiDecisionSidesFalse=kotlin.Any,AiDecisionsChoiceCriteriaValue=kotlin.Any,AiDecisionsReasonCode=kotlin.Any
+
+  csharp:
+    repo: ../hanzo-csharp/sdk
+    generator: csharp
+    # The repo root owns src/Hanzo.AI/Hanzo.AI.csproj — the NuGet id
+    # (`Hanzo`), the version and the target framework are its contract with a
+    # consumer — and the hand-written Gateway.cs beside the generated tree. So
+    # the generator owns these three directories and nothing else; its own
+    # csproj, solution, appveyor.yml and README sit under no take and are never
+    # copied.
+    take:
+      src/Hanzo.AI/Api: src/Hanzo.AI/Api
+      src/Hanzo.AI/Client: src/Hanzo.AI/Client
+      src/Hanzo.AI/Model: src/Hanzo.AI/Model
+    # Same defect the java, kotlin and cpp rows correct: a multipart form model
+    # skipped and still referenced.
+    global:
+      skipFormModel: "false"
+    # One override, in modelAnyOf and modelOneOf alike: a union member's getter
+    # is named from its type sanitized to an identifier, because the nullable
+    # primitives below make an integer member `int?` and the stock template
+    # wrote `GetInt?()`. Each file's header names the change.
+    templates: templates/csharp
+    properties:
+      # `httpclient`, not the generator's default `generichost`. generichost
+      # declares one I<Operation>ApiResponse type per operation from its
+      # `responses`, and cloud publishes 413 of 2603 operations with none
+      # (valid OpenAPI 3.1; see generate.py), so it references 413 types it
+      # never emits: 4,956 CS0246 errors. httpclient returns `void` for such an
+      # operation and builds with no template override. Measured on 7.14.0 at
+      # hanzo-inc/cloud v8.5.988.
+      library: httpclient
+      # Namespaces Hanzo.AI.Api, .Client and .Model — the package's name for
+      # itself, as ai.hanzo is the JVM rows'.
+      packageName: Hanzo.AI
+      # The codegen's own target, for its #if blocks. The repo's csproj sets
+      # the TFM the package ships; keep the two equal.
+      targetFramework: net8.0
+      hideGenerationTimestamp: "true"
+      # Same reading as the java and go rows: an unlisted key in a response is
+      # kept, not refused.
+      disallowAdditionalPropertiesIfNotPresent: "false"
+      # A request carries the fields the caller set, and only those. By default
+      # this generator types an optional number or boolean as a plain value type
+      # with EmitDefaultValue=false, so `Temperature = 0` is dropped on the wire
+      # and the server's default applies, while every unset boolean is sent as
+      # `false`. With the normalizer rule below an optional primitive is `T?`,
+      # and this makes each property serialize only once assigned (the
+      # constructor flags only the non-null arguments): unset is absent, 0 and
+      # false are sent. Java's boxed types already behave this way.
+      conditionalSerialization: "true"
+    flags:
+      openapi-normalizer: SET_PRIMITIVE_TYPES_TO_NULLABLE=integer|number|boolean
+      # THE SAME COLLISION the python, go, java, kotlin, ruby, php and cpp rows
+      # correct (o11y.GettableAgentCheckIn's live legacy spellings). C# Pascal-
+      # cases a property, so each pair lands on one member declared twice.
+      # The wire names are untouched.
+      name-mappings: removed_at=removed_at_legacy,integration_config=integration_config_legacy
+      # CLASS names that collide with the BCL. Every model lands in
+      # Hanzo.AI.Model and every generated file imports System, so a schema
+      # named for a System type makes each bare use ambiguous (CS0104):
+      # `Exception` 24,188 times — the generated client catches exceptions in
+      # every API class — and `Index` (System.Index) in OpenapiApi. ErrorBody
+      # and TelNumber are the java row's names for the same two schemas;
+      # CapabilityIndex is the document's own description of `Index`, one
+      # capability's operations. A class name is never on the wire.
+      model-name-mappings: Exception=ErrorBody,Number=TelNumber,Index=CapabilityIndex
 
   ruby:
     repo: ruby-sdk

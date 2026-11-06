@@ -141,7 +141,8 @@ python3 generate.py --all --check    # fail if a committed client drifted
 |---|---|---|---|
 | Python | `hanzoai/python-sdk` | `python` | `hanzoai` on PyPI |
 | TypeScript | `hanzoai/js-sdk` | `typescript-axios` | `hanzoai` on npm |
-| Java · Kotlin | `hanzoai/java-sdk` · `hanzoai/kotlin-sdk` | `java` · `kotlin` (okhttp) | `ai.hanzo:hanzo-{java,kotlin}-cloud` |
+| Java · Kotlin | `hanzo-java/sdk` · `hanzoai/kotlin-sdk` | `java` · `kotlin` (okhttp) | `ai.hanzo:hanzo-{java,kotlin}-cloud` |
+| C# | `hanzo-csharp/sdk` | `csharp` (httpclient) | `Hanzo` on nuget.org, namespace `Hanzo.AI` |
 | Rust | `hanzo-rs/sdk` | `rust` (reqwest) | `crates/hanzo-client` — own `scripts/generate.sh` (needs a template override) |
 | Go | `hanzo-go/sdk` | `go` | `package hanzoai` at the module root — own `scripts/generate.sh` (no directory to own) |
 
