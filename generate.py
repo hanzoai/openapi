@@ -413,6 +413,16 @@ def shape(name, cfg, stage):
     cmd = cfg.get("format")
     if not cmd:
         return True
+    if cmd[0] == "gofmt":
+        # go/api.mustache in 7.14.0 emits {{{unescapedNotes}}} inside /* ... */
+        # block comments, so a description containing "*/" (e.g. "CS*/nm_*")
+        # closes the comment early and breaks gofmt.
+        for fn in os.listdir(stage):
+            if fn.startswith("api_") and fn.endswith(".go"):
+                p = os.path.join(stage, fn)
+                s = open(p).read()
+                if "CS*/nm_*" in s:
+                    open(p, "w").write(s.replace("CS*/nm_*", "CS* / nm_*"))
     r = subprocess.run([*cmd, stage], capture_output=True, text=True)
     if r.returncode:
         sys.stderr.write(f"[{name}] {cmd[0]} failed\n{r.stderr[-4000:]}\n")
