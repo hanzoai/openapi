@@ -14,130 +14,209 @@
 #     publish. A new product is a name somebody has to place, and letting one
 #     default into a bucket is how 235 tags once ended up ungrouped while the
 #     doc site rendered four.
-#   • a name grouped here that the document does NOT carry FAILS too. Nothing
-#     serves it, so nothing can be filed under it — and a name that outlives its
-#     routes is exactly the drift this repo was rebuilt to make impossible.
+#   • a name grouped here that the document does NOT carry FAILS too — unless it
+#     is named under `doors:` below, which is the whole of the exception and says
+#     why. Nothing else serves it, so nothing can be filed under it, and a name
+#     that outlives its routes is exactly the drift this repo was rebuilt to make
+#     impossible.
 #
 # So the list below cannot describe an API other than the one that is served. It
 # can only be a worse or better arrangement of the one that is.
 #
-# `tags:` are the tags OPERATIONS CARRY in cloud's emission — the product, which
-# is the first path segment after /v1/, or the owning Go package where a route
-# has no /v1 prefix. They are not directory names. There are no directories.
-
+# `tags:` are the tags OPERATIONS CARRY in cloud's public document, and a tag is
+# the CAPABILITY that serves the operation — the app, one word, the same word
+# that names its Go package, its plugin binary, its address prefix, its client
+# class, its tool, its command group, its page and its HIP (HIP-0139). The word
+# is copied from `manifest/apps.go`, singular where that is singular and plural
+# where that is plural, because the manifest is the row a router reads and this
+# file is a picture of it. A rename there is a rename here on the same day: this
+# revision carried six — `automations`→`auto`, `campaign`→`campaign`,
+# `dataset`→`dataset`, `link`→`link`, `storage`→`s3`, `zt`→`network` — and
+# dropped `analytics`, `bot` and `product`, which name nothing cloud serves.
+# An app that still answers at an address not named for it is listed in cloud's
+# `openapi/misfiled.txt`, a ratchet that only shrinks; nothing about that is
+# expressible here, and nothing here should try.
 
 domains:
   - id: identity
-    title: "Identity & Trust"
+    title: "Identity & trust"
     role: "who you are · what you may touch · where secrets live"
-    # `trust` is the outward half of what this domain already holds: audit,
-    # compliance and risk are what an organization keeps, and the trust centre
-    # is what it PUBLISHES of them — controls, framework coverage, policies,
-    # subprocessors, and the evidence rows standing behind each control. Same
-    # facts, read by a reviewer instead of an owner, so it files beside them
-    # rather than under a documents or marketing heading.
-    # `principal` is the org as an economic principal — its legal entity, whom it
-    # may pay, which agents answer to it: who you are, stated for a counterparty.
-    tags: [iam, authz, kms, security, team, audit, compliance, risk,
-           validator, wallet, entitlement, account, dataset, label,
-           reference, trust, principal]
+    # `account` is the caller's own profile: keys, appearance, avatar, the
+    # org they onboard into. It sits beside iam because it is the person,
+    # read and written through their IAM record.
+    # `dataset`, `label` and `reference` are the three stores the risk engine
+    # decides from — the evidence, the verdicts people attached to it, and the
+    # published lookup data no org could derive alone. They file with risk.
+    # `trust` is the trust centre — controls, framework coverage, and the
+    # evidence behind both. It is served by the dataroom package and files
+    # here rather than with it: a reader looking for "can I show a customer
+    # our SOC 2 posture" is asking the question `compliance` and `audit`
+    # answer, not asking about a room to put documents in.
+    tags: [iam, account, authz, kms, security, entitlement, audit,
+           compliance, trust, risk, dataset, label, reference, validator,
+           wallet, team]
 
   - id: intelligence
     title: "Intelligence"
-    role: "models · agent · evaluation — the mind of the cloud"
-    # The bare-/v1 inference surface — /v1/chat/completions, /v1/models,
-    # /v1/embeddings — is Hanzo AI's OpenAI- and Anthropic-compatible face,
-    # where the PATH is the compatibility contract because every vendor SDK
-    # hard-codes it. Those routes tag themselves `ai`: one product serves them,
-    # so one name carries them, and the paths stay exactly where the SDKs
-    # expect. The hand-declared long tail that used to sit beside them is gone,
-    # which is what apps/ai projecting its mounted registry was always going to
-    # do to it.
-    tags: [ai, agent, ml, eval, benchmark, prompt, exec, sandbox, tool,
-           ask, code, engine, translate, lsp]
+    role: "models · agents · evaluation — the mind of the cloud"
+    # `ai` is the inference endpoint, including the OpenAI- and Anthropic-compatible
+    # wire (chat, completions, embeddings, messages, models, images, audio,
+    # videos, responses, rerank): those paths are fixed by the vendor SDKs that
+    # hard-code them, and they are ai's and nobody else's (HIP-0139 §3.2).
+    # `zen` rides ai's own router rather than an address of its own, and
+    # `skills` answers at `/.well-known/`, not `/v1` — see `doors:`.
+    # `exec` runs code in a sandbox lease; `sandboxes` is the lease. `tool`
+    # is the per-tenant tool plane an agent calls through; `lsp` is code
+    # intelligence over a repository, which is why it files beside `code`.
+    # `environment` is what a repository is before its agent starts — install,
+    # start and secrets — so it files beside `agent`. `train` runs a training
+    # job on a model and bills it by the second, so it files beside `ml`.
+    tags: [ai, zen, studio, engine, ml, train, agent, environment, skills, eval, benchmark,
+           research, prompt, exec, sandbox, tool, ask, code, lsp, translate]
 
   - id: data
     title: "Data"
     role: "the stores every capability writes to and reads from"
-    # `taxonomy` is the classification the console reads to arrange products —
-    # a stored vocabulary that other capabilities look terms up in, which is
-    # the same shape as `catalog` and not a surface of its own.
-    # `graph` is that argument at full size: assertions about entities, a
-    # vocabulary naming the relations in use, and a rule that says which of two
-    # disagreeing assertions is in force. It answers what is true as of an
-    # instant, which is a store being read, not a product being used.
-    tags: [s3, space, base, kv, search, index, catalog, taxonomy, sync, crawl,
-           websearch, provisioning, knowledge, graph]
+    # `provisioning` hands out managed datastore instances; `s3` is the object
+    # store's bucket plane (it answers at /v1/s3 because S3 is a protocol every
+    # client already speaks). `kv` is a bucket of values with history: it rides
+    # the same embedded plane the bus does but publishes and subscribes to
+    # nothing, so it is a store and files as one. `graph` resolves entities and
+    # walks neighbours; `knowledge` is the knowledge base; `index` the in-binary
+    # index speaking the Meilisearch dialect. `taxonomy` is the classification
+    # other capabilities look terms up in, `catalog` the cross-org corpus of
+    # everything the fleet has built. `space` is where work lives — drives,
+    # folders and files — the product over the same backend `s3` is the raw
+    # plane for, so the two are siblings rather than layers.
+    tags: [base, provisioning, s3, space, kv, graph, search, index, knowledge,
+           catalog, taxonomy, sync, crawl, websearch]
 
   - id: streams
     title: "Streams"
     role: "messaging · durable tasks · async orchestration"
-    # `tel` is the carrier leg of the delivery `notify` already names: notify is
-    # "transactional email and SMS, sent through your org's own provider
-    # credential", and tel holds the numbers that SMS leaves from and the calls
-    # that share the carrier with it. It files here rather than under
-    # Applications because a call is a message reaching a person over somebody
-    # else's network, not a surface of its own.
-    # `provider` files here for the same reason and says so plainly: it is what
-    # `integration` became, one name covering the provider registry, the caller's
-    # own connections, the custody of each connector's secret and the token
-    # rotation that keeps it live. What it does is carry data between this cloud
-    # and another one, which is `destination` and `webhook`'s family.
-    # `workflow` is durable orchestration — runs that survive a crash — which is
-    # this domain's `durable tasks`.
-    tags: [pubsub, mq, notify, tel, auto, flow, webhook, event,
-           channel, destination, provider, workflow]
+    # ONE bus, MANY doors. `pubsub` runs the embedded JetStream node and serves
+    # it over HTTP; `kafka` and `amqp` are wire adaptors onto that same node, so
+    # a standard producer or a standard RabbitMQ client works unchanged and no
+    # second broker exists to lose a message between. `mq` is the managed queue
+    # product over the same plane.
+    # `tel` is the carrier leg of the delivery `notify` names: the numbers SMS
+    # leaves from and the calls that share the carrier with it. `provider`
+    # holds a user's own credentials to outside systems (connectors) and the
+    # providers the fleet connects to; `channel` is one inbox across them.
+    # `workflow` is the durable engine: work that survives a crash, every run
+    # replayable.
+    tags: [workflow, pubsub, kafka, amqp, mq, notify, email, tel, transport, auto, flow, webhook,
+           channel, destination, provider]
 
   - id: observability
     title: "Observability"
     role: "see everything — telemetry · analytics · usage"
-    tags: [o11y, metrics, usage, openapi, leaderboard]
+    # `openapi` is the document itself and its projections (the command palette,
+    # the agent endpoint) — the capability that describes the others. `metrics` is
+    # the native metrics, logs and traces store; `o11y` the full observability
+    # plane over it. `event` is the product-analytics plane: ingest, replay,
+    # timeseries and the browser tag that feeds them. `leaderboard` is usage
+    # ranked across an org.
+    tags: [o11y, metrics, event, usage, leaderboard, openapi]
 
   - id: commerce
-    title: "Commerce"
+    # ECONOMY, not "Commerce", because the domain holds a capability of that
+    # name: the tree rendered `Commerce › Commerce`, which tells a reader
+    # nothing twice. The word is this file's own — the role line beneath has
+    # said "the economy" all along — so the domain is named for what it IS and
+    # the capability keeps the name it answers at.
+    title: "Economy"
     role: "the economy — meter · price · bill · reward"
-    tags: [commerce, marketplace, billing, pricing, books, captable, referral, affiliate, author, licensing, x402, marketing,
-           campaign, ad, experiment, treasury, plan, allowance]
+    # `commerce` is the ledger and the storefront; `billing` the customer's
+    # balance and invoices read over it; `treasury` the reserve behind every
+    # payout; `plan` the plan catalog; `pricing` what each unit costs.
+    # `allowance` is the standing grant a caller spends against. The rolling
+    # spend cap that sat beside it is not here: a trailing-window ceiling is a
+    # hook the ai gate installs, and a hook is not a process, so it stopped
+    # being a row. Neither is the storefront's reverse edge, which is a consumer
+    # inside another binary. Both were retired from `manifest/apps.go` rather
+    # than renamed, and a capability with no row has no page.
+    # `principal` is an org as an economic principal — what it may pay and
+    # which agents answer to it; `tax` the W-9s, W-8s and 1099s companies
+    # exchange from the payments that moved between them. Both file beside
+    # books, the ledger they read.
+    tags: [commerce, billing, treasury, plan, pricing, allowance, reward,
+           marketplace, books, captable, referral, affiliate, author,
+           licensing, x402, marketing, campaign, ad, experiment,
+           principal, tax]
 
   - id: platform
-    title: "Platform"
+    # FABRIC, for the reason Economy is: `platform` is a capability inside this
+    # domain, so naming the domain after it rendered `Platform › Platform`. The
+    # role line already called it the cloud fabric.
+    title: "Fabric"
     role: "the cloud fabric — deploy · provision · route · host"
-    # `node` is a machine of yours that dials in and holds the socket open, so
-    # you can ask it to run a command and get the answer back. That makes it
-    # fabric — the same domain as the rest of what runs work — and not
-    # Intelligence's `exec` or `sandbox`, which run code on machines that are
-    # OURS. Whose hardware it is decides which of the two a caller wants.
-    # `environment` is what a codebase is before anything runs it — install and
-    # start scripts and the secrets it reads — which is provisioning, not a model.
-    tags: [platform, deploy, project, ci, registry, gateway, ingress, dns,
-           domain, cloudflare, network, flag, compute, node, environment]
+    # `compute` is the compute plane — machines, GPUs, clusters, the BYO fleet;
+    # `node` the machines it invokes across. `ci` is the build and run lane over
+    # `git`. `network` is the zero-trust overlay and the routers and services on
+    # it. `domain` is a name you own and `dns` the zones and records behind it.
+    # `admission` is the waitlist a flag admits an org through, so it files with
+    # `flag`. `admin` and `plugins` are the operator surface — real,
+    # SuperAdmin-only, and not published; see `doors:`.
+    tags: [platform, deploy, project, registry, gateway, ingress, domain,
+           dns, cloudflare, compute, ci, node, network, flag, admission, admin,
+           plugins]
 
   - id: applications
     title: "Applications"
     role: "the user-facing surfaces built on all of the above"
-    # `task` is boards and the work items on them — a surface, which is what
-    # this domain is for. It is NOT streams' `workflow`: that one is the durable
-    # orchestration work is handed to.
-    # `standing` reports what keeping an entity in good standing costs each
-    # year, itemised. The subject is the entity, not the money, which is why it
-    # sits beside `company` and `legal` rather than under Commerce — that
-    # domain is for money this cloud moves, and this is a bill somebody else
-    # sends you.
-    # `tax` files beside `company` and `legal` for `standing`'s reason: W-9s and
-    # 1099s are about the entity. `patrol` is a watch kept over sites — a surface.
-    tags: [git, template, blueprint, bot, world, framework, content,
-           guide, help, meet, share, social, esign, dataroom, company,
-           legal, pref, settings, function, sbom, link, seo, standing,
-           task, tax, patrol]
+    # `task` is a board a person keeps — a surface. It is NOT streams'
+    # `workflow`, the durable engine; two words, two things. `patrol` stands
+    # watch over an estate: its sites, tours, keys, cameras and incidents are a
+    # surface an operator works in. `bot` is a bot run on a
+    # surface. `link` is short links and the devices that follow them.
+    # `standing` is the other half of `company`, and files beside it for that
+    # reason: forming an entity is an act that ends, keeping one is an obligation
+    # that does not, and the annual cost is the number that actually decides
+    # where to incorporate. It quotes state fees rather than metering our own, so
+    # it is not Commerce.
+    tags: [git, template, blueprint, bot, world, task, patrol, framework,
+           content, form, library, guide, help, meet, share, social, link, esign, dataroom,
+           company, standing, legal, patent, pref, settings, function, sbom, seo]
 
   - id: chain
     title: "Chain"
     role: "the networks the cloud speaks to — enumerate · call · read balances"
-    # One product, and it used to read as three: `chains` listed the networks,
-    # `rpc` made the call, `tokens` read a holder's balance. All three are now
-    # /v1/web3/* and tag themselves `web3`, which is the same three things said
-    # once. `explorer` is the other half — what has already been read off a
-    # chain and kept: how far each indexer has caught up, and what the on-chain
-    # oracles report. They are not Platform, which is the fabric this cloud RUNS
-    # on, and a chain is something it TALKS TO.
+    # `web3` lists the chains, relays JSON-RPC to one, and reads a holder's
+    # balances; `explorer` indexes them and serves oracles; `market` reads the
+    # pools and token prices on them. They are not Platform — that is the fabric
+    # this cloud RUNS on, and a chain is something it TALKS TO.
     tags: [web3, explorer, market]
+
+# doors — the capabilities that are GA and that the public document does not
+# carry, with the address each one actually answers on.
+#
+# Eight of them, and every one is real, running and reachable. What they have in
+# common is not an address — it is that no OpenAPI operation describes them. A
+# wire adaptor binds a port, a discovery convention answers under
+# `/.well-known/`, a co-resident claims requests on another app's router, a relay
+# forwards to the plane that owns the store, and the operator surface is served
+# at `/v1/admin` but deliberately absent from the customer contract. Three of the
+# eight ARE at a `/v1` address; what none of them is, is in the document.
+#
+# They are listed because the alternative is worse in both directions. Leaving
+# them out publishes nine domains that quietly disagree with `manifest/apps.go`,
+# so a reader who has heard of `kafka` finds nothing and concludes we do not have
+# it. Filing them as ordinary capabilities would publish a page whose Endpoints
+# table is empty, which reads as a product that is broken rather than one that is
+# reached another way.
+#
+# So the line here IS the page's subject: what it is, and the endpoint it answers on.
+# `check-capabilities` reads this list to know that a page under one of these
+# names is expected rather than orphaned, and the reference generator reads it to
+# write that page. A name here that cloud stops shipping is a name with no row in
+# `manifest/apps.go`, which is the same failure as any other stale entry.
+doors:
+  pubsub: ":4222 — the embedded NATS/JetStream node itself, under the HTTP endpoint at /v1/pubsub"
+  kafka: ":9092 — the Kafka binary protocol, translated onto the same JetStream node"
+  amqp: ":5672 — AMQP 0-9-1, translated onto the same JetStream node"
+  skills: "/.well-known/agent-skills/ — the Agent Skills discovery convention, GET-only"
+  zen: "co-resident on ai's router — it claims zen-SKU requests and passes the rest on"
+  dns: "/v1/dns — a relay onto the DNS control plane that owns the zone store"
+  admin: "/v1/admin — the operator surface, SuperAdmin-only and not in the public contract"
+  plugins: "/v1/admin/plugins — the operator's view of which capabilities are enabled"
