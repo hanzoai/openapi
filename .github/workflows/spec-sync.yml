@@ -94,6 +94,11 @@ jobs:
           repository: hanzo-inc/cloud
           path: .cloud
           fetch-depth: 0
+          # Every commit and tree, no blobs: publish.py reads one file at a ref
+          # (`git show <ref>:openapi.yaml`) and git fetches that blob on demand.
+          # This job runs hourly and on every push and PR, so it should not download the cloud
+          # monorepo's every blob each time.
+          filter: blob:none
           token: ${{ secrets.HANZO_GIT_TOKEN }}
 
       - name: Is hanzo.yaml what its own input projects to?
