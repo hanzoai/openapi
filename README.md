@@ -2,6 +2,8 @@
 
 # Hanzo OpenAPI
 
+[![Open in Hanzo](https://hanzo.app/badges/open-in-hanzo.svg)](https://hanzo.app/dev/open?repo=github.com/hanzoai/openapi&ref=main&action=open) [![Edit with Hanzo](https://hanzo.app/badges/edit-with-hanzo.svg)](https://hanzo.app/dev/open?repo=github.com/hanzoai/openapi&ref=main&action=edit) [![Deploy with Hanzo](https://hanzo.app/badges/deploy-with-hanzo.svg)](https://hanzo.app/dev/open?repo=github.com/hanzoai/openapi&ref=main&action=deploy)
+
 **`hanzo.yaml` is THE published document, and it is OUTPUT.** One OpenAPI 3.1
 surface for every Hanzo service — the one every SDK, doc site and tool generates
 from — DERIVED by `publish.py` from hanzo-inc/cloud's own emitted `openapi.yaml` at
